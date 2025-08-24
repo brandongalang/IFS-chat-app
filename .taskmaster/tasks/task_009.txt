@@ -1,0 +1,11 @@
+# Task ID: 9
+# Title: Develop LLM Extraction Logic for Background Processing
+# Status: todo
+# Dependencies: 8
+# Priority: medium
+# Description: Create the specialized prompt and logic for the background LLM call to extract structured data from a session transcript.
+# Details:
+Engineer a detailed prompt that instructs the LLM to analyze a full conversation transcript and return a structured JSON object. The JSON should contain identified parts, new evidence with confidence scores, observed relationships, and key themes, as specified in the PRD. Implement parsing and validation for the LLM's JSON output.
+
+# Test Strategy:
+Create a suite of test transcripts with known patterns. Run them through the extraction prompt and assert that the output JSON is structured correctly and contains the expected data. Test edge cases like empty or very short conversations.

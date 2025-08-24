@@ -1,0 +1,11 @@
+# Task ID: 14
+# Title: Build Chat UI: ChatInput and Layout
+# Status: todo
+# Dependencies: 13
+# Priority: high
+# Description: Create the main chat layout, including the multi-line text input for users to send messages.
+# Details:
+Develop the `ChatInput` component as a multi-line textarea that auto-resizes. Implement 'Send on Enter' and 'Shift+Enter for new line' functionality. The input should be disabled while the assistant is generating a response. Assemble the main chat page layout.
+
+# Test Strategy:
+Use React Testing Library to test the input's behavior, such as state changes, submission logic, and disabled state. Manually test usability and responsiveness across different screen sizes.

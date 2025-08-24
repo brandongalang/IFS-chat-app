@@ -1,0 +1,11 @@
+# Task ID: 13
+# Title: Build Chat UI: MessageList Component
+# Status: todo
+# Dependencies: 12
+# Priority: high
+# Description: Develop the React component to display the conversation history, supporting streaming text and tool usage indicators.
+# Details:
+Create a `MessageList` component that renders an array of messages. It must handle streaming text updates for the last message. When a message contains `toolCalls`, it should render a visual indicator like '[🔍 Searching for patterns...]'. Use Tailwind CSS for styling.
+
+# Test Strategy:
+Use Storybook to develop the component in isolation with various message types (user, assistant, streaming, with tools). Use React Testing Library to verify correct rendering based on props.

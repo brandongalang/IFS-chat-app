@@ -1,0 +1,11 @@
+# Task ID: 19
+# Title: End-to-End Testing of Core User Flow
+# Status: todo
+# Dependencies: 18
+# Priority: high
+# Description: Create and run end-to-end tests for the complete user journey, from conversation to part emergence.
+# Details:
+Using Playwright, write a test script that: 1. Logs in a test user. 2. Starts a session and has a short conversation. 3. Ends the session. 4. Triggers the background processing job manually via an API call or waits for it. 5. Reloads the app and verifies that new evidence has been logged and/or a new part has emerged in the sidebar.
+
+# Test Strategy:
+Run the E2E test suite in a staging environment that mirrors production. The test passes if the final assertions about the state of the UI and database are correct.

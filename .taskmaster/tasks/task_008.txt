@@ -1,0 +1,11 @@
+# Task ID: 8
+# Title: Set Up Mastra Workflow for Session Processing
+# Status: todo
+# Dependencies: 11
+# Priority: medium
+# Description: Configure and implement the background processing workflow using Mastra that triggers after a session ends.
+# Details:
+Define a Mastra workflow that is triggered by a webhook call from the `endSession` tool. The workflow will start with basic session handling: fetching all messages for the given session ID from Supabase and calling the LLM with a specialized prompt for initial analysis. Configure retry logic (3 attempts with exponential backoff) and a 20-second timeout. The workflow will be enhanced incrementally as agent tools (evidence logging, pattern finding, relationship management) are implemented in subsequent tasks.
+
+# Test Strategy:
+Trigger the workflow with a test session ID and verify that it correctly fetches data from Supabase. Mock the LLM call to test the workflow's structure and error handling. Check Mastra logs for successful execution. Initially test with basic session analysis, then expand tests as more agent tools are integrated.

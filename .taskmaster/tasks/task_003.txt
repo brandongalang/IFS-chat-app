@@ -1,0 +1,11 @@
+# Task ID: 3
+# Title: Set Up Logging, Monitoring, and Error Tracking
+# Status: deferred
+# Dependencies: 1
+# Priority: high
+# Description: Integrate services for observability, including structured logging, performance monitoring, and error tracking.
+# Details:
+Integrate Sentry for real-time error tracking on both the frontend and backend. Configure structured logging for API routes and background jobs to provide context for debugging. Integrate PostHog or a similar analytics tool to track key user success metrics like session length and part emergence.
+
+# Test Strategy:
+Intentionally trigger a client-side and a server-side error and verify they appear in Sentry with correct stack traces. Perform an action that should be tracked and confirm the event appears in PostHog.

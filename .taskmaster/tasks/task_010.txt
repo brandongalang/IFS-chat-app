@@ -1,0 +1,11 @@
+# Task ID: 10
+# Title: Implement Background Job Database Updates
+# Status: todo
+# Dependencies: 9, 5, 6, 7
+# Priority: medium
+# Description: Write the logic within the Mastra workflow to take the extracted JSON from the LLM and update the Supabase database.
+# Details:
+After the LLM extraction step, write code in the workflow to iterate through the extracted data. Use the agent tools (`logEvidence`, `updatePart`, `createEmergingPart`, `logRelationship`) or direct Supabase client calls to update the `Parts` and `PartRelationships` tables. Mark the session as `processed` upon completion.
+
+# Test Strategy:
+Run the full background workflow against a test database. After execution, query the database to verify that parts have been updated, new evidence has been logged, and relationships have been created as expected.
