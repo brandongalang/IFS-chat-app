@@ -1,0 +1,264 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Initialize Project Infrastructure & Authentication",
+        "description": "Set up the foundational project structure, including the Next.js application, Supabase database, and user authentication flow.",
+        "details": "Initialize a Next.js 14 App Router project with TypeScript and Tailwind CSS. Configure a new Supabase project, setting up environment variables (SUPABASE_URL, SUPABASE_ANON_KEY). Implement the user sign-up and sign-in flow using Supabase Auth, including JWT handling and session management on the client-side.",
+        "testStrategy": "Unit test auth utility functions. Manually test the sign-up, login, and logout user flows. Verify that JWTs are correctly created and stored.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Define and Implement Database Schema & RLS",
+        "description": "Create all required tables in Supabase and configure Row-Level Security (RLS) policies to ensure data privacy.",
+        "details": "Using SQL scripts, create the `Users`, `Parts`, `Sessions`, and `PartRelationships` tables as specified in the PRD. Pay close attention to data types, especially JSONB for flexible fields. Enable RLS on all tables and add policies to ensure users can only perform CRUD operations on their own data (e.g., `USING (auth.uid() = userId)`).",
+        "testStrategy": "Write Supabase database tests to verify RLS policies. Attempt to access/modify data for another user and confirm the request is denied. Validate table structures and constraints against the PRD.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Set Up Logging, Monitoring, and Error Tracking",
+        "description": "Integrate services for observability, including structured logging, performance monitoring, and error tracking.",
+        "details": "Integrate Sentry for real-time error tracking on both the frontend and backend. Configure structured logging for API routes and background jobs to provide context for debugging. Integrate PostHog or a similar analytics tool to track key user success metrics like session length and part emergence.",
+        "testStrategy": "Intentionally trigger a client-side and a server-side error and verify they appear in Sentry with correct stack traces. Perform an action that should be tracked and confirm the event appears in PostHog.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "deferred",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement Part Discovery & Management Tools",
+        "description": "Build the agent tools for finding, creating, and updating parts: `searchParts`, `getPartById`, `createEmergingPart`, `updatePart`.",
+        "details": "Develop the server-side functions for these tools. `createEmergingPart` must enforce the 3+ evidence rule and user confirmation flow. `updatePart` must correctly increment confidence and maintain an audit trail (e.g., in a JSONB field). `searchParts` should efficiently query the `Parts` table. These tools will be integrated into the chat API to give the IFS agent part management capabilities.",
+        "testStrategy": "Unit test each tool's logic, especially the business rules for `createEmergingPart` and `updatePart`. Test the `searchParts` tool with various queries and filters to ensure correctness and performance. Verify integration with the chat API endpoint.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          11
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement Evidence and Pattern Management Tools",
+        "description": "Create the `logEvidence` and `findPatterns` tools, which are central to the evidence-based emergence feature.",
+        "details": "Implement the `logEvidence` function to add evidence to a part's `recentEvidence` array, enforcing the limit of 10. Implement `findPatterns` to analyze conversation history from the `Sessions` table, looking for recurring themes and suggesting potential new parts based on frequency and recency. These tools will extend the chat API to enable pattern recognition during conversations.",
+        "testStrategy": "Unit test `logEvidence` to ensure it correctly caps the evidence array. For `findPatterns`, create test data with known patterns in session messages and verify the tool correctly identifies them with appropriate confidence scores. Test integration with the chat API.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          11
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implement Relationship Management Tools",
+        "description": "Develop the `getPartRelationships` and `logRelationship` tools to track the dynamics between different parts.",
+        "details": "Create the server-side functions for these tools. `logRelationship` will create or update records in the `PartRelationships` table, ensuring bidirectional links. `getPartRelationships` will query this table to provide context to the LLM about how parts interact. These tools will be added to the chat API to help the IFS agent understand and track part relationships.",
+        "testStrategy": "Unit test the creation and retrieval of relationships. Verify that logging a relationship from Part A to Part B makes it retrievable when querying for either Part A or Part B. Test the tools' integration with the chat API.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          11
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Set Up Mastra Workflow for Session Processing",
+        "description": "Configure and implement the background processing workflow using Mastra that triggers after a session ends.",
+        "status": "todo",
+        "dependencies": [
+          11
+        ],
+        "priority": "medium",
+        "details": "Define a Mastra workflow that is triggered by a webhook call from the `endSession` tool. The workflow will start with basic session handling: fetching all messages for the given session ID from Supabase and calling the LLM with a specialized prompt for initial analysis. Configure retry logic (3 attempts with exponential backoff) and a 20-second timeout. The workflow will be enhanced incrementally as agent tools (evidence logging, pattern finding, relationship management) are implemented in subsequent tasks.",
+        "testStrategy": "Trigger the workflow with a test session ID and verify that it correctly fetches data from Supabase. Mock the LLM call to test the workflow's structure and error handling. Check Mastra logs for successful execution. Initially test with basic session analysis, then expand tests as more agent tools are integrated.",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Develop LLM Extraction Logic for Background Processing",
+        "description": "Create the specialized prompt and logic for the background LLM call to extract structured data from a session transcript.",
+        "details": "Engineer a detailed prompt that instructs the LLM to analyze a full conversation transcript and return a structured JSON object. The JSON should contain identified parts, new evidence with confidence scores, observed relationships, and key themes, as specified in the PRD. Implement parsing and validation for the LLM's JSON output.",
+        "testStrategy": "Create a suite of test transcripts with known patterns. Run them through the extraction prompt and assert that the output JSON is structured correctly and contains the expected data. Test edge cases like empty or very short conversations.",
+        "priority": "medium",
+        "dependencies": [
+          8
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Implement Background Job Database Updates",
+        "description": "Write the logic within the Mastra workflow to take the extracted JSON from the LLM and update the Supabase database.",
+        "details": "After the LLM extraction step, write code in the workflow to iterate through the extracted data. Use the agent tools (`logEvidence`, `updatePart`, `createEmergingPart`, `logRelationship`) or direct Supabase client calls to update the `Parts` and `PartRelationships` tables. Mark the session as `processed` upon completion.",
+        "testStrategy": "Run the full background workflow against a test database. After execution, query the database to verify that parts have been updated, new evidence has been logged, and relationships have been created as expected.",
+        "priority": "medium",
+        "dependencies": [
+          9,
+          5,
+          6,
+          7
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Build Core Chat API Endpoint with Streaming",
+        "description": "Create the main `/api/chat` endpoint to handle user messages, interact with the LLM, and stream responses back to the client using Mastra AI framework. Since we're using Vite + React architecture, implement an Express backend server with the chat endpoint, or alternatively use a client-side approach with direct LLM API calls.",
+        "status": "done",
+        "dependencies": [
+          2
+        ],
+        "priority": "high",
+        "details": "For the Vite + React architecture, implement one of two approaches: (1) Create a separate Express backend server that hosts the `/api/chat` endpoint, handles CORS for the Vite frontend, and manages the Mastra AI framework server-side, or (2) Implement a client-side solution using Mastra AI directly from the React frontend if the framework supports browser environments. The backend approach is recommended for better security and API key management. Use the Mastra AI framework to create an IFS therapy agent with built-in tool management capabilities. Mastra provides a robust agent framework that will support future integration of session management, part discovery, and evidence tracking tools. Start with a basic IFS chat agent implementation using the agent's base system prompt and Mastra's agent configuration. Initially, messages will be processed without full session management - session tools will be added incrementally in later tasks. Focus on establishing the core streaming infrastructure using Mastra's streaming capabilities and IFS agent personality/capabilities. The Mastra agent will be configured to prepare for future tool integration including logEvidence, findPatterns, and session management functions. If using Express backend, ensure proper WebSocket or Server-Sent Events setup for streaming responses to the Vite frontend.",
+        "testStrategy": "Create an integration test that sends a message to the endpoint and verifies that a streaming response is received. For backend approach: test the Express server endpoint directly and verify CORS headers. For client-side approach: mock the Mastra AI calls and test the React component's handling of streaming responses. Use Mastra's testing utilities to mock the LLM and test the agent's behavior independently. Test the IFS agent's base prompt and response patterns through Mastra's agent configuration. Verify that the Mastra agent is properly initialized and can handle basic conversations. Initially skip JWT validation and session persistence tests - these will be added when session management tools are integrated. Test that the agent framework is ready to accept tool additions in future tasks. Use Vitest for unit tests and consider MSW (Mock Service Worker) for mocking API calls in the frontend tests.",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Implement API Input Validation and Security",
+        "description": "Secure all API endpoints with strict input validation and implement other security guardrails.",
+        "details": "Use Zod to define schemas for the request bodies of all API endpoints (`/api/chat`, `/api/sessions/*`, etc.). Enforce these schemas in the API routes to prevent invalid data. Implement rate limiting (e.g., 60 requests/minute) using a library like `upstash/ratelimit`. Ensure all database queries are parameterized to prevent SQL injection.",
+        "testStrategy": "Write API tests that send malformed or malicious payloads to each endpoint and verify that a 400 Bad Request error is returned. Test the rate limiter by sending a burst of requests and confirming a 429 error is received.",
+        "priority": "high",
+        "dependencies": [
+          11
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Build Chat UI: MessageList Component",
+        "description": "Develop the React component to display the conversation history, supporting streaming text and tool usage indicators.",
+        "details": "Create a `MessageList` component that renders an array of messages. It must handle streaming text updates for the last message. When a message contains `toolCalls`, it should render a visual indicator like '[🔍 Searching for patterns...]'. Use Tailwind CSS for styling.",
+        "testStrategy": "Use Storybook to develop the component in isolation with various message types (user, assistant, streaming, with tools). Use React Testing Library to verify correct rendering based on props.",
+        "priority": "high",
+        "dependencies": [
+          12
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Build Chat UI: ChatInput and Layout",
+        "description": "Create the main chat layout, including the multi-line text input for users to send messages.",
+        "details": "Develop the `ChatInput` component as a multi-line textarea that auto-resizes. Implement 'Send on Enter' and 'Shift+Enter for new line' functionality. The input should be disabled while the assistant is generating a response. Assemble the main chat page layout.",
+        "testStrategy": "Use React Testing Library to test the input's behavior, such as state changes, submission logic, and disabled state. Manually test usability and responsiveness across different screen sizes.",
+        "priority": "high",
+        "dependencies": [
+          13
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Build Chat UI: Parts Sidebar Component",
+        "description": "Develop the sidebar component that lists the user's emerged and acknowledged parts in real-time.",
+        "details": "Create a `PartsSidebar` React component that fetches and displays a list of parts for the current user. It should show the part's emoji, name, role, and confidence score. The component must update in real-time as new parts emerge or existing parts are updated during a session.",
+        "testStrategy": "Develop the component in Storybook with mock part data. Write an integration test to ensure the sidebar fetches data correctly and updates when the underlying data changes (e.g., via a state management hook).",
+        "priority": "medium",
+        "dependencies": [
+          12
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Integrate Frontend Components with Backend API",
+        "description": "Connect the chat UI components to the backend API endpoints, manage client-side state, and handle data flow.",
+        "details": "Use a state management library like Zustand to manage the application state (messages, parts list, session status). Wire the `ChatInput` to the `/api/chat` endpoint to send messages. Consume the SSE stream to update the `MessageList` in real-time. Fetch initial data for the `PartsSidebar`.",
+        "testStrategy": "Write end-to-end tests using Playwright that simulate a user logging in, sending a message, and seeing the response appear. Verify that the state in Zustand is updated correctly throughout the process.",
+        "priority": "high",
+        "dependencies": [
+          14,
+          15
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Implement Responsive Design and Accessibility",
+        "description": "Ensure the chat interface is fully responsive for mobile and tablet devices and meets basic accessibility standards.",
+        "details": "Use Tailwind CSS's responsive design utilities to adapt the layout for smaller screens. Ensure all interactive elements are keyboard-navigable and have appropriate ARIA labels. Test color contrast to meet WCAG AA standards. The primary focus is on the chat view and parts sidebar.",
+        "testStrategy": "Manually test the application on Chrome, Firefox, and Safari, using their respective developer tools for mobile emulation. Use an automated accessibility checker like Axe to identify and fix common issues. Perform keyboard-only navigation tests.",
+        "priority": "medium",
+        "dependencies": [
+          16
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Configure CI/CD Pipeline for Deployment",
+        "description": "Set up a continuous integration and deployment pipeline using GitHub Actions and Vercel.",
+        "status": "todo",
+        "dependencies": [
+          10,
+          17
+        ],
+        "priority": "high",
+        "details": "Create a GitHub Actions workflow file (`.github/workflows/deploy.yml`) optimized for Vite + React architecture. Configure it to trigger on pushes to the `main` branch. The workflow should install dependencies, run linter, execute tests (Jest/Playwright), build the Vite application with production optimizations, and deploy to Vercel. For client-side only applications, optimize the build process with Vite's static asset handling and tree-shaking. If the project evolves to include a separate Express backend, prepare for potential split deployment strategy (frontend to Vercel/Netlify, backend to Railway/Render). Configure environment variables in GitHub Secrets, ensuring proper handling of Vite's `VITE_` prefixed variables for client-side access.",
+        "testStrategy": "Push a small change to a feature branch, create a pull request, and verify that the CI checks run successfully including Vite build optimization. Merge to main and confirm that the deployment to Vercel's production environment is successful with proper static asset serving. Test that environment variables are correctly injected during the Vite build process. Verify the production build is optimized with proper code splitting and asset hashing.",
+        "subtasks": []
+      },
+      {
+        "id": 19,
+        "title": "End-to-End Testing of Core User Flow",
+        "description": "Create and run end-to-end tests for the complete user journey, from conversation to part emergence.",
+        "details": "Using Playwright, write a test script that: 1. Logs in a test user. 2. Starts a session and has a short conversation. 3. Ends the session. 4. Triggers the background processing job manually via an API call or waits for it. 5. Reloads the app and verifies that new evidence has been logged and/or a new part has emerged in the sidebar.",
+        "testStrategy": "Run the E2E test suite in a staging environment that mirrors production. The test passes if the final assertions about the state of the UI and database are correct.",
+        "priority": "high",
+        "dependencies": [
+          18
+        ],
+        "status": "todo",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "Final MVP Polish and Documentation",
+        "description": "Perform final UI/UX polishing, add loading states, and create essential developer documentation.",
+        "details": "Review the entire application for UI consistency and minor bugs. Add loading states (e.g., breathing animations) for data fetching and message generation to improve perceived performance. Create a README.md with setup instructions, environment variable definitions, and an overview of the architecture.",
+        "testStrategy": "Conduct a full user acceptance testing (UAT) session with internal stakeholders to gather feedback. Review the documentation to ensure a new developer could set up and run the project successfully.",
+        "priority": "low",
+        "dependencies": [
+          19
+        ],
+        "status": "todo",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-21T05:31:05.606Z",
+      "updated": "2025-08-23T21:01:11.799Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

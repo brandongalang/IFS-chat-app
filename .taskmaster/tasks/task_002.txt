@@ -1,0 +1,11 @@
+# Task ID: 2
+# Title: Define and Implement Database Schema & RLS
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Create all required tables in Supabase and configure Row-Level Security (RLS) policies to ensure data privacy.
+# Details:
+Using SQL scripts, create the `Users`, `Parts`, `Sessions`, and `PartRelationships` tables as specified in the PRD. Pay close attention to data types, especially JSONB for flexible fields. Enable RLS on all tables and add policies to ensure users can only perform CRUD operations on their own data (e.g., `USING (auth.uid() = userId)`).
+
+# Test Strategy:
+Write Supabase database tests to verify RLS policies. Attempt to access/modify data for another user and confirm the request is denied. Validate table structures and constraints against the PRD.

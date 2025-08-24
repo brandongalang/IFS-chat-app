@@ -1,0 +1,193 @@
+import { createClient } from './supabase/client'
+import { actionLogger } from './database/action-logger'
+import type { SessionMessage, SessionRow, SessionInsert, SessionUpdate } from './types/database'
+
+export class ChatSessionService {
+  private supabase = createClient()
+
+  /**
+   * Start a new chat session
+   */
+  async startSession(userId: string): Promise<string> {
+    const session: SessionInsert = {
+      user_id: userId,
+      start_time: new Date().toISOString(),
+      messages: [],
+      parts_involved: {},
+      new_parts: [],
+      breakthroughs: [],
+      emotional_arc: {
+        start: { valence: 0, arousal: 0 },
+        peak: { valence: 0, arousal: 0 },
+        end: { valence: 0, arousal: 0 }
+      },
+      processed: false
+    }
+
+    // Use action logger for session creation
+    const data = await actionLogger.loggedInsert<{ id: string }>(
+      'sessions',
+      session,
+      userId,
+      'create_session',
+      {
+        changeDescription: 'Started new chat session',
+        sessionId: undefined // Will be set after creation
+      }
+    )
+
+    return data.id
+  }
+
+  /**
+   * Add a message to an existing session
+   */
+  async addMessage(
+    sessionId: string,
+    message: Omit<SessionMessage, 'timestamp'>
+  ): Promise<void> {
+    // First get the current session
+    const { data: session, error: fetchError } = await this.supabase
+      .from('sessions')
+      .select('messages')
+      .eq('id', sessionId)
+      .single()
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch session: ${fetchError.message}`)
+    }
+
+    // Add the new message with timestamp
+    const newMessage: SessionMessage = {
+      ...message,
+      timestamp: new Date().toISOString()
+    }
+
+    const updatedMessages = [...(session.messages || []), newMessage]
+
+    // Update the session with new messages
+    const { error: updateError } = await this.supabase
+      .from('sessions')
+      .update({ 
+        messages: updatedMessages,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', sessionId)
+
+    if (updateError) {
+      throw new Error(`Failed to add message: ${updateError.message}`)
+    }
+  }
+
+  /**
+   * End a session and calculate duration
+   */
+  async endSession(sessionId: string): Promise<void> {
+    const endTime = new Date().toISOString()
+    
+    // Get session start time to calculate duration
+    const { data: session, error: fetchError } = await this.supabase
+      .from('sessions')
+      .select('start_time')
+      .eq('id', sessionId)
+      .single()
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch session: ${fetchError.message}`)
+    }
+
+    const startTime = new Date(session.start_time)
+    const duration = Math.floor((new Date(endTime).getTime() - startTime.getTime()) / 1000)
+
+    const { error } = await this.supabase
+      .from('sessions')
+      .update({
+        end_time: endTime,
+        duration: duration,
+        updated_at: endTime
+      })
+      .eq('id', sessionId)
+
+    if (error) {
+      throw new Error(`Failed to end session: ${error.message}`)
+    }
+  }
+
+  /**
+   * Get session history with messages
+   */
+  async getSession(sessionId: string): Promise<SessionRow | null> {
+    const { data, error } = await this.supabase
+      .from('sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null // Session not found
+      }
+      throw new Error(`Failed to get session: ${error.message}`)
+    }
+
+    return data
+  }
+
+  /**
+   * Get recent sessions for a user
+   */
+  async getUserSessions(userId: string, limit: number = 10): Promise<SessionRow[]> {
+    const { data, error } = await this.supabase
+      .from('sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('start_time', { ascending: false })
+      .limit(limit)
+
+    if (error) {
+      throw new Error(`Failed to get user sessions: ${error.message}`)
+    }
+
+    return data || []
+  }
+
+  /**
+   * Get messages from a session (lightweight - just messages)
+   */
+  async getSessionMessages(sessionId: string): Promise<SessionMessage[]> {
+    const { data, error } = await this.supabase
+      .from('sessions')
+      .select('messages')
+      .eq('id', sessionId)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return [] // Session not found
+      }
+      throw new Error(`Failed to get session messages: ${error.message}`)
+    }
+
+    return data.messages || []
+  }
+
+  /**
+   * Update session metadata (for IFS-specific tracking)
+   */
+  async updateSessionMetadata(sessionId: string, updates: Partial<SessionUpdate>): Promise<void> {
+    const { error } = await this.supabase
+      .from('sessions')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', sessionId)
+
+    if (error) {
+      throw new Error(`Failed to update session metadata: ${error.message}`)
+    }
+  }
+}
+
+// Export singleton instance
+export const chatSessionService = new ChatSessionService()

@@ -1,0 +1,11 @@
+# Task ID: 18
+# Title: Configure CI/CD Pipeline for Deployment
+# Status: todo
+# Dependencies: 10, 17
+# Priority: high
+# Description: Set up a continuous integration and deployment pipeline using GitHub Actions and Vercel.
+# Details:
+Create a GitHub Actions workflow file (`.github/workflows/deploy.yml`) optimized for Vite + React architecture. Configure it to trigger on pushes to the `main` branch. The workflow should install dependencies, run linter, execute tests (Jest/Playwright), build the Vite application with production optimizations, and deploy to Vercel. For client-side only applications, optimize the build process with Vite's static asset handling and tree-shaking. If the project evolves to include a separate Express backend, prepare for potential split deployment strategy (frontend to Vercel/Netlify, backend to Railway/Render). Configure environment variables in GitHub Secrets, ensuring proper handling of Vite's `VITE_` prefixed variables for client-side access.
+
+# Test Strategy:
+Push a small change to a feature branch, create a pull request, and verify that the CI checks run successfully including Vite build optimization. Merge to main and confirm that the deployment to Vercel's production environment is successful with proper static asset serving. Test that environment variables are correctly injected during the Vite build process. Verify the production build is optimized with proper code splitting and asset hashing.

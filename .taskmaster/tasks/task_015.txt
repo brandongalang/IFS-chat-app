@@ -1,0 +1,11 @@
+# Task ID: 15
+# Title: Build Chat UI: Parts Sidebar Component
+# Status: todo
+# Dependencies: 12
+# Priority: medium
+# Description: Develop the sidebar component that lists the user's emerged and acknowledged parts in real-time.
+# Details:
+Create a `PartsSidebar` React component that fetches and displays a list of parts for the current user. It should show the part's emoji, name, role, and confidence score. The component must update in real-time as new parts emerge or existing parts are updated during a session.
+
+# Test Strategy:
+Develop the component in Storybook with mock part data. Write an integration test to ensure the sidebar fetches data correctly and updates when the underlying data changes (e.g., via a state management hook).

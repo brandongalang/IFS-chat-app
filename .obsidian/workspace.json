@@ -1,0 +1,217 @@
+{
+  "main": {
+    "id": "667b4777d20cc3bd",
+    "type": "split",
+    "children": [
+      {
+        "id": "48ad4ea15e6ddc64",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e0ed93f54623b02e",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "TECHNICAL_DESIGN.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "TECHNICAL_DESIGN"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "03554ef17f1d4f5f",
+    "type": "split",
+    "children": [
+      {
+        "id": "eb76ff316f811a6c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "83d42f5e0041028f",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "da74becf2218a87f",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "80a9e69db7ac532d",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "a63f21d6cea35cb5",
+    "type": "split",
+    "children": [
+      {
+        "id": "17e48db04eedab22",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "bbd0896d7e5e2324",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "TECHNICAL_DESIGN.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for TECHNICAL_DESIGN"
+            }
+          },
+          {
+            "id": "8a78adc3cc1403d8",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "TECHNICAL_DESIGN.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from TECHNICAL_DESIGN"
+            }
+          },
+          {
+            "id": "3b1d24e7bff39ee8",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "0e589d460719543b",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "TECHNICAL_DESIGN.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of TECHNICAL_DESIGN"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false
+    }
+  },
+  "active": "e0ed93f54623b02e",
+  "lastOpenFiles": [
+    "app/api/session/start/route.ts",
+    "app/api/session/start",
+    "app/api/session",
+    "dev.log",
+    "node_modules/eslint-plugin-react-refresh/package.json",
+    "node_modules/eslint-plugin-react-refresh/index.js",
+    "node_modules/eslint-plugin-react-refresh/index.d.ts",
+    "node_modules/eslint-plugin-react-refresh/README.md",
+    "node_modules/eslint-plugin-react-refresh/LICENSE",
+    "node_modules/eslint-plugin-react-refresh",
+    "node_modules/@unrs/resolver-binding-win32-ia32-msvc",
+    "node_modules/@unrs/resolver-binding-win32-x64-msvc",
+    "node_modules/globals/readme.md",
+    "node_modules/@emnapi/core/README.md",
+    "node_modules/tailwindcss-animate/README.md",
+    "node_modules/fsevents/README.md",
+    "node_modules/sucrase/node_modules/commander/Readme.md",
+    "node_modules/sucrase/node_modules/commander/CHANGELOG.md",
+    "node_modules/sucrase/README.md",
+    "node_modules/chokidar/node_modules/glob-parent/README.md",
+    "node_modules/chokidar/node_modules/glob-parent/CHANGELOG.md",
+    "node_modules/chokidar/README.md",
+    "node_modules/glob/node_modules/brace-expansion/README.md",
+    "node_modules/glob/node_modules/minimatch/README.md",
+    "node_modules/glob/README.md",
+    "node_modules/tailwindcss/src/postcss-plugins/nesting/README.md",
+    "node_modules/tailwindcss/lib/postcss-plugins/nesting/README.md",
+    "node_modules/tailwindcss/src/value-parser/README.md",
+    "node_modules/tailwindcss/node_modules/jiti/README.md",
+    "node_modules/tailwindcss/node_modules/postcss-load-config/README.md",
+    "node_modules/tailwindcss/lib/value-parser/README.md",
+    "node_modules/tailwindcss/README.md",
+    "node_modules/tailwindcss/CHANGELOG.md",
+    "node_modules/@isaacs/cliui/node_modules/strip-ansi/readme.md",
+    "node_modules/@isaacs/cliui/node_modules/wrap-ansi/readme.md",
+    "node_modules/@isaacs/cliui/node_modules/string-width/readme.md",
+    "node_modules/highlight.js/styles/school-book.png",
+    "node_modules/highlight.js/styles/pojoaque.jpg",
+    "node_modules/highlight.js/styles/brown-papersq.png",
+    "node_modules/highlight.js/scss/school-book.png",
+    "node_modules/highlight.js/scss/pojoaque.jpg",
+    "node_modules/highlight.js/scss/brown-papersq.png",
+    "node_modules/concurrently/docs/demo.gif"
+  ]
+}

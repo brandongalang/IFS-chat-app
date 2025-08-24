@@ -1,0 +1,11 @@
+# Task ID: 7
+# Title: Implement Relationship Management Tools
+# Status: todo
+# Dependencies: 2, 11
+# Priority: medium
+# Description: Develop the `getPartRelationships` and `logRelationship` tools to track the dynamics between different parts.
+# Details:
+Create the server-side functions for these tools. `logRelationship` will create or update records in the `PartRelationships` table, ensuring bidirectional links. `getPartRelationships` will query this table to provide context to the LLM about how parts interact. These tools will be added to the chat API to help the IFS agent understand and track part relationships.
+
+# Test Strategy:
+Unit test the creation and retrieval of relationships. Verify that logging a relationship from Part A to Part B makes it retrievable when querying for either Part A or Part B. Test the tools' integration with the chat API.
