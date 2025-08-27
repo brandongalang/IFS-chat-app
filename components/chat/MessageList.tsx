@@ -25,13 +25,13 @@ export function MessageList({ messages, onRerunTool }: MessageListProps) {
           </p>
           <div className="mt-6 flex flex-wrap gap-2 justify-center">
             <span className="bg-muted text-muted-foreground px-3 py-1 rounded-full text-sm">
-              "weather in Seattle"
+              &quot;weather in Seattle&quot;
             </span>
             <span className="bg-muted text-muted-foreground px-3 py-1 rounded-full text-sm">
-              "calculate 15 * 23"
+              &quot;calculate 15 * 23&quot;
             </span>
             <span className="bg-muted text-muted-foreground px-3 py-1 rounded-full text-sm">
-              "search for AI trends"
+              &quot;search for AI trends&quot;
             </span>
           </div>
         </div>

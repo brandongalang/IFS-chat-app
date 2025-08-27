@@ -33,7 +33,7 @@ export function ToolCard({ tool, messageId, onRerun }: ToolCardProps) {
     
     return Object.entries(inputs).map(([key, value]) => (
       <span key={key} className="font-mono bg-muted px-1 py-0.5 rounded text-xs mr-1">
-        {key}: "{String(value)}"
+        {key}: &quot;{String(value)}&quot;
       </span>
     ));
   };

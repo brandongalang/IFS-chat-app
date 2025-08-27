@@ -54,7 +54,7 @@ class MockAIClientImpl implements MockAIClient {
     // Split response into chunks for streaming simulation
     const words = response.split(' ');
     let currentChunk = '';
-    let timeouts: Array<ReturnType<typeof setTimeout>> = [];
+    const timeouts: Array<ReturnType<typeof setTimeout>> = [];
     let cancelled = false;
 
     // If tool detected, simulate tool execution delay first
