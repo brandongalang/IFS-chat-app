@@ -41,22 +41,29 @@ export async function POST(req: NextRequest) {
         : await agentAny.stream(messages)
 
       // Adapt to the returned stream type
-      if (stream && typeof (stream as any).toDataStreamResponse === 'function') {
-        return (stream as any).toDataStreamResponse()
+      const anyStream: any = stream as any
+      if (anyStream && typeof anyStream.toDataStreamResponse === 'function') {
+        return anyStream.toDataStreamResponse()
       }
-      if (stream && typeof (stream as any).toReadableStream === 'function') {
-        return new Response((stream as any).toReadableStream(), { headers: { 'Cache-Control': 'no-store' } })
+      if (anyStream && typeof anyStream.toReadableStream === 'function') {
+        return new Response(anyStream.toReadableStream(), { headers: { 'Cache-Control': 'no-store' } })
       }
-      if (stream && typeof stream === 'object' && 'body' in (stream as any) && 'headers' in (stream as any)) {
+      if (anyStream && typeof anyStream.toResponse === 'function') {
+        return anyStream.toResponse()
+      }
+      if (anyStream && typeof anyStream.toStreamResponse === 'function') {
+        return anyStream.toStreamResponse()
+      }
+      if (anyStream && typeof anyStream === 'object' && 'body' in anyStream && 'headers' in anyStream) {
         // Looks like a web Response
-        return stream as Response
+        return anyStream as Response
       }
-      if (stream && Symbol.asyncIterator in (stream as any)) {
+      if (anyStream && Symbol.asyncIterator in anyStream) {
         // If it's an async iterator of chunks
         const encoder = new TextEncoder()
         const rs = new ReadableStream<Uint8Array>({
           async start(controller) {
-            for await (const chunk of stream as any) {
+            for await (const chunk of anyStream) {
               const text = typeof chunk === 'string' ? chunk : JSON.stringify(chunk)
               controller.enqueue(encoder.encode(text))
             }
@@ -66,8 +73,17 @@ export async function POST(req: NextRequest) {
         return new Response(rs, { headers: { 'Cache-Control': 'no-store' } })
       }
 
-      // Fallback: serialize to JSON
-      return new Response(JSON.stringify({ error: 'Unsupported stream type' }), { status: 500 })
+      // Fallback: dev stream instead of 500 to keep UI responsive
+      console.error('Unsupported stream type from agent. Keys:', typeof anyStream === 'object' ? Object.keys(anyStream) : typeof anyStream)
+      const encoder = new TextEncoder()
+      const msg = 'Hello! (fallback)\nAgent returned unsupported stream shape.'
+      const rs = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode(msg))
+          controller.close()
+        }
+      })
+      return new Response(rs, { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } })
     } catch (err) {
       console.error('Error creating stream', err)
       // Dev fallback stream on any error from agent/model/auth
