@@ -396,4 +396,31 @@ case 'add_part_evidence':
 }
 
 // Export singleton instance
-export const actionLogger = new DatabaseActionLogger()
+const hasSupabase =
+  typeof process.env.NEXT_PUBLIC_SUPABASE_URL === 'string' &&
+  /^https?:\/\//.test(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+  typeof process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === 'string' &&
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.length > 20
+
+class NoopActionLogger {
+  async loggedInsert<T>(_table: string, data: any, _userId: string, _actionType: ActionType, _metadata: ActionMetadata = {}): Promise<T> {
+    // Return the data as-is to simulate insert result
+    return data as T
+  }
+  async loggedUpdate<T>(_table: string, _id: string, updates: any, _userId: string, _actionType: ActionType, _metadata: ActionMetadata = {}): Promise<T> {
+    return updates as T
+  }
+  async getRecentActions(_userId: string, _limit = 10, _actionTypes?: ActionType[], _sessionId?: string, _withinMinutes?: number) {
+    return [] as ActionSummary[]
+  }
+  async rollbackByDescription(_userId: string, description: string) {
+    return { success: false, message: `Rollback unavailable in dev (no Supabase). Requested: ${description}` }
+  }
+  async rollbackAction(_actionId: string) {
+    return { success: false, message: 'Rollback unavailable in dev (no Supabase).' }
+  }
+}
+
+export const actionLogger: DatabaseActionLogger | NoopActionLogger = hasSupabase
+  ? new DatabaseActionLogger()
+  : new NoopActionLogger()
