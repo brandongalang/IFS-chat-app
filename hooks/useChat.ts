@@ -12,7 +12,6 @@ export function useChat() {
     currentStreamingId: undefined,
     // augmenting state shape locally; downstream components only read fields we return
     // hasActiveSession is maintained for UI checks like confirming before exiting chat
-    // @ts-expect-error: extended at runtime for UI state
     hasActiveSession: false,
   } as any);
 

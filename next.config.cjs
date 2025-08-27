@@ -4,7 +4,7 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@mastra/core'],
   },
   typescript: {
-    // Allow builds to proceed even with TypeScript errors during migration
+    // Temporarily ignore TypeScript errors during build to unblock merge
     ignoreBuildErrors: true,
   },
   eslint: {

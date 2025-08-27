@@ -1,6 +1,4 @@
-import { config } from '@mastra/core'
-
-export default config({
+const configObject = {
   name: 'ifs-therapy-companion',
   agents: {
     directory: './mastra/agents',
@@ -18,4 +16,6 @@ export default config({
     url: process.env.NEXT_PUBLIC_SUPABASE_URL,
     apiKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   },
-})
+}
+
+export default configObject

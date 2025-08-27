@@ -582,7 +582,7 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
         common_ground: rel.common_ground,
         polarization_level: rel.polarization_level,
         dynamics: rel.dynamics || [],
-        parts: partIds.map(partId => ({
+        parts: partIds.map((partId: string) => ({
           id: partId,
           ...(validated.includePartDetails && partsDetails[partId] ? {
             name: partsDetails[partId].name,
