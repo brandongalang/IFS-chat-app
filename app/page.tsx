@@ -4,8 +4,11 @@ import Link from 'next/link'
 import { Plus, CalendarDays, Lightbulb, Sprout, Map } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GuardedLink } from '@/components/common/GuardedLink'
+import { useComingSoon } from '@/components/common/ComingSoonProvider'
 
 export default function HomePage() {
+  const { openComingSoon } = useComingSoon()
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Header */}
@@ -13,7 +16,7 @@ export default function HomePage() {
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>09:57</span>
           <span className="font-medium">good evening.</span>
-          <button aria-label="profile" className="size-6 rounded-full bg-muted" />
+          <GuardedLink href="/profile" aria-label="profile" className="size-6 rounded-full bg-muted" />
         </div>
         <div className="mt-2 text-xs underline text-muted-foreground">Enable Dev Mode</div>
       </header>
@@ -36,7 +39,9 @@ export default function HomePage() {
           <div className="rounded-xl border border-border bg-green-600 text-white p-4">
             <div className="text-xs opacity-90">Morning</div>
             <div className="text-lg font-semibold">Fresh start!</div>
-            <Button className="mt-4 bg-white text-green-700 hover:bg-white/90">Begin</Button>
+            <Button className="mt-4 bg-white text-green-700 hover:bg-white/90" onClick={() => openComingSoon()}>
+              Begin
+            </Button>
           </div>
           <div className="rounded-xl border border-border bg-muted p-4">
             <div className="text-xs text-muted-foreground">Evening</div>

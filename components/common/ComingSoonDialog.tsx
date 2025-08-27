@@ -3,7 +3,6 @@
 import * as React from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { useRouter } from 'next/navigation'
 
 export function ComingSoonDialog({
   open,
@@ -16,7 +15,6 @@ export function ComingSoonDialog({
   featureName?: string
   description?: string
 }) {
-  const router = useRouter()
   const title = 'Coming soon'
   const desc = description ?? "This feature is coming soon. We’re focused on building a great chat experience first."
 
@@ -32,22 +30,12 @@ export function ComingSoonDialog({
         </div>
         <DialogFooter>
           <Button
-            data-testid="csd-back-to-chat"
-            onClick={() => {
-              onOpenChange(false)
-              router.push('/chat')
-            }}
-          >
-            Back to Chat
-          </Button>
-          <Button
-            data-testid="csd-notify"
-            variant="secondary"
+            data-testid="csd-back"
             onClick={() => {
               onOpenChange(false)
             }}
           >
-            Notify me later
+            Back
           </Button>
         </DialogFooter>
       </DialogContent>
