@@ -51,6 +51,7 @@ export default function HomePage() {
               <div className="text-xs text-muted-foreground mt-2">— Gloria Steinem</div>
             </div>
             <div className="mt-3 text-xs text-muted-foreground">Tap to explore more insights</div>
+          </div>
         </div>
       </main>
 
