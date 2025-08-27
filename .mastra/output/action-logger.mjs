@@ -12,9 +12,7 @@ function createClient() {
 }
 
 class DatabaseActionLogger {
-  constructor() {
-    this.supabase = createClient();
-  }
+  supabase = createClient();
   /**
    * Log and execute an INSERT operation with rollback capability
    */
