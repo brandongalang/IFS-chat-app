@@ -33,3 +33,6 @@ out/
 !.env.example
 !.env.local.example
 supabase/.env
+
+# Build artifacts
+tsconfig.tsbuildinfo
