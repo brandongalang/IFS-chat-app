@@ -34,11 +34,26 @@ export async function POST(req: NextRequest) {
       // Lazy-load the agent only when credentials are available to avoid dev import side-effects
       const { ifsAgent } = await import('../../../mastra/agents/ifs-agent')
 
-      // Use streamVNext when available; otherwise fallback to stream
+      // Prefer vNext streaming in AI SDK (UI message) format so we can parse consistently on the client
       const agentAny: any = ifsAgent as any
-      const stream = typeof agentAny.streamVNext === 'function'
-        ? await agentAny.streamVNext(messages)
-        : await agentAny.stream(messages)
+      let stream = null as any
+      if (typeof agentAny.streamVNext === 'function') {
+        stream = await agentAny.streamVNext(messages, { format: 'aisdk' })
+        if (stream && typeof stream.toUIMessageStreamResponse === 'function') {
+          return stream.toUIMessageStreamResponse({ sendReasoning: true })
+        }
+      }
+      // Fallback to v2 streaming
+      if (!stream && typeof agentAny.stream === 'function') {
+        const v2 = await agentAny.stream(messages)
+        if (v2 && typeof v2.toDataStreamResponse === 'function') {
+          return v2.toDataStreamResponse()
+        }
+        if (v2 && typeof v2.toReadableStream === 'function') {
+          return new Response(v2.toReadableStream(), { headers: { 'Cache-Control': 'no-store' } })
+        }
+        stream = v2
+      }
 
       // Adapt to the returned stream type
       const anyStream: any = stream as any
