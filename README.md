@@ -57,8 +57,8 @@ npm install
 ```
 
 2) Environment variables
-Create a .env in the repo root with the following (replace placeholders):
-```bash path=null start=null
+Copy .env.example to .env.local and fill in values. Do not commit .env files; they are gitignored.
+```bash
 # Mastra / OpenRouter
 OPENROUTER_API_KEY={{YOUR_OPENROUTER_API_KEY}}
 
