@@ -15,6 +15,25 @@ export function useChat() {
     hasActiveSession: false,
   } as any);
 
+  // #region Proposing Next Steps for Full Integration
+  // In a real app, this profile data would not be managed by local state here.
+  // Instead, it would be provided by a global UserContext or a similar state management solution (like Zustand or Redux).
+  // This would ensure that the profile data is consistent across the application (e.g., in the chat and on the profile page).
+  //
+  // Example with a context:
+  //
+  // import { useUser } from '@/context/UserContext'
+  // const { profile } = useUser()
+  //
+  // The UserContext would be responsible for fetching and storing the user's profile data from Supabase.
+  // #endregion
+
+  // In a real app, this would come from a user context or store
+  const [profile, setProfile] = useState({
+    name: 'Alex',
+    bio: 'Exploring the inner world, one part at a time.',
+  });
+
   const streamingCancelRef = useRef<(() => void) | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const userIdRef = useRef<string>('dev-user-1'); // TODO: replace with real identity later
@@ -111,6 +130,7 @@ export function useChat() {
         messages: apiMessages,
         sessionId,
         userId: userIdRef.current,
+        profile,
         signal: controller.signal,
         onChunk: (chunk, done) => {
           accumulated += chunk;
