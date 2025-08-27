@@ -13,8 +13,7 @@ export async function POST(req: NextRequest) {
 
     // If no OpenRouter credentials, provide a dev fallback text stream so the UI works
     const hasOpenrouter = typeof process.env.OPENROUTER_API_KEY === 'string' && process.env.OPENROUTER_API_KEY.length > 10
-    const allowAgent = hasOpenrouter && process.env.NODE_ENV === 'production'
-    if (!allowAgent) {
+    if (!hasOpenrouter) {
       const encoder = new TextEncoder()
       const devText = 'Hello! (dev fallback stream)\nThis is a placeholder response because OPENROUTER_API_KEY is not configured.'
       const stream = new ReadableStream<Uint8Array>({
@@ -42,18 +41,22 @@ export async function POST(req: NextRequest) {
         : await agentAny.stream(messages)
 
       // Adapt to the returned stream type
-      if (stream && typeof stream.toDataStreamResponse === 'function') {
-        return stream.toDataStreamResponse()
+      if (stream && typeof (stream as any).toDataStreamResponse === 'function') {
+        return (stream as any).toDataStreamResponse()
       }
-      if (stream && typeof stream.toReadableStream === 'function') {
-        return new Response(stream.toReadableStream(), { headers: { 'Cache-Control': 'no-store' } })
+      if (stream && typeof (stream as any).toReadableStream === 'function') {
+        return new Response((stream as any).toReadableStream(), { headers: { 'Cache-Control': 'no-store' } })
       }
-      if (stream && Symbol.asyncIterator in stream) {
+      if (stream && typeof stream === 'object' && 'body' in (stream as any) && 'headers' in (stream as any)) {
+        // Looks like a web Response
+        return stream as Response
+      }
+      if (stream && Symbol.asyncIterator in (stream as any)) {
         // If it's an async iterator of chunks
         const encoder = new TextEncoder()
         const rs = new ReadableStream<Uint8Array>({
           async start(controller) {
-            for await (const chunk of stream) {
+            for await (const chunk of stream as any) {
               const text = typeof chunk === 'string' ? chunk : JSON.stringify(chunk)
               controller.enqueue(encoder.encode(text))
             }
