@@ -25,10 +25,7 @@ export function ChatLayout() {
             <MessageSquare className="w-4 h-4 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-semibold text-lg" data-testid="chat-title">AI Assistant</h1>
-            <p className="text-muted-foreground text-xs" data-testid="chat-subtitle">
-              Powered by Vercel AI SDK
-            </p>
+            <h1 className="font-semibold text-lg" data-testid="chat-title">Self Guide</h1>
           </div>
         </div>
         <div className="flex items-center space-x-2">

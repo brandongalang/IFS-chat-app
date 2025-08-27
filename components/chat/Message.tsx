@@ -87,10 +87,6 @@ export function Message({ message, onRerunTool }: MessageProps) {
               <span data-testid={`text-timestamp-${message.id}`}>
                 {formatTime(message.timestamp)}
               </span>
-              <span className="mx-2">•</span>
-              <span className="text-accent" data-testid={`text-persona-${message.id}`}>
-                {message.persona === 'claude' ? 'Claude' : 'Assistant'}
-              </span>
             </div>
           </div>
         </div>
