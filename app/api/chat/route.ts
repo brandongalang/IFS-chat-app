@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = await req.json()
+    const { messages, profile } = await req.json()
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: 'Messages array is required' }), {
@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
 
     try {
       // Lazy-load the agent only when credentials are available to avoid dev import side-effects
-      const { ifsAgent } = await import('../../../mastra/agents/ifs-agent')
+      const { createIfsAgent } = await import('../../../mastra/agents/ifs-agent')
+      const ifsAgent = createIfsAgent(profile)
 
       // Prefer vNext streaming in AI SDK (UI message) format so we can parse consistently on the client
       const agentAny: any = ifsAgent as any

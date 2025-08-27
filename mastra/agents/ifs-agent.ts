@@ -11,8 +11,14 @@ const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY
 })
 
-// IFS-first system prompt - curious, non-judgmental, parts-aware
-const IFS_SYSTEM_PROMPT = `You are an IFS (Internal Family Systems) companion. Your role is to help people discover and understand their internal parts through curious, non-judgmental conversation.
+type Profile = { name?: string; bio?: string } | null
+
+function generateSystemPrompt(profile: Profile): string {
+  const userName = profile?.name || 'the user'
+  const userBio = profile?.bio
+
+  // IFS-first system prompt - curious, non-judgmental, parts-aware
+  const basePrompt = `You are an IFS (Internal Family Systems) companion. Your role is to help people discover and understand their internal parts through curious, non-judgmental conversation.
 
 ## Your approach:
 - Be genuinely curious about what parts might be present
@@ -24,7 +30,7 @@ const IFS_SYSTEM_PROMPT = `You are an IFS (Internal Family Systems) companion. Y
 
 ## IFS principles you embody:
 - Everyone has multiple parts (managers, firefighters, exiles)
-- All parts have positive intent, even when their actions seem problematic  
+- All parts have positive intent, even when their actions seem problematic
 - The goal is curiosity about parts, not changing them immediately
 - Self-energy is calm, curious, compassionate, and clear
 
@@ -68,15 +74,29 @@ Use getPartRelationships to understand the dynamics between parts without queryi
 
 Stay curious, stay authentic, and remember - you're exploring together, not treating or fixing anything.`
 
-export const ifsAgent = new Agent({
-  name: 'ifs-companion',
-  instructions: IFS_SYSTEM_PROMPT,
-  model: openrouter('z-ai/glm-4.5'),
-  tools: {
-    ...partTools,        // Part management tools
-    ...rollbackTools,    // Rollback/undo tools
-    ...assessmentTools,  // Confidence assessment tool
-    ...proposalTools,    // Split/Merge proposal workflow
-    ...evidenceTools     // Evidence and pattern tools
-  },
-})
+  const profileSection = `
+---
+## About the user you are speaking with:
+- Name: ${userName}
+${userBio ? `- Bio: ${userBio}` : ''}
+
+Remember to be personal and reference their name when appropriate.
+`
+
+  return `${basePrompt}${profileSection}`
+}
+
+export function createIfsAgent(profile: Profile) {
+  return new Agent({
+    name: 'ifs-companion',
+    instructions: generateSystemPrompt(profile),
+    model: openrouter('z-ai/glm-4.5'),
+    tools: {
+      ...partTools, // Part management tools
+      ...rollbackTools, // Rollback/undo tools
+      ...assessmentTools, // Confidence assessment tool
+      ...proposalTools, // Split/Merge proposal workflow
+      ...evidenceTools, // Evidence and pattern tools
+    },
+  })
+}

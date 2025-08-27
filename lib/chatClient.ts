@@ -1,9 +1,12 @@
 export type BasicMessage = { role: 'user' | 'assistant' | 'system'; content: string }
 
+export type Profile = { name: string; bio: string }
+
 export async function streamFromMastra(params: {
   messages: BasicMessage[]
   sessionId: string
   userId: string
+  profile: Profile
   onChunk: (chunk: string, done: boolean) => void
   signal?: AbortSignal
 }): Promise<void> {
@@ -11,7 +14,12 @@ export async function streamFromMastra(params: {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     // Include sessionId and userId for future server-side attribution; the route safely ignores extras
-    body: JSON.stringify({ messages: params.messages, sessionId: params.sessionId, userId: params.userId }),
+    body: JSON.stringify({
+      messages: params.messages,
+      sessionId: params.sessionId,
+      userId: params.userId,
+      profile: params.profile,
+    }),
     signal: params.signal,
   })
 

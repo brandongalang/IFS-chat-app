@@ -128,5 +128,41 @@ Implications
 - CI: disabled (no-op jobs), to be re-enabled
 - Main: contains recent TS fixes and UI hook restorations
 
+---
+
+## Feature: User Profile (Proposed Next Steps)
+
+The following steps outline how to transition the user profile feature from the current mock implementation to a full-featured, persistent one using Supabase.
+
+### 1. Supabase Backend Setup
+- **Create `profiles` Table:** In your Supabase project, create a new table named `profiles`.
+  - **Columns:**
+    - `id` (uuid, primary key, foreign key to `auth.users.id`)
+    - `name` (text)
+    - `bio` (text)
+    - `avatar_url` (text)
+    - `updated_at` (timestamp with time zone)
+- **Enable Row Level Security (RLS):**
+  - Create RLS policies to ensure that users can only read and write to their own profile data.
+  - **Select Policy:** `(auth.uid() = id)`
+  - **Update Policy:** `(auth.uid() = id)`
+
+### 2. Frontend Integration
+- **Create a User Context:**
+  - Implement a global React context (e.g., `UserContext`) to manage user authentication state and profile data.
+  - This context will be responsible for fetching the user's profile from the `profiles` table upon login and providing it to the rest of the application.
+- **Update Profile Page (`app/profile/page.tsx`):**
+  - Remove the `mockUser` object.
+  - Use the `UserContext` to get the current user's profile data and populate the form fields.
+  - In the `handleSave` function, call a Supabase client method to `update` the user's data in the `profiles` table.
+- **Update Chat Hook (`hooks/useChat.ts`):**
+  - Remove the local `profile` state.
+  - Use the `UserContext` to get the user's profile and pass it to the chat API.
+
+### 3. API and Agent Integration
+- The current implementation already supports passing the profile data to the agent. No major changes are needed in `app/api/chat/route.ts` or `mastra/agents/ifs-agent.ts` besides ensuring the data flows correctly from the new `UserContext`.
+
+This approach will provide a robust, secure, and scalable foundation for the user profile feature.
+
 End of plan.
 
