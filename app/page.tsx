@@ -7,47 +7,50 @@ import { Button } from '@/components/ui/button'
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
-      {/* Top spacer / header placeholder */}
-      <div className="h-12" />
+      {/* Header */}
+      <header className="px-4 pt-6 pb-2 max-w-md w-full mx-auto">
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>09:57</span>
+          <span className="font-medium">good evening.</span>
+          <button aria-label="profile" className="size-6 rounded-full bg-muted" />
+        </div>
+        <div className="mt-2 text-xs underline text-muted-foreground">Enable Dev Mode</div>
+      </header>
 
-      {/* Section label (e.g., Protector) */}
-      <div className="flex justify-center">
-        <div className="px-4 py-2 rounded-full bg-muted text-muted-foreground text-sm font-medium">Protector</div>
+      {/* Calendar strip */}
+      <div className="max-w-md w-full mx-auto px-4 mt-2">
+        <div className="grid grid-cols-7 gap-2 text-center text-xs text-muted-foreground">
+          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
+            <div key={d + i} className="flex flex-col gap-1">
+              <span>{d}</span>
+              <div className="rounded-md bg-muted py-1">27</div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Insight card */}
+      {/* Action cards */}
       <main className="flex-1 px-4 py-6 flex items-start justify-center">
-        <div className="w-full max-w-md">
-          <div className="bg-card border border-border rounded-2xl shadow-sm p-6">
-            <div className="w-8 h-8 rounded-full mx-auto mb-3 flex items-center justify-center text-muted-foreground">
-              <Lightbulb className="w-5 h-5" />
-            </div>
-            <p className="text-center text-base leading-relaxed">
-              I notice you've been avoiding
-              certain conversations lately. This
-              might be a protective part trying to
-              keep you safe from conflict or
-              rejection.
-            </p>
-            <p className="text-center text-xs text-muted-foreground mt-3">Based on your recent patterns</p>
-            <p className="text-center font-medium mt-5">Does this protective pattern feel
-              accurate to you?</p>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <Button variant="outline">Not quite</Button>
-              <Button variant="secondary">That fits</Button>
-            </div>
-            <div className="mt-5 text-center text-sm text-muted-foreground">
-              <button className="underline underline-offset-4">Add context</button>
-            </div>
+        <div className="w-full max-w-md grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-border bg-green-600 text-white p-4">
+            <div className="text-xs opacity-90">Morning</div>
+            <div className="text-lg font-semibold">Fresh start!</div>
+            <Button className="mt-4 bg-white text-green-700 hover:bg-white/90">Begin</Button>
+          </div>
+          <div className="rounded-xl border border-border bg-muted p-4">
+            <div className="text-xs text-muted-foreground">Evening</div>
+            <div className="text-base font-medium">Daily review</div>
+            <div className="text-xs text-muted-foreground mt-1">Available in 8h 2m</div>
           </div>
 
-          {/* Dots */}
-          <div className="mt-4 flex items-center justify-center gap-1">
-            <span className="size-1.5 rounded-full bg-muted-foreground/40" />
-            <span className="size-1.5 rounded-full bg-muted-foreground/40" />
-            <span className="size-1.5 rounded-full bg-muted-foreground" />
-            <span className="size-1.5 rounded-full bg-muted-foreground/40" />
-          </div>
+          {/* Daily meditations (spans 2 columns) */}
+          <div className="col-span-2 rounded-xl border border-border bg-card p-4 mt-2">
+            <div className="text-xs font-semibold text-muted-foreground tracking-wide">DAILY MEDITATIONS</div>
+            <div className="mt-3 text-sm">
+              <blockquote className="italic">“So whatever you want to do, just do it… Making a damn fool of yourself is absolutely essential.”</blockquote>
+              <div className="text-xs text-muted-foreground mt-2">— Gloria Steinem</div>
+            </div>
+            <div className="mt-3 text-xs text-muted-foreground">Tap to explore more insights</div>
         </div>
       </main>
 
@@ -55,14 +58,14 @@ export default function HomePage() {
       <nav className="relative border-t border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="mx-auto max-w-md">
           <div className="grid grid-cols-4 text-center text-xs py-3 text-muted-foreground">
-            <button className="flex flex-col items-center gap-1">
+            <button className="flex flex-col items-center gap-1 text-foreground">
               <CalendarDays className="w-5 h-5" />
               <span>Today</span>
             </button>
-            <button className="flex flex-col items-center gap-1 text-foreground">
+            <Link href="/insights" className="flex flex-col items-center gap-1">
               <Lightbulb className="w-5 h-5" />
               <span>Insights</span>
-            </button>
+            </Link>
             <button className="flex flex-col items-center gap-1">
               <Sprout className="w-5 h-5" />
               <span>Garden</span>
