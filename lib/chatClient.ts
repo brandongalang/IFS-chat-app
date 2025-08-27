@@ -77,6 +77,15 @@ export async function streamFromMastra(params: {
 
 function extractText(obj: any): string {
   let out = ''
+  // Prefer explicit AI SDK event shapes
+  if (obj && typeof obj === 'object' && typeof (obj as any).type === 'string') {
+    const t = (obj as any).type as string
+    // include only user-visible deltas, not reasoning
+    if (t.includes('text')) {
+      const d = (obj as any).delta || (obj as any).text || ''
+      if (typeof d === 'string') return d
+    }
+  }
   const walk = (v: any, k?: string) => {
     if (typeof v === 'string') {
       if (!k || /(text|content|delta)$/i.test(k)) out += v
