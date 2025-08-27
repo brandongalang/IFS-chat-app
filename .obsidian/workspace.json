@@ -20,8 +20,21 @@
               "icon": "lucide-file",
               "title": "TECHNICAL_DESIGN"
             }
+          },
+          {
+            "id": "32188fcbf5092918",
+            "type": "leaf",
+            "state": {
+              "type": "release-notes",
+              "state": {
+                "currentVersion": "1.9.10"
+              },
+              "icon": "lucide-book-up",
+              "title": "Release Notes 1.9.10"
+            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -160,6 +173,7 @@
   },
   "left-ribbon": {
     "hiddenItems": {
+      "bases:Create new base": false,
       "switcher:Open quick switcher": false,
       "graph:Open graph view": false,
       "canvas:Create new canvas": false,
@@ -168,7 +182,7 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "e0ed93f54623b02e",
+  "active": "32188fcbf5092918",
   "lastOpenFiles": [
     "app/api/session/start/route.ts",
     "app/api/session/start",
