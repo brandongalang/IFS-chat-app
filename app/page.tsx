@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Plus, CalendarDays, Lightbulb, Sprout, Map, Sun, Moon, Clock, Quote } from 'lucide-react'
+import { Plus, CalendarDays, Lightbulb, Sprout, Map } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function HomePage() {
@@ -20,8 +20,8 @@ export default function HomePage() {
       {/* Calendar strip */}
       <div className="max-w-md w-full mx-auto px-4 mt-2">
         <div className="grid grid-cols-7 gap-2 text-center text-xs text-muted-foreground">
-          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d) => (
-            <div key={d} className="flex flex-col gap-1">
+          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
+            <div key={d + i} className="flex flex-col gap-1">
               <span>{d}</span>
               <div className="rounded-md bg-muted py-1">27</div>
             </div>
@@ -51,7 +51,6 @@ export default function HomePage() {
               <div className="text-xs text-muted-foreground mt-2">— Gloria Steinem</div>
             </div>
             <div className="mt-3 text-xs text-muted-foreground">Tap to explore more insights</div>
-          </div>
         </div>
       </main>
 
