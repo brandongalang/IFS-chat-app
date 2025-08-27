@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Plus, CalendarDays, Lightbulb, Sprout, Map } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { GuardedLink } from '@/components/common/GuardedLink'
 
 export default function HomePage() {
   return (
@@ -63,18 +64,18 @@ export default function HomePage() {
               <CalendarDays className="w-5 h-5" />
               <span>Today</span>
             </button>
-            <Link href="/insights" className="flex flex-col items-center gap-1">
+            <GuardedLink href="/insights" className="flex flex-col items-center gap-1" data-testid="nav-insights">
               <Lightbulb className="w-5 h-5" />
               <span>Insights</span>
-            </Link>
-            <button className="flex flex-col items-center gap-1">
+            </GuardedLink>
+            <GuardedLink href="/garden" className="flex flex-col items-center gap-1" data-testid="nav-garden">
               <Sprout className="w-5 h-5" />
               <span>Garden</span>
-            </button>
-            <button className="flex flex-col items-center gap-1">
+            </GuardedLink>
+            <GuardedLink href="/journey" className="flex flex-col items-center gap-1" data-testid="nav-journey">
               <Map className="w-5 h-5" />
               <span>Journey</span>
-            </button>
+            </GuardedLink>
           </div>
         </div>
         {/* Floating + button */}

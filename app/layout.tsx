@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
+import { ComingSoonProvider } from '@/components/common/ComingSoonProvider'
 
 export const metadata: Metadata = {
   title: 'IFS Therapy Companion',
@@ -16,7 +17,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="bg-background text-foreground">
         <ThemeProvider>
-          {children}
+          <ComingSoonProvider>
+            {children}
+          </ComingSoonProvider>
         </ThemeProvider>
       </body>
     </html>

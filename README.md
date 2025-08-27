@@ -192,3 +192,20 @@ supabase db push
 - Add user identity/auth (Supabase Auth or session cookie) to personalize data and enforce RLS.
 - Expand the chat UI to visualize tool calls and part relationships once the agent tools are actively used.
 - e2e coverage for core chat flows after wiring (use Playwright MCP when needed).
+
+## Feature flags and Coming Soon gating
+We are shipping v0 with only the Chat experience enabled. Home (Today) remains accessible, and the + button launches Chat. Other areas (Insights, Garden, Journey, Settings, Profile) are gated.
+
+- Central config: `config/features.ts`
+  - `FeatureStatus`: 'enabled' | 'coming_soon' | 'disabled'
+  - `features`: per-feature default states (Home and Chat are enabled; others are coming_soon)
+  - `statusForPath(path)`: resolve a path to a feature key and its effective status
+  - `NEXT_PUBLIC_IFS_DEV_MODE=true` treats `coming_soon` as `enabled` in client-side checks to speed up local iteration.
+
+UI gating:
+- Clicks to not-yet-enabled routes use `GuardedLink`, which opens a global `ComingSoonDialog` instead of navigating.
+- Direct deep links (e.g., `/insights`) render a friendly `ComingSoonPage` with a Back to Chat action (HTTP 200).
+
+How to enable a feature:
+- Flip the feature in `config/features.ts` from `coming_soon` to `enabled`.
+- Replace the route’s `ComingSoonPage` with the actual implementation.

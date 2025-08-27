@@ -9,8 +9,12 @@ export function useChat() {
   const [state, setState] = useState<ChatState>({
     messages: [],
     isStreaming: false,
-    currentStreamingId: undefined
-  });
+    currentStreamingId: undefined,
+    // augmenting state shape locally; downstream components only read fields we return
+    // hasActiveSession is maintained for UI checks like confirming before exiting chat
+    // @ts-expect-error: extended at runtime for UI state
+    hasActiveSession: false,
+  } as any);
 
   const streamingCancelRef = useRef<(() => void) | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -19,9 +23,9 @@ export function useChat() {
   const generateId = (): string => Math.random().toString(36).substr(2, 9);
 
   const updateMessage = useCallback((id: string, updates: Partial<Message>) => {
-    setState(prev => ({
+    setState((prev: any) => ({
       ...prev,
-      messages: prev.messages.map(msg => (msg.id === id ? { ...msg, ...updates } : msg)),
+      messages: prev.messages.map((msg: Message) => (msg.id === id ? { ...msg, ...updates } : msg)),
     }));
   }, []);
 
@@ -35,6 +39,7 @@ export function useChat() {
     if (!res.ok) throw new Error('Failed to start session');
     const data = await res.json();
     sessionIdRef.current = data.sessionId;
+    setState((prev: any) => ({ ...prev, hasActiveSession: true }));
     return data.sessionId;
   }, []);
 
@@ -51,7 +56,7 @@ export function useChat() {
   }, []);
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || state.isStreaming) return;
+    if (!content.trim() || (state as any).isStreaming) return;
 
     // Cancel any ongoing streaming
     if (streamingCancelRef.current) {
@@ -66,7 +71,7 @@ export function useChat() {
       timestamp: Date.now(),
     };
 
-    setState(prev => ({ ...prev, messages: [...prev.messages, userMessage] }));
+    setState((prev: any) => ({ ...prev, messages: [...prev.messages, userMessage] }));
 
     // Detect tool to show in UI (still purely client-side for now)
     const tool = detectTool(content);
@@ -83,7 +88,7 @@ export function useChat() {
       streaming: true,
     };
 
-    setState(prev => ({
+    setState((prev: any) => ({
       ...prev,
       messages: [...prev.messages, assistantMessage],
       isStreaming: true,
@@ -99,7 +104,7 @@ export function useChat() {
     streamingCancelRef.current = () => controller.abort();
 
     // Build plain messages array for the API
-    const apiMessages = [...state.messages, userMessage].map(m => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content }));
+    const apiMessages = [...(state as any).messages, userMessage].map((m: any) => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content }));
 
     let accumulated = '';
     try {
@@ -112,7 +117,7 @@ export function useChat() {
           accumulated += chunk;
           updateMessage(assistantId, { content: accumulated, streaming: !done });
           if (done) {
-            setState(prev => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
+            setState((prev: any) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
             streamingCancelRef.current = null;
             // Persist assistant message (fire-and-forget)
             persistMessage(sessionId, 'assistant', accumulated).catch(() => {});
@@ -121,38 +126,61 @@ export function useChat() {
       });
     } catch (e) {
       // Mark stream ended and show basic error if needed
-      setState(prev => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
+      setState((prev: any) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
       streamingCancelRef.current = null;
       if (accumulated.length === 0) {
         updateMessage(assistantId, { content: 'Sorry, something went wrong while streaming the response.', streaming: false });
       }
     }
-  }, [ensureSession, persistMessage, state.isStreaming, state.messages, updateMessage]);
+  }, [ensureSession, persistMessage, (state as any).isStreaming, (state as any).messages, updateMessage]);
 
   const clearChat = useCallback(() => {
     if (streamingCancelRef.current) {
       streamingCancelRef.current();
     }
-    setState({ messages: [], isStreaming: false, currentStreamingId: undefined });
+    setState((prev: any) => ({ ...prev, messages: [], isStreaming: false, currentStreamingId: undefined }));
     // Intentionally do not reset sessionIdRef here to satisfy: no resume within same page; new session will be created on first send after reload
   }, []);
 
+  const endSession = useCallback(async () => {
+    const id = sessionIdRef.current
+    if (!id) {
+      // Nothing to end
+      setState((prev: any) => ({ ...prev, hasActiveSession: false, messages: [], isStreaming: false, currentStreamingId: undefined }))
+      return
+    }
+    try {
+      await fetch('/api/session/end', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: id }),
+      })
+    } catch {
+      // ignore
+    } finally {
+      sessionIdRef.current = null
+      setState((prev: any) => ({ ...prev, hasActiveSession: false, messages: [], isStreaming: false, currentStreamingId: undefined }))
+    }
+  }, [])
+
   const rerunTool = useCallback((messageId: string) => {
-    const message = state.messages.find(m => m.id === messageId);
+    const message = (state as any).messages.find((m: any) => m.id === messageId);
     if (!message || !message.tool) return;
-    const idx = state.messages.findIndex(m => m.id === messageId);
-    const userMessage = idx > 0 ? state.messages[idx - 1] : null;
+    const idx = (state as any).messages.findIndex((m: any) => m.id === messageId);
+    const userMessage = idx > 0 ? (state as any).messages[idx - 1] : null;
     if (userMessage && userMessage.role === 'user') {
       sendMessage(userMessage.content);
     }
-  }, [state.messages, sendMessage]);
+  }, [(state as any).messages, sendMessage]);
 
   return {
-    messages: state.messages,
-    isStreaming: state.isStreaming,
-    currentStreamingId: state.currentStreamingId,
+    messages: (state as any).messages,
+    isStreaming: (state as any).isStreaming,
+    currentStreamingId: (state as any).currentStreamingId,
+    hasActiveSession: (state as any).hasActiveSession as boolean,
     sendMessage,
     clearChat,
+    endSession,
     rerunTool,
   };
 }
