@@ -98,13 +98,14 @@ export class DatabaseValidator {
     for (const table of requiredTables) {
       try {
         // Check if table exists and get its columns
-        const { data, error } = await this.supabase.rpc('get_table_columns', {
+        const supabase = await this.supabase
+        const { data, error } = await supabase.rpc('get_table_columns', {
           table_name: table.name
         }).single()
 
         if (error) {
           // Fallback: Try a simple select to check if table exists
-          const { error: selectError } = await this.supabase
+          const { error: selectError } = await (await this.supabase)
             .from(table.name as any)
             .select('*')
             .limit(0)
@@ -147,7 +148,7 @@ export class DatabaseValidator {
     for (const table of tables) {
       try {
         // Check if RLS is enabled
-        const { data: rlsEnabled, error } = await this.supabase
+        const { data: rlsEnabled, error } = await (await this.supabase)
           .rpc('check_rls_enabled', { table_name: table })
 
         if (error) {
@@ -198,7 +199,7 @@ export class DatabaseValidator {
     for (const funcName of functions) {
       try {
         // Check if function exists by trying to get its definition
-        const { data, error } = await this.supabase
+        const { data, error } = await (await this.supabase)
           .rpc('get_function_definition', { function_name: funcName })
 
         if (error && error.code === '42883') {
@@ -242,7 +243,7 @@ export class DatabaseValidator {
 
     for (const indexName of expectedIndexes) {
       try {
-        const { data, error } = await this.supabase
+        const { data, error } = await (await this.supabase)
           .rpc('check_index_exists', { index_name: indexName })
 
         if (error) {
@@ -279,7 +280,7 @@ export class DatabaseValidator {
 
     try {
       // Create test data for user 1
-      const { data: part1, error: createError } = await this.supabase
+      const { data: part1, error: createError } = await (await this.supabase)
         .from('parts')
         .insert({
           user_id: userId1,
@@ -299,7 +300,7 @@ export class DatabaseValidator {
       }
 
       // Try to access user 1's data as user 2 (should fail or return empty)
-      const { data: isolationTest, error: accessError } = await this.supabase
+      const { data: isolationTest, error: accessError } = await (await this.supabase)
         .from('parts')
         .select('*')
         .eq('user_id', userId1)
@@ -323,7 +324,7 @@ export class DatabaseValidator {
       }
 
       // Cleanup test data
-      await this.supabase
+      await (await this.supabase)
         .from('parts')
         .delete()
         .eq('id', part1.id)

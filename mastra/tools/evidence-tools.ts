@@ -57,8 +57,9 @@ const logEvidence = createTool({
   id: 'logEvidence',
   description: 'Add evidence to a part\'s recent evidence array, maintaining the limit of 10 most recent items',
   inputSchema: logEvidenceSchema,
-  execute: async ({ partId, evidence, userId }): Promise<ToolResult> => {
+  execute: async ({ context }): Promise<ToolResult> => {
     try {
+      const { partId, evidence, userId } = context as z.infer<typeof logEvidenceSchema>
       const resolvedUserId = await resolveUserId(userId)
       const supabase = createSupabaseClient()
 
@@ -102,23 +103,6 @@ const logEvidence = createTool({
         return { success: false, error: `Failed to update part with evidence: ${updateError.message}` }
       }
 
-      // Log the action for rollback capability
-      await actionLogger.log({
-        actionType: 'add_part_evidence',
-        partId,
-        partName: currentPart.name,
-        userId: resolvedUserId,
-        sessionId: evidence.sessionId,
-        currentState: `Evidence count: ${newEvidenceCount}`,
-        changeDescription: `Added ${evidence.type} evidence: "${evidence.content.substring(0, 100)}..."`,
-        evidenceAdded: true,
-        metadata: {
-          evidenceType: evidence.type,
-          confidence: evidence.confidence,
-          previousCount: currentPart.evidence_count
-        }
-      })
-
       return {
         success: true,
         data: {
@@ -126,8 +110,7 @@ const logEvidence = createTool({
           partName: updatedPart.name,
           evidenceCount: newEvidenceCount,
           evidenceAdded: true
-        },
-        message: `Evidence added to "${currentPart.name}". Total evidence count: ${newEvidenceCount}`
+        }
       }
 
     } catch (error) {
@@ -147,8 +130,9 @@ const findPatterns = createTool({
   id: 'findPatterns',
   description: 'Analyze conversation history to find recurring themes and suggest potential new parts based on frequency and recency',
   inputSchema: findPatternsSchema,
-  execute: async ({ userId, sessionLimit, minConfidence, includeExistingParts }): Promise<ToolResult> => {
+  execute: async ({ context }): Promise<ToolResult> => {
     try {
+      const { userId, sessionLimit, minConfidence, includeExistingParts } = context as z.infer<typeof findPatternsSchema>
       const resolvedUserId = await resolveUserId(userId)
       const supabase = createSupabaseClient()
 
@@ -174,13 +158,12 @@ const findPatterns = createTool({
       if (!sessions || sessions.length === 0) {
         return { 
           success: true, 
-          data: { patterns: [], suggestedParts: [] },
-          message: 'No conversation history found'
+          data: { patterns: [], suggestedParts: [] }
         }
       }
 
       // Get existing parts if we should exclude them
-      let existingParts: PartRow[] = []
+      let existingParts: Array<{ name: string; role: string | null }> = []
       if (!includeExistingParts) {
         const { data: parts, error: partsError } = await supabase
           .from('parts')
@@ -191,7 +174,7 @@ const findPatterns = createTool({
           return { success: false, error: `Failed to fetch existing parts: ${partsError.message}` }
         }
 
-        existingParts = parts || []
+        existingParts = (parts as Array<{ name: string; role: string | null }>) || []
       }
 
       // Analyze patterns in conversation messages
@@ -293,8 +276,7 @@ const findPatterns = createTool({
           suggestedParts,
           sessionsAnalyzed: sessions.length,
           existingPartsCount: existingParts.length
-        },
-        message: `Found ${filteredPatterns.length} patterns across ${sessions.length} sessions. ${suggestedParts.length} parts suggested.`
+        }
       }
 
     } catch (error) {

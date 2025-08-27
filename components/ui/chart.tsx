@@ -130,6 +130,7 @@ type ChartTooltipContentProps = React.HTMLAttributes<HTMLDivElement> & {
   nameKey?: string
   labelKey?: string
   color?: string
+  labelClassName?: string
 }
 
 const ChartTooltipContent = React.forwardRef<

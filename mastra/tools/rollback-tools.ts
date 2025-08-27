@@ -78,11 +78,7 @@ export async function rollbackByDescription(input: z.infer<typeof rollbackByDesc
       validated.withinMinutes
     )
 
-    return {
-      success: result.success,
-      message: result.message,
-      actionType: result.actionType
-    }
+    return result
   } catch (error) {
     return {
       success: false,
@@ -103,11 +99,7 @@ export async function rollbackAction(input: z.infer<typeof rollbackActionSchema>
       validated.reason
     )
 
-    return {
-      success: result.success,
-      message: result.message,
-      actionType: result.actionType
-    }
+    return result
   } catch (error) {
     return {
       success: false,
@@ -124,7 +116,7 @@ export const getRecentActionsTool = createTool({
   execute: async ({ context }) => {
     const result = await getRecentActions(context)
     if (!result.success) {
-      throw new Error(result.error)
+      throw new Error((result as any).error || (result as any).message || 'Unknown error')
     }
     return result.data
   }
@@ -137,12 +129,9 @@ export const rollbackByDescriptionTool = createTool({
   execute: async ({ context }) => {
     const result = await rollbackByDescription(context)
     if (!result.success) {
-      throw new Error(result.error)
+      throw new Error((result as any).error || (result as any).message || 'Unknown error')
     }
-    return {
-      message: result.message,
-      actionType: result.actionType
-    }
+    return result
   }
 })
 
@@ -153,12 +142,9 @@ export const rollbackActionTool = createTool({
   execute: async ({ context }) => {
     const result = await rollbackAction(context)
     if (!result.success) {
-      throw new Error(result.error)
+      throw new Error((result as any).error || (result as any).message || 'Unknown error')
     }
-    return {
-      message: result.message,
-      actionType: result.actionType
-    }
+    return result
   }
 })
 
