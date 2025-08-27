@@ -1,4 +1,9 @@
 
+<!--
+NOTE: This document is retained for historical context and is out of date.
+Please see docs/SystemDesign.md for the current source of truth.
+-->
+
 # Technical Design: IFS Therapy Companion
 
 This document outlines the technical design of the IFS Therapy Companion, a web-based chat application that uses a large language model (LLM) to act as an Internal Family Systems (IFS) companion.

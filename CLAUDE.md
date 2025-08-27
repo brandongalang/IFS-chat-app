@@ -1,3 +1,8 @@
+<!--
+NOTE: This document includes Vite-era guidance and may be out of date.
+See docs/SystemDesign.md and docs/PRD.md for current architecture and product intent.
+-->
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.

@@ -1,20 +1,19 @@
-import { streamText, UIMessage, convertToModelMessages } from 'ai'
+// DEPRECATED: This endpoint is no longer in use. Please POST to /api/chat instead.
+// Returning 410 Gone to signal clients to migrate.
 
-export const maxDuration = 30
-
-export async function POST(req: Request) {
-  const { messages, model }: { messages: UIMessage[]; model?: string } = await req.json()
-
-  const result = streamText({
-    model: model || 'openai/gpt-4o',
-    messages: convertToModelMessages(messages),
-    system: 'You are a helpful IFS companion that responds with empathy and clarity.'
-  })
-
-  return result.toUIMessageStreamResponse({
-    sendSources: false,
-    sendReasoning: true,
-  })
+export async function POST(_req: Request) {
+  return new Response(
+    JSON.stringify({
+      error: 'Deprecated endpoint',
+      message: 'Use /api/chat instead. This route has been superseded by the unified chat endpoint.'
+    }),
+    {
+      status: 410,
+      headers: {
+        'Content-Type': 'application/json',
+        'Deprecation': 'true',
+        'Link': '</api/chat>; rel="successor-version"'
+      }
+    }
+  )
 }
-
-
