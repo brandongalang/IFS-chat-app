@@ -2,14 +2,14 @@
 
 ## Lint cleanup (remaining warnings)
 
-- [ ] components/common/GuardedLink.tsx
-  - [ ] Replace `any` types at lines ~16 and ~24 with explicit types (props, router/link event payloads).
-- [ ] components/ui/calendar.tsx
-  - [ ] Replace `any` at line ~61 with proper event/value types (Radix/date library types).
+- [x] components/common/GuardedLink.tsx
+  - [x] Replace `any` types at lines ~16 and ~24 with explicit types (props, router/link event payloads).
+- [x] components/ui/calendar.tsx
+  - [x] Replace `any` at line ~61 with proper event/value types (Radix/date library types).
 - [ ] components/ui/chart.tsx
   - [ ] Replace several `any` usages (~112, 118, 119, 125, 214, 215, 323). Define chart data/series types and handler payloads.
-- [ ] components/ui/toaster.tsx
-  - [ ] Replace `any` at ~17 with specific toast data type.
+- [x] components/ui/toaster.tsx
+  - [x] Replace `any` at ~17 with specific toast data type.
 - [ ] lib/database/action-logger.ts
   - [ ] Replace `any` types (~30, 39, 40, 66, 100, 287, 288, 313, 406, 410) with explicit interfaces for log payloads and DB rows.
   - [ ] Remove or use unused variables: `_metadata`, `_limit`, `_actionTypes`, `_sessionId`, `_withinMinutes`, `_actionId`.
