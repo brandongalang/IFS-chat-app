@@ -94,22 +94,30 @@ const logRelationshipSchema = z.object({
 
 // Helper to resolve env with fallbacks (supports Vite and Next-style vars)
 function getEnvVar(keys: string[]): string | undefined {
-  // Prefer Vite envs in the browser (if ever bundled there)
-  const anyImportMeta = typeof import.meta !== 'undefined' ? (import.meta as any) : undefined
-  if (anyImportMeta?.env) {
+  // Prefer Node envs (Next.js, CI, server)
+  const nodeEnv = typeof process !== 'undefined' ? (process as any).env : undefined
+  if (nodeEnv) {
     for (const k of keys) {
-      const v = anyImportMeta.env[k]
+      const v = nodeEnv[k]
       if (v) return v as string
     }
   }
-  // Fallback to Node envs (mastra dev/build)
-  const anyProcessEnv = typeof process !== 'undefined' ? (process as any).env : undefined
-  if (anyProcessEnv) {
+
+  // Attempt to read from Vite's import.meta.env without directly referencing import.meta
+  let metaEnv: any
+  try {
+    // Use indirect eval; bundlers that don't support import.meta won't error
+    metaEnv = Function('try { return import.meta && import.meta.env } catch (_) { return undefined }')()
+  } catch {
+    metaEnv = undefined
+  }
+  if (metaEnv) {
     for (const k of keys) {
-      const v = anyProcessEnv[k]
+      const v = metaEnv[k]
       if (v) return v as string
     }
   }
+
   return undefined
 }
 
