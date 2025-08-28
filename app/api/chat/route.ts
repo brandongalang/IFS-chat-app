@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       if (typeof agentAny.streamVNext === 'function') {
         stream = await agentAny.streamVNext(messages, { format: 'aisdk' })
         if (stream && typeof stream.toUIMessageStreamResponse === 'function') {
-          return stream.toUIMessageStreamResponse({ sendReasoning: true })
+          return stream.toUIMessageStreamResponse({ sendReasoning: false })
         }
       }
       // Fallback to v2 streaming
