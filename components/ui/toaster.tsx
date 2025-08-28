@@ -14,9 +14,12 @@ export function Toaster() {
   return (
     <ToastProvider>
       {toasts.map(function (t: ToastItem, index: number) {
-        const { id, title, description, action, ...props } = t as any
+        const { id, title, description, action, ...rest } = t
+        // Exclude duration from props passed to <Toast />
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { duration: _duration, ...toastProps } = rest
         return (
-          <Toast key={id ?? index} {...props}>
+          <Toast key={id ?? index} {...toastProps}>
             <div className="grid gap-1">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && (

@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import type { ToastProps } from '@/components/ui/toast'
 
 export type ToastItem = {
   id?: string
@@ -8,9 +9,7 @@ export type ToastItem = {
   description?: React.ReactNode
   action?: React.ReactNode
   duration?: number
-  // Additional props forwarded to <Toast />
-  [key: string]: any
-}
+} & Partial<ToastProps>
 
 type ToastContextValue = {
   toasts: ToastItem[]
