@@ -19,33 +19,36 @@ Two new tables will be added to the Supabase Postgres database.
 
 ### 2.1. `insights` Table
 
-This table stores the AI-generated insights presented to the user.
+This table stores the insights presented to the user and supports the card lifecycle (pending → revealed → actioned).
 
 ```sql
 CREATE TABLE insights (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    source_session_id UUID REFERENCES sessions(id) ON DELETE SET NULL,
-    type TEXT NOT NULL DEFAULT 'observation' CHECK (type IN ('session_summary', 'part_discovery', 'part_refinement', 'nudge', 'follow_up')),
-    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'viewed', 'actioned', 'dismissed')),
-    content TEXT NOT NULL,
-    user_rating INTEGER CHECK (user_rating >= 1 AND user_rating <= 5),
-    user_feedback TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('session_summary','nudge','follow_up','observation')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','revealed','actioned')),
+  content JSONB NOT NULL,   -- e.g., { "title": "...", "body": "...", "highlights": [], "sourceSessionIds": [] }
+  rating JSONB NULL,        -- e.g., { "scheme": "quartile-v1", "value": 1..4, "label": "..." }
+  feedback TEXT NULL,
+  revealed_at TIMESTAMPTZ NULL,  -- set when the user reveals the card
+  actioned_at TIMESTAMPTZ NULL,  -- set when the user submits rating/feedback
+  meta JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Indexes
-CREATE INDEX idx_insights_user_id ON insights(user_id);
-CREATE INDEX idx_insights_user_id_status ON insights(user_id, status);
-
--- RLS Policies
--- Users can only view and interact with their own insights.
+CREATE INDEX idx_insights_user ON insights(user_id);
+CREATE INDEX idx_insights_user_status ON insights(user_id, status);
+CREATE INDEX idx_insights_user_status_created ON insights(user_id, status, created_at DESC);
 ```
 **Justification:**
-- A dedicated table is necessary to manage the lifecycle and feedback for each individual insight.
-- `type` and `status` columns are crucial for filtering and driving UI logic.
-- `user_rating` and `user_feedback` capture the explicit user interaction, which will be vital for future AI model fine-tuning.
+- JSONB for `content` allows flexible card layouts without schema churn.
+- JSONB for `rating` allows different rating schemes (e.g., quartiles now, other scales later) without migrations.
+- `revealed_at` separates “opening the card” from actioning it.
+- Status is intentionally minimal for MVP (no dismissed/denied). Cards persist until actioned.
+
+Daily top-up is aligned to the user's timezone (users.settings.timezone) by a background job (out of scope for this change). A JIT top-up option is also available if the background job fails.
 
 ### 2.2. `potential_refinements` Table
 

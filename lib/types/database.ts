@@ -87,6 +87,21 @@ export interface Database {
           }
         ]
       }
+      ,
+      insights: {
+        Row: InsightRow
+        Insert: InsightInsert
+        Update: InsightUpdate
+        Relationships: [
+          {
+            foreignKeyName: "insights_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -515,6 +530,70 @@ export interface PartAssessmentUpdate {
   model?: string | null
   idempotency_key?: string | null
   created_at?: string
+}
+
+// Insight Types
+export type InsightType = 'session_summary' | 'nudge' | 'follow_up' | 'observation'
+export type InsightStatus = 'pending' | 'revealed' | 'actioned'
+
+export interface InsightContent {
+  title: string
+  body: string
+  highlights?: string[]
+  sourceSessionIds?: string[]
+  [key: string]: Json | undefined
+}
+
+export interface InsightRating {
+  scheme: 'quartile-v1' | string
+  value: number
+  label?: string
+  [key: string]: Json | undefined
+}
+
+export interface InsightRow {
+  id: string
+  user_id: string
+  type: InsightType
+  status: InsightStatus
+  content: InsightContent
+  rating: Json | null
+  feedback: string | null
+  revealed_at: string | null
+  actioned_at: string | null
+  meta: Json
+  created_at: string
+  updated_at: string
+}
+
+export interface InsightInsert {
+  id?: string
+  user_id: string
+  type: InsightType
+  status?: InsightStatus
+  content: InsightContent
+  rating?: Json | null
+  feedback?: string | null
+  revealed_at?: string | null
+  actioned_at?: string | null
+  meta?: Json
+  created_at?: string
+  updated_at?: string
+}
+
+export interface InsightUpdate {
+  id?: string
+  user_id?: string
+  type?: InsightType
+  status?: InsightStatus
+  content?: InsightContent
+  rating?: Json | null
+  feedback?: string | null
+  revealed_at?: string | null
+  actioned_at?: string | null
+  meta?: Json
+  created_at?: string
+  updated_at?: string
 }
 
 // API Response Types
