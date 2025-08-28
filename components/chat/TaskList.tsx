@@ -2,6 +2,7 @@
 
 import React from 'react'
 import type { TaskEvent } from '@/types/chat'
+import { Task as TaskBase, TaskTrigger, TaskContent, TaskItem, TaskItemFile } from '@/components/ai-elements/task'
 
 interface TaskListProps {
   tasks: TaskEvent[] | undefined
@@ -13,20 +14,27 @@ export function TaskList({ tasks }: TaskListProps) {
   return (
     <div className="space-y-2" data-testid="task-list">
       {tasks.map((t) => (
-        <div key={t.id} className="border border-border rounded-md p-2 text-sm bg-muted/30">
-          <div className="flex items-center justify-between">
-            <span className="font-medium">{t.title}</span>
-            <span className="text-xs text-muted-foreground">
-              {t.status}
-              {typeof t.progress === 'number' ? ` · ${t.progress}%` : ''}
-            </span>
-          </div>
+        <TaskBase key={t.id} defaultOpen={t.status !== 'completed'}>
+          <TaskTrigger title={`${t.title}${typeof t.progress === 'number' ? ' · ' + t.progress + '%' : ''} (${t.status})`} />
           {t.details ? (
-            <div className="mt-1 text-muted-foreground text-xs">
-              {Array.isArray(t.details) ? t.details.join(' ') : t.details}
-            </div>
+            <TaskContent>
+              {Array.isArray(t.details) ? (
+                t.details.map((d, i) => (
+                  <TaskItem key={i}>{d}</TaskItem>
+                ))
+              ) : (
+                <TaskItem>{t.details}</TaskItem>
+              )}
+              {t.meta && Array.isArray((t as any).meta?.files) && (
+                <div className="pt-2 flex flex-wrap gap-2">
+                  {(t as any).meta.files.map((f: any, i: number) => (
+                    <TaskItemFile key={i}>{f?.name ?? 'file'}</TaskItemFile>
+                  ))}
+                </div>
+              )}
+            </TaskContent>
           ) : null}
-        </div>
+        </TaskBase>
       ))}
     </div>
   )
