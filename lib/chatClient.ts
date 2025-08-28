@@ -2,15 +2,20 @@ export type BasicMessage = { role: 'user' | 'assistant' | 'system'; content: str
 
 export type Profile = { name: string; bio: string }
 
+import type { TaskEvent } from '@/types/chat'
+
 export async function streamFromMastra(params: {
   messages: BasicMessage[]
   sessionId: string
   userId: string
   profile: Profile
   onChunk: (chunk: string, done: boolean) => void
+  onTask?: (event: TaskEvent) => void
+  apiPath?: string
   signal?: AbortSignal
 }): Promise<void> {
-  const res = await fetch('/api/chat', {
+  const apiPath = params.apiPath ?? '/api/chat'
+  const res = await fetch(apiPath, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     // Include sessionId and userId for future server-side attribution; the route safely ignores extras
@@ -47,8 +52,19 @@ export async function streamFromMastra(params: {
         }
         try {
           const obj = JSON.parse(payload)
-          const text = extractText(obj)
-          if (text) params.onChunk(text, false)
+          // Handle UI message stream events for tasks and text
+          if (obj && typeof obj === 'object' && typeof obj.type === 'string') {
+            const handled = handleUiEvent(obj, params.onTask)
+            if (handled) {
+              // task or non-text UI event handled
+            } else {
+              const text = extractText(obj)
+              if (text) params.onChunk(text, false)
+            }
+          } else {
+            const text = extractText(obj)
+            if (text) params.onChunk(text, false)
+          }
         } catch {
           // Not JSON; treat as raw text
           if (payload) params.onChunk(payload, false)
@@ -81,6 +97,79 @@ export async function streamFromMastra(params: {
   } finally {
     reader.releaseLock()
   }
+}
+
+function statusFromState(state?: string): TaskEvent['status'] | undefined {
+  switch (state) {
+    case 'input-streaming':
+    case 'input-available':
+      return 'working'
+    case 'output-available':
+      return 'completed'
+    case 'output-error':
+      return 'failed'
+    default:
+      return undefined
+  }
+}
+
+function handleUiEvent(obj: any, onTask?: (e: TaskEvent) => void): boolean {
+  if (!onTask) return false
+  const t = String(obj.type || '')
+
+  // Ignore any explicit reasoning types defensively
+  if (t.includes('reasoning')) return true
+
+  // start-step / finish-step
+  if (t === 'start-step') {
+    const ev: TaskEvent = {
+      id: String(obj.id || obj.name || Math.random().toString(36).slice(2)),
+      title: String(obj.name || 'Step'),
+      status: 'working',
+    }
+    onTask(ev)
+    return true
+  }
+  if (t === 'finish-step') {
+    const ev: TaskEvent = {
+      id: String(obj.id || Math.random().toString(36).slice(2)),
+      title: String(obj.name || 'Step'),
+      status: (obj.status as TaskEvent['status']) || 'completed',
+    }
+    onTask(ev)
+    return true
+  }
+
+  // tool-* events from UI stream
+  if (t.startsWith('tool-')) {
+    const name = t.replace(/^tool-/, '') || 'tool'
+    const st = statusFromState(obj.state)
+    if (!st) return true
+    const ev: TaskEvent = {
+      id: String(obj.toolCallId || name),
+      title: name,
+      status: st,
+      meta: { input: obj.input, output: obj.output, providerExecuted: obj.providerExecuted },
+    }
+    onTask(ev)
+    return true
+  }
+
+  // generic dev-only data-task
+  if (t === 'data-task' || t === 'task') {
+    const ev: TaskEvent = {
+      id: String(obj.id || Math.random().toString(36).slice(2)),
+      title: String(obj.title || 'Task'),
+      status: (obj.status as TaskEvent['status']) || 'working',
+      progress: typeof obj.progress === 'number' ? obj.progress : undefined,
+      details: obj.details,
+      meta: obj.meta,
+    }
+    onTask(ev)
+    return true
+  }
+
+  return false
 }
 
 function extractText(obj: any): string {

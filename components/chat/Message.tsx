@@ -1,16 +1,15 @@
 'use client'
 
 import { Message as MessageType } from '@/types/chat';
-import { ToolCard } from './ToolCard';
 import { User, Bot } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { TaskList } from './TaskList';
 
 interface MessageProps {
   message: MessageType;
-  onRerunTool: (messageId: string) => void;
 }
 
-export function Message({ message, onRerunTool }: MessageProps) {
+export function Message({ message }: MessageProps) {
   const isUser = message.role === 'user';
   const isAssistant = message.role === 'assistant';
 
@@ -60,17 +59,13 @@ export function Message({ message, onRerunTool }: MessageProps) {
           <Bot className="w-4 h-4 text-accent-foreground" />
         </div>
         <div className="flex-1 max-w-xs md:max-w-md lg:max-w-lg">
-          {/* Tool Card */}
-          {message.tool && (
+          {/* Task List (server-driven) */}
+          {message.tasks && message.tasks.length > 0 && (
             <div className="mb-3">
-              <ToolCard 
-                tool={message.tool} 
-                messageId={message.id}
-                onRerun={() => onRerunTool(message.id)} 
-              />
+              <TaskList tasks={message.tasks} />
             </div>
           )}
-          
+
           {/* Assistant Message Bubble */}
           <div className="bg-card border border-border px-4 py-3 rounded-lg shadow-sm">
             <div className="prose prose-sm max-w-none">

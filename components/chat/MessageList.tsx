@@ -6,10 +6,9 @@ import { MessageSquare } from 'lucide-react';
 
 interface MessageListProps {
   messages: MessageType[];
-  onRerunTool: (messageId: string) => void;
 }
 
-export function MessageList({ messages, onRerunTool }: MessageListProps) {
+export function MessageList({ messages }: MessageListProps) {
   if (messages.length === 0) {
     return (
       <div className="px-4 py-6">
@@ -45,7 +44,6 @@ export function MessageList({ messages, onRerunTool }: MessageListProps) {
         <Message 
           key={message.id} 
           message={message} 
-          onRerunTool={onRerunTool}
         />
       ))}
     </div>

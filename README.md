@@ -11,7 +11,7 @@ Repo: https://github.com/brandongalang/IFS-chat-app.git
 - shadcn/Radix UI components (accordion, alerts, dialogs, etc.)
 - Mastra Agent + OpenRouter provider for the IFS agent
 - Supabase (sessions, parts, relationships, action logging)
-- Vercel AI SDK endpoint (optional alternative for UI-formatted streaming)
+- Vercel AI SDK UI message stream for server-driven steps (tasks) rendered with AI Elements
 
 
 ## Project layout (high level)
@@ -40,9 +40,11 @@ Repo: https://github.com/brandongalang/IFS-chat-app.git
 
 
 ## Current state
-- The chat page (/chat) renders the migrated IFS UI and streams from the unified /api/chat endpoint via hooks/useChat.ts and lib/chatClient.ts.
+- The chat page (/chat) renders the IFS UI and streams from the unified /api/chat endpoint via hooks/useChat.ts and lib/chatClient.ts.
+- Server now streams AI SDK UI message events with reasoning disabled; the client renders server-driven task steps (planning, writing, formatting, tools) above the assistant bubble.
 - /api/chat provides Mastra-based streaming from ifsAgent with a dev fallback when OPENROUTER_API_KEY is not set.
-- /api/chat/ui has been deprecated in favor of /api/chat.
+- A dev simulator is available at /api/chat/dev; the client automatically targets it when NEXT_PUBLIC_IFS_DEV_MODE=true.
+- ToolCard is removed in favor of AI Elements Task-based UI.
 - Supabase integration exists for sessions and action logging; the front-end persists messages through /api/session/*.
 - Theme tokens and utilities are merged; ThemeProvider is in app/layout.tsx.
 
@@ -69,8 +71,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY={{YOUR_SUPABASE_ANON_KEY}}
 # Optional Mastra client base URL (used by lib/mastra.ts if needed)
 VITE_MASTRA_API_URL=http://localhost:4111
 
-# Development mode (local only)
-IFS_DEV_MODE=true
+# Development mode (local only) — enables dev simulator route
+NEXT_PUBLIC_IFS_DEV_MODE=true
 IFS_DEFAULT_USER_ID=00000000-0000-0000-0000-000000000000
 IFS_VERBOSE=true
 # Optional: workaround for dev runtime quirk when updating relationship polarization
@@ -90,19 +92,21 @@ npm run dev:mastra
 ```
 
 
-## Backend chat endpoint
-- Unified endpoint: /api/chat
-  - POST { messages } and returns a streaming response from ifsAgent
-  - Emits AI SDK-compatible events when available (streamVNext(format: 'aisdk')), else falls back to data stream/plain text
-  - Dev fallback stream is returned when OPENROUTER_API_KEY is not configured
+## Backend chat endpoints
+- Primary: /api/chat
+  - POST { messages } and returns UI message stream from ifsAgent (format: 'aisdk')
+  - Reasoning is disabled in the stream (sendReasoning: false)
+  - Falls back to data stream/plain text when necessary
+- Dev simulator: /api/chat/dev
+  - Emits a valid UI message stream with task steps and final text; used automatically when NEXT_PUBLIC_IFS_DEV_MODE=true
 
-Note: /api/chat/ui has been deprecated.
+Note: /api/chat/ui remains deprecated.
 
 
 ## Next steps: stitch backend + data stores to the migrated frontend
 
 ### Step 1: Ensure streaming from /api/chat and SSE handling
-hooks/useChat.ts already streams via lib/chatClient.ts to /api/chat. Keep the message shape minimal: { role: 'user'|'assistant', content: string }. The SSE reader in lib/chatClient.ts parses AI SDK-like events or plain text and updates the assistant message incrementally.
+hooks/useChat.ts streams via lib/chatClient.ts. The SSE reader now parses AI SDK UI message events for task steps and text, ignores reasoning, and updates the assistant message and tasks list incrementally.
 
 
 ### Step 2: Session lifecycle and persistence
@@ -147,8 +151,8 @@ if (sessionId && userId) {
 - Confirm Supabase environment variables are set so the action logger can write to agent_actions, sessions, parts, etc.
 
 
-### Step 4 (optional): AI SDK-compatible events via /api/chat
-The unified /api/chat route attempts to emit AI SDK-compatible events via agent.streamVNext({ format: 'aisdk' }) when available. If not available, it falls back to the agent’s data stream or plain text. The client SSE reader (lib/chatClient.ts) handles both.
+### Step 4 (done): AI SDK UI events via /api/chat
+The unified /api/chat route emits AI SDK-compatible UI message events via agent.streamVNext({ format: 'aisdk' }) when available (with reasoning disabled). If not available, it falls back to the agent’s data stream or plain text. The client SSE reader (lib/chatClient.ts) handles both.
 
 
 ### Step 5: Supabase setup
@@ -190,7 +194,7 @@ supabase db push
 ## Roadmap (short)
 - Unify on /api/chat for all chat streaming (done).
 - Add user identity/auth (Supabase Auth or session cookie) to personalize data and enforce RLS.
-- Expand the chat UI to visualize tool calls and part relationships once the agent tools are actively used.
+- Task-based UI for server-driven steps is implemented; explore deeper tool visualization as the agent tools are actively used.
 - e2e coverage for core chat flows after wiring (use Playwright MCP when needed).
 
 ## Feature flags and Coming Soon gating

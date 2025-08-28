@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react';
-import { Message, ChatState } from '@/types/chat';
+import { Message, ChatState, TaskEvent } from '@/types/chat';
 import { detectTool } from '@/lib/toolDetection';
 import { streamFromMastra } from '@/lib/chatClient';
+import { devMode } from '@/config/features';
 
 export function useChat() {
   const [state, setState] = useState<ChatState>({
@@ -13,6 +14,7 @@ export function useChat() {
     // augmenting state shape locally; downstream components only read fields we return
     // hasActiveSession is maintained for UI checks like confirming before exiting chat
     hasActiveSession: false,
+    tasksByMessage: {},
   } as any);
 
   // #region Proposing Next Steps for Full Integration
@@ -46,6 +48,22 @@ export function useChat() {
       messages: prev.messages.map((msg: Message) => (msg.id === id ? { ...msg, ...updates } : msg)),
     }));
   }, []);
+
+  const upsertTaskForMessage = useCallback((messageId: string, evt: TaskEvent) => {
+    setState((prev: any) => {
+      const existing: Record<string, TaskEvent[]> = prev.tasksByMessage || {}
+      const currentList = existing[messageId] || []
+      const idx = currentList.findIndex((t) => t.id === evt.id)
+      const nextList = idx >= 0
+        ? currentList.map((t) => (t.id === evt.id ? { ...t, ...evt } : t))
+        : [...currentList, evt]
+      return {
+        ...prev,
+        tasksByMessage: { ...existing, [messageId]: nextList },
+        messages: (prev.messages || []).map((m: any) => m.id === messageId ? { ...m, tasks: nextList } : m),
+      }
+    })
+  }, [])
 
   const ensureSession = useCallback(async (): Promise<string> => {
     if (sessionIdRef.current) return sessionIdRef.current;
@@ -102,8 +120,9 @@ export function useChat() {
       content: '',
       timestamp: Date.now(),
       persona: 'claude',
-      tool: tool || undefined,
+      // tool UI deprecated in favor of Task UI
       streaming: true,
+      tasks: [],
     };
 
     setState((prev: any) => ({
@@ -111,6 +130,7 @@ export function useChat() {
       messages: [...prev.messages, assistantMessage],
       isStreaming: true,
       currentStreamingId: assistantId,
+      tasksByMessage: { ...(prev as any).tasksByMessage, [assistantId]: [] },
     }));
 
     // Ensure session and persist the user message (fire-and-forget)
@@ -132,6 +152,10 @@ export function useChat() {
         userId: userIdRef.current,
         profile,
         signal: controller.signal,
+        apiPath: devMode ? '/api/chat/dev' : '/api/chat',
+        onTask: (evt) => {
+          upsertTaskForMessage(assistantId, evt)
+        },
         onChunk: (chunk, done) => {
           accumulated += chunk;
           updateMessage(assistantId, { content: accumulated, streaming: !done });
@@ -197,6 +221,7 @@ export function useChat() {
     isStreaming: (state as any).isStreaming,
     currentStreamingId: (state as any).currentStreamingId,
     hasActiveSession: (state as any).hasActiveSession as boolean,
+    tasksByMessage: (state as any).tasksByMessage as Record<string, TaskEvent[]>,
     sendMessage,
     clearChat,
     endSession,

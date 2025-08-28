@@ -1,6 +1,6 @@
 import { Mastra } from '@mastra/core'
 import { PinoLogger } from '@mastra/loggers'
-import { ifsAgent } from './agents/ifs-agent'
+import { createIfsAgent } from './agents/ifs-agent'
 
 export const mastra = new Mastra({
   logger: new PinoLogger({
@@ -8,6 +8,6 @@ export const mastra = new Mastra({
     level: 'info',
   }),
   agents: {
-    ifsAgent,
+    ifsAgent: createIfsAgent(null),
   },
 })
