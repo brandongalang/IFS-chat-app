@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { VoiceInput } from './VoiceInput';
-import { Send, Bot, MoreHorizontal } from 'lucide-react';
+import { Send, MoreHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ChatComposerProps {
@@ -17,7 +17,7 @@ interface ChatComposerProps {
 export function ChatComposer({ onSendMessage, disabled }: ChatComposerProps) {
   const [message, setMessage] = useState('');
   const [conversationTone, setConversationTone] = useState('claude');
-  const [isRecording, setIsRecording] = useState(false);
+const [isRecording] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = () => {

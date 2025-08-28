@@ -1,7 +1,7 @@
 // DEPRECATED: This endpoint is no longer in use. Please POST to /api/chat instead.
 // Returning 410 Gone to signal clients to migrate.
 
-export async function POST(_req: Request) {
+export async function POST() {
   return new Response(
     JSON.stringify({
       error: 'Deprecated endpoint',
