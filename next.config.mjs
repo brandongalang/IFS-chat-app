@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['@mastra/core'],
-  },
+  serverExternalPackages: ['@mastra/core'],
   typescript: {
     // Temporarily ignore TypeScript errors during build to unblock merge
     ignoreBuildErrors: true,
