@@ -13,7 +13,7 @@ export function ChatLayout() {
   const router = useRouter()
   const [isDark, setIsDark] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const { messages, isStreaming, sendMessage, clearChat, rerunTool, hasActiveSession, endSession } = useChat();
+const { messages, isStreaming, sendMessage, clearChat, hasActiveSession, endSession } = useChat();
 
   const toggleTheme = () => {
     setIsDark(!isDark);

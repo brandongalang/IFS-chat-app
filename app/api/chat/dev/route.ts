@@ -2,7 +2,7 @@ import { simulateReadableStream } from 'ai'
 
 export const maxDuration = 60
 
-export async function POST(_req: Request) {
+export async function POST() {
   const chunks: string[] = [
     `data: ${JSON.stringify({ type: 'start', messageId: 'msg-dev-1' })}\n\n`,
     // Planning / Writing / Formatting as non-reasoning steps
