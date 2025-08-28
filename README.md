@@ -103,6 +103,23 @@ npm run dev:mastra
 Note: /api/chat/ui remains deprecated.
 
 
+## Insights API (MVP)
+- Migration: supabase/migrations/005_insights.sql
+- Endpoints:
+  - GET /api/insights?limit=3&includeStatus=pending,revealed&jit=false
+    - Returns up to 3 active cards (status in pending/revealed)
+    - If jit=true and IFS_INSIGHTS_JIT='true', the server will attempt a JIT top-up to reach the requested limit
+  - POST /api/insights/[id]/reveal
+    - Body: {}
+    - Idempotent: sets status='revealed' and revealed_at if previously pending
+  - POST /api/insights/[id]/feedback
+    - Body: { rating: { scheme: 'quartile-v1', value: 1..4, label?: string }, feedback?: string }
+    - Sets status='actioned' and actioned_at, and persists rating JSON and feedback
+
+Env flags:
+- IFS_INSIGHTS_JIT=false (default). When true, GET /api/insights?jit=true can fill empty slots on demand.
+
+
 ## Next steps: stitch backend + data stores to the migrated frontend
 
 ### Step 1: Ensure streaming from /api/chat and SSE handling

@@ -1,9 +1,6 @@
-# Product Requirements Document (PRD)
+# Moved
 
-**Title:** IFS Therapy Companion (aka “Self Guide”)
-**Owner:** Product + Engineering
-**Status:** Draft v0.2 (Includes Phase 2 Feature Spec)
-**Date:** 2025-08-28
+This document has been replaced by docs/overview.md and docs/prds/insights-prd.md.
 
 ## 1. Overview and Vision
 - **Vision:** A curious, non-judgmental Internal Family Systems (IFS) companion that helps people notice, name, and relate to their internal parts, track relationships between parts, and reflect on their experiences over time.
