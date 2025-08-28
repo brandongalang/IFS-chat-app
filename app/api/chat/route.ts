@@ -103,7 +103,7 @@ const { createIfsAgent } = await import('../../../mastra/agents/ifs-agent')
       }
 
       // Fallback: dev stream instead of 500 to keep UI responsive
-      console.error('Unsupported stream type from agent. Keys:', typeof anyStream === 'object' ? Object.keys(anyStream) : typeof anyStream)
+      console.error('Unsupported stream type from agent. Keys:', typeof candidate === 'object' ? Object.keys(candidate as Record<string, unknown>) : typeof candidate)
       const encoder = new TextEncoder()
       const msg = 'Hello! (fallback)\nAgent returned unsupported stream shape.'
       const rs = new ReadableStream<Uint8Array>({
