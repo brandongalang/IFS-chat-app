@@ -51,18 +51,16 @@ export async function streamFromMastra(params: {
           return true
         }
         try {
-          const obj = JSON.parse(payload)
+          const objUnknown: unknown = JSON.parse(payload)
           // Handle UI message stream events for tasks and text
-          if (obj && typeof obj === 'object' && typeof obj.type === 'string') {
-            const handled = handleUiEvent(obj, params.onTask)
-            if (handled) {
-              // task or non-text UI event handled
-            } else {
-              const text = extractText(obj)
+          if (isObjectWithType(objUnknown)) {
+            const handled = handleUiEvent(objUnknown, params.onTask)
+            if (!handled) {
+              const text = extractText(objUnknown)
               if (text) params.onChunk(text, false)
             }
           } else {
-            const text = extractText(obj)
+            const text = extractText(objUnknown)
             if (text) params.onChunk(text, false)
           }
         } catch {
@@ -113,9 +111,11 @@ function statusFromState(state?: string): TaskEvent['status'] | undefined {
   }
 }
 
-function handleUiEvent(obj: any, onTask?: (e: TaskEvent) => void): boolean {
+function handleUiEvent(obj: unknown, onTask?: (e: TaskEvent) => void): boolean {
   if (!onTask) return false
-  const t = String(obj.type || '')
+  if (!isObject(obj)) return false
+  const o = obj as Record<string, unknown>
+  const t = String(o.type ?? '')
 
   // Ignore any explicit reasoning types defensively
   if (t.includes('reasoning')) return true
@@ -123,8 +123,8 @@ function handleUiEvent(obj: any, onTask?: (e: TaskEvent) => void): boolean {
   // start-step / finish-step
   if (t === 'start-step') {
     const ev: TaskEvent = {
-      id: String(obj.id || obj.name || Math.random().toString(36).slice(2)),
-      title: String(obj.name || 'Step'),
+      id: String(o.id ?? o.name ?? Math.random().toString(36).slice(2)),
+      title: String(o.name ?? 'Step'),
       status: 'working',
     }
     onTask(ev)
@@ -132,9 +132,9 @@ function handleUiEvent(obj: any, onTask?: (e: TaskEvent) => void): boolean {
   }
   if (t === 'finish-step') {
     const ev: TaskEvent = {
-      id: String(obj.id || Math.random().toString(36).slice(2)),
-      title: String(obj.name || 'Step'),
-      status: (obj.status as TaskEvent['status']) || 'completed',
+      id: String(o.id ?? Math.random().toString(36).slice(2)),
+      title: String(o.name ?? 'Step'),
+      status: (o.status as TaskEvent['status']) ?? 'completed',
     }
     onTask(ev)
     return true
@@ -143,13 +143,13 @@ function handleUiEvent(obj: any, onTask?: (e: TaskEvent) => void): boolean {
   // tool-* events from UI stream
   if (t.startsWith('tool-')) {
     const name = t.replace(/^tool-/, '') || 'tool'
-    const st = statusFromState(obj.state)
+    const st = statusFromState(o.state as string | undefined)
     if (!st) return true
     const ev: TaskEvent = {
-      id: String(obj.toolCallId || name),
+      id: String(o.toolCallId ?? name),
       title: name,
       status: st,
-      meta: { input: obj.input, output: obj.output, providerExecuted: obj.providerExecuted },
+      meta: { input: o.input, output: o.output, providerExecuted: o.providerExecuted },
     }
     onTask(ev)
     return true
@@ -158,12 +158,12 @@ function handleUiEvent(obj: any, onTask?: (e: TaskEvent) => void): boolean {
   // generic dev-only data-task
   if (t === 'data-task' || t === 'task') {
     const ev: TaskEvent = {
-      id: String(obj.id || Math.random().toString(36).slice(2)),
-      title: String(obj.title || 'Task'),
-      status: (obj.status as TaskEvent['status']) || 'working',
-      progress: typeof obj.progress === 'number' ? obj.progress : undefined,
-      details: obj.details,
-      meta: obj.meta,
+      id: String(o.id ?? Math.random().toString(36).slice(2)),
+      title: String(o.title ?? 'Task'),
+      status: (o.status as TaskEvent['status']) ?? 'working',
+      progress: typeof o.progress === 'number' ? (o.progress as number) : undefined,
+      details: o.details as string | string[] | undefined,
+      meta: o.meta,
     }
     onTask(ev)
     return true
@@ -172,18 +172,18 @@ function handleUiEvent(obj: any, onTask?: (e: TaskEvent) => void): boolean {
   return false
 }
 
-function extractText(obj: any): string {
+function extractText(obj: unknown): string {
   let out = ''
   // Prefer explicit AI SDK event shapes
-  if (obj && typeof obj === 'object' && typeof (obj as any).type === 'string') {
-    const t = (obj as any).type as string
+  if (isObject(obj) && typeof (obj as Record<string, unknown>).type === 'string') {
+    const t = String((obj as Record<string, unknown>).type)
     // include only user-visible deltas, not reasoning
     if (t.includes('text')) {
-      const d = (obj as any).delta || (obj as any).text || ''
+      const d = (obj as Record<string, unknown>).delta ?? (obj as Record<string, unknown>).text ?? ''
       if (typeof d === 'string') return d
     }
   }
-  const walk = (v: any, k?: string) => {
+  const walk = (v: unknown, k?: string) => {
     if (typeof v === 'string') {
       if (!k || /(text|content|delta)$/i.test(k)) out += v
       return
@@ -192,11 +192,19 @@ function extractText(obj: any): string {
       for (const item of v) walk(item)
       return
     }
-    if (v && typeof v === 'object') {
+    if (isObject(v)) {
       for (const [kk, vv] of Object.entries(v)) walk(vv, kk)
     }
   }
   walk(obj)
   return out
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isObjectWithType(value: unknown): value is Record<string, unknown> & { type: string } {
+  return isObject(value) && typeof (value as Record<string, unknown>).type === 'string'
 }
 
