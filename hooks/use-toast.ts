@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { ToastProps } from '@/components/ui/toast'
 
 export type ToastItem = {
   id?: string
@@ -8,9 +9,7 @@ export type ToastItem = {
   description?: ReactNode
   action?: ReactNode
   duration?: number
-  // Additional props forwarded to <Toast />
-  [key: string]: any
-}
+} & Partial<ToastProps>
 
 export function useToast() {
   return {

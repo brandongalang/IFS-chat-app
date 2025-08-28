@@ -58,7 +58,7 @@ function Calendar({
         IconRight: ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
           <ChevronRight className={cn("h-4 w-4", className)} {...props} />
         ),
-      } as any}
+      } as Partial<React.ComponentProps<typeof DayPicker>["components"]>}
       {...props}
     />
   )

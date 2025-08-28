@@ -2,18 +2,38 @@
 
 import * as React from 'react'
 import Link, { LinkProps } from 'next/link'
-import { featureKeyForPathname, statusForPath } from '@/config/features'
+import { featureKeyForPathname, statusForPath, type FeatureKey } from '@/config/features'
 import { useComingSoon } from './ComingSoonProvider'
 
 type Props = Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> &
   LinkProps & {
-    featureOverride?: string
+    featureOverride?: FeatureKey
   }
 
 function hrefToPath(href: LinkProps['href']): string {
   if (typeof href === 'string') return href
   const path = href.pathname ?? '/'
-  const search = href.query ? `?${new URLSearchParams(href.query as any).toString()}` : ''
+
+  const params = new URLSearchParams()
+  const query = (href as Extract<LinkProps['href'], { query?: unknown }>).query as
+    | Record<string, unknown>
+    | undefined
+
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value == null) continue
+      if (Array.isArray(value)) {
+        for (const v of value) {
+          if (v == null) continue
+          params.append(key, String(v))
+        }
+      } else {
+        params.set(key, String(value))
+      }
+    }
+  }
+
+  const search = params.toString() ? `?${params.toString()}` : ''
   return `${path}${search}`
 }
 
@@ -21,7 +41,7 @@ export const GuardedLink = React.forwardRef<HTMLAnchorElement, Props>(
   ({ href, onClick, featureOverride, ...rest }, ref) => {
     const { openComingSoon } = useComingSoon()
     const path = hrefToPath(href)
-    const targetKey = (featureOverride as any) ?? featureKeyForPathname(path)
+    const targetKey = featureOverride ?? featureKeyForPathname(path)
     const { status } = statusForPath(path)
 
     const handleClick = React.useCallback(
