@@ -7,10 +7,9 @@ import { TaskList } from './TaskList';
 
 interface MessageProps {
   message: MessageType;
-  onRerunTool: (messageId: string) => void;
 }
 
-export function Message({ message, onRerunTool }: MessageProps) {
+export function Message({ message }: MessageProps) {
   const isUser = message.role === 'user';
   const isAssistant = message.role === 'assistant';
 
