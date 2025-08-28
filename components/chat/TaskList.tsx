@@ -8,14 +8,14 @@ interface TaskListProps {
 }
 
 export function TaskList({ tasks }: TaskListProps) {
-  const [TaskComp, setTaskComp] = React.useState<any | null>(null)
+  const [TaskComp, setTaskComp] = React.useState<React.ComponentType<Record<string, unknown>> | null>(null)
 
   React.useEffect(() => {
     let mounted = true
     import('ai/elements')
-      .then((mod: any) => {
+      .then((mod: { Task?: React.ComponentType<Record<string, unknown>> }) => {
         if (!mounted) return
-        setTaskComp(() => mod.Task || null)
+        setTaskComp(() => mod.Task ?? null)
       })
       .catch(() => setTaskComp(null))
     return () => {
