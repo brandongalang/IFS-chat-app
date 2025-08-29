@@ -1,7 +1,26 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { developmentConfig, devLog } from '@/mastra/config/development'
 
 export async function updateSession(request: NextRequest) {
+  // DEV BYPASS: Enabled only when NODE_ENV !== 'production' AND IFS_DEV_MODE==='true'
+  if (developmentConfig.enabled) {
+    const devUserId = developmentConfig.defaultUserId
+    if (devUserId) {
+      const res = NextResponse.next({ request })
+      // Non-sensitive dev cookies + headers to help the app identify "mock user"
+      res.headers.set('x-ifs-dev-mode', 'true')
+      res.headers.set('x-ifs-dev-user-id', devUserId)
+      res.cookies.set('ifs_dev_mode', 'true', { httpOnly: false, sameSite: 'lax', path: '/' })
+      res.cookies.set('ifs_dev_user_id', devUserId, { httpOnly: false, sameSite: 'lax', path: '/' })
+      devLog('Middleware: bypassing Supabase auth in dev mode', { devUserId })
+      return res
+    } else {
+      devLog('Middleware: dev mode enabled but IFS_DEFAULT_USER_ID not set — falling back to normal auth flow')
+    }
+  }
+
+  // NORMAL AUTH FLOW (unchanged)
   let supabaseResponse = NextResponse.next({
     request,
   })
