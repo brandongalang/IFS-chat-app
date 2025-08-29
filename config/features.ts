@@ -8,7 +8,19 @@ export type FeatureKey =
   | 'profile'
   | 'home'
 
-export const devMode = process.env.NEXT_PUBLIC_IFS_DEV_MODE === 'true'
+const isTrue = (v?: string) => v === 'true' || v === '1' || v === 'on'
+
+export const devMode =
+  isTrue(process.env.NEXT_PUBLIC_IFS_DEV_MODE) ||
+  isTrue(process.env.IFS_DEV_MODE) ||
+  process.env.NODE_ENV === 'development'
+
+// Whether to show the "Enable Dev Mode" toggle in the UI.
+// Default behavior: show in development, hide in production unless explicitly enabled.
+export const showDevToggle =
+  process.env.NEXT_PUBLIC_IFS_SHOW_DEV_TOGGLE === undefined
+    ? process.env.NODE_ENV === 'development'
+    : isTrue(process.env.NEXT_PUBLIC_IFS_SHOW_DEV_TOGGLE)
 
 export const features: Record<FeatureKey, FeatureStatus> = {
   chat: 'enabled',
@@ -49,4 +61,3 @@ export function statusForPath(pathname: string): { key: FeatureKey; status: Feat
   const effective: FeatureStatus = devMode && status !== 'disabled' ? 'enabled' : status
   return { key, status: effective }
 }
-

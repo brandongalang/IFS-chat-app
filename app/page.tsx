@@ -5,6 +5,7 @@ import { Plus, CalendarDays, Lightbulb, Sprout, Map } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GuardedLink } from '@/components/common/GuardedLink'
 import { useComingSoon } from '@/components/common/ComingSoonProvider'
+import { showDevToggle } from '@/config/features'
 
 export default function HomePage() {
   const { openComingSoon } = useComingSoon()
@@ -18,7 +19,20 @@ export default function HomePage() {
           <span className="font-medium">good evening.</span>
           <GuardedLink href="/profile" aria-label="profile" className="size-6 rounded-full bg-muted" />
         </div>
-        <div className="mt-2 text-xs underline text-muted-foreground">Enable Dev Mode</div>
+        {showDevToggle && (
+          <button
+            type="button"
+            className="mt-2 text-xs underline text-muted-foreground"
+            onClick={() => {
+              try {
+                localStorage.setItem('IFS_DEV_MODE', 'true')
+              } catch {}
+              location.reload()
+            }}
+          >
+            Enable Dev Mode
+          </button>
+        )}
       </header>
 
       {/* Calendar strip */}
