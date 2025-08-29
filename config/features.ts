@@ -7,6 +7,7 @@ export type FeatureKey =
   | 'settings'
   | 'profile'
   | 'home'
+  | 'check-in'
 
 const isTrue = (v?: string) => v === 'true' || v === '1' || v === 'on'
 
@@ -40,6 +41,7 @@ export const features: Record<FeatureKey, FeatureStatus> = {
   journey: 'coming_soon',
   settings: 'coming_soon',
   profile: 'enabled',
+  'check-in': 'coming_soon',
 }
 
 export function featureKeyForPathname(pathname: string): FeatureKey {
@@ -60,6 +62,8 @@ export function featureKeyForPathname(pathname: string): FeatureKey {
       return 'settings'
     case 'profile':
       return 'profile'
+    case 'check-in':
+      return 'check-in'
     default:
       return 'home'
   }
