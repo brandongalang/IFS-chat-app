@@ -13,7 +13,8 @@
     "build:mastra": "mastra build --dir mastra",
     "smoke:evidence": "tsx scripts/smoke-evidence.ts",
     "smoke:relationships": "tsx scripts/smoke-relationships.ts",
-    "seed:personas": "tsx scripts/seed-personas.ts"
+    "seed:personas": "tsx scripts/seed-personas.ts",
+    "import:fixtures": "tsx scripts/import-persona-fixtures.ts --dir seeds/personas/data"
   },
   "dependencies": {
     "@ai-sdk/react": "^2.0.26",

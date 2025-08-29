@@ -1,0 +1,48 @@
+{
+  "user": {
+    "id": "22222222-2222-2222-2222-222222222222",
+    "email": "jamie.moderate@ifsdev.local",
+    "name": "Jamie Moderate",
+    "settings": {
+      "timezone": "UTC",
+      "privacyMode": false,
+      "aiDepth": "medium",
+      "notifications": {
+        "partEmergence": true,
+        "sessionReminders": true,
+        "weeklyInsights": true
+      }
+    },
+    "stats": {
+      "totalParts": 6,
+      "totalSessions": 12,
+      "streakDays": 5,
+      "longestSession": 55,
+      "averageSessionLength": 34
+    }
+  },
+  "parts": [
+    {"id":"j2j2j2j2-1111-4b11-8111-bbbbbbbbbbb1","user_id":"22222222-2222-2222-2222-222222222222","name":"Planner","status":"active","category":"manager","age":32,"role":"Keeps order and schedules","triggers":["ambiguity"],"emotions":["control"],"beliefs":["If I plan, I am safe"],"somatic_markers":["focused brow"],"confidence":0.78,"evidence_count":7,"recent_evidence":[],"story":{"origin":"College group projects","currentState":"Runs the calendar","purpose":"Reduce uncertainty","evolution":[]},"relationships":{},"visualization":{"emoji":"📅","color":"#34D399","energyLevel":0.7},"first_noticed":"2025-06-01T10:00:00.000Z","acknowledged_at":"2025-06-10T10:00:00.000Z","last_active":"2025-08-28T10:00:00.000Z","created_at":"2025-06-01T10:00:00.000Z","updated_at":"2025-08-28T10:00:00.000Z"},
+    {"id":"j2j2j2j2-2222-4b22-8222-bbbbbbbbbbb2","user_id":"22222222-2222-2222-2222-222222222222","name":"Optimizer","status":"acknowledged","category":"manager","age":30,"role":"Improves processes","triggers":["waste"],"emotions":["irritation"],"beliefs":["There is always a better way"],"somatic_markers":["lean forward"],"confidence":0.7,"evidence_count":6,"recent_evidence":[],"story":{"origin":"First job in operations","currentState":"Tweaks workflows","purpose":"Efficiency","evolution":[]},"relationships":{},"visualization":{"emoji":"🛠️","color":"#60A5FA","energyLevel":0.6},"first_noticed":"2025-06-05T10:00:00.000Z","acknowledged_at":"2025-06-12T10:00:00.000Z","last_active":"2025-08-28T10:00:00.000Z","created_at":"2025-06-05T10:00:00.000Z","updated_at":"2025-08-28T10:00:00.000Z"},
+    {"id":"j2j2j2j2-3333-4b33-8333-bbbbbbbbbbb3","user_id":"22222222-2222-2222-2222-222222222222","name":"Overachiever","status":"active","category":"manager","age":27,"role":"Pursues excellence","triggers":["deadlines","competition"],"emotions":["drive"],"beliefs":["You must be the best"],"somatic_markers":["fast heartbeat"],"confidence":0.75,"evidence_count":7,"recent_evidence":[],"story":{"origin":"Scholarship pressure","currentState":"Pushes late","purpose":"Achievement","evolution":[]},"relationships":{},"visualization":{"emoji":"🏁","color":"#F472B6","energyLevel":0.75},"first_noticed":"2025-06-20T10:00:00.000Z","acknowledged_at":"2025-06-25T10:00:00.000Z","last_active":"2025-08-28T10:00:00.000Z","created_at":"2025-06-20T10:00:00.000Z","updated_at":"2025-08-28T10:00:00.000Z"},
+    {"id":"j2j2j2j2-4444-4b44-8444-bbbbbbbbbbb4","user_id":"22222222-2222-2222-2222-222222222222","name":"Self-Soother","status":"acknowledged","category":"firefighter","age":25,"role":"Numbs stress with screens/snacks","triggers":["evening fatigue"],"emotions":["relief"],"beliefs":["I deserve a break"],"somatic_markers":["warmth in chest"],"confidence":0.6,"evidence_count":5,"recent_evidence":[],"story":{"origin":"Long study nights","currentState":"Evening snacks and shows","purpose":"Comfort","evolution":[]},"relationships":{},"visualization":{"emoji":"🍿","color":"#F59E0B","energyLevel":0.5},"first_noticed":"2025-06-22T10:00:00.000Z","acknowledged_at":"2025-06-28T10:00:00.000Z","last_active":"2025-08-27T10:00:00.000Z","created_at":"2025-06-22T10:00:00.000Z","updated_at":"2025-08-27T10:00:00.000Z"},
+    {"id":"j2j2j2j2-5555-4b55-8555-bbbbbbbbbbb5","user_id":"22222222-2222-2222-2222-222222222222","name":"Vulnerable Teen","status":"acknowledged","category":"exile","age":16,"role":"Holds fear of rejection","triggers":["performance review"],"emotions":["fear","sadness"],"beliefs":["If they see the real me, they'll leave"],"somatic_markers":["tight throat"],"confidence":0.5,"evidence_count":4,"recent_evidence":[],"story":{"origin":"High school breakup","currentState":"Quiets during work","purpose":"Avoid rejection","evolution":[]},"relationships":{},"visualization":{"emoji":"😔","color":"#F87171","energyLevel":0.55},"first_noticed":"2025-07-01T10:00:00.000Z","acknowledged_at":"2025-07-10T10:00:00.000Z","last_active":"2025-08-26T10:00:00.000Z","created_at":"2025-07-01T10:00:00.000Z","updated_at":"2025-08-26T10:00:00.000Z"},
+    {"id":"j2j2j2j2-6666-4b66-8666-bbbbbbbbbbb6","user_id":"22222222-2222-2222-2222-222222222222","name":"Encourager","status":"active","category":"manager","age":29,"role":"Offers warm motivation","triggers":["setbacks"],"emotions":["hope"],"beliefs":["Small steps count"],"somatic_markers":["open chest"],"confidence":0.65,"evidence_count":6,"recent_evidence":[],"story":{"origin":"Mentor figure","currentState":"Coaches gently","purpose":"Sustainable growth","evolution":[]},"relationships":{},"visualization":{"emoji":"🌱","color":"#10B981","energyLevel":0.6},"first_noticed":"2025-07-15T10:00:00.000Z","acknowledged_at":"2025-07-20T10:00:00.000Z","last_active":"2025-08-28T10:00:00.000Z","created_at":"2025-07-15T10:00:00.000Z","updated_at":"2025-08-28T10:00:00.000Z"}
+  ],
+  "part_relationships": [
+    {"id":"rel-jamie-1","user_id":"22222222-2222-2222-2222-222222222222","parts":["j2j2j2j2-1111-4b11-8111-bbbbbbbbbbb1","j2j2j2j2-3333-4b33-8333-bbbbbbbbbbb3"],"type":"allied","description":"Planner and Overachiever collaborate","issue":"Over-scheduling risk","common_ground":"Achievement with structure","dynamics":[],"status":"active","polarization_level":0.3,"last_addressed":null,"created_at":"2025-08-10T10:00:00.000Z","updated_at":"2025-08-10T10:00:00.000Z"},
+    {"id":"rel-jamie-2","user_id":"22222222-2222-2222-2222-222222222222","parts":["j2j2j2j2-4444-4b44-8444-bbbbbbbbbbb4","j2j2j2j2-5555-4b55-8555-bbbbbbbbbbb5"],"type":"protector-exile","description":"Self-Soother comforts the Vulnerable Teen","issue":"Evening numbing","common_ground":"Reduce hurt","dynamics":[{"timestamp":"2025-08-20T20:00:00.000Z","observation":"Binge after tough feedback","context":"evening","polarizationChange":0.1}],"status":"healing","polarization_level":0.5,"last_addressed":"2025-08-20T20:00:00.000Z","created_at":"2025-08-01T10:00:00.000Z","updated_at":"2025-08-20T20:00:00.000Z"}
+  ],
+  "part_assessments": [
+    {"user_id":"22222222-2222-2222-2222-222222222222","part_id":"j2j2j2j2-5555-4b55-8555-bbbbbbbbbbb5","source":"agent_llm","score":0.62,"rationale":"Appears before reviews","evidence_refs":["s-jamie-5"],"model":"gpt-4o-mini","idempotency_key":"jamie-teen-0820","created_at":"2025-08-20T21:00:00.000Z"}
+  ],
+  "sessions": [
+    {"id":"s-jamie-1","user_id":"22222222-2222-2222-2222-222222222222","start_time":"2025-06-02T09:00:00.000Z","end_time":"2025-06-02T09:40:00.000Z","duration":40,"messages":[{"role":"user","content":"Feeling scattered unless I plan.","timestamp":"2025-06-02T09:05:00.000Z"}],"summary":"Planner anchors routine","parts_involved":{},"new_parts":["j2j2j2j2-1111-4b11-8111-bbbbbbbbbbb1"],"breakthroughs":[],"emotional_arc":{"start":{"valence":-0.1,"arousal":0.5},"peak":{"valence":0.0,"arousal":0.6},"end":{"valence":0.2,"arousal":0.4}},"processed":true,"processed_at":"2025-06-02T10:00:00.000Z","created_at":"2025-06-02T09:00:00.000Z","updated_at":"2025-06-02T10:00:00.000Z"},
+    {"id":"s-jamie-5","user_id":"22222222-2222-2222-2222-222222222222","start_time":"2025-08-20T19:30:00.000Z","end_time":"2025-08-20T20:05:00.000Z","duration":35,"messages":[{"role":"user","content":"After feedback I just zoned out with snacks and YouTube.","timestamp":"2025-08-20T19:40:00.000Z"}],"summary":"Self-Soother protected the Vulnerable Teen","parts_involved":{},"new_parts":[],"breakthroughs":["Saw protector-exile dynamic"],"emotional_arc":{"start":{"valence":-0.2,"arousal":0.6},"peak":{"valence":-0.3,"arousal":0.7},"end":{"valence":0.1,"arousal":0.4}},"processed":true,"processed_at":"2025-08-20T21:00:00.000Z","created_at":"2025-08-20T19:30:00.000Z","updated_at":"2025-08-20T21:00:00.000Z"}
+  ],
+  "insights": [
+    {"user_id":"22222222-2222-2222-2222-222222222222","type":"observation","status":"revealed","content":{"title":"Structure reduces your anxiety spikes","body":"When the Planner sets simple blocks, your evening numbing decreases and reviews feel steadier.","highlights":["Calendar blocks","Reduced evening binges"],"sourceSessionIds":["s-jamie-1","s-jamie-5"]},"rating":{"scheme":"quartile-v1","value":3,"label":"somewhat_agree"},"feedback":"This matches my experience.","revealed_at":"2025-08-22T10:00:00.000Z","actioned_at":null,"meta":{"generator":"fixture-v1","persona":"moderate"},"created_at":"2025-08-21T10:00:00.000Z","updated_at":"2025-08-22T10:00:00.000Z"},
+    {"user_id":"22222222-2222-2222-2222-222222222222","type":"nudge","status":"pending","content":{"title":"Block 25-minute focus sprints","body":"Use two 25-minute sprints in the afternoon. Invite the Encourager. Thank the Self-Soother and plan a 10-minute wind-down.","highlights":["Pomodoro","Intentional wind-down"],"sourceSessionIds":["s-jamie-5"]},"rating":null,"feedback":null,"revealed_at":null,"actioned_at":null,"meta":{"generator":"fixture-v1","persona":"moderate"},"created_at":"2025-08-28T10:05:00.000Z","updated_at":"2025-08-28T10:05:00.000Z"}
+  ]
+}
+

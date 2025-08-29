@@ -1,0 +1,345 @@
+{
+  "user": {
+    "id": "11111111-1111-1111-1111-111111111111",
+    "email": "alex.beginner@ifsdev.local",
+    "name": "Alex Beginner",
+    "settings": {
+      "timezone": "UTC",
+      "privacyMode": false,
+      "aiDepth": "medium",
+      "notifications": {
+        "partEmergence": true,
+        "sessionReminders": true,
+        "weeklyInsights": true
+      }
+    },
+    "stats": {
+      "totalParts": 3,
+      "totalSessions": 4,
+      "streakDays": 2,
+      "longestSession": 42,
+      "averageSessionLength": 28
+    }
+  },
+  "parts": [
+    {
+      "id": "a1a1a1a1-1111-4b11-8111-aaaaaaaaaaa1",
+      "user_id": "11111111-1111-1111-1111-111111111111",
+      "name": "Inner Critic",
+      "status": "acknowledged",
+      "category": "manager",
+      "age": 28,
+      "role": "Keeps standards high and avoids mistakes",
+      "triggers": ["public mistakes", "critical feedback"],
+      "emotions": ["anxiety", "tension"],
+      "beliefs": ["If I relax, I will fail", "Others judge harshly"],
+      "somatic_markers": ["tight jaw", "raised shoulders"],
+      "confidence": 0.68,
+      "evidence_count": 5,
+      "recent_evidence": [
+        {
+          "type": "direct_mention",
+          "content": "Part of me that nitpicks everything I do",
+          "confidence": 0.8,
+          "sessionId": "s-alex-1",
+          "timestamp": "2025-08-14T10:12:00.000Z"
+        },
+        {
+          "type": "pattern",
+          "content": "Double-checks messages before sending",
+          "confidence": 0.6,
+          "sessionId": "s-alex-2",
+          "timestamp": "2025-08-18T10:20:00.000Z"
+        }
+      ],
+      "story": {
+        "origin": "Showed up in high school after a public slip-up",
+        "currentState": "Active during work reviews",
+        "purpose": "Protection from embarrassment",
+        "evolution": [
+          { "timestamp": "2025-08-14T10:12:00.000Z", "change": "Part identified", "trigger": "Coaching reflection" },
+          { "timestamp": "2025-08-18T10:20:00.000Z", "change": "Acknowledged its protective intent" }
+        ]
+      },
+      "relationships": {},
+      "visualization": { "emoji": "🧐", "color": "#6B7280", "energyLevel": 0.6 },
+      "first_noticed": "2025-08-14T10:12:00.000Z",
+      "acknowledged_at": "2025-08-18T10:20:00.000Z",
+      "last_active": "2025-08-28T09:00:00.000Z",
+      "created_at": "2025-08-14T10:12:00.000Z",
+      "updated_at": "2025-08-28T09:00:00.000Z"
+    },
+    {
+      "id": "a1a1a1a1-2222-4b22-8222-aaaaaaaaaaa2",
+      "user_id": "11111111-1111-1111-1111-111111111111",
+      "name": "Procrastinator",
+      "status": "emerging",
+      "category": "firefighter",
+      "age": 22,
+      "role": "Avoids discomfort by delaying tasks",
+      "triggers": ["uncertainty", "overwhelm"],
+      "emotions": ["relief", "numbness"],
+      "beliefs": ["It'll be easier later"],
+      "somatic_markers": ["slumped posture"],
+      "confidence": 0.45,
+      "evidence_count": 3,
+      "recent_evidence": [
+        {
+          "type": "behavior",
+          "content": "Scrolled social media before starting report",
+          "confidence": 0.5,
+          "sessionId": "s-alex-2",
+          "timestamp": "2025-08-18T10:40:00.000Z"
+        },
+        {
+          "type": "emotion",
+          "content": "Felt immediate relief after deciding to start tomorrow",
+          "confidence": 0.55,
+          "sessionId": "s-alex-3",
+          "timestamp": "2025-08-21T09:05:00.000Z"
+        }
+      ],
+      "story": {
+        "origin": "Started during first job onboarding",
+        "currentState": "Shows up on ambiguous tasks",
+        "purpose": "Short-term relief",
+        "evolution": [
+          { "timestamp": "2025-08-18T10:40:00.000Z", "change": "Pattern noticed around reports" }
+        ]
+      },
+      "relationships": {},
+      "visualization": { "emoji": "🛋️", "color": "#A78BFA", "energyLevel": 0.4 },
+      "first_noticed": "2025-08-18T10:40:00.000Z",
+      "acknowledged_at": null,
+      "last_active": "2025-08-27T16:00:00.000Z",
+      "created_at": "2025-08-18T10:40:00.000Z",
+      "updated_at": "2025-08-27T16:00:00.000Z"
+    },
+    {
+      "id": "a1a1a1a1-3333-4b33-8333-aaaaaaaaaaa3",
+      "user_id": "11111111-1111-1111-1111-111111111111",
+      "name": "Worried Teen",
+      "status": "emerging",
+      "category": "exile",
+      "age": 15,
+      "role": "Holds fear of being judged",
+      "triggers": ["group work", "presentations"],
+      "emotions": ["fear", "shame"],
+      "beliefs": ["People will laugh at me"],
+      "somatic_markers": ["fluttering stomach"],
+      "confidence": 0.38,
+      "evidence_count": 3,
+      "recent_evidence": [
+        {
+          "type": "emotion",
+          "content": "Felt 6/10 fear before team meeting",
+          "confidence": 0.5,
+          "sessionId": "s-alex-4",
+          "timestamp": "2025-08-24T11:00:00.000Z"
+        }
+      ],
+      "story": {
+        "origin": "Middle school presentation gone wrong",
+        "currentState": "Appears before speaking",
+        "purpose": "Avoid humiliation",
+        "evolution": [
+          { "timestamp": "2025-08-24T11:00:00.000Z", "change": "Named as Worried Teen" }
+        ]
+      },
+      "relationships": {},
+      "visualization": { "emoji": "😬", "color": "#FBBF24", "energyLevel": 0.5 },
+      "first_noticed": "2025-08-24T11:00:00.000Z",
+      "acknowledged_at": null,
+      "last_active": "2025-08-28T09:00:00.000Z",
+      "created_at": "2025-08-24T11:00:00.000Z",
+      "updated_at": "2025-08-28T09:00:00.000Z"
+    }
+  ],
+  "part_relationships": [
+    {
+      "id": "rel-alex-1",
+      "user_id": "11111111-1111-1111-1111-111111111111",
+      "parts": ["a1a1a1a1-2222-4b22-8222-aaaaaaaaaaa2", "a1a1a1a1-3333-4b33-8333-aaaaaaaaaaa3"],
+      "type": "protector-exile",
+      "description": "Procrastinator avoids the Worried Teen's fear",
+      "issue": "Avoidance leads to last-minute stress",
+      "common_ground": "Both want safety",
+      "dynamics": [
+        { "timestamp": "2025-08-24T11:10:00.000Z", "observation": "Avoidance spiked before meeting", "context": "work meeting", "polarizationChange": 0.1 }
+      ],
+      "status": "active",
+      "polarization_level": 0.6,
+      "last_addressed": "2025-08-24T11:10:00.000Z",
+      "created_at": "2025-08-24T11:10:00.000Z",
+      "updated_at": "2025-08-24T11:10:00.000Z"
+    },
+    {
+      "id": "rel-alex-2",
+      "user_id": "11111111-1111-1111-1111-111111111111",
+      "parts": ["a1a1a1a1-1111-4b11-8111-aaaaaaaaaaa1", "a1a1a1a1-2222-4b22-8222-aaaaaaaaaaa2"],
+      "type": "allied",
+      "description": "Inner Critic pressures; Procrastinator delays",
+      "issue": "Tug-of-war creates churn",
+      "common_ground": "Avoid shame",
+      "dynamics": [],
+      "status": "healing",
+      "polarization_level": 0.4,
+      "last_addressed": null,
+      "created_at": "2025-08-26T09:00:00.000Z",
+      "updated_at": "2025-08-26T09:00:00.000Z"
+    }
+  ],
+  "part_assessments": [
+    {
+      "user_id": "11111111-1111-1111-1111-111111111111",
+      "part_id": "a1a1a1a1-1111-4b11-8111-aaaaaaaaaaa1",
+      "source": "human",
+      "score": 0.72,
+      "rationale": "Frequently active at work reviews",
+      "evidence_refs": ["s-alex-1"],
+      "model": null,
+      "idempotency_key": "alex-inner-critic-0826",
+      "created_at": "2025-08-26T09:10:00.000Z"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "s-alex-1",
+      "user_id": "11111111-1111-1111-1111-111111111111",
+      "start_time": "2025-08-14T10:00:00.000Z",
+      "end_time": "2025-08-14T10:30:00.000Z",
+      "duration": 30,
+      "messages": [
+        { "role": "user", "content": "I keep nitpicking my work.", "timestamp": "2025-08-14T10:02:00.000Z" },
+        { "role": "assistant", "content": "Notice the part that is speaking.", "timestamp": "2025-08-14T10:05:00.000Z" }
+      ],
+      "summary": "Identified strong Inner Critic before reviews",
+      "parts_involved": {
+        "a1a1a1a1-1111-4b11-8111-aaaaaaaaaaa1": {
+          "partId": "a1a1a1a1-1111-4b11-8111-aaaaaaaaaaa1",
+          "activationLevel": 0.7,
+          "insights": ["High standards triggered by fear of judgment"],
+          "evidence": []
+        }
+      },
+      "new_parts": ["a1a1a1a1-1111-4b11-8111-aaaaaaaaaaa1"],
+      "breakthroughs": [],
+      "emotional_arc": { "start": {"valence": -0.2, "arousal": 0.5}, "peak": {"valence": -0.4, "arousal": 0.7}, "end": {"valence": 0.1, "arousal": 0.4} },
+      "processed": true,
+      "processed_at": "2025-08-14T11:00:00.000Z",
+      "created_at": "2025-08-14T10:00:00.000Z",
+      "updated_at": "2025-08-14T11:00:00.000Z"
+    },
+    {
+      "id": "s-alex-2",
+      "user_id": "11111111-1111-1111-1111-111111111111",
+      "start_time": "2025-08-18T10:10:00.000Z",
+      "end_time": "2025-08-18T10:45:00.000Z",
+      "duration": 35,
+      "messages": [
+        { "role": "user", "content": "When I get overwhelmed, I scroll instead of starting.", "timestamp": "2025-08-18T10:15:00.000Z" },
+        { "role": "assistant", "content": "What is this part protecting you from?", "timestamp": "2025-08-18T10:20:00.000Z" }
+      ],
+      "summary": "Procrastinator identified as short-term relief strategy",
+      "parts_involved": {
+        "a1a1a1a1-2222-4b22-8222-aaaaaaaaaaa2": {
+          "partId": "a1a1a1a1-2222-4b22-8222-aaaaaaaaaaa2",
+          "activationLevel": 0.6,
+          "insights": ["Avoidance provides relief but increases later stress"],
+          "evidence": []
+        }
+      },
+      "new_parts": ["a1a1a1a1-2222-4b22-8222-aaaaaaaaaaa2"],
+      "breakthroughs": ["Named the avoidance pattern"],
+      "emotional_arc": { "start": {"valence": -0.1, "arousal": 0.5}, "peak": {"valence": -0.3, "arousal": 0.6}, "end": {"valence": 0.2, "arousal": 0.3} },
+      "processed": true,
+      "processed_at": "2025-08-18T11:00:00.000Z",
+      "created_at": "2025-08-18T10:10:00.000Z",
+      "updated_at": "2025-08-18T11:00:00.000Z"
+    },
+    {
+      "id": "s-alex-3",
+      "user_id": "11111111-1111-1111-1111-111111111111",
+      "start_time": "2025-08-21T09:00:00.000Z",
+      "end_time": "2025-08-21T09:25:00.000Z",
+      "duration": 25,
+      "messages": [
+        { "role": "user", "content": "Deciding to start later feels good in the moment.", "timestamp": "2025-08-21T09:05:00.000Z" }
+      ],
+      "summary": "Short-term relief vs long-term cost",
+      "parts_involved": {},
+      "new_parts": [],
+      "breakthroughs": [],
+      "emotional_arc": { "start": {"valence": 0.0, "arousal": 0.4}, "peak": {"valence": -0.2, "arousal": 0.6}, "end": {"valence": 0.1, "arousal": 0.3} },
+      "processed": true,
+      "processed_at": "2025-08-21T10:00:00.000Z",
+      "created_at": "2025-08-21T09:00:00.000Z",
+      "updated_at": "2025-08-21T10:00:00.000Z"
+    },
+    {
+      "id": "s-alex-4",
+      "user_id": "11111111-1111-1111-1111-111111111111",
+      "start_time": "2025-08-24T11:00:00.000Z",
+      "end_time": "2025-08-24T11:35:00.000Z",
+      "duration": 35,
+      "messages": [
+        { "role": "user", "content": "I felt fear before speaking up.", "timestamp": "2025-08-24T11:02:00.000Z" }
+      ],
+      "summary": "Named Worried Teen and linked to protection",
+      "parts_involved": {
+        "a1a1a1a1-3333-4b33-8333-aaaaaaaaaaa3": {
+          "partId": "a1a1a1a1-3333-4b33-8333-aaaaaaaaaaa3",
+          "activationLevel": 0.5,
+          "insights": ["Fear protects from humiliation"],
+          "evidence": []
+        }
+      },
+      "new_parts": ["a1a1a1a1-3333-4b33-8333-aaaaaaaaaaa3"],
+      "breakthroughs": ["Named the exile"],
+      "emotional_arc": { "start": {"valence": -0.2, "arousal": 0.5}, "peak": {"valence": -0.4, "arousal": 0.7}, "end": {"valence": 0.2, "arousal": 0.3} },
+      "processed": true,
+      "processed_at": "2025-08-24T12:00:00.000Z",
+      "created_at": "2025-08-24T11:00:00.000Z",
+      "updated_at": "2025-08-24T12:00:00.000Z"
+    }
+  ],
+  "insights": [
+    {
+      "user_id": "11111111-1111-1111-1111-111111111111",
+      "type": "observation",
+      "status": "pending",
+      "content": {
+        "title": "Your Inner Critic peaks before reviews",
+        "body": "You often tighten up and over-edit before reviews, aiming to avoid judgment. This pattern is protective, not a flaw.",
+        "highlights": ["Tight jaw before reviews", "Double-checking messages"],
+        "sourceSessionIds": ["s-alex-1", "s-alex-2"]
+      },
+      "rating": null,
+      "feedback": null,
+      "revealed_at": null,
+      "actioned_at": null,
+      "meta": { "generator": "fixture-v1", "persona": "beginner" },
+      "created_at": "2025-08-28T09:10:00.000Z",
+      "updated_at": "2025-08-28T09:10:00.000Z"
+    },
+    {
+      "user_id": "11111111-1111-1111-1111-111111111111",
+      "type": "nudge",
+      "status": "pending",
+      "content": {
+        "title": "Try a 5-minute gentle start",
+        "body": "Set a 5-minute timer to begin the task. Thank the Procrastinator for the relief and invite Curiosity to take over the first step.",
+        "highlights": ["Short timer", "Thank the protector"],
+        "sourceSessionIds": ["s-alex-2", "s-alex-3"]
+      },
+      "rating": null,
+      "feedback": null,
+      "revealed_at": null,
+      "actioned_at": null,
+      "meta": { "generator": "fixture-v1", "persona": "beginner" },
+      "created_at": "2025-08-28T09:12:00.000Z",
+      "updated_at": "2025-08-28T09:12:00.000Z"
+    }
+  ]
+}
+

@@ -1,0 +1,48 @@
+{
+  "user": {
+    "id": "33333333-3333-3333-3333-333333333333",
+    "email": "riley.advanced@ifsdev.local",
+    "name": "Riley Advanced",
+    "settings": {
+      "timezone": "UTC",
+      "privacyMode": false,
+      "aiDepth": "deep",
+      "notifications": {
+        "partEmergence": true,
+        "sessionReminders": true,
+        "weeklyInsights": true
+      }
+    },
+    "stats": {
+      "totalParts": 9,
+      "totalSessions": 22,
+      "streakDays": 12,
+      "longestSession": 68,
+      "averageSessionLength": 36
+    }
+  },
+  "parts": [
+    {"id":"r3r3r3r3-1111-4b11-8111-ccccccccccc1","user_id":"33333333-3333-3333-3333-333333333333","name":"Strategist","status":"active","category":"manager","age":35,"role":"Plans complex projects","triggers":["unclear priorities"],"emotions":["focus"],"beliefs":["Clarity prevents chaos"],"somatic_markers":["cool head"],"confidence":0.82,"evidence_count":10,"recent_evidence":[],"story":{"origin":"Startup lead role","currentState":"Sets OKRs","purpose":"Direction","evolution":[]},"relationships":{},"visualization":{"emoji":"🧭","color":"#2563EB","energyLevel":0.75},"first_noticed":"2025-03-01T10:00:00.000Z","acknowledged_at":"2025-03-10T10:00:00.000Z","last_active":"2025-08-28T10:00:00.000Z","created_at":"2025-03-01T10:00:00.000Z","updated_at":"2025-08-28T10:00:00.000Z"},
+    {"id":"r3r3r3r3-2222-4b22-8222-ccccccccccc2","user_id":"33333333-3333-3333-3333-333333333333","name":"Protector Coach","status":"active","category":"manager","age":33,"role":"Advocates for healthy boundaries","triggers":["overwork"],"emotions":["care"],"beliefs":["Rest sustains excellence"],"somatic_markers":["steady breath"],"confidence":0.78,"evidence_count":9,"recent_evidence":[],"story":{"origin":"Burnout recovery","currentState":"Blocks rest","purpose":"Sustainability","evolution":[]},"relationships":{},"visualization":{"emoji":"🧘","color":"#059669","energyLevel":0.7},"first_noticed":"2025-04-01T10:00:00.000Z","acknowledged_at":"2025-04-10T10:00:00.000Z","last_active":"2025-08-28T10:00:00.000Z","created_at":"2025-04-01T10:00:00.000Z","updated_at":"2025-08-28T10:00:00.000Z"},
+    {"id":"r3r3r3r3-3333-4b33-8333-ccccccccccc3","user_id":"33333333-3333-3333-3333-333333333333","name":"Critic","status":"acknowledged","category":"manager","age":29,"role":"Points out flaws","triggers":["public demos"],"emotions":["tension"],"beliefs":["If we miss something, we fail"],"somatic_markers":["tight chest"],"confidence":0.7,"evidence_count":8,"recent_evidence":[],"story":{"origin":"Early career failure","currentState":"Reviews public work","purpose":"Prevent mistakes","evolution":[]},"relationships":{},"visualization":{"emoji":"🔍","color":"#6B7280","energyLevel":0.65},"first_noticed":"2025-04-20T10:00:00.000Z","acknowledged_at":"2025-05-01T10:00:00.000Z","last_active":"2025-08-28T10:00:00.000Z","created_at":"2025-04-20T10:00:00.000Z","updated_at":"2025-08-28T10:00:00.000Z"},
+    {"id":"r3r3r3r3-4444-4b44-8444-ccccccccccc4","user_id":"33333333-3333-3333-3333-333333333333","name":"Firefighter Gamer","status":"acknowledged","category":"firefighter","age":24,"role":"Numbs stress with intense focus","triggers":["late night anxiety"],"emotions":["immersion"],"beliefs":["Just one more match"],"somatic_markers":["tingling hands"],"confidence":0.6,"evidence_count":7,"recent_evidence":[],"story":{"origin":"Pandemic coping","currentState":"Occasional late nights","purpose":"Distraction","evolution":[]},"relationships":{},"visualization":{"emoji":"🎮","color":"#7C3AED","energyLevel":0.6},"first_noticed":"2025-05-10T10:00:00.000Z","acknowledged_at":"2025-05-20T10:00:00.000Z","last_active":"2025-08-25T10:00:00.000Z","created_at":"2025-05-10T10:00:00.000Z","updated_at":"2025-08-25T10:00:00.000Z"},
+    {"id":"r3r3r3r3-5555-4b55-8555-ccccccccccc5","user_id":"33333333-3333-3333-3333-333333333333","name":"Caretaker","status":"active","category":"manager","age":31,"role":"Supports and soothes exiles","triggers":["inner pain"],"emotions":["compassion"],"beliefs":["Everyone is welcome"],"somatic_markers":["warm chest"],"confidence":0.76,"evidence_count":9,"recent_evidence":[],"story":{"origin":"Therapy progress","currentState":"Mediates dialogues","purpose":"Integration","evolution":[]},"relationships":{},"visualization":{"emoji":"🤝","color":"#F59E0B","energyLevel":0.7},"first_noticed":"2025-05-25T10:00:00.000Z","acknowledged_at":"2025-06-01T10:00:00.000Z","last_active":"2025-08-28T10:00:00.000Z","created_at":"2025-05-25T10:00:00.000Z","updated_at":"2025-08-28T10:00:00.000Z"},
+    {"id":"r3r3r3r3-6666-4b66-8666-ccccccccccc6","user_id":"33333333-3333-3333-3333-333333333333","name":"Ashamed Teen","status":"acknowledged","category":"exile","age":15,"role":"Holds shame from past incident","triggers":["visibility"],"emotions":["shame","fear"],"beliefs":["If they see me, they'll mock me"],"somatic_markers":["hot cheeks"],"confidence":0.58,"evidence_count":6,"recent_evidence":[],"story":{"origin":"Class presentation gone wrong","currentState":"Quiets during demos","purpose":"Protect from humiliation","evolution":[]},"relationships":{},"visualization":{"emoji":"🙈","color":"#F87171","energyLevel":0.55},"first_noticed":"2025-06-10T10:00:00.000Z","acknowledged_at":"2025-06-20T10:00:00.000Z","last_active":"2025-08-27T10:00:00.000Z","created_at":"2025-06-10T10:00:00.000Z","updated_at":"2025-08-27T10:00:00.000Z"}
+  ],
+  "part_relationships": [
+    {"id":"rel-riley-1","user_id":"33333333-3333-3333-3333-333333333333","parts":["r3r3r3r3-3333-4b33-8333-ccccccccccc3","r3r3r3r3-6666-4b66-8666-ccccccccccc6"],"type":"protector-exile","description":"Critic protects the Ashamed Teen from exposure","issue":"Harsh tone increases shame","common_ground":"Avoid humiliation","dynamics":[{"timestamp":"2025-08-12T18:00:00.000Z","observation":"Critic spiked before livestream","context":"demo","polarizationChange":0.15}],"status":"healing","polarization_level":0.55,"last_addressed":"2025-08-12T18:30:00.000Z","created_at":"2025-07-01T10:00:00.000Z","updated_at":"2025-08-12T18:30:00.000Z"},
+    {"id":"rel-riley-2","user_id":"33333333-3333-3333-3333-333333333333","parts":["r3r3r3r3-2222-4b22-8222-ccccccccccc2","r3r3r3r3-5555-4b55-8555-ccccccccccc5"],"type":"allied","description":"Protector Coach and Caretaker collaborate","issue":"Balance assertiveness and compassion","common_ground":"Sustainable excellence","dynamics":[],"status":"active","polarization_level":0.25,"last_addressed":null,"created_at":"2025-07-10T10:00:00.000Z","updated_at":"2025-07-10T10:00:00.000Z"}
+  ],
+  "part_assessments": [
+    {"user_id":"33333333-3333-3333-3333-333333333333","part_id":"r3r3r3r3-6666-4b66-8666-ccccccccccc6","source":"human","score":0.64,"rationale":"Shame spikes before visibility","evidence_refs":["s-riley-12"],"model":null,"idempotency_key":"riley-ashamed-0812","created_at":"2025-08-12T19:00:00.000Z"}
+  ],
+  "sessions": [
+    {"id":"s-riley-12","user_id":"33333333-3333-3333-3333-333333333333","start_time":"2025-08-12T17:30:00.000Z","end_time":"2025-08-12T18:20:00.000Z","duration":50,"messages":[{"role":"user","content":"Before the livestream, a harsh part tried to cancel it.","timestamp":"2025-08-12T17:40:00.000Z"}],"summary":"Critic protecting the Ashamed Teen","parts_involved":{},"new_parts":[],"breakthroughs":["Caretaker invited to mediate"],"emotional_arc":{"start":{"valence":-0.2,"arousal":0.6},"peak":{"valence":-0.4,"arousal":0.8},"end":{"valence":0.3,"arousal":0.5}},"processed":true,"processed_at":"2025-08-12T19:00:00.000Z","created_at":"2025-08-12T17:30:00.000Z","updated_at":"2025-08-12T19:00:00.000Z"},
+    {"id":"s-riley-18","user_id":"33333333-3333-3333-3333-333333333333","start_time":"2025-08-25T08:00:00.000Z","end_time":"2025-08-25T08:40:00.000Z","duration":40,"messages":[{"role":"user","content":"Noticed boundaries held despite push to keep working.","timestamp":"2025-08-25T08:10:00.000Z"}],"summary":"Protector Coach held line; rest improved performance","parts_involved":{},"new_parts":[],"breakthroughs":["Boundary held without guilt"],"emotional_arc":{"start":{"valence":0.0,"arousal":0.4},"peak":{"valence":0.2,"arousal":0.5},"end":{"valence":0.4,"arousal":0.3}},"processed":true,"processed_at":"2025-08-25T09:00:00.000Z","created_at":"2025-08-25T08:00:00.000Z","updated_at":"2025-08-25T09:00:00.000Z"}
+  ],
+  "insights": [
+    {"user_id":"33333333-3333-3333-3333-333333333333","type":"observation","status":"revealed","content":{"title":"Your inner system is collaborating","body":"Protector Coach and Caretaker coordinate to maintain boundaries while welcoming exiles. This keeps Critic from overwhelming the system.","highlights":["Boundaries kept","Critic softened"],"sourceSessionIds":["s-riley-12","s-riley-18"]},"rating":{"scheme":"quartile-v1","value":4,"label":"strongly_agree"},"feedback":"This resonates.","revealed_at":"2025-08-26T10:00:00.000Z","actioned_at":"2025-08-27T09:00:00.000Z","meta":{"generator":"fixture-v1","persona":"advanced"},"created_at":"2025-08-26T09:30:00.000Z","updated_at":"2025-08-27T09:00:00.000Z"},
+    {"user_id":"33333333-3333-3333-3333-333333333333","type":"follow_up","status":"pending","content":{"title":"Schedule parts meeting before next demo","body":"Give Critic 10 minutes to list risks, invite Caretaker to reflect impact on Ashamed Teen, and let Strategist integrate into a plan.","highlights":["Pre-demo ritual","Parts meeting"],"sourceSessionIds":["s-riley-12"]},"rating":null,"feedback":null,"revealed_at":null,"actioned_at":null,"meta":{"generator":"fixture-v1","persona":"advanced"},"created_at":"2025-08-28T10:10:00.000Z","updated_at":"2025-08-28T10:10:00.000Z"}
+  ]
+}
+
