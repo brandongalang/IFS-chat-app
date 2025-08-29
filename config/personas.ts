@@ -33,17 +33,25 @@ export function getPersonaUserId(persona: TestPersona): string {
 }
 
 export function getCurrentPersona(): TestPersona {
+  // Client: read from localStorage; optionally honor a public default at build time.
+  // Never touch Node's process object at runtime on the client.
   if (typeof window !== 'undefined') {
     const stored = localStorage.getItem('ifs-test-persona')
     if (stored && ['beginner','moderate','advanced'].includes(stored)) {
       return stored as TestPersona
     }
+    // If provided at build time, allow a public default for client bundles.
+    const publicDefault = process.env.NEXT_PUBLIC_IFS_TEST_PERSONA
+    if (publicDefault && ['beginner','moderate','advanced'].includes(publicDefault)) {
+      return publicDefault as TestPersona
+    }
+    return 'beginner'
   }
-  // Fallback to env default resolved in dev config
+  // Server: safe to read environment variables
   const envDefault =
-    (process as any).env?.IFS_TEST_PERSONA ||
-    (process as any).env?.NEXT_PUBLIC_IFS_TEST_PERSONA ||
-    (process as any).env?.VITE_IFS_TEST_PERSONA ||
+    process.env.IFS_TEST_PERSONA ||
+    process.env.NEXT_PUBLIC_IFS_TEST_PERSONA ||
+    process.env.VITE_IFS_TEST_PERSONA ||
     'beginner'
   return ['beginner','moderate','advanced'].includes(envDefault) ? (envDefault as TestPersona) : 'beginner'
 }

@@ -13,14 +13,15 @@ export function PersonaSwitcher({ className = '' }: PersonaSwitcherProps) {
   const [currentPersona, setCurrentPersonaState] = useState<TestPersona>('beginner')
   const [isOpen, setIsOpen] = useState(false)
 
-// Only render in development mode
-  if (!dev.enabled) {
-    return null
-  }
-
+  // Initialize persona on mount (must be called unconditionally for hooks ordering)
   useEffect(() => {
     setCurrentPersonaState(getCurrentPersona())
   }, [])
+
+  // Only render in development mode
+  if (!dev.enabled) {
+    return null
+  }
 
   const handlePersonaChange = (newPersona: TestPersona) => {
     setCurrentPersona(newPersona)
