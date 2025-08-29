@@ -8,7 +8,8 @@ export type FeatureKey =
   | 'profile'
   | 'home'
 
-export const devMode = process.env.NEXT_PUBLIC_IFS_DEV_MODE === 'true'
+import { dev } from '@/config/dev'
+export const devMode = dev.enabled
 
 export const features: Record<FeatureKey, FeatureStatus> = {
   chat: 'enabled',
