@@ -73,14 +73,45 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY={{YOUR_SUPABASE_ANON_KEY}}
 # Optional Mastra client base URL (used by lib/mastra.ts if needed)
 VITE_MASTRA_API_URL=http://localhost:4111
 
-# Development mode (local only) — enables dev simulator route
-NEXT_PUBLIC_IFS_DEV_MODE=true
+# Development mode (local only)
+NEXT_PUBLIC_IFS_DEV_MODE=true  # enables dev simulator route
+IFS_DEV_MODE=true              # enables auth bypass (server-side)
 IFS_DEFAULT_USER_ID=00000000-0000-0000-0000-000000000000
 IFS_VERBOSE=true
 # Optional: workaround for dev runtime quirk when updating relationship polarization
 IFS_DISABLE_POLARIZATION_UPDATE=true
 ```
 For details, see DEVELOPMENT.md.
+
+## Development Auth Bypass
+
+For development convenience, the app includes an authentication bypass mode that skips email sign-in:
+
+**How to enable:**
+```bash
+IFS_DEV_MODE=true
+IFS_DEFAULT_USER_ID=00000000-0000-0000-0000-000000000000
+```
+
+**Security:** This only activates when `NODE_ENV !== 'production'`. In production, behavior is unchanged.
+
+**What it does:**
+- Skips redirect to email login when no Supabase session is found
+- Sets non-sensitive cookies and headers:
+  - `ifs_dev_mode=true`
+  - `ifs_dev_user_id={IFS_DEFAULT_USER_ID}`
+  - `x-ifs-dev-mode: true`
+  - `x-ifs-dev-user-id: {IFS_DEFAULT_USER_ID}`
+- Displays a visible "Dev Mode" banner at the top of all pages
+
+**What it does NOT do:**
+- It does not mint a Supabase JWT or bypass RLS policies
+- If your code relies on `auth.uid()` in Supabase, it will still be null unless you sign in for real
+- Use `getEffectiveUserIdServer()` from `lib/auth/dev-session.ts` for feature code that only needs a userId
+
+**Troubleshooting:**
+- If the banner doesn't appear, verify `IFS_DEV_MODE=true` and `NODE_ENV` is not 'production'
+- If features need a userId on the server, use `getEffectiveUserIdServer()`
 
 3) Run the app
 ```bash path=null start=null
