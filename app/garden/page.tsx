@@ -39,7 +39,7 @@ function PartCard({ part }: PartCardProps) {
 // The main server component for the Garden page
 export default async function GardenPage() {
   // In dev mode, searchParts will use the default user ID from .env.local
-  const result = await searchParts({})
+  const result = await searchParts({ limit: 20 })
 
   if (!result.success || !result.data) {
     return (

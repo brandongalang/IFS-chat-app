@@ -72,7 +72,13 @@ export function CheckInForm() {
     const newParts = currentParts.includes(partId)
       ? currentParts.filter(id => id !== partId)
       : [...currentParts, partId]
-    setCheckInData(prev => ({ ...prev, parts_data: { ...prev.parts_data, present_parts: newParts } }))
+    setCheckInData(prev => ({
+      ...prev,
+      parts_data: {
+        ...(prev.parts_data || { new_parts_observations: '' }),
+        present_parts: newParts,
+      },
+    }))
   }
 
   const handleSubmit = async () => {
