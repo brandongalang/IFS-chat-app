@@ -7,7 +7,7 @@ import ComingSoonPage from '@/components/common/ComingSoonPage'
 export default async function CheckInPage() {
   const feature = statusForPath('/check-in')
   if (feature.status === 'coming_soon') {
-    return <ComingSoonPage feature={feature} />
+    return <ComingSoonPage featureKey={feature.key} />
   }
 
   const supabase = await createClient()
