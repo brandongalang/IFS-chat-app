@@ -1,12 +1,23 @@
-import { env } from './env'
 import { TEST_PERSONAS, getPersonaUserId, getCurrentPersona, type TestPersona } from './personas'
 
+// Compute dev flags in a way that works in both server and browser.
+// On the browser, NEXT_PUBLIC_* vars are inlined by Next.js at build time.
+const isProd = process.env.NODE_ENV === 'production'
+const publicDev = process.env.NEXT_PUBLIC_IFS_DEV_MODE === 'true'
+const serverDev = process.env.IFS_DEV_MODE === 'true'
+const enabled = !isProd && (publicDev || serverDev)
+
+const defaultUserId = process.env.IFS_DEFAULT_USER_ID ?? null
+const verbose = process.env.IFS_VERBOSE === 'true'
+const disablePolarizationUpdate = process.env.IFS_DISABLE_POLARIZATION_UPDATE === 'true'
+const currentPersonaEnv = (process.env.IFS_TEST_PERSONA ?? process.env.NEXT_PUBLIC_IFS_TEST_PERSONA ?? 'beginner') as TestPersona
+
 export const dev = {
-  enabled: !env.isProd && env.ifsDevMode,
-  defaultUserId: env.IFS_DEFAULT_USER_ID ?? null,
-  verbose: env.ifsVerbose,
-  disablePolarizationUpdate: env.ifsDisablePolarizationUpdate,
-  currentPersona: (env.IFS_TEST_PERSONA ?? env.NEXT_PUBLIC_IFS_TEST_PERSONA ?? 'beginner') as TestPersona,
+  enabled,
+  defaultUserId,
+  verbose,
+  disablePolarizationUpdate,
+  currentPersona: currentPersonaEnv,
 }
 
 export function resolveUserId(providedUserId?: string): string {
