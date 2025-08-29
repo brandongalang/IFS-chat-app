@@ -6,13 +6,13 @@ This guide explains how to configure the IFS Therapy application for development
 
 1. Copy the example environment file:
    ```bash
-   cp .env.example .env
+   cp .env.example .env.local
    ```
 
-2. Set the required development environment variables in `.env`:
+2. Set the required development environment variables in `.env.local`:
    ```bash
-   # Enable development mode
-   IFS_DEV_MODE=true
+   # Enable development mode for local iteration (client + server)
+   NEXT_PUBLIC_IFS_DEV_MODE=true
    
    # Generate a test UUID (you can use https://www.uuidgenerator.net/)
    IFS_DEFAULT_USER_ID=12345678-1234-5678-9012-123456789abc
@@ -30,11 +30,12 @@ This guide explains how to configure the IFS Therapy application for development
 
 ### Required for Development Mode
 
-- `IFS_DEV_MODE=true` - Enables development mode features
+- `NEXT_PUBLIC_IFS_DEV_MODE=true` - Enables development mode features across SSR and CSR
 - `IFS_DEFAULT_USER_ID` - UUID to use as default user ID when none provided
 
 ### Optional Development Variables
 
+- `NEXT_PUBLIC_IFS_SHOW_DEV_TOGGLE=true` - Shows an in-app "Enable Dev Mode" control on the home header (hidden by default in production). Clicking it sets a localStorage override used on the client.
 - `IFS_VERBOSE=true` - Enables detailed logging of tool operations
 - `IFS_DISABLE_POLARIZATION_UPDATE=true` - Disables updating `polarization_level` during relationship updates (workaround for tsx/ESM dev runtime quirk). In production/serverless builds, leave unset or false so polarization updates apply normally.
 
@@ -51,7 +52,7 @@ This guide explains how to configure the IFS Therapy application for development
 
 ### Default User ID Resolution
 
-When development mode is enabled with `IFS_DEV_MODE=true` and `IFS_DEFAULT_USER_ID` is set:
+When development mode is enabled with `NEXT_PUBLIC_IFS_DEV_MODE=true` (or `NODE_ENV=development`) and `IFS_DEFAULT_USER_ID` is set:
 
 1. **With explicit userId**: Tools use the provided userId normally
 2. **Without userId**: Tools automatically use `IFS_DEFAULT_USER_ID`
@@ -108,16 +109,16 @@ await createEmergingPart({
 
 ⚠️ **Important**: Development mode should only be used in local development environments.
 
-- Never set `IFS_DEV_MODE=true` in production
+- Never set `NEXT_PUBLIC_IFS_DEV_MODE=true` in production unless you want dev-gated areas enabled for users
 - Never commit real user IDs to version control
 - Use randomly generated UUIDs for `IFS_DEFAULT_USER_ID`
-- Development mode is automatically disabled when `NODE_ENV=production`
+- Development mode is automatically disabled when `NODE_ENV=production` (unless explicitly enabled via `NEXT_PUBLIC_IFS_DEV_MODE`)
 
 ## Troubleshooting
 
 ### "User ID is required" Error
 
-- Ensure `IFS_DEV_MODE=true` is set
+- Ensure `NEXT_PUBLIC_IFS_DEV_MODE=true` is set locally or `NODE_ENV=development`
 - Ensure `IFS_DEFAULT_USER_ID` contains a valid UUID
 - Check that environment variables are loaded (restart dev server)
 
@@ -140,5 +141,11 @@ To create test data for your default user ID:
 1. Use the Supabase dashboard to insert a test user record
 2. Use the `createEmergingPart` tool with development mode to create test parts
 3. Use database seeders if available
+
+## Migration note
+
+We consolidated dev mode to a single public flag:
+- Remove any usage of `IFS_DEV_MODE` (server-only).
+- Use `NEXT_PUBLIC_IFS_DEV_MODE` instead (works across SSR/CSR), with `NODE_ENV=development` as a default.
 
 This configuration allows you to test the full agent workflow without implementing user authentication first.

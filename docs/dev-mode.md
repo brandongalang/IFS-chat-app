@@ -19,11 +19,14 @@ This app uses a simple feature flag system to gate routes (e.g., Insights, Garde
 
 ## Environment variables
 - `NEXT_PUBLIC_IFS_DEV_MODE` (boolean)
-  - When `true`, dev mode is on everywhere.
+  - When `true`, dev mode is on everywhere (SSR + CSR).
   - Default: `false` unless `NODE_ENV === 'development'`.
 - `NEXT_PUBLIC_IFS_SHOW_DEV_TOGGLE` (boolean)
   - Controls whether to show the in-app “Enable Dev Mode” button.
   - Default: shown in development, hidden in production.
+
+### Migration note
+- We removed the server-only `IFS_DEV_MODE`. Use `NEXT_PUBLIC_IFS_DEV_MODE` instead for consistency across client and server.
 
 ## Security and production guidance
 - Do not enable dev mode in production unless you intend to grant access to gated areas.
