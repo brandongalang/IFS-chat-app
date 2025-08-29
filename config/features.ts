@@ -41,7 +41,7 @@ export const features: Record<FeatureKey, FeatureStatus> = {
   journey: 'coming_soon',
   settings: 'coming_soon',
   profile: 'enabled',
-  'check-in': 'coming_soon',
+  'check-in': 'enabled',
 }
 
 export function featureKeyForPathname(pathname: string): FeatureKey {
