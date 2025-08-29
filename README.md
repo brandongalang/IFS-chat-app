@@ -1,4 +1,6 @@
-# IFS Therapy Companion (ifs-full)
+# IFS Therapy Companion
+
+- See docs/user-memory.md for the new User Memory backend (differential snapshots, cron endpoint, and env setup).
 
 An Internal Family Systems companion app built on Next.js 15 with a Mastra-powered agent, Supabase for persistence, and a modern shadcn/Radix UI front-end. The chat UI and UI component library were migrated from IFSFrontEnd/IFS-Front-End into this app so we can stitch the backend in incrementally.
 
