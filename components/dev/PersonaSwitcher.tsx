@@ -2,13 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { ChevronDown, User, TestTube } from 'lucide-react'
-import { 
-  getCurrentPersona, 
-  setCurrentPersona, 
-  TEST_PERSONAS,
-  type TestPersona,
-  developmentConfig 
-} from '@/mastra/config/development'
+import { getCurrentPersona, setCurrentPersona, TEST_PERSONAS, type TestPersona } from '@/config/personas'
+import { dev } from '@/config/dev'
 
 interface PersonaSwitcherProps {
   className?: string
@@ -18,8 +13,8 @@ export function PersonaSwitcher({ className = '' }: PersonaSwitcherProps) {
   const [currentPersona, setCurrentPersonaState] = useState<TestPersona>('beginner')
   const [isOpen, setIsOpen] = useState(false)
 
-  // Only render in development mode
-  if (!developmentConfig.enabled) {
+// Only render in development mode
+  if (!dev.enabled) {
     return null
   }
 

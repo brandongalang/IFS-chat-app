@@ -52,9 +52,11 @@ export async function GET(req: NextRequest) {
       userId = null
     }
 
-    if (!userId) {
-      if (process.env.NEXT_PUBLIC_IFS_DEV_MODE === 'true' && process.env.IFS_DEFAULT_USER_ID) {
-        userId = process.env.IFS_DEFAULT_USER_ID
+if (!userId) {
+      // In dev persona mode, fall back to default user ID for API access when not authenticated
+      const { dev } = await import('@/config/dev')
+      if (dev.enabled && dev.defaultUserId) {
+        userId = dev.defaultUserId
       } else {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
           status: 401,

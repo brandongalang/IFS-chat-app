@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { actionLogger } from '../../lib/database/action-logger'
-import { resolveUserId, requiresUserConfirmation, devLog, developmentConfig } from '../config/development'
+import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/dev'
 import type { Database, PartRow, PartInsert, PartUpdate, PartEvidence, PartRelationshipRow, PartRelationshipInsert, PartRelationshipUpdate, RelationshipType, RelationshipStatus, ToolResult, RelationshipDynamic } from '../../lib/types/database'
 
 // Input schemas for tool validation
@@ -136,7 +136,7 @@ function getSupabaseClient() {
   }
 
   // Dev-only service role bypass similar to evidence-tools
-  const devEnabled = developmentConfig.enabled
+const devEnabled = dev.enabled
 
   if (typeof window === 'undefined' && devEnabled && serviceRole) {
     // Use service role on server to bypass RLS in development
@@ -203,7 +203,7 @@ export async function searchParts(input: z.infer<typeof searchPartsSchema>): Pro
       confidence: 1.0
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? (developmentConfig.verbose ? (error.stack || error.message) : error.message) : 'Unknown error occurred'
+const errMsg = error instanceof Error ? (dev.verbose ? (error.stack || error.message) : error.message) : 'Unknown error occurred'
     return { success: false, error: errMsg }
   }
 }
@@ -693,7 +693,7 @@ export async function logRelationship(input: z.infer<typeof logRelationshipSchem
         ? parseFloat(String(providedAbs))
         : (typeof delta === 'number' ? Math.min(1, Math.max(0, currentPol + delta)) : currentPol)
       try { devLog('logRelationship polarization compute', { currentPol, computedPol, delta, types: { current: typeof currentPol, computed: typeof computedPol, deltaType: typeof delta } }) } catch {}
-      if (!developmentConfig.disablePolarizationUpdate) {
+if (!dev.disablePolarizationUpdate) {
         if (computedPol !== currentPol) (updates as any).polarization_level = computedPol
       }
 
@@ -702,7 +702,7 @@ export async function logRelationship(input: z.infer<typeof logRelationshipSchem
 
       // Dev bypass with service role to avoid RLS, and manual action log
       const serviceRole = getEnvVar(['SUPABASE_SERVICE_ROLE_KEY'])
-      if (typeof window === 'undefined' && developmentConfig.enabled && serviceRole) {
+if (typeof window === 'undefined' && dev.enabled && serviceRole) {
         try {
           devLog('logRelationship update payload', updates)
           const { data: updatedDirect, error: updErr } = await supabase
@@ -777,7 +777,7 @@ export async function logRelationship(input: z.infer<typeof logRelationshipSchem
 
     // Dev bypass with service role to avoid RLS, and manual action log
     const serviceRoleCreate = getEnvVar(['SUPABASE_SERVICE_ROLE_KEY'])
-    if (typeof window === 'undefined' && developmentConfig.enabled && serviceRoleCreate) {
+if (typeof window === 'undefined' && dev.enabled && serviceRoleCreate) {
       const { data: createdDirect, error: insErr } = await supabase
         .from('part_relationships')
         .insert(insert as any)

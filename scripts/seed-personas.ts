@@ -3,7 +3,7 @@
 import dotenv from 'dotenv'
 import { existsSync } from 'fs'
 import { createClient } from '@supabase/supabase-js'
-import { TEST_PERSONAS } from '../mastra/config/development'
+import { TEST_PERSONAS } from '../config/personas'
 import { fileURLToPath } from 'url'
 
 // Load env from .env.local (preferred) or .env

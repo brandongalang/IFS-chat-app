@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { actionLogger } from '../../lib/database/action-logger'
-import { resolveUserId, requiresUserConfirmation, devLog, developmentConfig } from '../config/development'
+import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/dev'
 import type { Database, PartRow, PartEvidence, PartUpdate, ToolResult } from '../../lib/types/database'
 
 // Input schemas for evidence tool validation

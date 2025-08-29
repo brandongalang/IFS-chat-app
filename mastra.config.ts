@@ -1,3 +1,5 @@
+import { env } from './config/env'
+
 const configObject = {
   name: 'ifs-therapy-companion',
   agents: {
@@ -8,13 +10,13 @@ const configObject = {
   },
   providers: {
     openrouter: {
-      apiKey: process.env.OPENROUTER_API_KEY,
+      apiKey: env.OPENROUTER_API_KEY,
     },
   },
   db: {
     provider: 'supabase',
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    apiKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    url: env.NEXT_PUBLIC_SUPABASE_URL,
+    apiKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   },
 }
 
