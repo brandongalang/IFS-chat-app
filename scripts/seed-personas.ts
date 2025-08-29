@@ -1,8 +1,14 @@
 #!/usr/bin/env tsx
 
-import 'dotenv/config'
+import dotenv from 'dotenv'
+import { existsSync } from 'fs'
 import { createClient } from '@supabase/supabase-js'
 import { TEST_PERSONAS } from '../mastra/config/development'
+import { fileURLToPath } from 'url'
+
+// Load env from .env.local (preferred) or .env
+const envPath = existsSync('.env.local') ? '.env.local' : '.env'
+dotenv.config({ path: envPath })
 
 // Safety checks
 function assertSafety() {
@@ -156,8 +162,9 @@ async function main() {
   console.log('💡 Tip: Add richer IFS data later with additional seeding scripts')
 }
 
-// Run if called directly
-if (require.main === module) {
+// Run if called directly (ESM-compatible)
+const isDirectRun = process.argv[1] === fileURLToPath(import.meta.url)
+if (isDirectRun) {
   main().catch((error) => {
     console.error('❌ Seeding failed:', error.message)
     process.exit(1)
