@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { GuardedLink } from '@/components/common/GuardedLink'
 import { useComingSoon } from '@/components/common/ComingSoonProvider'
 import PersonaSwitcher from '@/components/dev/PersonaSwitcher'
+import { showDevToggle } from '@/config/features'
 
 export default function HomePage() {
   const { openComingSoon } = useComingSoon()
@@ -19,9 +20,24 @@ export default function HomePage() {
           <span className="font-medium">good evening.</span>
           <GuardedLink href="/profile" aria-label="profile" className="size-6 rounded-full bg-muted" />
         </div>
-        <div className="mt-2 flex items-center justify-between">
-          <div className="text-xs underline text-muted-foreground">Enable Dev Mode</div>
-          <PersonaSwitcher className="ml-auto" />
+        <div className="mt-2 flex items-center gap-2">
+          {showDevToggle && (
+            <button
+              type="button"
+              className="text-xs underline text-muted-foreground"
+              onClick={() => {
+                try {
+                  localStorage.setItem('IFS_DEV_MODE', 'true')
+                } catch {}
+                location.reload()
+              }}
+            >
+              Enable Dev Mode
+            </button>
+          )}
+          <div className="ml-auto">
+            <PersonaSwitcher />
+          </div>
         </div>
       </header>
 

@@ -223,12 +223,21 @@ We are shipping v0 with only the Chat experience enabled. Home (Today) remains a
   - `FeatureStatus`: 'enabled' | 'coming_soon' | 'disabled'
   - `features`: per-feature default states (Home and Chat are enabled; others are coming_soon)
   - `statusForPath(path)`: resolve a path to a feature key and its effective status
-  - `NEXT_PUBLIC_IFS_DEV_MODE=true` treats `coming_soon` as `enabled` in client-side checks to speed up local iteration.
+  - Dev mode: when enabled, treats all non-`disabled` features as `enabled` for local iteration.
+
+Dev mode controls (UI gating and behavior)
+- `NEXT_PUBLIC_IFS_DEV_MODE` (boolean): enables dev mode when `true` (also defaults to enabled when `NODE_ENV === 'development'`).
+- `NEXT_PUBLIC_IFS_SHOW_DEV_TOGGLE` (boolean): shows the "Enable Dev Mode" UI toggle on the home header when `true`. Defaults to shown in development, hidden in production.
+- Local override: when the toggle is shown, clicking it sets `localStorage.IFS_DEV_MODE='true'` and reloads. On the client, `statusForPath()` respects this override.
 
 UI gating:
-- Clicks to not-yet-enabled routes use `GuardedLink`, which opens a global `ComingSoonDialog` instead of navigating.
-- Direct deep links (e.g., `/insights`) render a friendly `ComingSoonPage` with a Back to Chat action (HTTP 200).
+- Clicks to not-yet-enabled routes use `GuardedLink`, which opens a global `ComingSoonDialog` instead of navigating when the feature is not enabled.
+- In dev mode (env flag or local override), `GuardedLink` will allow navigation for any feature not explicitly `disabled`.
+- Direct deep links (e.g., `/insights`) render the real page when enabled; otherwise render a friendly Coming Soon treatment.
 
 How to enable a feature:
 - Flip the feature in `config/features.ts` from `coming_soon` to `enabled`.
 - Replace the route’s `ComingSoonPage` with the actual implementation.
+
+Notes:
+- Never commit secrets in `.env*` files. Only `.env.example` is committed. `.env.local` is gitignored.
