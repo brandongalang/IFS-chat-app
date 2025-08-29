@@ -7,9 +7,9 @@ const hasSupabase =
   typeof process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === 'string' &&
   (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').length > 20
 
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const id = params.id
+    const { id } = await context.params
     if (!id) {
       return new Response(JSON.stringify({ error: 'id is required' }), {
         status: 400,
