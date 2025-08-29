@@ -186,6 +186,7 @@
   },
   "active": "32188fcbf5092918",
   "lastOpenFiles": [
+<<<<<<< HEAD
     "scripts/seed-personas.ts",
     "scripts",
     "components/dev/PersonaSwitcher.tsx",
@@ -197,6 +198,20 @@
     "node_modules/es-toolkit/util.d.ts",
     "node_modules/es-toolkit/string.d.ts",
     "node_modules/es-toolkit/string.js",
+=======
+    "mastra/config/development.ts",
+    "mastra/config",
+    "seeds/personas/data/moderate-jamie.json",
+    "seeds/personas/data/advanced-riley.json",
+    "scripts/import-persona-fixtures.ts",
+    "seeds/personas/data/beginner-alex.json",
+    "seeds/personas/data",
+    "seeds/personas",
+    "seeds",
+    "config/env.ts",
+    "config/dev.ts",
+    "docs/testing-personas.md",
+>>>>>>> a47b7d5 (feat(ui): hide Dev Mode toggle by default via config flag)
     "node_modules/es-abstract/README.md",
     "node_modules/es-abstract/CHANGELOG.md",
     "node_modules/caniuse-lite/README.md",
@@ -221,7 +236,10 @@
     "node_modules/d3-format/README.md",
     "node_modules/d3-shape/README.md",
     "node_modules/d3-array/README.md",
+<<<<<<< HEAD
     "node_modules/d3-time-format/README.md",
+=======
+>>>>>>> a47b7d5 (feat(ui): hide Dev Mode toggle by default via config flag)
     "node_modules/highlight.js/styles/school-book.png",
     "node_modules/highlight.js/styles/pojoaque.jpg",
     "node_modules/highlight.js/styles/brown-papersq.png",
