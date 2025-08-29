@@ -109,7 +109,7 @@ export function CheckInForm() {
               <Slider defaultValue={[3]} min={1} max={5} step={1} onValueChange={handleSliderChange('mood')} />
             </div>
             <div>
-              <Label>What's your energy level? (1 = Low, 5 = High)</Label>
+              <Label>What’s your energy level? (1 = Low, 5 = High)</Label>
               <Slider defaultValue={[3]} min={1} max={5} step={1} onValueChange={handleSliderChange('energy_level')} />
             </div>
           </div>
