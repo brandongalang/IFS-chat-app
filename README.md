@@ -61,7 +61,7 @@ npm install
 ```
 
 2) Environment variables
-Copy .env.example to .env.local and fill in values. Do not commit .env files; they are gitignored.
+Copy `.env.example` to `.env.local` and fill in all required values. This now includes variables for Stripe and feature gating. Do not commit `.env` files; they are gitignored.
 ```bash
 # Mastra / OpenRouter
 OPENROUTER_API_KEY={{YOUR_OPENROUTER_API_KEY}}
@@ -120,6 +120,26 @@ Note: /api/chat/ui remains deprecated.
 
 Env flags:
 - IFS_INSIGHTS_JIT=false (default). When true, GET /api/insights?jit=true can fill empty slots on demand.
+
+
+## Subscription Features
+This application is now equipped with a full subscription system powered by Stripe.
+
+- **Pricing Page:** A new `/pricing` page displays the available plans.
+- **Stripe Checkout:** Users can upgrade to a paid plan via a secure Stripe Checkout session.
+- **Customer Portal:** Users can manage their subscription (update payment methods, cancel, etc.) via a Stripe-hosted customer portal, accessible from the `/settings` page.
+- **Webhooks:** A webhook at `/api/stripe/webhook` listens for events from Stripe to keep the application's database in sync with subscription statuses.
+
+### Feature Gating
+The application now supports two tiers: Free and Paid.
+- **Free Tier:**
+  - Limited to 15 messages per day.
+  - Can only view the first 2 "parts" they discover.
+  - Uses a standard, economical AI model.
+- **Paid Tier:**
+  - Unlimited messages.
+  - Unlimited visible parts.
+  - Uses a premium, more powerful AI model.
 
 
 ## Next steps: stitch backend + data stores to the migrated frontend
@@ -212,7 +232,11 @@ supabase db push
 
 ## Roadmap (short)
 - Unify on /api/chat for all chat streaming (done).
-- Add user identity/auth (Supabase Auth or session cookie) to personalize data and enforce RLS.
+- Add user identity/auth (Supabase Auth or session cookie) to personalize data and enforce RLS (done).
+- **Implement Stripe Subscriptions & Feature Gating (done).**
+  - Full Stripe integration with checkout and customer portal.
+  - Tiered system (Free/Paid) with limits on message count and part visibility.
+  - Dynamic AI model selection based on subscription tier.
 - Task-based UI for server-driven steps is implemented; explore deeper tool visualization as the agent tools are actively used.
 - e2e coverage for core chat flows after wiring (use Playwright MCP when needed).
 

@@ -5,6 +5,7 @@ import { Message, ChatState, TaskEvent } from '@/types/chat';
 import { detectTool } from '@/lib/toolDetection';
 import { streamFromMastra } from '@/lib/chatClient';
 import { devMode } from '@/config/features';
+import { useUpgradeModal } from '@/components/common/upgrade-modal';
 
 export function useChat() {
   const [state, setState] = useState<ChatState>({
@@ -36,6 +37,7 @@ export function useChat() {
     bio: 'Exploring the inner world, one part at a time.',
   });
 
+  const { openModal } = useUpgradeModal();
   const streamingCancelRef = useRef<(() => void) | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const userIdRef = useRef<string>('dev-user-1'); // TODO: replace with real identity later
@@ -166,6 +168,25 @@ export function useChat() {
             persistMessage(sessionId, 'assistant', accumulated).catch(() => {});
           }
         },
+        onError: (error) => {
+          if (error.message === 'Rate limit reached') {
+            openModal(
+              'Daily Limit Reached',
+              'You have reached your daily message limit. Please upgrade to a paid plan for unlimited messages.'
+            );
+            // Remove the empty assistant message placeholder
+            setState((prev: any) => ({
+              ...prev,
+              messages: prev.messages.filter((m: Message) => m.id !== assistantId),
+              isStreaming: false,
+              currentStreamingId: undefined,
+            }));
+          } else {
+            // Handle other stream errors
+            updateMessage(assistantId, { content: `Error: ${error.message}`, streaming: false });
+          }
+          streamingCancelRef.current = null;
+        }
       });
     } catch (e) {
       // Mark stream ended and show basic error if needed

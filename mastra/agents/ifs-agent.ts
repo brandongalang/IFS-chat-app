@@ -16,11 +16,17 @@ const openrouter = createOpenRouter({
 
 type Profile = { name?: string; bio?: string } | null
 
-export function createIfsAgent(profile: Profile) {
+export function createIfsAgent(
+  profile: Profile,
+  options?: { model?: string }
+) {
+  const defaultModel = process.env.PAID_TIER_MODEL || 'z-ai/glm-4.5'
+  const modelToUse = options?.model || defaultModel
+
   return new Agent({
     name: 'ifs-companion',
     instructions: generateSystemPrompt(profile),
-    model: openrouter('z-ai/glm-4.5'),
+    model: openrouter(modelToUse),
     tools: {
       ...partTools, // Part management tools
       ...rollbackTools, // Rollback/undo tools

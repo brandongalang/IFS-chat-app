@@ -11,6 +11,7 @@ export async function streamFromMastra(params: {
   profile: Profile
   onChunk: (chunk: string, done: boolean) => void
   onTask?: (event: TaskEvent) => void
+  onError?: (error: Error) => void
   apiPath?: string
   signal?: AbortSignal
 }): Promise<void> {
@@ -29,7 +30,19 @@ export async function streamFromMastra(params: {
   })
 
   if (!res.ok || !res.body) {
-    throw new Error(`Failed to start stream (${res.status})`)
+    if (params.onError) {
+      if (res.status === 429) {
+        // Specific error for rate limit
+        params.onError(new Error('Rate limit reached'))
+      } else {
+        params.onError(new Error(`Failed to start stream (${res.status})`))
+      }
+      // Return gracefully, allowing the hook to handle the UI state.
+      return
+    } else {
+      // Fallback for older callers that don't handle onError
+      throw new Error(`Failed to start stream (${res.status})`)
+    }
   }
 
   const reader = res.body.getReader()

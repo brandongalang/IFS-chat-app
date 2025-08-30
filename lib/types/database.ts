@@ -101,6 +101,61 @@ export interface Database {
             referencedColumns: ["id"]
           }
         ]
+      },
+      customers: {
+        Row: CustomerRow
+        Insert: CustomerInsert
+        Update: CustomerUpdate
+        Relationships: [
+          {
+            foreignKeyName: 'customers_id_fkey'
+            columns: ['id']
+            isOneToOne: true
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      },
+      products: {
+        Row: ProductRow
+        Insert: ProductInsert
+        Update: ProductUpdate
+        Relationships: []
+      },
+      prices: {
+        Row: PriceRow
+        Insert: PriceInsert
+        Update: PriceUpdate
+        Relationships: [
+          {
+            foreignKeyName: 'prices_product_id_fkey'
+            columns: ['product_id']
+            isOneToOne: false
+            referencedRelation: 'products'
+            referencedColumns: ['id']
+          }
+        ]
+      },
+      subscriptions: {
+        Row: SubscriptionRow
+        Insert: SubscriptionInsert
+        Update: SubscriptionUpdate
+        Relationships: [
+          {
+            foreignKeyName: 'subscriptions_price_id_fkey'
+            columns: ['price_id']
+            isOneToOne: false
+            referencedRelation: 'prices'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'subscriptions_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
       }
     }
     Views: {
@@ -174,6 +229,9 @@ export interface UserRow {
   stats: UserStats
   created_at: string
   updated_at: string
+  // Usage tracking fields
+  daily_message_count: number
+  last_message_date: string | null
 }
 
 export interface UserInsert {
@@ -184,6 +242,9 @@ export interface UserInsert {
   stats?: UserStats
   created_at?: string
   updated_at?: string
+  // Usage tracking fields
+  daily_message_count?: number
+  last_message_date?: string | null
 }
 
 export interface UserUpdate {
@@ -194,6 +255,9 @@ export interface UserUpdate {
   stats?: UserStats
   created_at?: string
   updated_at?: string
+  // Usage tracking fields
+  daily_message_count?: number
+  last_message_date?: string | null
 }
 
 // Part Types
@@ -248,6 +312,7 @@ export interface PartRow {
   last_active: string
   created_at: string
   updated_at: string
+  is_hidden: boolean
 }
 
 export interface PartInsert {
@@ -273,6 +338,7 @@ export interface PartInsert {
   last_active?: string
   created_at?: string
   updated_at?: string
+  is_hidden?: boolean
 }
 
 export interface PartUpdate {
@@ -298,6 +364,7 @@ export interface PartUpdate {
   last_active?: string
   created_at?: string
   updated_at?: string
+  is_hidden?: boolean
 }
 
 // Session Types
@@ -635,6 +702,153 @@ export type Flatten<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
 
 export type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P]
+}
+
+// --- Stripe-related Types ---
+
+// Customer Types
+export interface CustomerRow {
+  id: string // UUID of the user
+  stripe_customer_id: string | null
+}
+export interface CustomerInsert {
+  id: string
+  stripe_customer_id?: string | null
+}
+export interface CustomerUpdate {
+  id?: string
+  stripe_customer_id?: string | null
+}
+
+// Product Types
+export interface ProductRow {
+  id: string // Stripe Product ID
+  active: boolean | null
+  name: string | null
+  description: string | null
+  image: string | null
+  metadata: Json | null
+}
+export interface ProductInsert {
+  id: string
+  active?: boolean | null
+  name?: string | null
+  description?: string | null
+  image?: string | null
+  metadata?: Json | null
+}
+export interface ProductUpdate {
+  id?: string
+  active?: boolean | null
+  name?: string | null
+  description?: string | null
+  image?: string | null
+  metadata?: Json | null
+}
+
+// Price Types
+export type PriceInterval = 'day' | 'week' | 'month' | 'year'
+export interface PriceRow {
+  id: string // Stripe Price ID
+  product_id: string | null
+  active: boolean | null
+  description: string | null
+  unit_amount: number | null
+  currency: string | null
+  type: 'one_time' | 'recurring' | null
+  interval: PriceInterval | null
+  interval_count: number | null
+  trial_period_days: number | null
+  metadata: Json | null
+}
+export interface PriceInsert {
+  id: string
+  product_id?: string | null
+  active?: boolean | null
+  description?: string | null
+  unit_amount?: number | null
+  currency?: string | null
+  type?: 'one_time' | 'recurring' | null
+  interval?: PriceInterval | null
+  interval_count?: number | null
+  trial_period_days?: number | null
+  metadata?: Json | null
+}
+export interface PriceUpdate {
+  id?: string
+  product_id?: string | null
+  active?: boolean | null
+  description?: string | null
+  unit_amount?: number | null
+  currency?: string | null
+  type?: 'one_time' | 'recurring' | null
+  interval?: PriceInterval | null
+  interval_count?: number | null
+  trial_period_days?: number | null
+  metadata?: Json | null
+}
+
+// Subscription Types
+export type SubscriptionStatusEnum =
+  | 'trialing'
+  | 'active'
+  | 'canceled'
+  | 'incomplete'
+  | 'incomplete_expired'
+  | 'past_due'
+  | 'unpaid'
+  | 'paused'
+
+export interface SubscriptionRow {
+  id: string // Stripe Subscription ID
+  user_id: string
+  status: SubscriptionStatusEnum | null
+  metadata: Json | null
+  price_id: string | null
+  quantity: number | null
+  cancel_at_period_end: boolean | null
+  created: string
+  current_period_start: string
+  current_period_end: string
+  ended_at: string | null
+  cancel_at: string | null
+  canceled_at: string | null
+  trial_start: string | null
+  trial_end: string | null
+}
+export interface SubscriptionInsert {
+  id: string
+  user_id: string
+  status?: SubscriptionStatusEnum | null
+  metadata?: Json | null
+  price_id?: string | null
+  quantity?: number | null
+  cancel_at_period_end?: boolean | null
+  created?: string
+  current_period_start?: string
+  current_period_end?: string
+  ended_at?: string | null
+  cancel_at?: string | null
+  canceled_at?: string | null
+  trial_start?: string | null
+  trial_end?: string | null
+}
+export interface SubscriptionUpdate {
+  id?: string
+  user_id?: string
+  status?: SubscriptionStatusEnum | null
+  metadata?: Json | null
+  price_id?: string | null
+  quantity?: number | null
+  cancel_at_period_end?: boolean | null
+  created?: string
+  current_period_start?: string
+  current_period_end?: string
+  ended_at?: string | null
+  cancel_at?: string | null
+  canceled_at?: string | null
+  trial_start?: string | null
+  trial_end?: string | null
 }
 
 // Export the full database type

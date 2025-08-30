@@ -1,8 +1,84 @@
 import { NextRequest } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { UserRow } from '@/lib/types/database'
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, profile } = await req.json()
+    const supabase = createClient()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single<UserRow>()
+
+    if (profileError || !userProfile) {
+      console.error('Chat API - User profile error:', profileError)
+      return new Response(JSON.stringify({ error: 'User profile not found.' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    // --- Daily Message Limit Logic ---
+    if (userProfile.subscription_status === 'free') {
+      const today = new Date().toISOString().split('T')[0]
+      const lastMessageDate = userProfile.last_message_date
+        ? new Date(userProfile.last_message_date).toISOString().split('T')[0]
+        : null
+      const dailyLimit = parseInt(process.env.FREE_TIER_DAILY_MESSAGE_LIMIT || '15', 10)
+
+      let currentCount = userProfile.daily_message_count
+      let needsUpdate = false
+
+      if (lastMessageDate !== today) {
+        // First message of a new day, reset counter
+        currentCount = 1
+        needsUpdate = true
+      } else {
+        // It's the same day, check limit
+        if (currentCount >= dailyLimit) {
+          return new Response(
+            JSON.stringify({
+              error: 'Daily message limit reached. Please upgrade for unlimited messages.',
+            }),
+            { status: 429, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+        currentCount++
+        needsUpdate = true
+      }
+
+      if (needsUpdate) {
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            daily_message_count: currentCount,
+            last_message_date: new Date().toISOString(),
+          })
+          .eq('id', user.id)
+
+        if (updateError) {
+          // Log the error but don't block the chat, as the check has already passed.
+          console.error('Failed to update user message count:', updateError)
+        }
+      }
+    }
+
+    const { messages } = await req.json()
+    // Use the securely fetched userProfile instead of one from the client
+    const profile = userProfile
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: 'Messages array is required' }), {
@@ -30,10 +106,19 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    // --- AI Model Selection Logic ---
+    let modelToUse: string
+    if (userProfile.subscription_status === 'free') {
+      modelToUse = process.env.FREE_TIER_MODEL || 'mistralai/mistral-7b-instruct'
+    } else {
+      modelToUse = process.env.PAID_TIER_MODEL || 'z-ai/glm-4.5'
+    }
+    // --- End AI Model Selection Logic ---
+
     try {
       // Lazy-load the agent only when credentials are available to avoid dev import side-effects
-const { createIfsAgent } = await import('../../../mastra/agents/ifs-agent')
-      const ifsAgent = createIfsAgent(profile)
+      const { createIfsAgent } = await import('../../../mastra/agents/ifs-agent')
+      const ifsAgent = createIfsAgent(profile, { model: modelToUse })
 
       // Prefer vNext streaming in AI SDK (UI message) format so we can parse consistently on the client
       const agent = ifsAgent as unknown as Partial<{

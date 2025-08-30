@@ -339,6 +339,36 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
 
     const supabase = getSupabaseClient()
 
+    // --- Subscription Gating Logic ---
+    let isHidden = false
+    try {
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('subscription_status')
+        .eq('id', userId)
+        .single()
+
+      if (userProfile && userProfile.subscription_status === 'free') {
+        const { count, error: countError } = await supabase
+          .from('parts')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('is_hidden', false)
+
+        if (countError) {
+          // Fail open, don't block part creation on a counting error
+          devLog('Error counting visible parts for user', { userId, error: countError.message })
+        } else if (count !== null && count >= 2) {
+          isHidden = true
+          devLog('Hiding new part for free user', { userId, visiblePartCount: count })
+        }
+      }
+    } catch (e) {
+      // Fail open if there is any error fetching profile or counting parts
+      devLog('Error in subscription gating logic', { userId, error: (e as Error).message })
+    }
+    // --- End Subscription Gating Logic ---
+
     devLog('createEmergingPart called', { userId, partName: validated.name, evidenceCount: validated.evidence.length })
 
     // Check if part with same name already exists for this user
@@ -390,7 +420,8 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
         emoji: '🤗',
         color: '#6B7280',
         energyLevel: 0.5
-      }
+      },
+      is_hidden: isHidden
     }
 
     // Use action logger for INSERT with rollback capability
