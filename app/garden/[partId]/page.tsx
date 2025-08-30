@@ -54,7 +54,7 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
   // Fetch part details and relationships in parallel for efficiency
   const [partResult, relationshipsResult] = await Promise.all([
     getPartById({ partId }),
-    getPartRelationships({ partId, includePartDetails: true }),
+    getPartRelationships({ partId, includePartDetails: true, limit: 20 }),
   ])
 
   // Handle case where the part is not found or fails to load

@@ -126,7 +126,7 @@ async function fallbackUpdate(old: UserMemory, _daily: any): Promise<UserMemory>
 export async function generateMemoryUpdate(params: {
   userId: string
   oldMemory: UserMemory
-  todayData: { sessions: any[]; insights: any[] }
+  todayData: { sessions: any[]; insights: any[]; checkIns: any[] }
 }): Promise<UserMemory> {
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) return fallbackUpdate(params.oldMemory, params.todayData)
@@ -151,6 +151,7 @@ Update rules:
 - Keep structure and keys stable; preserve unchanged arrays/objects as-is.
 - Parts: include all known parts; adjust recency_score and influence_score based on today; update status if warranted.
   - Add a new part only with clear new evidence; do not duplicate existing parts.
+- Check-ins: Use morning/evening check-ins to understand the user's daily emotional arc, intentions, and reflections. This data is valuable for updating the summary and identifying active parts.
 - Triggers_and_goals: connect entries to related_parts by id; update or append only with new evidence.
 - Safety_notes: modify sparingly, only if today's activity clearly requires it.
 - Citations are out of scope for this MVP; do not add them.
@@ -167,6 +168,7 @@ Output constraints:
     newData: {
       sessions: params.todayData.sessions,
       insights: params.todayData.insights,
+      checkIns: params.todayData.checkIns,
     },
     rules: {
       style: 'concise, agent-readable',
@@ -227,13 +229,21 @@ export async function listActiveUsersSince(isoCutoff: string): Promise<string[]>
 
   if (iErr) throw iErr
 
+  const { data: checkIns, error: cErr } = await supabase
+    .from('check_ins')
+    .select('user_id')
+    .gte('created_at', isoCutoff)
+
+  if (cErr) throw cErr
+
   const ids = new Set<string>()
   for (const r of sessions || []) ids.add((r as any).user_id)
   for (const r of insights || []) ids.add((r as any).user_id)
+  for (const r of checkIns || []) ids.add((r as any).user_id)
   return [...ids]
 }
 
-export async function loadTodayData(userId: string, isoCutoff: string): Promise<{ sessions: any[]; insights: any[] }> {
+export async function loadTodayData(userId: string, isoCutoff: string): Promise<{ sessions: any[]; insights: any[]; checkIns: any[] }> {
   const supabase = createAdminClient()
 
   const { data: sessions, error: sErr } = await supabase
@@ -254,6 +264,15 @@ export async function loadTodayData(userId: string, isoCutoff: string): Promise<
 
   if (iErr) throw iErr
 
-  return { sessions: sessions || [], insights: insights || [] }
+  const { data: checkIns, error: cErr } = await supabase
+    .from('check_ins')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('created_at', isoCutoff)
+    .order('created_at', { ascending: true })
+
+  if (cErr) throw cErr
+
+  return { sessions: sessions || [], insights: insights || [], checkIns: checkIns || [] }
 }
 

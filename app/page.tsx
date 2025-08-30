@@ -7,6 +7,7 @@ import { GuardedLink } from '@/components/common/GuardedLink'
 import { useComingSoon } from '@/components/common/ComingSoonProvider'
 import PersonaSwitcher from '@/components/dev/PersonaSwitcher'
 import { showDevToggle } from '@/config/features'
+import { CheckInCard } from '@/components/home/CheckInCard'
 
 export default function HomePage() {
   const { openComingSoon } = useComingSoon()
@@ -56,18 +57,7 @@ export default function HomePage() {
       {/* Action cards */}
       <main className="flex-1 px-4 py-6 flex items-start justify-center">
         <div className="w-full max-w-md grid grid-cols-2 gap-3">
-          <div className="rounded-xl border border-border bg-green-600 text-white p-4">
-            <div className="text-xs opacity-90">Morning</div>
-            <div className="text-lg font-semibold">Fresh start!</div>
-            <Button className="mt-4 bg-white text-green-700 hover:bg-white/90" onClick={() => openComingSoon()}>
-              Begin
-            </Button>
-          </div>
-          <div className="rounded-xl border border-border bg-muted p-4">
-            <div className="text-xs text-muted-foreground">Evening</div>
-            <div className="text-base font-medium">Daily review</div>
-            <div className="text-xs text-muted-foreground mt-1">Available in 8h 2m</div>
-          </div>
+          <CheckInCard />
 
           {/* Daily meditations (spans 2 columns) */}
           <div className="col-span-2 rounded-xl border border-border bg-card p-4 mt-2">
