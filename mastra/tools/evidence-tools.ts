@@ -7,15 +7,17 @@ import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/d
 import type { Database, PartRow, PartEvidence, PartUpdate, ToolResult } from '../../lib/types/database'
 
 // Input schemas for evidence tool validation
+const evidenceItemSchema = z.object({
+  type: z.enum(['direct_mention', 'pattern', 'behavior', 'emotion']).describe('Type of evidence'),
+  content: z.string().min(1).describe('Content of the evidence'),
+  confidence: z.number().min(0).max(1).describe('Confidence score for this evidence'),
+  sessionId: z.string().uuid().describe('Session ID where evidence was observed'),
+  timestamp: z.string().datetime().describe('Timestamp when evidence was observed')
+});
+
 const logEvidenceSchema = z.object({
   partId: z.string().uuid().describe('The UUID of the part to add evidence to'),
-  evidence: z.object({
-    type: z.enum(['direct_mention', 'pattern', 'behavior', 'emotion']).describe('Type of evidence'),
-    content: z.string().min(1).describe('Content of the evidence'),
-    confidence: z.number().min(0).max(1).describe('Confidence score for this evidence'),
-    sessionId: z.string().uuid().describe('Session ID where evidence was observed'),
-    timestamp: z.string().datetime().describe('Timestamp when evidence was observed')
-  }).describe('Evidence to add'),
+  evidence: z.union([evidenceItemSchema, z.array(evidenceItemSchema)]).describe('A single evidence object or an array of evidence objects to add'),
   userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)')
 })
 
@@ -51,11 +53,11 @@ const createSupabaseClient = () => {
 }
 
 /**
- * Log evidence for a specific part
+ * Log a single piece or a bulk list of evidence for a specific part.
  */
 const logEvidence = createTool({
   id: 'logEvidence',
-  description: 'Add evidence to a part\'s recent evidence array, maintaining the limit of 10 most recent items',
+  description: 'Add a single piece or an array of evidence to a part\'s recent evidence array, maintaining the limit of 10 most recent items.',
   inputSchema: logEvidenceSchema,
   execute: async ({ context }): Promise<ToolResult> => {
     try {
@@ -63,7 +65,8 @@ const logEvidence = createTool({
       const resolvedUserId = await resolveUserId(userId)
       const supabase = createSupabaseClient()
 
-      devLog('logEvidence called', { partId, evidenceType: evidence.type, userId: resolvedUserId })
+      const evidenceToAdd = Array.isArray(evidence) ? evidence : [evidence];
+      devLog('logEvidence called', { partId, evidenceCount: evidenceToAdd.length, userId: resolvedUserId })
 
       // Get current part data
       const { data: currentPart, error: fetchError } = await supabase
@@ -83,8 +86,8 @@ const logEvidence = createTool({
 
       // Add new evidence to recent evidence array, keep only last 10
       const currentEvidence = currentPart.recent_evidence || []
-      const newEvidenceArray = [...currentEvidence, evidence].slice(-10)
-      const newEvidenceCount = currentPart.evidence_count + 1
+      const newEvidenceArray = [...currentEvidence, ...evidenceToAdd].slice(-10)
+      const newEvidenceCount = currentPart.evidence_count + evidenceToAdd.length
 
       // Update the part with new evidence
       const { data: updatedPart, error: updateError } = await supabase
@@ -109,7 +112,7 @@ const logEvidence = createTool({
           partId: updatedPart.id,
           partName: updatedPart.name,
           evidenceCount: newEvidenceCount,
-          evidenceAdded: true
+          evidenceAdded: evidenceToAdd.length
         }
       }
 
