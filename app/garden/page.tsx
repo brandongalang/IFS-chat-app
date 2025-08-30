@@ -1,85 +1,220 @@
-import { searchParts } from '@/mastra/tools/part-tools'
-import type { PartRow } from '@/lib/types/database'
-import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+'use client'
 
-// PartCard component to display a single part in the garden
-interface PartCardProps {
-  part: PartRow
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import dynamic from 'next/dynamic'
+import { searchParts, getPartRelationships } from '@/mastra/tools/part-tools'
+import type { PartRow, PartRelationshipRow, PartCategory, RelationshipType } from '@/lib/types/database'
+import { Card } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+
+// Dynamically import the ForceGraph2D component to avoid SSR issues
+const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
+  ssr: false,
+  loading: () => <Skeleton className="w-full h-[600px] rounded-lg" />,
+})
+
+interface GraphNode {
+  id: string
+  name: string
+  category: PartCategory
+  emoji: string
+  last_charged_at: string | null
+  last_charge_intensity: number | null
 }
 
-function PartCard({ part }: PartCardProps) {
-  // Type assertion for visualization JSON
-  const visualization = part.visualization as { emoji?: string; color?: string }
-
-  return (
-    <Link href={`/garden/${part.id}`} passHref>
-      <Card className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all duration-200 h-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            <span className="text-4xl">{visualization?.emoji || '🤗'}</span>
-            <span className="flex-1">{part.name}</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-muted-foreground capitalize">{part.role || 'No role defined'}</p>
-            <div className="flex gap-2">
-              <Badge variant="secondary" className="capitalize">{part.category}</Badge>
-              <Badge variant="outline" className="capitalize">{part.status}</Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  )
+interface GraphLink {
+  source: string
+  target: string
+  type: RelationshipType
 }
 
-// The main server component for the Garden page
-export default async function GardenPage() {
-  // In dev mode, searchParts will use the default user ID from .env.local
-  const result = await searchParts({ limit: 20 })
+// --- Charge Decay and Visualization Logic ---
 
-  if (!result.success || !result.data) {
-    return (
-      <div className="container mx-auto p-4 text-center">
-        <h1 className="text-3xl font-bold mb-6">The Parts Garden</h1>
-        <p className="text-red-500">
-          Could not load parts: {result.error || 'An unknown error occurred.'}
-        </p>
-        <p className="text-muted-foreground mt-2">
-          Please ensure your Supabase credentials are correctly configured in your .env.local file and that the database is running.
-        </p>
-      </div>
-    )
+const CHARGE_DECAY_RATE = 0.00002 // Governs how fast charge decays per millisecond
+const MIN_CHARGE_FOR_AURA = 0.1
+
+function calculateCurrentCharge(lastChargedAt: string | null, lastIntensity: number | null): number {
+  if (!lastChargedAt || !lastIntensity) return 0
+  const timeSinceCharged = Date.now() - new Date(lastChargedAt).getTime()
+  const currentCharge = lastIntensity * Math.exp(-CHARGE_DECAY_RATE * timeSinceCharged)
+  return currentCharge > 0.01 ? currentCharge : 0 // Clamp to 0 if very small
+}
+
+function getCategoryColor(category: PartCategory, charge: number): string {
+  const baseColors: Record<PartCategory, [number, number]> = {
+    manager: [210, 80],     // Blue: [hue, saturation]
+    firefighter: [0, 90],   // Red: [hue, saturation]
+    exile: [260, 70],       // Purple: [hue, saturation]
+    unknown: [45, 10],      // Gray/Yellow: [hue, saturation]
+  }
+  const [hue, saturation] = baseColors[category] || baseColors.unknown
+  const lightness = 50 + charge * 20 // Brighter when charged
+  return `hsla(${hue}, ${saturation}%, ${lightness}%, 1)`
+}
+
+function drawNode(node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number, time: number) {
+  const { x, y, name, category, emoji, last_charged_at, last_charge_intensity } = node
+  if (x === undefined || y === undefined) return
+
+  const charge = calculateCurrentCharge(last_charged_at, last_charge_intensity)
+  const color = getCategoryColor(category, charge)
+  const nodeRadius = 10 + charge * 5 // Node gets bigger with charge
+
+  // --- Draw Charge Aura ---
+  if (charge > MIN_CHARGE_FOR_AURA) {
+    const pulseFactor = Math.sin(time / 300) * 0.5 + 0.5 // Slow pulse
+    const auraRadius = nodeRadius + 5 + pulseFactor * 5 * charge
+    const aura = ctx.createRadialGradient(x, y, nodeRadius, x, y, auraRadius)
+    aura.addColorStop(0, `${color.replace('1)', `${charge * 0.5})`)}`)
+    aura.addColorStop(1, `${color.replace('1)', '0)')}`)
+    ctx.fillStyle = aura
+    ctx.fillRect(x - auraRadius, y - auraRadius, auraRadius * 2, auraRadius * 2)
   }
 
-  const parts = result.data
+  // --- Draw Node Shape ---
+  ctx.fillStyle = color
+  ctx.beginPath()
+
+  if (category === 'manager') { // Rounded rectangle
+    const w = nodeRadius * 2.5
+    const h = nodeRadius * 1.8
+    ctx.roundRect(x - w / 2, y - h / 2, w, h, 5)
+  } else if (category === 'firefighter') { // Star
+    ctx.moveTo(x, y - nodeRadius)
+    for (let i = 0; i < 5; i++) {
+      ctx.lineTo(x + Math.cos((18 + i * 72) * Math.PI / 180) * nodeRadius, y - Math.sin((18 + i * 72) * Math.PI / 180) * nodeRadius)
+      ctx.lineTo(x + Math.cos((54 + i * 72) * Math.PI / 180) * (nodeRadius / 2), y - Math.sin((54 + i * 72) * Math.PI / 180) * (nodeRadius / 2))
+    }
+  } else { // Circle (for Exile and Unknown)
+    ctx.arc(x, y, nodeRadius, 0, 2 * Math.PI, false)
+  }
+  ctx.fill()
+
+  // --- Draw Emoji ---
+  const emojiSize = nodeRadius * 1.5
+  ctx.font = `${emojiSize / globalScale}px Sans-Serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(emoji, x, y)
+
+  // --- Draw Label ---
+  const label = name
+  const fontSize = 12 / globalScale
+  ctx.font = `${fontSize}px Sans-Serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'top'
+  ctx.fillStyle = 'hsl(var(--foreground))'
+  ctx.fillText(label, x, y + nodeRadius + 4)
+}
+
+
+export default function GardenPage() {
+  const [parts, setParts] = useState<PartRow[]>([])
+  const [relationships, setRelationships] = useState<PartRelationshipRow[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [time, setTime] = useState(0) // For animation timing
+
+  useEffect(() => {
+    // Animation loop
+    const frameId = requestAnimationFrame(setTime)
+    return () => cancelAnimationFrame(frameId)
+  }, [time])
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [partsResult, relationshipsResult] = await Promise.all([
+          searchParts({ limit: 50 }),
+          getPartRelationships({ includePartDetails: false, limit: 100 }),
+        ])
+
+        if (partsResult.success && partsResult.data) {
+          setParts(partsResult.data)
+        } else {
+          throw new Error(partsResult.error || 'Failed to load parts.')
+        }
+
+        if (relationshipsResult.success && relationshipsResult.data) {
+          setRelationships(relationshipsResult.data as PartRelationshipRow[])
+        } else {
+          throw new Error(relationshipsResult.error || 'Failed to load relationships.')
+        }
+      } catch (e: any) {
+        setError(e.message)
+      }
+    }
+    fetchData()
+  }, [])
+
+  const graphData = useMemo(() => {
+    if (!parts.length) return { nodes: [], links: [] }
+
+    const nodes: GraphNode[] = parts.map((part) => ({
+      id: part.id,
+      name: part.name,
+      category: part.category,
+      emoji: (part.visualization as { emoji?: string })?.emoji || '🤗',
+      last_charged_at: part.last_charged_at,
+      last_charge_intensity: part.last_charge_intensity,
+    }))
+
+    const links: GraphLink[] = relationships
+      .map((rel) => {
+        const partIds = rel.parts as string[]
+        if (partIds && partIds.length === 2) {
+          return { source: partIds[0], target: partIds[1], type: rel.type }
+        }
+        return null
+      })
+      .filter((link): link is GraphLink => !!link)
+
+    return { nodes, links }
+  }, [parts, relationships])
+
+  const handleNodeClick = useCallback((node: any) => {
+    window.location.href = `/garden/${node.id}`
+  }, [])
+
+  const handleDrawNode = useCallback((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+    drawNode(node, ctx, globalScale, time)
+  }, [time])
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
+    <div className="container mx-auto p-4 md:p-6 h-full flex flex-col">
       <header className="mb-8">
         <h1 className="text-4xl font-bold tracking-tight">The Parts Garden</h1>
         <p className="text-muted-foreground mt-2">
-          A place to get to know all of your discovered parts.
+          A visual representation of your inner world. Click a part to see its details.
         </p>
       </header>
 
-      <main>
-        {parts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-center border-2 border-dashed rounded-lg p-12">
-            <h2 className="text-2xl font-semibold">Your garden is ready to grow</h2>
-            <p className="mt-2 text-muted-foreground">
-              As you explore your inner world through chat, new parts will be discovered and will appear here.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {parts.map((part) => (
-              <PartCard key={part.id} part={part} />
-            ))}
-          </div>
+      <main className="flex-grow relative">
+        {error && <div className="text-red-500 text-center p-4"><p>Could not load garden: {error}</p></div>}
+
+        {!error && (
+          <Card className="w-full h-[600px] overflow-hidden">
+            <ForceGraph2D
+              graphData={graphData}
+              nodeLabel="" // Disable default label
+              nodeVal={10}
+              onNodeClick={handleNodeClick}
+              linkDirectionalParticles={1}
+              linkDirectionalParticleWidth={1.5}
+              linkDirectionalParticleSpeed={0.008}
+              backgroundColor="hsl(var(--card))"
+              linkColor={(link: any) => {
+                switch (link.type as RelationshipType) {
+                  case 'protector-exile': return 'rgba(134, 239, 172, 0.7)'; // green-300
+                  case 'polarized': return 'rgba(252, 165, 165, 0.8)'; // red-300
+                  case 'allied': return 'rgba(147, 197, 253, 0.7)'; // blue-300
+                  default: return 'rgba(156, 163, 175, 0.5)'; // gray-400
+                }
+              }}
+              linkWidth={(link: any) => (link.type === 'protector-exile' ? 3 : 1)}
+              linkLineDash={(link: any) => (link.type === 'polarized' ? [4, 2] : [])}
+              nodeCanvasObject={handleDrawNode}
+            />
+          </Card>
         )}
       </main>
     </div>

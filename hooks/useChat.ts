@@ -1,13 +1,16 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation'
 import { Message, ChatState, TaskEvent } from '@/types/chat';
+import { getPartById } from '@/mastra/tools/part-tools'
 import { detectTool } from '@/lib/toolDetection';
 import { streamFromMastra } from '@/lib/chatClient';
 import { devMode } from '@/config/features';
 import { useToast } from './use-toast';
 
 export function useChat() {
+  const searchParams = useSearchParams()
   const [state, setState] = useState<ChatState>({
     messages: [],
     isStreaming: false,
@@ -42,6 +45,31 @@ export function useChat() {
   const userIdRef = useRef<string>('dev-user-1'); // TODO: replace with real identity later
 
   const generateId = (): string => Math.random().toString(36).substr(2, 9);
+
+  useEffect(() => {
+    const partId = searchParams.get('partId')
+    if (partId && (state as any).messages.length === 0) {
+      // This is a new chat session focused on a specific part.
+      // Let's create a custom initial message.
+      const fetchPartAndStart = async () => {
+        const result = await getPartById({ partId })
+        if (result.success && result.data) {
+          const partName = result.data.name
+          const initialMessage: Message = {
+            id: generateId(),
+            role: 'assistant',
+            content: `Let's talk about your "${partName}" part. What's on your mind regarding it?`,
+            timestamp: Date.now(),
+            persona: 'claude',
+            streaming: false,
+            tasks: [],
+          }
+          setState((prev: any) => ({ ...prev, messages: [initialMessage] }))
+        }
+      }
+      fetchPartAndStart()
+    }
+  }, [searchParams])
 
   const updateMessage = useCallback((id: string, updates: Partial<Message>) => {
     setState((prev: any) => ({

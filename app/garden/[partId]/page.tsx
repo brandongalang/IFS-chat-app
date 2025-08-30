@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
+import { PartActions } from '@/components/garden/PartActions'
 
 // Define the props for the page, including the dynamic parameter
 interface PartDetailPageProps {
@@ -170,19 +171,7 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
           </Card>
 
           {/* Actions Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button asChild className="w-full">
-                <Link href="/chat">Chat about this Part</Link>
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                (Starts a general chat for now)
-              </p>
-            </CardContent>
-          </Card>
+          <PartActions part={part} />
         </aside>
       </div>
     </div>

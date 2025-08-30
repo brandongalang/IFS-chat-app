@@ -49,6 +49,7 @@ const updatePartSchema = z.object({
   partId: z.string().uuid().describe('The UUID of the part to update'),
   userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)'),
   updates: z.object({
+    name: z.string().min(1).max(100).optional(),
     status: z.enum(['emerging', 'acknowledged', 'active', 'integrated']).optional(),
     category: z.enum(['manager', 'firefighter', 'exile', 'unknown']).optional(),
     age: z.number().min(0).max(100).optional(),
@@ -57,7 +58,13 @@ const updatePartSchema = z.object({
     emotions: z.array(z.string()).optional(),
     beliefs: z.array(z.string()).optional(),
     somaticMarkers: z.array(z.string()).optional(),
-    confidenceBoost: z.number().min(0).max(1).optional().describe('Amount to adjust identification confidence by (explicit only)')
+    visualization: z.object({
+      emoji: z.string(),
+      color: z.string(),
+    }).optional(),
+    confidenceBoost: z.number().min(0).max(1).optional().describe('Amount to adjust identification confidence by (explicit only)'),
+    last_charged_at: z.string().datetime().optional().describe("Timestamp for when the part's charge was last updated"),
+    last_charge_intensity: z.number().min(0).max(1).optional().describe("Intensity of the part's last charge (0 to 1)")
   }).describe('Fields to update'),
   evidence: z.object({
     type: z.enum(['direct_mention', 'pattern', 'behavior', 'emotion']),
@@ -461,6 +468,12 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
       last_active: new Date().toISOString()
     }
 
+    // If updating visualization, merge with existing
+    if (validated.updates.visualization) {
+      const currentVis = (currentPart.visualization as any) || {}
+      updates.visualization = { ...currentVis, ...validated.updates.visualization }
+    }
+
     // Only update identification confidence if explicitly requested
     if (typeof validated.updates.confidenceBoost === 'number') {
       updates.confidence = Math.min(1.0, Math.max(0, currentPart.confidence + validated.updates.confidenceBoost))
@@ -495,10 +508,17 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
     }
 
     // Determine action type and generate change description
-let actionType: 'update_part_confidence' | 'update_part_category' | 'update_part_attributes' | 'add_part_evidence' = 'update_part_attributes'
+    let actionType: 'update_part_confidence' | 'update_part_category' | 'update_part_attributes' | 'add_part_evidence' | 'update_part_charge' = 'update_part_attributes'
     let changeDescription = 'Updated part attributes'
     
-    if (typeof validated.updates.confidenceBoost === 'number') {
+    if (validated.updates.name && validated.updates.name !== currentPart.name) {
+      changeDescription = `renamed part from "${currentPart.name}" to "${validated.updates.name}"`
+    } else if (validated.updates.visualization) {
+      changeDescription = 'updated part visualization'
+    } else if (typeof validated.updates.last_charge_intensity === 'number') {
+      actionType = 'update_part_charge'
+      changeDescription = `updated part charge to ${validated.updates.last_charge_intensity.toFixed(2)}`
+    } else if (typeof validated.updates.confidenceBoost === 'number') {
       actionType = 'update_part_confidence'
       const toVal = (updates.confidence ?? currentPart.confidence)
       const direction = validated.updates.confidenceBoost >= 0 ? 'increased' : 'decreased'
