@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { statusForPath } from '@/config/features'
 import ComingSoonPage from '@/components/common/ComingSoonPage'
+import { dev } from '@/config/dev'
 
 export default async function CheckInPage() {
   const feature = statusForPath('/check-in')
@@ -15,7 +16,8 @@ export default async function CheckInPage() {
     data: { session },
   } = await supabase.auth.getSession()
 
-  if (!session) {
+  // In development mode, allow bypassing login for faster iteration
+  if (!session && !dev.enabled) {
     redirect('/auth/login')
   }
 
