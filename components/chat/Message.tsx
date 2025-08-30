@@ -1,15 +1,22 @@
 'use client'
 
+import { useState } from 'react';
 import { Message as MessageType } from '@/types/chat';
-import { User, Bot } from 'lucide-react';
+import { User, Bot, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { TaskList } from './TaskList';
+import { Actions, Action } from '../ai-elements/actions';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Button } from '../ui/button';
+import { Textarea } from '../ui/textarea';
+import { useChat } from '@/hooks/useChat'; // Import useChat
 
 interface MessageProps {
   message: MessageType;
 }
 
 export function Message({ message }: MessageProps) {
+  const { sendFeedback } = useChat(); // Get sendFeedback from the hook
   const isUser = message.role === 'user';
   const isAssistant = message.role === 'assistant';
 
@@ -18,6 +25,31 @@ export function Message({ message }: MessageProps) {
       hour: '2-digit', 
       minute: '2-digit' 
     });
+  };
+
+  const [rating, setRating] = useState<'thumb_up' | 'thumb_down' | null>(null);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
+
+  const handleRating = (newRating: 'thumb_up' | 'thumb_down') => {
+    const newSelectedRating = rating === newRating ? null : newRating;
+    setRating(newSelectedRating);
+    // If user selects a rating, and there's no text, open the popover
+    if (newSelectedRating && !feedbackText) {
+      setPopoverOpen(true);
+    }
+    // If user deselects a rating, close the popover
+    if (!newSelectedRating) {
+      setPopoverOpen(false);
+    }
+  };
+
+  const handleSubmitFeedback = () => {
+    if (!rating) return;
+    sendFeedback(message.id, rating, feedbackText);
+    setPopoverOpen(false);
+    setFeedbackText('');
+    // Keep the rating selected to show it has been submitted
   };
 
   if (isUser) {
@@ -58,7 +90,7 @@ export function Message({ message }: MessageProps) {
         <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center flex-shrink-0">
           <Bot className="w-4 h-4 text-accent-foreground" />
         </div>
-        <div className="flex-1 max-w-xs md:max-w-md lg:max-w-lg">
+        <div className="flex-1 max-w-xs md:max-w-md lg:max-w-lg group relative">
           {/* Task List (server-driven) */}
           {message.tasks && message.tasks.length > 0 && (
             <div className="mb-3">
@@ -78,10 +110,53 @@ export function Message({ message }: MessageProps) {
                 )}
               </p>
             </div>
-            <div className="flex items-center mt-3 text-xs text-muted-foreground">
-              <span data-testid={`text-timestamp-${message.id}`}>
+            <div className="flex items-center justify-between mt-3">
+              <span className="text-xs text-muted-foreground" data-testid={`text-timestamp-${message.id}`}>
                 {formatTime(message.timestamp)}
               </span>
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                  <Actions>
+                    <Action
+                        tooltip="Good response"
+                        onClick={() => handleRating('thumb_up')}
+                    >
+                        <ThumbsUp className={`w-4 h-4 ${rating === 'thumb_up' ? 'text-blue-500' : ''}`} />
+                    </Action>
+                    <Action
+                        tooltip="Bad response"
+                        onClick={() => handleRating('thumb_down')}
+                    >
+                        <ThumbsDown className={`w-4 h-4 ${rating === 'thumb_down' ? 'text-red-500' : ''}`} />
+                    </Action>
+                    {rating && (
+                        <PopoverTrigger asChild>
+                            <Button variant="link" size="sm" className="text-xs h-auto px-1 py-0">
+                                Add feedback
+                            </Button>
+                        </PopoverTrigger>
+                    )}
+                  </Actions>
+                  <PopoverContent className="w-80">
+                      <div className="grid gap-4">
+                          <div className="space-y-2">
+                              <h4 className="font-medium leading-none">Provide additional feedback</h4>
+                              <p className="text-sm text-muted-foreground">
+                                  What did you {rating === 'thumb_up' ? 'like' : 'dislike'} about this response?
+                              </p>
+                          </div>
+                          <div className="grid gap-2">
+                              <Textarea
+                                  value={feedbackText}
+                                  onChange={(e) => setFeedbackText(e.target.value)}
+                                  placeholder="Your feedback..."
+                              />
+                              <Button onClick={handleSubmitFeedback}>Submit</Button>
+                          </div>
+                      </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
           </div>
         </div>

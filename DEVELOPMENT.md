@@ -149,3 +149,50 @@ We consolidated dev mode to a single public flag:
 - Use `NEXT_PUBLIC_IFS_DEV_MODE` instead (works across SSR/CSR), with `NODE_ENV=development` as a default.
 
 This configuration allows you to test the full agent workflow without implementing user authentication first.
+
+## Feature Details
+
+This section provides technical details about specific features for developers.
+
+### Chat Feedback System
+
+The chat feedback system allows users to provide feedback on AI-generated messages.
+
+#### Database Schema
+
+A new table, `message_feedback`, has been added to the Supabase database. The schema is defined in `supabase/migrations/008_message_feedback.sql` and is as follows:
+
+-   `id` (UUID, primary key)
+-   `session_id` (UUID, foreign key to `sessions.id`)
+-   `message_id` (TEXT, the ID of the AI message)
+-   `user_id` (UUID, foreign key to `users.id`)
+-   `rating` (TEXT, 'thumb_up' or 'thumb_down')
+-   `explanation` (TEXT, nullable)
+-   `created_at` (TIMESTAMPTZ)
+
+#### API Endpoint
+
+A new API endpoint has been created at `/api/feedback`.
+
+-   **Method:** `POST`
+-   **Request Body:**
+    ```json
+    {
+      "sessionId": "string",
+      "messageId": "string",
+      "rating": "'thumb_up' | 'thumb_down'",
+      "explanation": "string (optional)"
+    }
+    ```
+-   **Authentication:** The endpoint uses the user's Supabase session to get the `user_id` on the server. The client does not need to send the `user_id`.
+
+#### Frontend Implementation
+
+-   **UI Components:** The feedback UI is located in `components/chat/Message.tsx`. It uses the `Actions` component from `ai-elements` and the `Popover` component from `shadcn/ui`.
+-   **State Management:** The `useChat` hook in `hooks/useChat.ts` has a `sendFeedback` function that sends the feedback to the API endpoint. The `Message.tsx` component calls this function directly.
+
+#### Build System Note
+
+During development, a build issue was discovered where the `next build` command would fail due to a server-side Supabase client being initialized at the module level in `lib/session-service.ts`.
+
+**Resolution:** The `/api/feedback` route was refactored to not use the `chatSessionService`. Instead, it creates its own Supabase client instance directly within the request handler. This avoids the module-level initialization and allows the build to pass. This is an important consideration for any new API routes that need to interact with the database.

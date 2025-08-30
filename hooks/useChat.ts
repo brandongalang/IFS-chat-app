@@ -5,6 +5,7 @@ import { Message, ChatState, TaskEvent } from '@/types/chat';
 import { detectTool } from '@/lib/toolDetection';
 import { streamFromMastra } from '@/lib/chatClient';
 import { devMode } from '@/config/features';
+import { useToast } from './use-toast';
 
 export function useChat() {
   const [state, setState] = useState<ChatState>({
@@ -216,6 +217,53 @@ export function useChat() {
     }
   }, [(state as any).messages, sendMessage]);
 
+  const { toast } = useToast();
+
+  const sendFeedback = useCallback(async (
+    messageId: string,
+    rating: 'thumb_up' | 'thumb_down',
+    explanation?: string
+  ) => {
+    const sessionId = sessionIdRef.current;
+    if (!sessionId) {
+      toast({
+        title: 'Error',
+        description: 'No active session to submit feedback for.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          messageId,
+          rating,
+          explanation,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit feedback');
+      }
+
+      toast({
+        title: 'Feedback submitted',
+        description: 'Thank you for your feedback!',
+      });
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not submit feedback. Please try again later.',
+        variant: 'destructive',
+      });
+    }
+  }, [toast]);
+
   return {
     messages: (state as any).messages,
     isStreaming: (state as any).isStreaming,
@@ -226,5 +274,6 @@ export function useChat() {
     clearChat,
     endSession,
     rerunTool,
+    sendFeedback,
   };
 }
