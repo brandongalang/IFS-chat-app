@@ -246,6 +246,8 @@ export interface PartRow {
   first_noticed: string
   acknowledged_at: string | null
   last_active: string
+  last_charged_at: string | null
+  last_charge_intensity: number | null
   created_at: string
   updated_at: string
 }
@@ -271,6 +273,8 @@ export interface PartInsert {
   first_noticed?: string
   acknowledged_at?: string | null
   last_active?: string
+  last_charged_at?: string | null
+  last_charge_intensity?: number | null
   created_at?: string
   updated_at?: string
 }
@@ -296,6 +300,8 @@ export interface PartUpdate {
   first_noticed?: string
   acknowledged_at?: string | null
   last_active?: string
+  last_charged_at?: string | null
+  last_charge_intensity?: number | null
   created_at?: string
   updated_at?: string
 }
