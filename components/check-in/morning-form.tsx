@@ -64,7 +64,7 @@ export function MorningCheckInForm({ className, ...props }: React.ComponentProps
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Morning Check-in</CardTitle>
-          <CardDescription>What's on your mind this morning?</CardDescription>
+          <CardDescription>What&apos;s on your mind this morning?</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
