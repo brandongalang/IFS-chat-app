@@ -11,6 +11,77 @@ import { CheckInCard } from '@/components/home/CheckInCard'
 
 export default function HomePage() {
   const { openComingSoon } = useComingSoon()
+  // const [morningCheckInCompleted, setMorningCheckInCompleted] = useState(false)
+  // const [eveningCheckInVisible, setEveningCheckInVisible] = useState(false)
+  // const [eveningCheckInCompleted, setEveningCheckInCompleted] = useState(false)
+  // const [countdown, setCountdown] = useState('')
+  // const [isEveningCheckInAvailable, setIsEveningCheckInAvailable] = useState(false)
+
+  // useEffect(() => {
+  //   const fetchCheckInData = async () => {
+  //     const supabase = createClient()
+  //     const { data: { user } } = await supabase.auth.getUser()
+
+  //     if (user) {
+  //       const { data: checkIns, error } = await supabase
+  //         .from('check_ins')
+  //         .select('*')
+  //         .eq('user_id', user.id)
+  //         .order('created_at', { ascending: false })
+  //         .limit(1)
+
+  //       if (error) {
+  //         console.error('Error fetching check-ins:', error)
+  //         return
+  //       }
+
+  //       if (checkIns && checkIns.length > 0) {
+  //         const latestCheckIn = checkIns[0]
+  //         const now = new Date()
+  //         const createdAt = new Date(latestCheckIn.created_at)
+  //         const isToday = now.toDateString() === createdAt.toDateString()
+
+  //         if (isToday) {
+  //           if (latestCheckIn.status === 'morning_completed' || latestCheckIn.status === 'evening_completed') {
+  //             setMorningCheckInCompleted(true)
+  //             setEveningCheckInVisible(true)
+  //           }
+  //           if (latestCheckIn.status === 'evening_completed') {
+  //             setEveningCheckInCompleted(true)
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+
+  //   fetchCheckInData()
+  // }, [])
+
+  // useEffect(() => {
+  //   if (!eveningCheckInVisible || eveningCheckInCompleted) return
+
+  //   const calculateCountdown = () => {
+  //     const now = new Date()
+  //     const eveningTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 0, 0) // 6 PM
+  //     const diff = eveningTime.getTime() - now.getTime()
+
+  //     if (diff <= 0) {
+  //       setIsEveningCheckInAvailable(true)
+  //       setCountdown('')
+  //       return
+  //     }
+
+  //     const hours = Math.floor(diff / (1000 * 60 * 60))
+  //     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  //     const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+  //     setCountdown(`${hours}h ${minutes}m ${seconds}s`)
+  //   }
+
+  //   calculateCountdown()
+  //   const interval = setInterval(calculateCountdown, 1000)
+
+  //   return () => clearInterval(interval)
+  // }, [eveningCheckInVisible, eveningCheckInCompleted])
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">

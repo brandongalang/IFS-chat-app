@@ -42,6 +42,13 @@ export async function updateSession(request: NextRequest) {
 
   // IMPORTANT: If you remove getClaims() and you use server-side rendering
   // with the Supabase client, your users may be randomly logged out.
+  // In development persona mode, allow pass-through without forcing login
+  if (dev.enabled) {
+    // In dev mode, we can just pass through without checking for a user.
+    // The client-side logic will handle fetching data for the test persona.
+    return supabaseResponse
+  }
+
   const { data } = await supabase.auth.getClaims()
   const user = data?.claims
 
@@ -50,10 +57,6 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/auth')
   ) {
-    // In development persona mode, allow pass-through without forcing login
-    if (dev.enabled) {
-      return supabaseResponse
-    }
     // Otherwise, redirect to login
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
