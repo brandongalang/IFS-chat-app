@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { insightGeneratorAgent } from '@/mastra/agents/insight-generator';
+import { mastra } from '@/mastra';
 import { createClient } from '@/lib/supabase/server';
 import { resolveUserId } from '@/config/dev';
 import type { Database, Json } from '@/lib/types/database';
@@ -50,17 +50,15 @@ export async function POST(req: Request) {
 
     console.log(`Insight generation request received for user: ${userId}`);
 
-    // This is a simplified invocation for demonstration.
-    // In a real scenario, you might have a more complex setup for managing agent runs.
-    const agentRun = await insightGeneratorAgent.run({
-      input: `Generate insights for user ${userId}`,
-      context: { userId }, // Pass userId to be used by tools
+    const insightWorkflow = mastra.getWorkflow('generateInsightWorkflow');
+
+    const workflowRun = await insightWorkflow.execute({
+      input: { userId },
     });
 
     let generatedInsights: any[] = [];
-    if (agentRun.status === 'success' && agentRun.output) {
-      // The agent calls the 'submitInsights' function. The output is the argument to that function.
-      generatedInsights = agentRun.output.insights || [];
+    if (workflowRun.status === 'success') {
+      generatedInsights = workflowRun.output || [];
     }
 
     console.log(`Agent generated ${generatedInsights.length} insights.`);

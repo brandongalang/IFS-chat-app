@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { insightGeneratorAgent } from '@/mastra/agents/insight-generator';
+import { mastra } from '@/mastra';
 import { createClient } from '@/lib/supabase/server';
 import type { Database, Json } from '@/lib/types/database';
 
@@ -40,10 +40,7 @@ export async function GET(request: Request) {
   console.log('[Cron] Starting daily insight generation job.');
   const supabase = createClient();
 
-  // 1. Fetch all active users
-  const { data: users, error: usersError } = await supabase
-    .from('users')
-    .select('id');
+  const { data: users, error: usersError } = await supabase.from('users').select('id');
 
   if (usersError) {
     console.error('[Cron] Error fetching users:', usersError);
@@ -56,8 +53,7 @@ export async function GET(request: Request) {
   for (const user of users) {
     const userId = user.id;
 
-    // 2. Cool-down Gate
-    const { data: lastInsight, error: lastInsightError } = await supabase
+    const { data: lastInsight } = await supabase
       .from('insights')
       .select('created_at')
       .eq('user_id', userId)
@@ -74,34 +70,27 @@ export async function GET(request: Request) {
       }
     }
 
-    // 3. Recency Gate
     const oneDayAgo = new Date(new Date().getTime() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: recentActivity, error: activityError } = await supabase
+    const { data: recentActivity } = await supabase
       .from('sessions')
       .select('id', { count: 'exact' })
       .eq('user_id', userId)
       .gte('start_time', oneDayAgo);
-
-    if (activityError) {
-        console.error(`[Cron] Error checking activity for user ${userId}:`, activityError);
-        continue;
-    }
 
     if (recentActivity.length === 0) {
       console.log(`[Cron] No recent activity for user ${userId}. Skipping.`);
       continue;
     }
 
-    // 4. Invoke the Agent
     console.log(`[Cron] Processing user ${userId}.`);
-    const agentRun = await insightGeneratorAgent.run({
-      input: `Generate insights for user ${userId} based on their recent activity.`,
-      context: { userId },
+    const insightWorkflow = mastra.getWorkflow('generateInsightWorkflow');
+    const workflowRun = await insightWorkflow.execute({
+      input: { userId },
     });
 
     let generatedInsights: any[] = [];
-    if (agentRun.status === 'success' && agentRun.output) {
-      generatedInsights = agentRun.output.insights || [];
+    if (workflowRun.status === 'success') {
+      generatedInsights = workflowRun.output || [];
     }
 
     console.log(`[Cron] Agent generated ${generatedInsights.length} insights for user ${userId}.`);
