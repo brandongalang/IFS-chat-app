@@ -102,11 +102,10 @@ A set of new API endpoints will be created to support the frontend.
 ```
 
 **2. Submit Insight Feedback**
-- `POST /api/insights/feedback`
+- `POST /api/insights/[id]/feedback`
 - **Request Body:**
 ```json
 {
-  "insightId": "...",
   "rating": 4,
   "feedback": "This was helpful."
 }
@@ -136,7 +135,7 @@ A set of new API endpoints will be created to support the frontend.
     - Receives a single insight object as a prop.
     - Renders the `content` of the insight.
     - Contains the UI for rating and feedback.
-    - Calls the `POST /api/insights/feedback` endpoint on submission.
+    - Calls the `POST /api/insights/[id]/feedback` endpoint on submission.
     - Will have specialized variants for `part_discovery` and `part_refinement` types, presenting different UI and actions.
 
 ### 4.2. `PartsGarden` Page (`/garden`)
@@ -170,7 +169,7 @@ sequenceDiagram
     Browser->>User: Renders Insight Cards
 
     User->>Browser: Rates and provides feedback on a card
-    Browser->>API Server: POST /api/insights/feedback
+    Browser->>API Server: POST /api/insights/[id]/feedback
     API Server->>Database: UPDATE insights SET status='actioned', rating=?, feedback=? WHERE id = ?
     Database-->>API Server: Success
     API Server-->>Browser: Success
