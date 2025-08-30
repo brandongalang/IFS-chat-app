@@ -8,9 +8,9 @@ import { ArrowLeft } from 'lucide-react'
 
 // Define the props for the page, including the dynamic parameter
 interface PartDetailPageProps {
-  params: {
+  params: Promise<{
     partId: string
-  }
+  }>
 }
 
 // Helper component to display a list of items (like triggers or emotions)
@@ -49,7 +49,7 @@ function StorySection({ title, content }: { title: string; content?: string | nu
 }
 
 export default async function PartDetailPage({ params }: PartDetailPageProps) {
-  const { partId } = params
+  const { partId } = await params
 
   // Fetch part details and relationships in parallel for efficiency
   const [partResult, relationshipsResult] = await Promise.all([

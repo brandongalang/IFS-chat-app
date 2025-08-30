@@ -2,7 +2,7 @@ import { createTool } from '@mastra/core'
 import { z } from 'zod'
 import { actionLogger } from '../../lib/database/action-logger'
 import { resolveUserId } from '@/config/dev'
-import type { Database, PartRow, PartInsert, ToolResult } from '../../lib/types/database'
+import type { Database, PartRow, PartInsert, ToolResult, PartEvidence } from '../../lib/types/database'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
 
 // Helper function to get Supabase client
@@ -46,7 +46,7 @@ export async function createPartStub(input: z.infer<typeof createPartStubSchema>
       }
     }
 
-    const evidence = {
+    const evidence: PartEvidence = {
         type: 'direct_mention',
         content: validated.evidenceContent,
         confidence: 0.5, // Default confidence for a single piece of evidence
