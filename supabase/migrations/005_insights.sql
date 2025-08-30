@@ -6,7 +6,7 @@
 CREATE TABLE IF NOT EXISTS insights (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  type text NOT NULL CHECK (type IN ('session_summary','nudge','follow_up','observation')),
+  type text NOT NULL CHECK (type IN ('session_summary','nudge','follow_up','observation', 'question')),
   status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','revealed','actioned')),
   content jsonb NOT NULL,   -- e.g., { "title": "...", "body": "...", "highlights": [], "sourceSessionIds": [] }
   rating jsonb NULL,        -- e.g., { "scheme": "quartile-v1", "value": 1, "label": "low resonance" }
@@ -58,7 +58,7 @@ CREATE POLICY "Users can delete own insights"
 
 -- Comments
 COMMENT ON TABLE insights IS 'User insights cards (pending → revealed → actioned). Content and rating are JSON.';
-COMMENT ON COLUMN insights.type IS 'session_summary | nudge | follow_up | observation';
+COMMENT ON COLUMN insights.type IS 'session_summary | nudge | follow_up | observation | question';
 COMMENT ON COLUMN insights.status IS 'pending | revealed | actioned';
 COMMENT ON COLUMN insights.content IS 'Structured card payload (title, body, highlights, sourceSessionIds)';
 COMMENT ON COLUMN insights.rating IS 'Flexible rating JSON (e.g., quartile scheme)';
