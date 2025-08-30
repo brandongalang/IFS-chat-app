@@ -15,6 +15,13 @@ Repo: https://github.com/brandongalang/IFS-chat-app.git
 - Supabase (sessions, parts, relationships, action logging)
 - Vercel AI SDK UI message stream for server-driven steps (tasks) rendered with AI Elements
 
+## Features
+- **Interactive Chat Interface:** A modern, responsive chat UI built with Next.js and shadcn/ui.
+- **AI-Powered Agent:** A conversational agent powered by Mastra and OpenRouter.
+- **Server-Driven UI:** The agent can stream UI elements and tasks to the client.
+- **Session Persistence:** Chat history is saved using Supabase.
+- **Message Feedback:** Users can provide feedback (thumbs-up/down and an explanation) on AI-generated messages to help improve the agent's performance.
+
 
 ## Project layout (high level)
 - app/

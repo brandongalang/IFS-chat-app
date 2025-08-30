@@ -43,7 +43,7 @@ export function MessageList({ messages }: MessageListProps) {
       {messages.map((message) => (
         <Message 
           key={message.id} 
-          message={message} 
+          message={message}
         />
       ))}
     </div>
