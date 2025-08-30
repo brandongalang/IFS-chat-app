@@ -20,6 +20,11 @@ const getPartByIdSchema = z.object({
   userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)')
 })
 
+const getPartDetailSchema = z.object({
+  partId: z.string().uuid().describe('The UUID of the part to retrieve details for'),
+  userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)')
+})
+
 const createEmergingPartSchema = z.object({
   name: z.string().min(1).max(100).describe('Name of the emerging part'),
   evidence: z.array(z.object({
@@ -243,6 +248,59 @@ export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Pro
     return {
       success: true,
       data,
+      confidence: 1.0
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    }
+  }
+}
+
+/**
+ * Get a specific part by ID along with its relationships
+ */
+export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>): Promise<ToolResult<any>> {
+  try {
+    const validated = getPartDetailSchema.parse(input)
+    const userId = resolveUserId(validated.userId)
+    const supabase = getSupabaseClient()
+
+    devLog('getPartDetail called', { userId, partId: validated.partId })
+
+    // Fetch the part itself
+    const { data: part, error: partError } = await supabase
+      .from('parts')
+      .select('*')
+      .eq('id', validated.partId)
+      .eq('user_id', userId)
+      .single()
+
+    if (partError) {
+      return { success: false, error: `Database error (part): ${partError.message}` }
+    }
+    if (!part) {
+      return { success: false, error: 'Part not found' }
+    }
+
+    // Fetch relationships involving this part
+    const { data: relationships, error: relationshipsError } = await supabase
+      .from('part_relationships')
+      .select('*')
+      .eq('user_id', userId)
+      .contains('parts', [validated.partId])
+
+    if (relationshipsError) {
+      return { success: false, error: `Database error (relationships): ${relationshipsError.message}` }
+    }
+
+    return {
+      success: true,
+      data: {
+        ...part,
+        relationships: relationships || []
+      },
       confidence: 1.0
     }
   } catch (error) {
@@ -853,6 +911,19 @@ export const getPartByIdTool = createTool({
   }
 })
 
+export const getPartDetailTool = createTool({
+  id: 'getPartDetail',
+  description: "Retrieves a complete dossier for a given part, including its core attributes, all of its relationships, and its most recent evidence log.",
+  inputSchema: getPartDetailSchema,
+  execute: async ({ context }) => {
+    const result = await getPartDetail(context)
+    if (!result.success) {
+      throw new Error(result.error)
+    }
+    return result.data
+  }
+})
+
 export const createEmergingPartTool = createTool({
   id: 'createEmergingPart',
   description: 'Create a new emerging part (requires 3+ evidence and user confirmation)',
@@ -908,6 +979,7 @@ export const logRelationshipTool = createTool({
 export const partTools = {
   searchParts: searchPartsTool,
   getPartById: getPartByIdTool,
+  getPartDetail: getPartDetailTool,
   createEmergingPart: createEmergingPartTool,
   updatePart: updatePartTool,
   getPartRelationships: getPartRelationshipsTool,

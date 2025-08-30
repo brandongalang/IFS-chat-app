@@ -5,6 +5,8 @@ import { rollbackTools } from '../tools/rollback-tools'
 import { assessmentTools } from '../tools/assessment-tools'
 import { proposalTools } from '../tools/proposal-tools'
 import { evidenceTools } from '../tools/evidence-tools'
+import { stubTools } from '../tools/stub-tools'
+import { memoryTools } from '../tools/memory-tools'
 import { generateSystemPrompt } from './ifs_agent_prompt'
 
 // Configure OpenRouter provider through Mastra
@@ -25,6 +27,8 @@ export function createIfsAgent(profile: Profile) {
       ...assessmentTools, // Confidence assessment tool
       ...proposalTools, // Split/Merge proposal workflow
       ...evidenceTools, // Evidence and pattern tools
+      ...stubTools, // Stub creation tools
+      ...memoryTools, // Memory and conversation search tools
     },
   })
 }
