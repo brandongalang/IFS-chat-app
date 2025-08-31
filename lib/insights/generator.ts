@@ -1,7 +1,8 @@
 import type { Json } from '@/lib/types/database'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 export async function jitTopUpInsights(opts: {
-  supabase: any
+  supabase: SupabaseClient
   userId: string
   needed: number
 }): Promise<number> {
@@ -32,4 +33,3 @@ export async function jitTopUpInsights(opts: {
   }
   return data?.length || 0
 }
-

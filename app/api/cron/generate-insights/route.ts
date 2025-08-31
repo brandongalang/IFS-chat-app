@@ -6,7 +6,7 @@ import type { Database, Json } from '@/lib/types/database';
 const COOL_DOWN_HOURS = 48;
 
 async function saveInsightsToDb(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   insights: any[]
 ): Promise<boolean> {
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
   }
 
   console.log('[Cron] Starting daily insight generation job.');
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: users, error: usersError } = await supabase.from('users').select('id');
 
@@ -77,7 +77,7 @@ export async function GET(request: Request) {
       .eq('user_id', userId)
       .gte('start_time', oneDayAgo);
 
-    if (recentActivity.length === 0) {
+    if (!recentActivity || recentActivity.length === 0) {
       console.log(`[Cron] No recent activity for user ${userId}. Skipping.`);
       continue;
     }

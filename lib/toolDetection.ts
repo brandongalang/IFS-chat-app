@@ -122,8 +122,10 @@ function extractSearchQuery(text: string): string | null {
   return null;
 }
 
-function parseToolParams(params: string): Record<string, any> {
-  const result: Record<string, any> = {};
+type ToolParams = Record<string, string | number | boolean>;
+
+function parseToolParams(params: string): ToolParams {
+  const result: ToolParams = {};
   const paramPattern = /(\w+)=([^\s]+)/g;
   let match;
   
@@ -144,7 +146,7 @@ function evaluateSafeMath(expression: string): number | string {
   const safeExpression = expression.replace(/[^0-9+\-*/.() ]/g, '');
   try {
     // Use Function constructor for safe evaluation (limited scope)
-    return Function(`"use strict"; return (${safeExpression})`)();
+    return new Function(`"use strict"; return (${safeExpression})`)() as number;
   } catch {
     return 'Error: Invalid expression';
   }

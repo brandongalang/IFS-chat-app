@@ -102,27 +102,29 @@ ${colorConfig
 
 const ChartTooltip = RechartsPrimitive.Tooltip
 
-type DatumValue = number | string | Array<number | string>
+
+type Datum = Record<string, unknown>
 
 type TooltipItem = {
   name?: string
-  value?: DatumValue
+  value?: number | string | Array<number | string>
   color?: string
   dataKey?: string | number
-  payload: Record<string, any>
+  payload: Datum
 }
+
 
 type ChartTooltipContentProps = React.HTMLAttributes<HTMLDivElement> & {
   active?: boolean
   payload?: TooltipItem[]
-  label?: any
-  labelFormatter?: (label: any, payload: TooltipItem[]) => React.ReactNode
+  label?: string | number
+  labelFormatter?: (label: string | number, payload: TooltipItem[]) => React.ReactNode
   formatter?: (
-    value: DatumValue,
+    value: number | string | Array<number | string>,
     name: string,
     item: TooltipItem,
     index: number,
-    raw: any
+    raw: TooltipItem[]
   ) => React.ReactNode
   hideLabel?: boolean
   hideIndicator?: boolean
@@ -173,7 +175,7 @@ const ChartTooltipContent = React.forwardRef<
       if (labelFormatter) {
         return (
           <div className={cn("font-medium", labelClassName)}>
-            {labelFormatter(value, payload)}
+            {labelFormatter(value as string | number, payload)}
           </div>
         )
       }
@@ -211,8 +213,8 @@ const ChartTooltipContent = React.forwardRef<
         <div className="grid gap-1.5">
           {payload.map((item: TooltipItem, index: number) => {
             const key = `${nameKey || item.name || item.dataKey || "value"}`
-            const itemConfig = getPayloadConfigFromPayload(config, item as unknown as any, key)
-            const indicatorColor = (color as string | undefined) || (item.payload as any).fill || item.color
+            const itemConfig = getPayloadConfigFromPayload(config, item, key)
+            const indicatorColor = color || item.payload.fill || item.color
 
             return (
               <div
@@ -223,7 +225,7 @@ const ChartTooltipContent = React.forwardRef<
                 )}
               >
                 {formatter && item?.value !== undefined && item.name ? (
-                  formatter(item.value, item.name, item, index, item.payload)
+                  formatter(item.value, item.name, item, index, payload)
                 ) : (
                   <>
                     {itemConfig?.icon ? (
@@ -241,7 +243,7 @@ const ChartTooltipContent = React.forwardRef<
                               "my-0.5": nestLabel && indicator === "dashed",
                             }
                           )}
-                          style={
+                          style={ 
                             {
                               "--color-bg": indicatorColor,
                               "--color-border": indicatorColor,
@@ -320,7 +322,7 @@ const ChartLegendContent = React.forwardRef<
       >
         {payload.map((item: LegendItem) => {
           const key = `${nameKey || item.dataKey || "value"}`
-          const itemConfig = getPayloadConfigFromPayload(config, item as unknown as any, key)
+          const itemConfig = getPayloadConfigFromPayload(config, item, key)
 
           return (
             <div
@@ -352,7 +354,7 @@ ChartLegendContent.displayName = "ChartLegend"
 // Helper to extract item config from a payload.
 function getPayloadConfigFromPayload(
   config: ChartConfig,
-  payload: unknown,
+  payload: Datum,
   key: string
 ) {
   if (typeof payload !== "object" || payload === null) {

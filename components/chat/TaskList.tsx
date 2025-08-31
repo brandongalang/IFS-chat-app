@@ -8,6 +8,10 @@ interface TaskListProps {
   tasks: TaskEvent[] | undefined
 }
 
+interface MetaWithFiles {
+    files: { name: string }[]
+}
+
 export function TaskList({ tasks }: TaskListProps) {
   if (!tasks || tasks.length === 0) return null
 
@@ -25,9 +29,9 @@ export function TaskList({ tasks }: TaskListProps) {
               ) : (
                 <TaskItem>{t.details}</TaskItem>
               )}
-              {t.meta && Array.isArray((t as any).meta?.files) && (
+              {t.meta && Array.isArray((t.meta as MetaWithFiles)?.files) && (
                 <div className="pt-2 flex flex-wrap gap-2">
-                  {(t as any).meta.files.map((f: any, i: number) => (
+                  {(t.meta as MetaWithFiles).files.map((f: { name: string }, i: number) => (
                     <TaskItemFile key={i}>{f?.name ?? 'file'}</TaskItemFile>
                   ))}
                 </div>
@@ -39,4 +43,3 @@ export function TaskList({ tasks }: TaskListProps) {
     </div>
   )
 }
-
