@@ -1,0 +1,29 @@
+{
+  "mappings": [
+    {
+      "paths": ["app/garden/**", "components/garden/**", "mastra/tools/part-tools.ts"],
+      "docs": ["docs/features/parts-garden.md"]
+    },
+    {
+      "paths": ["app/check-in/**", "components/check-in/**"],
+      "docs": ["docs/features/check-ins.md"]
+    },
+    {
+      "paths": ["components/auth/**", "app/auth/**", "supabase/migrations/**"],
+      "docs": ["docs/features/authentication-google.md"]
+    },
+    {
+      "paths": ["app/chat/**", "hooks/useChat.ts", "lib/database/**"],
+      "docs": ["docs/features/chat.md"]
+    },
+    {
+      "paths": ["mastra/tools/**", "mastra/agents/**", "lib/insights/generator.ts"],
+      "docs": ["docs/features/agent-tools.md"]
+    },
+    {
+      "paths": ["app/api/insights/**", "lib/insights/**"],
+      "docs": ["docs/features/insights.md"]
+    }
+  ]
+}
+
