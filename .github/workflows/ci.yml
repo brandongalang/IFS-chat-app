@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  security-events: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -23,10 +24,14 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Gitleaks
         uses: gitleaks/gitleaks-action@v2
-      - name: Run Gitleaks
+      - name: Run Gitleaks (with SARIF)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gitleaks detect --source=. --no-git --verbose
+        run: gitleaks detect --source=. --no-git --report-format sarif --report-path gitleaks.sarif --verbose
+      - name: Upload SARIF to Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gitleaks.sarif
  
    build:
      name: Typecheck, Lint, and Build
