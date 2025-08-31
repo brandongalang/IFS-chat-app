@@ -102,7 +102,7 @@ export async function getActiveParts(input: z.infer<typeof getActivePartsSchema>
       .from('parts')
       .select('*')
       .eq('user_id', userId)
-      .order('last_active', { ascending: false, nulls: 'last' })
+      .order('last_active', { ascending: false, nullsFirst: false })
       .limit(validated.limit);
 
     if (error) return { success: false, error: `Database error: ${error.message}` };

@@ -45,9 +45,9 @@ export async function reconstructMemory(userId: string): Promise<UserMemory> {
   let startVersion = 0
 
   if (checkpointRows && checkpointRows.length > 0) {
-    const cp = checkpointRows[0] as any
+    const cp = checkpointRows[0]
     base = (cp.full_snapshot_content as UserMemory) || INITIAL_USER_MEMORY
-    startVersion = cp.version as number
+    startVersion = cp.version
   }
 
   // Apply patches since checkpoint
@@ -62,7 +62,7 @@ export async function reconstructMemory(userId: string): Promise<UserMemory> {
 
   let doc: UserMemory = base
   for (const row of patches || []) {
-    const ops = (row as any).patch as Operation[]
+    const ops = row.patch as Operation[]
     // fast-json-patch mutates by default when applyPatch(doc, ops).newDocument if mutateDocument=true
     const result = applyPatch(structuredClone(doc), ops, /*validate*/ false, /*mutateDocument*/ false)
     doc = result.newDocument as UserMemory
@@ -81,7 +81,7 @@ export async function computeNextVersion(userId: string): Promise<number> {
     .limit(1)
 
   if (error) throw error
-  const last = data && data.length ? (data[0] as any).version as number : 0
+  const last = data && data.length ? data[0].version : 0
   return last + 1
 }
 
@@ -97,15 +97,15 @@ export async function saveNewSnapshot(params: {
   const isCheckpoint = version % CHECKPOINT_FREQUENCY === 0
   const supabase = createAdminClient()
 
-  const insertPayload: any = {
+  const insertPayload: Record<string, unknown> = {
     user_id: params.userId,
     version,
-    patch: patch as any,
+    patch: patch,
     is_full_snapshot: isCheckpoint,
     source_description: params.source || 'daily-update',
   }
   if (isCheckpoint) {
-    insertPayload.full_snapshot_content = params.next as any
+    insertPayload.full_snapshot_content = params.next
   }
 
   const { error } = await supabase.from('user_memory_snapshots').insert(insertPayload)
@@ -114,8 +114,14 @@ export async function saveNewSnapshot(params: {
   return { version, saved: true, isCheckpoint }
 }
 
+interface TodayData {
+    sessions: Record<string, unknown>[]
+    insights: Record<string, unknown>[]
+    checkIns: Record<string, unknown>[]
+}
+
 // Fallback: if model key missing or error, return a light touch update
-async function fallbackUpdate(old: UserMemory, _daily: any): Promise<UserMemory> {
+async function fallbackUpdate(old: UserMemory): Promise<UserMemory> {
   return {
     ...old,
     version: old.version + 1,
@@ -126,10 +132,10 @@ async function fallbackUpdate(old: UserMemory, _daily: any): Promise<UserMemory>
 export async function generateMemoryUpdate(params: {
   userId: string
   oldMemory: UserMemory
-  todayData: { sessions: any[]; insights: any[]; checkIns: any[] }
+  todayData: TodayData
 }): Promise<UserMemory> {
   const apiKey = process.env.OPENROUTER_API_KEY
-  if (!apiKey) return fallbackUpdate(params.oldMemory, params.todayData)
+  if (!apiKey) return fallbackUpdate(params.oldMemory)
 
   const provider = createOpenRouter({ apiKey })
 
@@ -206,7 +212,7 @@ Output constraints:
     }
   } catch (e) {
     console.error('generateMemoryUpdate error:', e)
-    return fallbackUpdate(params.oldMemory, params.todayData)
+    return fallbackUpdate(params.oldMemory)
   }
 }
 
@@ -237,13 +243,13 @@ export async function listActiveUsersSince(isoCutoff: string): Promise<string[]>
   if (cErr) throw cErr
 
   const ids = new Set<string>()
-  for (const r of sessions || []) ids.add((r as any).user_id)
-  for (const r of insights || []) ids.add((r as any).user_id)
-  for (const r of checkIns || []) ids.add((r as any).user_id)
+  for (const r of sessions || []) ids.add(r.user_id)
+  for (const r of insights || []) ids.add(r.user_id)
+  for (const r of checkIns || []) ids.add(r.user_id)
   return [...ids]
 }
 
-export async function loadTodayData(userId: string, isoCutoff: string): Promise<{ sessions: any[]; insights: any[]; checkIns: any[] }> {
+export async function loadTodayData(userId: string, isoCutoff: string): Promise<TodayData> {
   const supabase = createAdminClient()
 
   const { data: sessions, error: sErr } = await supabase
@@ -275,4 +281,3 @@ export async function loadTodayData(userId: string, isoCutoff: string): Promise<
 
   return { sessions: sessions || [], insights: insights || [], checkIns: checkIns || [] }
 }
-

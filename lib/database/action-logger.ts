@@ -27,7 +27,12 @@ export interface ActionMetadata {
   fieldChanged?: string
   evidenceAdded?: boolean
   categoryChange?: { from: string; to: string }
-  [key: string]: any
+  [key: string]: unknown
+}
+
+export interface DataObject {
+    id: string;
+    [key: string]: unknown;
 }
 
 export interface AgentAction {
@@ -36,8 +41,8 @@ export interface AgentAction {
   action_type: ActionType
   target_table: string
   target_id: string
-  old_state: any
-  new_state: any
+  old_state: DataObject | null
+  new_state: DataObject | null
   metadata: ActionMetadata
   created_at: string
   created_by: string
@@ -61,9 +66,9 @@ export class DatabaseActionLogger {
   /**
    * Log and execute an INSERT operation with rollback capability
    */
-  async loggedInsert<T>(
+  async loggedInsert<T extends DataObject>(
     table: string,
-    data: any,
+    data: Partial<T>,
     userId: string,
     actionType: ActionType,
     metadata: ActionMetadata = {}
@@ -94,10 +99,10 @@ export class DatabaseActionLogger {
   /**
    * Log and execute an UPDATE operation with rollback capability
    */
-  async loggedUpdate<T>(
+  async loggedUpdate<T extends DataObject>(
     table: string,
     id: string,
-    updates: any,
+    updates: Partial<T>,
     userId: string,
     actionType: ActionType,
     metadata: ActionMetadata = {}
@@ -172,7 +177,7 @@ export class DatabaseActionLogger {
 
     return (data || []).map(action => ({
       id: action.id,
-      summary: this.generateActionSummary(action),
+      summary: this.generateActionSummary(action as AgentAction),
       timestamp: action.created_at,
       canRollback: !action.rolled_back,
       actionType: action.action_type as ActionType,
@@ -217,7 +222,7 @@ export class DatabaseActionLogger {
       .from('agent_actions')
       .select('*')
       .eq('id', actionId)
-      .single()
+      .single<AgentAction>()
 
     if (error || !action) {
       return {
@@ -284,8 +289,8 @@ export class DatabaseActionLogger {
     actionType: ActionType
     targetTable: string
     targetId: string
-    oldState: any
-    newState: any
+    oldState: DataObject | null
+    newState: DataObject | null
     metadata: ActionMetadata
   }) {
     const { error } = await this.supabase
@@ -310,8 +315,8 @@ export class DatabaseActionLogger {
   /**
    * Generate human-readable summary of an action
    */
-  private generateActionSummary(action: any): string {
-    const metadata = action.metadata as ActionMetadata
+  private generateActionSummary(action: AgentAction): string {
+    const metadata = action.metadata
     const partName = metadata.partName || 'Unknown Part'
     
     switch (action.action_type) {
@@ -403,20 +408,20 @@ const hasSupabase =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.length > 20
 
 class NoopActionLogger {
-  async loggedInsert<T>(_table: string, data: any, _userId: string, _actionType: ActionType, _metadata: ActionMetadata = {}): Promise<T> {
+  async loggedInsert<T extends DataObject>(_table: string, data: Partial<T>): Promise<T> {
     // Return the data as-is to simulate insert result
-    return data as T
+    return { ...data, id: 'noop' } as T
   }
-  async loggedUpdate<T>(_table: string, _id: string, updates: any, _userId: string, _actionType: ActionType, _metadata: ActionMetadata = {}): Promise<T> {
-    return updates as T
+  async loggedUpdate<T extends DataObject>(_table: string, id: string, updates: Partial<T>): Promise<T> {
+    return { ...updates, id } as T
   }
-  async getRecentActions(_userId: string, _limit = 10, _actionTypes?: ActionType[], _sessionId?: string, _withinMinutes?: number) {
+  async getRecentActions() {
     return [] as ActionSummary[]
   }
   async rollbackByDescription(_userId: string, description: string) {
     return { success: false, message: `Rollback unavailable in dev (no Supabase). Requested: ${description}` }
   }
-  async rollbackAction(_actionId: string) {
+  async rollbackAction() {
     return { success: false, message: 'Rollback unavailable in dev (no Supabase).' }
   }
 }

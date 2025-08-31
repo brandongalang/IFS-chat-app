@@ -81,7 +81,7 @@ export async function createPartStub(input: z.infer<typeof createPartStubSchema>
 
     const data = await actionLogger.loggedInsert<PartRow>(
       'parts',
-      partInsert,
+      partInsert as any,
       userId,
       'create_emerging_part', // Using existing action type for consistency
       {
