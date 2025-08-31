@@ -1,4 +1,3 @@
-import { createTool } from '@mastra/core'
 import { createServerClient } from '@supabase/ssr'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import { z } from 'zod'
@@ -403,7 +402,7 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
     // Use action logger for INSERT with rollback capability
     const data = await actionLogger.loggedInsert<PartRow>(
       'parts',
-      partInsert,
+      partInsert as any,
       userId,
       'create_emerging_part',
       {
@@ -463,7 +462,7 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
     }
 
 // Prepare update object
-    const updates: PartUpdate = {
+    const updates: any = {
       ...validated.updates,
       last_active: new Date().toISOString()
     }
@@ -471,7 +470,11 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
     // If updating visualization, merge with existing
     if (validated.updates.visualization) {
       const currentVis = (currentPart.visualization as any) || {}
-      updates.visualization = { ...currentVis, ...validated.updates.visualization }
+      const nextVis = { ...currentVis, ...validated.updates.visualization }
+      if (typeof (nextVis as any).energyLevel !== 'number') {
+        (nextVis as any).energyLevel = currentVis.energyLevel ?? 0.5
+      }
+      updates.visualization = nextVis as any
     }
 
     // Only update identification confidence if explicitly requested
@@ -535,9 +538,9 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
     const data = await actionLogger.loggedUpdate<PartRow>(
       'parts',
       validated.partId,
-      updates,
+      updates as any,
       userId,
-      actionType,
+      actionType as any,
       {
         partName: currentPart.name,
         changeDescription,
@@ -817,10 +820,10 @@ if (typeof window === 'undefined' && dev.enabled && serviceRole) {
       }
 
       try {
-        const updated = await actionLogger.loggedUpdate<PartRelationshipRow>(
+    const updated = await actionLogger.loggedUpdate<PartRelationshipRow>(
           'part_relationships',
           existing.id,
-          updates,
+          updates as any,
           userId,
           'update_relationship',
           {
@@ -885,7 +888,7 @@ if (typeof window === 'undefined' && dev.enabled && serviceRoleCreate) {
 
     const created = await actionLogger.loggedInsert<PartRelationshipRow>(
       'part_relationships',
-      insert,
+      insert as any,
       userId,
       'create_relationship',
       {
@@ -904,104 +907,4 @@ if (typeof window === 'undefined' && dev.enabled && serviceRoleCreate) {
   }
 }
 
-// Export tool definitions for Mastra using createTool
-export const searchPartsTool = createTool({
-  id: 'searchParts',
-  description: 'Search for parts based on query, status, or category',
-  inputSchema: searchPartsSchema,
-  execute: async ({ context }) => {
-    const result = await searchParts(context)
-    if (!result.success) {
-      throw new Error(result.error)
-    }
-    return result.data
-  }
-})
-
-export const getPartByIdTool = createTool({
-  id: 'getPartById',
-  description: 'Get a specific part by its ID',
-  inputSchema: getPartByIdSchema,
-  execute: async ({ context }) => {
-    const result = await getPartById(context)
-    if (!result.success) {
-      throw new Error(result.error)
-    }
-    return result.data
-  }
-})
-
-export const getPartDetailTool = createTool({
-  id: 'getPartDetail',
-  description: "Retrieves a complete dossier for a given part, including its core attributes, all of its relationships, and its most recent evidence log.",
-  inputSchema: getPartDetailSchema,
-  execute: async ({ context }) => {
-    const result = await getPartDetail(context)
-    if (!result.success) {
-      throw new Error(result.error)
-    }
-    return result.data
-  }
-})
-
-export const createEmergingPartTool = createTool({
-  id: 'createEmergingPart',
-  description: 'Create a new emerging part (requires 3+ evidence and user confirmation)',
-  inputSchema: createEmergingPartSchema,
-  execute: async ({ context }) => {
-    const result = await createEmergingPart(context)
-    if (!result.success) {
-      throw new Error(result.error)
-    }
-    return result.data
-  }
-})
-
-export const updatePartTool = createTool({
-  id: 'updatePart',
-  description: 'Update an existing part with confidence increment and audit trail',
-  inputSchema: updatePartSchema,
-  execute: async ({ context }) => {
-    const result = await updatePart(context)
-    if (!result.success) {
-      throw new Error(result.error)
-    }
-    return result.data
-  }
-})
-
-export const getPartRelationshipsTool = createTool({
-  id: 'getPartRelationships',
-  description: 'Get part relationships with optional filtering by part, type, status, and include part details',
-  inputSchema: getPartRelationshipsSchema,
-  execute: async ({ context }) => {
-    const result = await getPartRelationships(context)
-    if (!result.success) {
-      throw new Error(result.error)
-    }
-    return result.data
-  }
-})
-
-export const logRelationshipTool = createTool({
-  id: 'logRelationship',
-  description: 'Create or update a relationship between two parts; optionally append a dynamic observation and adjust polarization.',
-  inputSchema: logRelationshipSchema,
-  execute: async ({ context }) => {
-    const result = await logRelationship(context)
-    if (!result.success) {
-      throw new Error(result.error)
-    }
-    return result.data
-  }
-})
-
-export const partTools = {
-  searchParts: searchPartsTool,
-  getPartById: getPartByIdTool,
-  getPartDetail: getPartDetailTool,
-  createEmergingPart: createEmergingPartTool,
-  updatePart: updatePartTool,
-  getPartRelationships: getPartRelationshipsTool,
-  logRelationship: logRelationshipTool
-}
+// (Mastra tool definitions moved to './part-tools.mastra.ts' to avoid importing @mastra/core from client code)
