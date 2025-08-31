@@ -2,6 +2,13 @@
 
 This document outlines features and improvements that were part of the initial design but have not yet been implemented. They are recorded here for future development cycles.
 
+## 0. Pending Deployment Configuration
+
+- APP_BASE_URL (for scheduled cron): Set to your deployed app’s base URL (e.g. https://your-app.com)
+- CRON_SECRET: Generate a random string; store as Actions secret and in app env so /api/cron endpoints can validate x-cron-key
+- Location to add: GitHub > Settings > Secrets and variables > Actions
+- After deployment, update memory-update-cron.yml secrets accordingly.
+
 ## 1. Implement the `potential_refinements` Table
 
 - **Purpose:** To store AI-generated suggestions for "Part Refinements" that the user has denied.

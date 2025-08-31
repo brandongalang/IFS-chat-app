@@ -1,0 +1,17 @@
+title = "IFS Gitleaks Config"
+
+[allowlist]
+paths = [
+  "node_modules/",
+  ".next/",
+  ".mastra/output/",
+  ".obsidian/",
+  "coverage/",
+  "supabase/.temp/"
+]
+
+# Optional: allowlist env VAR NAMES that are public by design (not values)
+# Uncomment if you see false positives on these names
+# regexes = [
+#   '''NEXT_PUBLIC_[A-Z0-9_]+'''
+# ]
