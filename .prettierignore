@@ -1,0 +1,13 @@
+# Ignore build output and vendor dirs
+.next/
+node_modules/
+.mastra/output/
+coverage/
+
+# Logs and OS files
+*.log
+.DS_Store
+
+# Generated
+supabase/.temp/
+

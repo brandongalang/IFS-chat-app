@@ -14,7 +14,11 @@
     "smoke:evidence": "tsx scripts/smoke-evidence.ts",
     "smoke:relationships": "tsx scripts/smoke-relationships.ts",
     "seed:personas": "tsx scripts/seed-personas.ts",
-    "import:fixtures": "tsx scripts/import-persona-fixtures.ts --dir seeds/personas/data"
+    "import:fixtures": "tsx scripts/import-persona-fixtures.ts --dir seeds/personas/data",
+    "scripts:verify": "tsx scripts/verify-scripts.ts",
+    "migrations:verify": "tsx scripts/verify-migrations.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@ai-sdk/react": "^2.0.26",
@@ -96,6 +100,7 @@
     "dotenv": "^17.2.1",
     "eslint": "^9",
     "eslint-config-next": "15.1.7",
+    "prettier": "^3.3.3",
     "supabase": "^2.39.2",
     "tsx": "^4.19.2",
     "typescript": "~5.8.3",
