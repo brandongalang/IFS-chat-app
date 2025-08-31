@@ -5,7 +5,7 @@ import { resolveUserId } from '@/config/dev';
 import type { Database, Json } from '@/lib/types/database';
 
 async function saveInsightsToDb(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   insights: any[]
 ): Promise<boolean> {
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const userId = resolveUserId(body.userId);
-    const supabase = createClient();
+    const supabase = await createClient();
 
     console.log(`Insight generation request received for user: ${userId}`);
 

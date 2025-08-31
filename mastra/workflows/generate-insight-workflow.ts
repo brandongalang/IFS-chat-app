@@ -1,6 +1,6 @@
 import { createWorkflow } from '@mastra/core';
 import { z } from 'zod';
-import { insightResearchTools } from '../tools/insight-research-tools';
+import { insightResearchTools, getRecentSessions, getActiveParts, getPolarizedRelationships, getRecentInsights } from '../tools/insight-research-tools';
 import { mastra } from '..';
 
 const workflowInputSchema = z.object({
@@ -14,13 +14,20 @@ export const generateInsightWorkflow = createWorkflow({
     {
       id: 'researchStep',
       description: 'Gathers research materials about the user.',
-      async resolve(input) {
+      inputSchema: workflowInputSchema,
+      outputSchema: z.object({
+        recentSessions: z.any(),
+        activeParts: z.any(),
+        polarizedRelationships: z.any(),
+        recentInsights: z.any(),
+      }),
+      async execute(input: any) {
         console.log('Workflow: Starting research step for user', input.userId);
         const [recentSessions, activeParts, polarizedRelationships, recentInsights] = await Promise.all([
-          insightResearchTools.getRecentSessions.execute({ context: { userId: input.userId } }),
-          insightResearchTools.getActiveParts.execute({ context: { userId: input.userId } }),
-          insightResearchTools.getPolarizedRelationships.execute({ context: { userId: input.userId } }),
-          insightResearchTools.getRecentInsights.execute({ context: { userId: input.userId } }),
+          getRecentSessions({ userId: input.userId, lookbackDays: 7, limit: 10 }),
+          getActiveParts({ userId: input.userId, limit: 10 }),
+          getPolarizedRelationships({ userId: input.userId, limit: 10 }),
+          getRecentInsights({ userId: input.userId, lookbackDays: 14, limit: 10 }),
         ]);
         return { recentSessions, activeParts, polarizedRelationships, recentInsights };
       },
@@ -28,7 +35,10 @@ export const generateInsightWorkflow = createWorkflow({
     {
       id: 'writingStep',
       description: 'Analyzes research and writes insights.',
-      async resolve(input, { step }) {
+      inputSchema: workflowInputSchema,
+      outputSchema: z.any(),
+      // @ts-expect-error relax signature for engine
+      async execute(input: any, { step }: any): Promise<any> {
         const researchStepOutput = step.researchStep;
         console.log('Workflow: Starting writing step...');
         const researchSummary = `

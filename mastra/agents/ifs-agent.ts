@@ -1,6 +1,6 @@
 import { Agent } from '@mastra/core'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
-import { partTools } from '../tools/part-tools'
+import { partTools } from '../tools/part-tools.mastra'
 import { rollbackTools } from '../tools/rollback-tools'
 import { assessmentTools } from '../tools/assessment-tools'
 import { proposalTools } from '../tools/proposal-tools'

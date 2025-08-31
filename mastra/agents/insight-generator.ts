@@ -1,4 +1,5 @@
-import { createAgent } from '@mastra/core';
+import { Agent } from '@mastra/core';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
 import { insightResearchTools } from '../tools/insight-research-tools';
 
@@ -33,24 +34,11 @@ After completing your research, analyze your findings to identify opportunities 
 - The insights you generate must be valid JSON objects matching the provided schema.
 `;
 
-export const insightGeneratorAgent = createAgent({
-  id: 'insight-generator-agent',
-  prompt: {
-    system: systemPrompt,
-    tools: insightResearchTools,
-    functions: [
-      {
-        name: 'submitInsights',
-        description: 'Submit the generated insights for the user.',
-        inputSchema: z.object({
-          insights: z.array(insightSchema).describe('An array of 0 to 2 generated insights.'),
-        }),
-      },
-    ],
-  },
-  model: 'open-mistral-7b',
-  options: {
-    temperature: 0.7,
-    maxTokens: 3000,
-  },
+const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY })
+
+export const insightGeneratorAgent = new Agent({
+  name: 'insight-generator-agent',
+  instructions: systemPrompt,
+  tools: insightResearchTools as any,
+  model: openrouter('z-ai/glm-4.5'),
 });

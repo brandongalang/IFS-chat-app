@@ -14,12 +14,14 @@ const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
 })
 
 interface GraphNode {
-  id: string
-  name: string
-  category: PartCategory
-  emoji: string
-  last_charged_at: string | null
-  last_charge_intensity: number | null
+  id: string;
+  name: string;
+  category: PartCategory;
+  emoji: string;
+  last_charged_at: string | null;
+  last_charge_intensity: number | null;
+  x?: number;
+  y?: number;
 }
 
 interface GraphLink {
@@ -54,7 +56,7 @@ function getCategoryColor(category: PartCategory, charge: number): string {
 
 function drawNode(node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number, time: number) {
   const { x, y, name, category, emoji, last_charged_at, last_charge_intensity } = node
-  if (x === undefined || y === undefined) return
+  if (typeof x !== 'number' || typeof y !== 'number') return;
 
   const charge = calculateCurrentCharge(last_charged_at, last_charge_intensity)
   const color = getCategoryColor(category, charge)
@@ -135,12 +137,14 @@ export default function GardenPage() {
         }
 
         if (relationshipsResult.success && relationshipsResult.data) {
-          setRelationships(relationshipsResult.data as PartRelationshipRow[])
+          setRelationships(relationshipsResult.data)
         } else {
           throw new Error(relationshipsResult.error || 'Failed to load relationships.')
         }
-      } catch (e: any) {
-        setError(e.message)
+      } catch (e) {
+        if (e instanceof Error) {
+          setError(e.message)
+        }
       }
     }
     fetchData()
@@ -160,7 +164,7 @@ export default function GardenPage() {
 
     const links: GraphLink[] = relationships
       .map((rel) => {
-        const partIds = rel.parts as string[]
+        const partIds = rel.parts
         if (partIds && partIds.length === 2) {
           return { source: partIds[0], target: partIds[1], type: rel.type }
         }
@@ -171,13 +175,14 @@ export default function GardenPage() {
     return { nodes, links }
   }, [parts, relationships])
 
-  const handleNodeClick = useCallback((node: any) => {
-    window.location.href = `/garden/${node.id}`
-  }, [])
+  const handleNodeClick = useCallback((node: any, _event: MouseEvent) => {
+    const id = (node as GraphNode).id
+    if (id) window.location.href = `/garden/${id}`
+  }, []);
 
-  const handleDrawNode = useCallback((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
-    drawNode(node, ctx, globalScale, time)
-  }, [time])
+  const handleDrawNode = useCallback((node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+    drawNode(node, ctx, globalScale, time);
+  }, [time]);
 
   return (
     <div className="container mx-auto p-4 md:p-6 h-full flex flex-col">
@@ -195,24 +200,25 @@ export default function GardenPage() {
           <Card className="w-full h-[600px] overflow-hidden">
             <ForceGraph2D
               graphData={graphData}
-              nodeLabel="" // Disable default label
+              nodeLabel=""
               nodeVal={10}
               onNodeClick={handleNodeClick}
               linkDirectionalParticles={1}
               linkDirectionalParticleWidth={1.5}
               linkDirectionalParticleSpeed={0.008}
               backgroundColor="hsl(var(--card))"
-              linkColor={(link: any) => {
-                switch (link.type as RelationshipType) {
+              linkColor={(link: object) => {
+                const l = link as GraphLink;
+                switch (l.type) {
                   case 'protector-exile': return 'rgba(134, 239, 172, 0.7)'; // green-300
                   case 'polarized': return 'rgba(252, 165, 165, 0.8)'; // red-300
                   case 'allied': return 'rgba(147, 197, 253, 0.7)'; // blue-300
                   default: return 'rgba(156, 163, 175, 0.5)'; // gray-400
                 }
               }}
-              linkWidth={(link: any) => (link.type === 'protector-exile' ? 3 : 1)}
-              linkLineDash={(link: any) => (link.type === 'polarized' ? [4, 2] : [])}
-              nodeCanvasObject={handleDrawNode}
+              linkWidth={(link: object) => ((link as GraphLink).type === 'protector-exile' ? 3 : 1)}
+              linkLineDash={(link: object) => ((link as GraphLink).type === 'polarized' ? [4, 2] : [])}
+              nodeCanvasObject={(node, ctx, globalScale) => handleDrawNode(node as GraphNode, ctx, globalScale)}
             />
           </Card>
         )}

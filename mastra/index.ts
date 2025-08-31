@@ -4,7 +4,7 @@ import { createIfsAgent } from './agents/ifs-agent'
 import { insightGeneratorAgent } from './agents/insight-generator'
 import { generateInsightWorkflow } from './workflows/generate-insight-workflow'
 
-export const mastra = new Mastra({
+export const mastra = (new Mastra({
   logger: new PinoLogger({
     name: 'IFS-Therapy-App',
     level: 'info',
@@ -16,4 +16,4 @@ export const mastra = new Mastra({
   workflows: {
     generateInsightWorkflow,
   },
-})
+})) as any

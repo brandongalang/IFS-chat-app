@@ -17,13 +17,14 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { toast } from '@/hooks/use-toast'
+import { useToast } from '@/hooks/use-toast'
 
 interface PartActionsProps {
   part: PartRow
 }
 
 export function PartActions({ part }: PartActionsProps) {
+  const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
   const [isOpen, setIsOpen] = useState(false)
   const [name, setName] = useState(part.name)

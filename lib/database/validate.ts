@@ -2,12 +2,11 @@
 // Validates database schema, RLS policies, and data integrity
 
 import { createClient } from '../supabase/server'
-import type { Database } from '../types/database'
 
 interface ValidationResult {
   success: boolean
   message: string
-  details?: any
+  details?: unknown
 }
 
 interface ValidationSuite {
@@ -19,10 +18,15 @@ interface ValidationSuite {
 }
 
 export class DatabaseValidator {
-  private supabase: ReturnType<typeof createClient>
+  private supabase: Awaited<ReturnType<typeof createClient>>
 
-  constructor() {
-    this.supabase = createClient()
+  private constructor(supabase: Awaited<ReturnType<typeof createClient>>) {
+    this.supabase = supabase
+  }
+
+  static async create() {
+    const supabase = await createClient()
+    return new DatabaseValidator(supabase)
   }
 
   /**
@@ -98,15 +102,14 @@ export class DatabaseValidator {
     for (const table of requiredTables) {
       try {
         // Check if table exists and get its columns
-        const supabase = await this.supabase
-        const { data, error } = await supabase.rpc('get_table_columns', {
+        const { error } = await this.supabase.rpc('get_table_columns', {
           table_name: table.name
         }).single()
 
         if (error) {
           // Fallback: Try a simple select to check if table exists
-          const { error: selectError } = await (await this.supabase)
-            .from(table.name as any)
+          const { error: selectError } = await this.supabase
+            .from(table.name)
             .select('*')
             .limit(0)
 
@@ -148,7 +151,7 @@ export class DatabaseValidator {
     for (const table of tables) {
       try {
         // Check if RLS is enabled
-        const { data: rlsEnabled, error } = await (await this.supabase)
+        const { data: rlsEnabled, error } = await this.supabase
           .rpc('check_rls_enabled', { table_name: table })
 
         if (error) {
@@ -199,7 +202,7 @@ export class DatabaseValidator {
     for (const funcName of functions) {
       try {
         // Check if function exists by trying to get its definition
-        const { data, error } = await (await this.supabase)
+        const { error } = await this.supabase
           .rpc('get_function_definition', { function_name: funcName })
 
         if (error && error.code === '42883') {
@@ -243,7 +246,7 @@ export class DatabaseValidator {
 
     for (const indexName of expectedIndexes) {
       try {
-        const { data, error } = await (await this.supabase)
+        const { error } = await this.supabase
           .rpc('check_index_exists', { index_name: indexName })
 
         if (error) {
@@ -275,12 +278,12 @@ export class DatabaseValidator {
   /**
    * Test data isolation between users
    */
-  async testDataIsolation(userId1: string, userId2: string): Promise<ValidationResult[]> {
+  async testDataIsolation(userId1: string): Promise<ValidationResult[]> {
     const results: ValidationResult[] = []
 
     try {
       // Create test data for user 1
-      const { data: part1, error: createError } = await (await this.supabase)
+      const { data: part1, error: createError } = await this.supabase
         .from('parts')
         .insert({
           user_id: userId1,
@@ -300,7 +303,7 @@ export class DatabaseValidator {
       }
 
       // Try to access user 1's data as user 2 (should fail or return empty)
-      const { data: isolationTest, error: accessError } = await (await this.supabase)
+      const { data: isolationTest, error: accessError } = await this.supabase
         .from('parts')
         .select('*')
         .eq('user_id', userId1)
@@ -324,7 +327,7 @@ export class DatabaseValidator {
       }
 
       // Cleanup test data
-      await (await this.supabase)
+      await this.supabase
         .from('parts')
         .delete()
         .eq('id', part1.id)
@@ -382,7 +385,7 @@ Overall Status: ${results.overall ? '✅ PASSED' : '❌ FAILED'}
  * Quick validation function for use in API routes or tests
  */
 export async function quickValidate(): Promise<boolean> {
-  const validator = new DatabaseValidator()
+  const validator = await DatabaseValidator.create()
   const results = await validator.validateDatabase()
   return results.overall
 }
@@ -395,7 +398,7 @@ export async function detailedValidate(): Promise<{
   report: string
   results: ValidationSuite
 }> {
-  const validator = new DatabaseValidator()
+  const validator = await DatabaseValidator.create()
   const results = await validator.validateDatabase()
   const report = validator.generateReport(results)
   

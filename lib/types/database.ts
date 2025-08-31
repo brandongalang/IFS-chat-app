@@ -167,7 +167,8 @@ export interface UserStats {
 }
 
 export interface UserRow {
-  id: string
+  id: string;
+  [key: string]: unknown;
   email: string
   name: string | null
   settings: UserSettings
@@ -226,7 +227,8 @@ export interface PartEvidence {
 }
 
 export interface PartRow {
-  id: string
+  id: string;
+  [key: string]: unknown;
   user_id: string
   name: string
   status: PartStatus
@@ -402,7 +404,8 @@ export interface RelationshipDynamic {
 }
 
 export interface PartRelationshipRow {
-  id: string
+  id: string;
+  [key: string]: unknown;
   user_id: string
   parts: string[] // Array of part IDs
   type: RelationshipType
@@ -454,7 +457,8 @@ export type ProposalType = 'split' | 'merge' | 'reclassify'
 export type ProposalStatus = 'pending' | 'approved' | 'rejected' | 'executed'
 
 export interface PartChangeProposalRow {
-  id: string
+  id: string;
+  [key: string]: unknown;
   user_id: string
   type: ProposalType
   payload: Json
@@ -558,7 +562,8 @@ export interface InsightRating {
 }
 
 export interface InsightRow {
-  id: string
+  id: string;
+  [key: string]: unknown;
   user_id: string
   type: InsightType
   status: InsightStatus
@@ -606,16 +611,16 @@ export interface InsightUpdate {
 export interface ApiError {
   error: string
   code: string
-  details?: Json
+  details?: unknown
 }
 
-export interface ApiSuccess<T = any> {
+export interface ApiSuccess<T = unknown> {
   data: T
   message?: string
 }
 
 // Agent Tool Types
-export interface ToolResult<T = any> {
+export interface ToolResult<T = unknown> {
   success: boolean
   data?: T
   error?: string

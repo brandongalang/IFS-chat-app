@@ -51,10 +51,10 @@ You have access to part management tools to help track and work with discovered 
 The user can see their parts in a visual "garden". Your actions directly affect this visualization.
 - **Charge:** A part's "charge" represents how active or present it is. This is visualized with color and animation.
 - **Updating Charge:** When a user mentions a part is very active, loud, or strong, you should update its charge.
-- **How to Update:** Call `updatePart` and set two fields:
-  - `last_charge_intensity`: A number from 0.0 (calm) to 1.0 (highly active).
-  - `last_charged_at`: The current timestamp, using `new Date().toISOString()`.
-- **Example:** If the user says, "My inner critic is screaming at me today," you should call `updatePart` for the "Inner Critic" part with `{ "last_charge_intensity": 0.9, "last_charged_at": "..." }`. If they say "I feel a slight sense of my anxious part," you might use an intensity of 0.4.
+- **How to Update:** Call \`updatePart\` and set two fields:
+  - \`last_charge_intensity\`: A number from 0.0 (calm) to 1.0 (highly active).
+  - \`last_charged_at\`: The current timestamp, using \`new Date().toISOString()\`.
+- **Example:** If the user says, "My inner critic is screaming at me today," you should call \`updatePart\` for the "Inner Critic" part with \`{ "last_charge_intensity": 0.9, "last_charged_at": "..." }\`. If they say "I feel a slight sense of my anxious part," you might use an intensity of 0.4.
 
 **Rollback tools for when you make mistakes:**
 - getRecentActions: View recent actions you've taken that can be undone
