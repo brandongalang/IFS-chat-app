@@ -39,6 +39,23 @@ The main user-facing feature is the chat interface. The agent's capabilities wit
 5.  **Tool Execution:** The tool creates a new row in the `parts` table with the name "Critic" and a status of "emerging." It also logs this action in the `agent_actions` table.
 6.  **Agent (Response):** "Great. I've made a note of the Critic part. We can now add details to its profile or explore its role in your system."
 
+## Current Features (Index)
+
+This section provides a quick, human-readable map of shipped and in-progress features. Each entry links to a canonical feature page with full details and code anchors.
+
+- Parts Garden — Visual exploration UI for Parts. Status: shipped. See docs/features/parts-garden.md
+  - Key routes: /garden, /garden/[partId]. Key paths: app/garden/*, components/garden/*
+- Guided Check-ins — Morning and evening structured flows. Status: shipped. See docs/features/check-ins.md
+  - Key routes: /check-in/morning, /check-in/evening. Key paths: app/check-in/*, components/check-in/*
+- Chat — Conversational interface. Status: shipped. See docs/features/chat.md
+  - Key route: /chat. Key paths: app/chat/page.tsx, hooks/useChat.ts, lib/database/*
+- Authentication (Google) — OAuth via Google. Status: shipped. See docs/features/authentication-google.md
+  - Key paths: components/auth/*, app/auth/callback/route.ts, supabase/migrations/007_handle_new_users.sql
+- Agent Tools — Mastra tools and agent definitions. Status: shipped. See docs/features/agent-tools.md
+  - Key paths: mastra/tools/*, mastra/agents/*
+- Insights — Scaffolding for insights generation. Status: experimental. See docs/features/insights.md
+  - Key paths: app/api/insights/*, lib/insights/generator.ts
+
 ## Implementation Gaps & In-Progress Features
 
 The following features from the product vision are not yet fully implemented. This is a critical distinction for understanding the current user experience.
