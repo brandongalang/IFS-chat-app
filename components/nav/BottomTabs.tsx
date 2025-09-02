@@ -15,11 +15,11 @@ export function BottomTabs() {
   }
 
   const baseItem =
-    'block w-full h-full min-h-[44px] py-2 flex flex-col items-center justify-center gap-1 text-xs'
+    'block w-full h-full min-h-[56px] py-3 flex flex-col items-center justify-center gap-1 text-xs'
 
   return (
     <nav
-      className="relative border-t border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60"
+      className="relative border-t border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 pt-8 md:pt-10 pb-2"
       role="navigation"
       aria-label="Primary tabs"
     >
@@ -84,8 +84,8 @@ export function BottomTabs() {
       </div>
 
       {/* Floating + button */}
-      <div className="absolute inset-x-0 -top-6 flex justify-center">
-        <Link href="/chat" aria-label="Start a new chat">
+      <div className="absolute inset-x-0 -top-6 flex justify-center pointer-events-none">
+        <Link href="/chat" aria-label="Start a new chat" className="pointer-events-auto">
           <div className="size-14 rounded-full bg-primary text-primary-foreground shadow-xl grid place-items-center">
             <Plus className="w-7 h-7" />
           </div>
