@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import * as React from 'react'
+import { BackButton } from '@/components/common/BackButton'
 
 export function ComingSoonView({ featureName }: { featureName?: string }) {
   return (
@@ -12,13 +12,7 @@ export function ComingSoonView({ featureName }: { featureName?: string }) {
         <p className="text-xs text-muted-foreground mb-6">Feature: {featureName}</p>
       ) : null}
       <div className="flex justify-center">
-        <Link
-          href="/chat"
-          className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-primary-foreground text-sm font-medium hover:opacity-90"
-          data-testid="cs-back-to-chat"
-        >
-          Back to Chat
-        </Link>
+        <BackButton />
       </div>
     </main>
   )

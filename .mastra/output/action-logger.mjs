@@ -1,18 +1,15 @@
-import { createClient as createClient$1 } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) {
-    throw new Error(
-      "Missing Supabase environment variables. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env file and restart the dev server."
-    );
-  }
-  return createClient$1(url, anonKey);
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+  return createBrowserClient(url, key);
 }
 
 class DatabaseActionLogger {
-  supabase = createClient();
+  constructor() {
+    this.supabase = createClient();
+  }
   /**
    * Log and execute an INSERT operation with rollback capability
    */
@@ -215,6 +212,24 @@ class DatabaseActionLogger {
     return bestMatch;
   }
 }
-const actionLogger = new DatabaseActionLogger();
+const hasSupabase = typeof process.env.NEXT_PUBLIC_SUPABASE_URL === "string" && /^https?:\/\//.test(process.env.NEXT_PUBLIC_SUPABASE_URL) && typeof process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === "string" && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.length > 20;
+class NoopActionLogger {
+  async loggedInsert(_table, data) {
+    return { ...data, id: "noop" };
+  }
+  async loggedUpdate(_table, id, updates) {
+    return { ...updates, id };
+  }
+  async getRecentActions() {
+    return [];
+  }
+  async rollbackByDescription(_userId, description) {
+    return { success: false, message: `Rollback unavailable in dev (no Supabase). Requested: ${description}` };
+  }
+  async rollbackAction() {
+    return { success: false, message: "Rollback unavailable in dev (no Supabase)." };
+  }
+}
+const actionLogger = hasSupabase ? new DatabaseActionLogger() : new NoopActionLogger();
 
 export { actionLogger as a };

@@ -1,7 +1,7 @@
 import { createTool } from '@mastra/core';
 import { z } from 'zod';
 import { a as actionLogger } from '../action-logger.mjs';
-import '@supabase/supabase-js';
+import '@supabase/ssr';
 
 const getRecentActionsSchema = z.object({
   userId: z.string().uuid().describe("User ID to get recent actions for"),
@@ -63,11 +63,7 @@ async function rollbackByDescription(input) {
       validated.reason,
       validated.withinMinutes
     );
-    return {
-      success: result.success,
-      message: result.message,
-      actionType: result.actionType
-    };
+    return result;
   } catch (error) {
     return {
       success: false,
@@ -82,11 +78,7 @@ async function rollbackAction(input) {
       validated.actionId,
       validated.reason
     );
-    return {
-      success: result.success,
-      message: result.message,
-      actionType: result.actionType
-    };
+    return result;
   } catch (error) {
     return {
       success: false,
@@ -101,7 +93,7 @@ const getRecentActionsTool = createTool({
   execute: async ({ context }) => {
     const result = await getRecentActions(context);
     if (!result.success) {
-      throw new Error(result.error);
+      throw new Error(result.error || result.message || "Unknown error");
     }
     return result.data;
   }
@@ -113,12 +105,9 @@ const rollbackByDescriptionTool = createTool({
   execute: async ({ context }) => {
     const result = await rollbackByDescription(context);
     if (!result.success) {
-      throw new Error(result.error);
+      throw new Error(result.error || result.message || "Unknown error");
     }
-    return {
-      message: result.message,
-      actionType: result.actionType
-    };
+    return result;
   }
 });
 const rollbackActionTool = createTool({
@@ -128,12 +117,9 @@ const rollbackActionTool = createTool({
   execute: async ({ context }) => {
     const result = await rollbackAction(context);
     if (!result.success) {
-      throw new Error(result.error);
+      throw new Error(result.error || result.message || "Unknown error");
     }
-    return {
-      message: result.message,
-      actionType: result.actionType
-    };
+    return result;
   }
 });
 const rollbackTools = {
