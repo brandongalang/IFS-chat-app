@@ -19,7 +19,7 @@ export function BottomTabs() {
 
   return (
     <nav
-      className="relative border-t border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 pt-3 pb-2"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 pt-3 pb-2"
       role="navigation"
       aria-label="Primary tabs"
     >
