@@ -1,44 +1,8 @@
-import { createTool } from '@mastra/core';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { a as actionLogger } from './action-logger.mjs';
-
-const developmentConfig = {
-  enabled: (() => {
-    const val = process.env.IFS_DEV_MODE || process.env?.PUBLIC_IFS_DEV_MODE || process.env?.NEXT_PUBLIC_IFS_DEV_MODE || process.env?.VITE_IFS_DEV_MODE;
-    return val === "true";
-  })(),
-  defaultUserId: process.env.IFS_DEFAULT_USER_ID || process.env?.PUBLIC_IFS_DEFAULT_USER_ID || process.env?.NEXT_PUBLIC_IFS_DEFAULT_USER_ID || process.env?.VITE_IFS_DEFAULT_USER_ID || null,
-  verbose: (() => {
-    const val = process.env.IFS_VERBOSE || process.env?.PUBLIC_IFS_VERBOSE || process.env?.NEXT_PUBLIC_IFS_VERBOSE || process.env?.VITE_IFS_VERBOSE;
-    return val === "true";
-  })(),
-  disablePolarizationUpdate: (() => {
-    const val = process.env.IFS_DISABLE_POLARIZATION_UPDATE || process.env?.PUBLIC_IFS_DISABLE_POLARIZATION_UPDATE || process.env?.NEXT_PUBLIC_IFS_DISABLE_POLARIZATION_UPDATE || process.env?.VITE_IFS_DISABLE_POLARIZATION_UPDATE;
-    return val === "true";
-  })()
-};
-function resolveUserId(providedUserId) {
-  if (providedUserId) {
-    return providedUserId;
-  }
-  if (developmentConfig.enabled && developmentConfig.defaultUserId) {
-    if (developmentConfig.verbose) {
-      console.log(`[IFS-DEV] Using default user ID: ${developmentConfig.defaultUserId}`);
-    }
-    return developmentConfig.defaultUserId;
-  }
-  throw new Error("User ID is required. Set IFS_DEFAULT_USER_ID environment variable for development mode.");
-}
-function requiresUserConfirmation(providedConfirmation) {
-  return providedConfirmation !== true;
-}
-function devLog(message, data) {
-  if (developmentConfig.enabled && developmentConfig.verbose) {
-    console.log(`[IFS-DEV] ${message}`, data || "");
-  }
-}
+import { a as actionLogger } from '../action-logger.mjs';
+import { r as resolveUserId, d as devLog, b as requiresUserConfirmation, a as dev } from '../dev.mjs';
 
 const searchPartsSchema = z.object({
   query: z.string().optional().describe("Search query for part names or roles"),
@@ -49,6 +13,10 @@ const searchPartsSchema = z.object({
 });
 const getPartByIdSchema = z.object({
   partId: z.string().uuid().describe("The UUID of the part to retrieve"),
+  userId: z.string().uuid().optional().describe("User ID who owns the part (optional in development mode)")
+});
+const getPartDetailSchema = z.object({
+  partId: z.string().uuid().describe("The UUID of the part to retrieve details for"),
   userId: z.string().uuid().optional().describe("User ID who owns the part (optional in development mode)")
 });
 const createEmergingPartSchema = z.object({
@@ -74,6 +42,7 @@ const updatePartSchema = z.object({
   partId: z.string().uuid().describe("The UUID of the part to update"),
   userId: z.string().uuid().optional().describe("User ID who owns the part (optional in development mode)"),
   updates: z.object({
+    name: z.string().min(1).max(100).optional(),
     status: z.enum(["emerging", "acknowledged", "active", "integrated"]).optional(),
     category: z.enum(["manager", "firefighter", "exile", "unknown"]).optional(),
     age: z.number().min(0).max(100).optional(),
@@ -82,7 +51,13 @@ const updatePartSchema = z.object({
     emotions: z.array(z.string()).optional(),
     beliefs: z.array(z.string()).optional(),
     somaticMarkers: z.array(z.string()).optional(),
-    confidenceBoost: z.number().min(0).max(1).optional().describe("Amount to adjust identification confidence by (explicit only)")
+    visualization: z.object({
+      emoji: z.string(),
+      color: z.string()
+    }).optional(),
+    confidenceBoost: z.number().min(0).max(1).optional().describe("Amount to adjust identification confidence by (explicit only)"),
+    last_charged_at: z.string().datetime().optional().describe("Timestamp for when the part's charge was last updated"),
+    last_charge_intensity: z.number().min(0).max(1).optional().describe("Intensity of the part's last charge (0 to 1)")
   }).describe("Fields to update"),
   evidence: z.object({
     type: z.enum(["direct_mention", "pattern", "behavior", "emotion"]),
@@ -120,17 +95,22 @@ const logRelationshipSchema = z.object({
   upsert: z.boolean().default(true).describe("Update existing relationship if it exists; otherwise create")
 });
 function getEnvVar(keys) {
-  const anyImportMeta = typeof import.meta !== "undefined" ? import.meta : void 0;
-  if (anyImportMeta?.env) {
+  const nodeEnv = typeof process !== "undefined" ? process.env : void 0;
+  if (nodeEnv) {
     for (const k of keys) {
-      const v = anyImportMeta.env[k];
+      const v = nodeEnv[k];
       if (v) return v;
     }
   }
-  const anyProcessEnv = typeof process !== "undefined" ? process.env : void 0;
-  if (anyProcessEnv) {
+  let metaEnv;
+  try {
+    metaEnv = Function("try { return import.meta && import.meta.env } catch (_) { return undefined }")();
+  } catch {
+    metaEnv = void 0;
+  }
+  if (metaEnv) {
     for (const k of keys) {
-      const v = anyProcessEnv[k];
+      const v = metaEnv[k];
       if (v) return v;
     }
   }
@@ -145,7 +125,7 @@ function getSupabaseClient() {
       "Your project's URL and Key are required to create a Supabase client!\n\nMissing NEXT_PUBLIC_SUPABASE_URL/VITE_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_ANON_KEY/VITE_SUPABASE_ANON_KEY.\nCheck your .env and ensure the Mastra dev server is loading it (npm run dev:mastra -- --env .env)."
     );
   }
-  const devEnabled = developmentConfig.enabled;
+  const devEnabled = dev.enabled;
   if (typeof window === "undefined" && devEnabled && serviceRole) {
     return createClient(url, serviceRole);
   }
@@ -190,7 +170,7 @@ async function searchParts(input) {
       confidence: 1
     };
   } catch (error) {
-    const errMsg = error instanceof Error ? developmentConfig.verbose ? error.stack || error.message : error.message : "Unknown error occurred";
+    const errMsg = error instanceof Error ? dev.verbose ? error.stack || error.message : error.message : "Unknown error occurred";
     return { success: false, error: errMsg };
   }
 }
@@ -217,6 +197,38 @@ async function getPartById(input) {
     return {
       success: true,
       data,
+      confidence: 1
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred"
+    };
+  }
+}
+async function getPartDetail(input) {
+  try {
+    const validated = getPartDetailSchema.parse(input);
+    const userId = resolveUserId(validated.userId);
+    const supabase = getSupabaseClient();
+    devLog("getPartDetail called", { userId, partId: validated.partId });
+    const { data: part, error: partError } = await supabase.from("parts").select("*").eq("id", validated.partId).eq("user_id", userId).single();
+    if (partError) {
+      return { success: false, error: `Database error (part): ${partError.message}` };
+    }
+    if (!part) {
+      return { success: false, error: "Part not found" };
+    }
+    const { data: relationships, error: relationshipsError } = await supabase.from("part_relationships").select("*").eq("user_id", userId).contains("parts", [validated.partId]);
+    if (relationshipsError) {
+      return { success: false, error: `Database error (relationships): ${relationshipsError.message}` };
+    }
+    return {
+      success: true,
+      data: {
+        ...part,
+        relationships: relationships || []
+      },
       confidence: 1
     };
   } catch (error) {
@@ -335,6 +347,14 @@ async function updatePart(input) {
       ...validated.updates,
       last_active: (/* @__PURE__ */ new Date()).toISOString()
     };
+    if (validated.updates.visualization) {
+      const currentVis = currentPart.visualization || {};
+      const nextVis = { ...currentVis, ...validated.updates.visualization };
+      if (typeof nextVis.energyLevel !== "number") {
+        nextVis.energyLevel = currentVis.energyLevel ?? 0.5;
+      }
+      updates.visualization = nextVis;
+    }
     if (typeof validated.updates.confidenceBoost === "number") {
       updates.confidence = Math.min(1, Math.max(0, currentPart.confidence + validated.updates.confidenceBoost));
     }
@@ -361,7 +381,14 @@ async function updatePart(input) {
     }
     let actionType = "update_part_attributes";
     let changeDescription = "Updated part attributes";
-    if (typeof validated.updates.confidenceBoost === "number") {
+    if (validated.updates.name && validated.updates.name !== currentPart.name) {
+      changeDescription = `renamed part from "${currentPart.name}" to "${validated.updates.name}"`;
+    } else if (validated.updates.visualization) {
+      changeDescription = "updated part visualization";
+    } else if (typeof validated.updates.last_charge_intensity === "number") {
+      actionType = "update_part_charge";
+      changeDescription = `updated part charge to ${validated.updates.last_charge_intensity.toFixed(2)}`;
+    } else if (typeof validated.updates.confidenceBoost === "number") {
       actionType = "update_part_confidence";
       const toVal = updates.confidence ?? currentPart.confidence;
       const direction = validated.updates.confidenceBoost >= 0 ? "increased" : "decreased";
@@ -551,12 +578,12 @@ async function logRelationship(input) {
         devLog("logRelationship polarization compute", { currentPol, computedPol, delta, types: { current: typeof currentPol, computed: typeof computedPol, deltaType: typeof delta } });
       } catch {
       }
-      if (!developmentConfig.disablePolarizationUpdate) {
+      if (!dev.disablePolarizationUpdate) {
         if (computedPol !== currentPol) updates.polarization_level = computedPol;
       }
       updates.updated_at = nowIso;
       const serviceRole = getEnvVar(["SUPABASE_SERVICE_ROLE_KEY"]);
-      if (typeof window === "undefined" && developmentConfig.enabled && serviceRole) {
+      if (typeof window === "undefined" && dev.enabled && serviceRole) {
         try {
           devLog("logRelationship update payload", updates);
           const { data: updatedDirect, error: updErr } = await supabase.from("part_relationships").update(updates).eq("id", existing.id).eq("user_id", userId).select("*").single();
@@ -617,7 +644,7 @@ async function logRelationship(input) {
       updated_at: nowIso
     };
     const serviceRoleCreate = getEnvVar(["SUPABASE_SERVICE_ROLE_KEY"]);
-    if (typeof window === "undefined" && developmentConfig.enabled && serviceRoleCreate) {
+    if (typeof window === "undefined" && dev.enabled && serviceRoleCreate) {
       const { data: createdDirect, error: insErr } = await supabase.from("part_relationships").insert(insert).select("*").single();
       if (insErr || !createdDirect) {
         return { success: false, error: `Failed to create relationship (service role): ${insErr?.message || "unknown"}` };
@@ -657,85 +684,5 @@ async function logRelationship(input) {
     };
   }
 }
-const searchPartsTool = createTool({
-  id: "searchParts",
-  description: "Search for parts based on query, status, or category",
-  inputSchema: searchPartsSchema,
-  execute: async ({ context }) => {
-    const result = await searchParts(context);
-    if (!result.success) {
-      throw new Error(result.error);
-    }
-    return result.data;
-  }
-});
-const getPartByIdTool = createTool({
-  id: "getPartById",
-  description: "Get a specific part by its ID",
-  inputSchema: getPartByIdSchema,
-  execute: async ({ context }) => {
-    const result = await getPartById(context);
-    if (!result.success) {
-      throw new Error(result.error);
-    }
-    return result.data;
-  }
-});
-const createEmergingPartTool = createTool({
-  id: "createEmergingPart",
-  description: "Create a new emerging part (requires 3+ evidence and user confirmation)",
-  inputSchema: createEmergingPartSchema,
-  execute: async ({ context }) => {
-    const result = await createEmergingPart(context);
-    if (!result.success) {
-      throw new Error(result.error);
-    }
-    return result.data;
-  }
-});
-const updatePartTool = createTool({
-  id: "updatePart",
-  description: "Update an existing part with confidence increment and audit trail",
-  inputSchema: updatePartSchema,
-  execute: async ({ context }) => {
-    const result = await updatePart(context);
-    if (!result.success) {
-      throw new Error(result.error);
-    }
-    return result.data;
-  }
-});
-const getPartRelationshipsTool = createTool({
-  id: "getPartRelationships",
-  description: "Get part relationships with optional filtering by part, type, status, and include part details",
-  inputSchema: getPartRelationshipsSchema,
-  execute: async ({ context }) => {
-    const result = await getPartRelationships(context);
-    if (!result.success) {
-      throw new Error(result.error);
-    }
-    return result.data;
-  }
-});
-const logRelationshipTool = createTool({
-  id: "logRelationship",
-  description: "Create or update a relationship between two parts; optionally append a dynamic observation and adjust polarization.",
-  inputSchema: logRelationshipSchema,
-  execute: async ({ context }) => {
-    const result = await logRelationship(context);
-    if (!result.success) {
-      throw new Error(result.error);
-    }
-    return result.data;
-  }
-});
-const partTools = {
-  searchParts: searchPartsTool,
-  getPartById: getPartByIdTool,
-  createEmergingPart: createEmergingPartTool,
-  updatePart: updatePartTool,
-  getPartRelationships: getPartRelationshipsTool,
-  logRelationship: logRelationshipTool
-};
 
-export { getPartRelationships as a, searchPartsTool as b, createEmergingPart as c, devLog as d, getPartByIdTool as e, createEmergingPartTool as f, getPartById as g, updatePartTool as h, getPartRelationshipsTool as i, logRelationshipTool as j, logRelationship as l, partTools as p, resolveUserId as r, searchParts as s, updatePart as u };
+export { createEmergingPart, getPartById, getPartDetail, getPartRelationships, logRelationship, searchParts, updatePart };

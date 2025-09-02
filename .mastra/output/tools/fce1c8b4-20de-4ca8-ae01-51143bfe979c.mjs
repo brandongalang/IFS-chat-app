@@ -2,18 +2,18 @@ import { createTool } from '@mastra/core';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { a as actionLogger } from '../action-logger.mjs';
-import { r as resolveUserId, d as devLog } from '../development.mjs';
+import { r as resolveUserId, d as devLog } from '../dev.mjs';
 
+const evidenceItemSchema = z.object({
+  type: z.enum(["direct_mention", "pattern", "behavior", "emotion"]).describe("Type of evidence"),
+  content: z.string().min(1).describe("Content of the evidence"),
+  confidence: z.number().min(0).max(1).describe("Confidence score for this evidence"),
+  sessionId: z.string().uuid().describe("Session ID where evidence was observed"),
+  timestamp: z.string().datetime().describe("Timestamp when evidence was observed")
+});
 const logEvidenceSchema = z.object({
   partId: z.string().uuid().describe("The UUID of the part to add evidence to"),
-  evidence: z.object({
-    type: z.enum(["direct_mention", "pattern", "behavior", "emotion"]).describe("Type of evidence"),
-    content: z.string().min(1).describe("Content of the evidence"),
-    confidence: z.number().min(0).max(1).describe("Confidence score for this evidence"),
-    sessionId: z.string().uuid().describe("Session ID where evidence was observed"),
-    timestamp: z.string().datetime().describe("Timestamp when evidence was observed")
-  }).describe("Evidence to add"),
+  evidence: z.union([evidenceItemSchema, z.array(evidenceItemSchema)]).describe("A single evidence object or an array of evidence objects to add"),
   userId: z.string().uuid().optional().describe("User ID who owns the part (optional in development mode)")
 });
 const findPatternsSchema = z.object({
@@ -46,13 +46,15 @@ const createSupabaseClient = () => {
 };
 const logEvidence = createTool({
   id: "logEvidence",
-  description: "Add evidence to a part's recent evidence array, maintaining the limit of 10 most recent items",
+  description: "Add a single piece or an array of evidence to a part's recent evidence array, maintaining the limit of 10 most recent items.",
   inputSchema: logEvidenceSchema,
-  execute: async ({ partId, evidence, userId }) => {
+  execute: async ({ context }) => {
     try {
+      const { partId, evidence, userId } = context;
       const resolvedUserId = await resolveUserId(userId);
       const supabase = createSupabaseClient();
-      devLog("logEvidence called", { partId, evidenceType: evidence.type, userId: resolvedUserId });
+      const evidenceToAdd = Array.isArray(evidence) ? evidence : [evidence];
+      devLog("logEvidence called", { partId, evidenceCount: evidenceToAdd.length, userId: resolvedUserId });
       const { data: currentPart, error: fetchError } = await supabase.from("parts").select("id, name, user_id, recent_evidence, evidence_count").eq("id", partId).eq("user_id", resolvedUserId).single();
       if (fetchError) {
         return { success: false, error: `Failed to fetch part: ${fetchError.message}` };
@@ -61,8 +63,8 @@ const logEvidence = createTool({
         return { success: false, error: "Part not found or access denied" };
       }
       const currentEvidence = currentPart.recent_evidence || [];
-      const newEvidenceArray = [...currentEvidence, evidence].slice(-10);
-      const newEvidenceCount = currentPart.evidence_count + 1;
+      const newEvidenceArray = [...currentEvidence, ...evidenceToAdd].slice(-10);
+      const newEvidenceCount = currentPart.evidence_count + evidenceToAdd.length;
       const { data: updatedPart, error: updateError } = await supabase.from("parts").update({
         recent_evidence: newEvidenceArray,
         evidence_count: newEvidenceCount,
@@ -71,30 +73,14 @@ const logEvidence = createTool({
       if (updateError) {
         return { success: false, error: `Failed to update part with evidence: ${updateError.message}` };
       }
-      await actionLogger.log({
-        actionType: "add_part_evidence",
-        partId,
-        partName: currentPart.name,
-        userId: resolvedUserId,
-        sessionId: evidence.sessionId,
-        currentState: `Evidence count: ${newEvidenceCount}`,
-        changeDescription: `Added ${evidence.type} evidence: "${evidence.content.substring(0, 100)}..."`,
-        evidenceAdded: true,
-        metadata: {
-          evidenceType: evidence.type,
-          confidence: evidence.confidence,
-          previousCount: currentPart.evidence_count
-        }
-      });
       return {
         success: true,
         data: {
           partId: updatedPart.id,
           partName: updatedPart.name,
           evidenceCount: newEvidenceCount,
-          evidenceAdded: true
-        },
-        message: `Evidence added to "${currentPart.name}". Total evidence count: ${newEvidenceCount}`
+          evidenceAdded: evidenceToAdd.length
+        }
       };
     } catch (error) {
       devLog("Error in logEvidence", { error: error instanceof Error ? error.message : String(error) });
@@ -109,8 +95,9 @@ const findPatterns = createTool({
   id: "findPatterns",
   description: "Analyze conversation history to find recurring themes and suggest potential new parts based on frequency and recency",
   inputSchema: findPatternsSchema,
-  execute: async ({ userId, sessionLimit, minConfidence, includeExistingParts }) => {
+  execute: async ({ context }) => {
     try {
+      const { userId, sessionLimit, minConfidence, includeExistingParts } = context;
       const resolvedUserId = await resolveUserId(userId);
       const supabase = createSupabaseClient();
       devLog("findPatterns called", {
@@ -126,8 +113,7 @@ const findPatterns = createTool({
       if (!sessions || sessions.length === 0) {
         return {
           success: true,
-          data: { patterns: [], suggestedParts: [] },
-          message: "No conversation history found"
+          data: { patterns: [], suggestedParts: [] }
         };
       }
       let existingParts = [];
@@ -208,8 +194,7 @@ const findPatterns = createTool({
           suggestedParts,
           sessionsAnalyzed: sessions.length,
           existingPartsCount: existingParts.length
-        },
-        message: `Found ${filteredPatterns.length} patterns across ${sessions.length} sessions. ${suggestedParts.length} parts suggested.`
+        }
       };
     } catch (error) {
       devLog("Error in findPatterns", { error: error instanceof Error ? error.message : String(error) });

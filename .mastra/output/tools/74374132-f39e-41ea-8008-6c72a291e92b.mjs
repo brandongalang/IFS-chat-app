@@ -2,7 +2,6 @@ import { createTool } from '@mastra/core';
 import { z } from 'zod';
 import { a as actionLogger } from '../action-logger.mjs';
 import { createServerClient } from '@supabase/ssr';
-import '@supabase/supabase-js';
 
 function getEnvVar(keys) {
   const anyProcessEnv = typeof process !== "undefined" ? process.env : void 0;

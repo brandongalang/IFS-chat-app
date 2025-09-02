@@ -1,9 +1,9 @@
 {
   "models": {
     "main": {
-      "provider": "claude-code",
-      "modelId": "opus",
-      "maxTokens": 32000,
+      "provider": "mcp",
+      "modelId": "mcp-sampling",
+      "maxTokens": 100000,
       "temperature": 0.2
     },
     "research": {
@@ -13,9 +13,9 @@
       "temperature": 0.1
     },
     "fallback": {
-      "provider": "gemini-cli",
-      "modelId": "gemini-2.5-pro",
-      "maxTokens": 65536,
+      "provider": "claude-code",
+      "modelId": "sonnet",
+      "maxTokens": 64000,
       "temperature": 0.2
     }
   },
