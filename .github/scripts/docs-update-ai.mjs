@@ -61,14 +61,17 @@ function getPRContext() {
   }
 }
 
-function runOpenCode(prompt) {
+function runOpenCode(prompt, useDocsAgent = true) {
   try {
     // Escape quotes in prompt for shell safety and limit length
     const truncatedPrompt = prompt.length > 8000 ? prompt.substring(0, 8000) + '...' : prompt;
     const escapedPrompt = truncatedPrompt.replace(/"/g, '\\"').replace(/`/g, '\\`');
     
-    // Use the -p flag for non-interactive mode with environment variable
-    const result = execSync(`GOOGLE_API_KEY="${process.env.GOOGLE_API_KEY}" opencode -p "${escapedPrompt}"`, { 
+    // Use the custom docs-updater agent if available, otherwise use default
+    const agentFlag = useDocsAgent ? ' --agent docs-updater' : '';
+    const command = `GOOGLE_API_KEY="${process.env.GOOGLE_API_KEY}" opencode -p "${escapedPrompt}"${agentFlag}`;
+    
+    const result = execSync(command, { 
       encoding: 'utf8',
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large responses
       timeout: 120000, // 2 minute timeout (reduced for CI)
@@ -79,7 +82,14 @@ function runOpenCode(prompt) {
     });
     return result;
   } catch (error) {
-    console.error('OpenCode execution failed:', error.message);
+    console.error(`OpenCode execution failed: ${error.message}`);
+    
+    // If docs agent failed, try without it as fallback
+    if (useDocsAgent && error.message.includes('agent')) {
+      console.log('Retrying without custom docs agent...');
+      return runOpenCode(prompt, false);
+    }
+    
     console.error('This may be due to API limits or configuration issues');
     return null;
   }

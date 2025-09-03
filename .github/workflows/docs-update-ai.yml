@@ -34,6 +34,9 @@ jobs:
           # Test basic functionality first
           opencode -v
           
+          # List available agents to verify our custom agent is accessible
+          opencode agent list || echo "Agent listing failed, but continuing"
+          
           # Test with simple prompt to verify Gemini connection
           opencode -p "Hello, respond with just 'OpenCode working'" || echo "OpenCode test failed, proceeding anyway"
       
