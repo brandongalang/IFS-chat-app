@@ -69,6 +69,7 @@
     "fast-json-patch": "^3.1.1",
     "framer-motion": "^12.23.12",
     "globals": "^16.3.0",
+    "google-auth-library": "^10.3.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.540.0",
     "next": "15.1.7",

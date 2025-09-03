@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { useGoogleAuth } from '@/lib/hooks/use-google-auth'
 
 export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
   const [email, setEmail] = useState('')
@@ -23,6 +24,8 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+  const { signInWithGoogle, isLoading: googleLoading, error: googleError } = useGoogleAuth()
+  const googleButtonRef = useRef<HTMLButtonElement>(null)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,21 +48,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
   }
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${location.origin}/auth/callback`,
-        },
-      })
-      if (error) throw error
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'An error occurred')
-    } finally {
-      setIsLoading(false)
-    }
+    await signInWithGoogle('/')
   }
 
   return (
@@ -101,7 +90,9 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
+              {(error || googleError) && (
+                <p className="text-sm text-red-500">{error || googleError}</p>
+              )}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Logging in...' : 'Login'}
               </Button>
@@ -115,12 +106,14 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
               </div>
             </div>
             <Button
+              ref={googleButtonRef}
               variant="outline"
               className="w-full"
               onClick={handleGoogleLogin}
-              disabled={isLoading}
+              disabled={isLoading || googleLoading}
+              id="google-signin-button"
             >
-              Google
+              {googleLoading ? 'Connecting...' : 'Continue with Google'}
             </Button>
             <div className="text-center text-sm">
               Don&apos;t have an account?{' '}

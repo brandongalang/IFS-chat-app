@@ -269,7 +269,7 @@
         "description": "Implement a comprehensive feature flag system with typed helpers to control onboarding flow rollout across different environments.",
         "details": "Create a feature flag infrastructure with three primary flags: onboarding_v1 (master onboarding flag), onboarding_redirect (controls post-OAuth user routing), and intervention_cards (gates InterventionCard system access). Set up environment-specific defaults (off in production, on in staging). Implement typed flag helpers in lib/flags/index.ts with proper TypeScript interfaces for type safety. Configure flag evaluation logic with fallback mechanisms and error handling. Gate all onboarding-related routes, UI component mounts, and middleware-based redirects behind appropriate feature flags. Include flag override capabilities for testing and debugging purposes.",
         "testStrategy": "Verify flag system loads correctly in both staging and production environments with expected default values. Test flag toggle functionality through admin interface or configuration changes. Confirm onboarding routes are properly gated and inaccessible when flags are disabled. Validate middleware redirects respect flag states. Test intervention card system activation/deactivation via flags. Verify TypeScript compilation with flag helper types. Test flag fallback behavior when flag service is unavailable.",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [],
         "priority": "high",
         "subtasks": []
@@ -560,7 +560,7 @@
     ],
     "metadata": {
       "created": "2025-09-03T11:43:23.308Z",
-      "updated": "2025-09-03T11:50:49.401Z",
+      "updated": "2025-09-03T12:01:38.050Z",
       "description": "IFS User Onboarding Implementation - Resume from Phase 1"
     }
   }
