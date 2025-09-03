@@ -95,6 +95,58 @@ const STAGE_1_QUESTIONS: OnboardingQuestion[] = [
   },
 ];
 
+// Stage 3 questions with free text responses
+const STAGE_3_QUESTIONS: OnboardingQuestion[] = [
+  {
+    id: 'S3_Q1',
+    stage: 3,
+    type: 'free_text',
+    prompt: 'When you think about the parts of yourself that get activated under stress, what do you notice they are trying to protect you from?',
+    helper: 'Take a moment to reflect on what your protective parts are guarding against',
+    options: [],
+    active: true,
+    locale: 'en',
+    order_hint: 1,
+    theme_weights: {},
+  },
+  {
+    id: 'S3_Q2',
+    stage: 3,
+    type: 'free_text',
+    prompt: 'What beliefs do you carry about yourself that might have formed during difficult times in your life?',
+    helper: 'These might be thoughts like "I\'m not good enough" or "I have to be perfect"',
+    options: [],
+    active: true,
+    locale: 'en',
+    order_hint: 2,
+    theme_weights: {},
+  },
+  {
+    id: 'S3_Q3',
+    stage: 3,
+    type: 'free_text',
+    prompt: 'Where in your body do you tend to feel stress, tension, or difficult emotions?',
+    helper: 'This could be your shoulders, stomach, chest, or anywhere else you notice sensations',
+    options: [],
+    active: true,
+    locale: 'en',
+    order_hint: 3,
+    theme_weights: {},
+  },
+  {
+    id: 'S3_Q4',
+    stage: 3,
+    type: 'free_text',
+    prompt: 'If you could offer a compassionate message to the parts of yourself that struggle, what would you say?',
+    helper: 'Imagine speaking to these parts like you would to a good friend who is going through a hard time',
+    options: [],
+    active: true,
+    locale: 'en',
+    order_hint: 4,
+    theme_weights: {},
+  },
+];
+
 export default function OnboardingFlowPage() {
   const [currentStage, setCurrentStage] = useState(1);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -112,12 +164,29 @@ export default function OnboardingFlowPage() {
       // Use fixture data for Stage 2 
       setQuestions(DEV_STAGE_2_QUESTION_BANK.slice(0, 4));
       setCurrentQuestionIndex(0);
+    } else if (currentStage === 3) {
+      // Stage 3 with free text questions
+      setQuestions(STAGE_3_QUESTIONS);
+      setCurrentQuestionIndex(0);
     }
   }, [currentStage]);
 
   const currentQuestion = questions[currentQuestionIndex];
   const totalQuestions = questions.length;
-  const progress = ((currentQuestionIndex + (currentStage - 1) * 3) / 7) * 100; // 3 Stage 1 + 4 Stage 2
+  
+  // Progress calculation: 3 Stage 1 + 4 Stage 2 + 4 Stage 3 = 11 total
+  const totalQuestionCount = 11;
+  let completedQuestions = 0;
+  
+  if (currentStage === 1) {
+    completedQuestions = currentQuestionIndex;
+  } else if (currentStage === 2) {
+    completedQuestions = 3 + currentQuestionIndex;
+  } else if (currentStage === 3) {
+    completedQuestions = 7 + currentQuestionIndex;
+  }
+  
+  const progress = (completedQuestions / totalQuestionCount) * 100;
 
   const handleAnswer = (response: QuestionResponse) => {
     if (!currentQuestion) return;
@@ -135,6 +204,9 @@ export default function OnboardingFlowPage() {
       } else if (currentStage === 1) {
         // Move to Stage 2
         setCurrentStage(2);
+      } else if (currentStage === 2) {
+        // Move to Stage 3
+        setCurrentStage(3);
       } else {
         // Complete onboarding
         setIsComplete(true);
@@ -224,10 +296,15 @@ export default function OnboardingFlowPage() {
         {/* Progress */}
         <div className="max-w-2xl mx-auto mb-8">
           <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
-            <span>Stage {currentStage} of 2</span>
+            <span>Stage {currentStage} of 3</span>
             <span>{Math.round(progress)}% Complete</span>
           </div>
           <Progress value={progress} className="h-2" />
+          <div className="flex justify-center space-x-2 mt-3">
+            <div className={`w-3 h-3 rounded-full ${currentStage >= 1 ? 'bg-primary' : 'bg-muted'}`} />
+            <div className={`w-3 h-3 rounded-full ${currentStage >= 2 ? 'bg-primary' : 'bg-muted'}`} />
+            <div className={`w-3 h-3 rounded-full ${currentStage >= 3 ? 'bg-primary' : 'bg-muted'}`} />
+          </div>
         </div>
 
         {/* Question Card */}
@@ -275,20 +352,27 @@ export default function OnboardingFlowPage() {
                   {currentQuestion.type === 'free_text' && (
                     <div className="space-y-4">
                       <Textarea
-                        placeholder="Share your thoughts..."
-                        className="min-h-32"
+                        placeholder="Take your time to reflect and share your thoughts..."
+                        className="min-h-40 text-base leading-relaxed"
                         defaultValue={answers[currentQuestion.id]?.type === 'free_text' ? answers[currentQuestion.id].text : ''}
+                        id={`textarea-${currentQuestion.id}`}
                       />
-                      <Button
-                        onClick={() => {
-                          const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
-                          if (textarea?.value.trim()) {
-                            handleTextResponse(textarea.value);
-                          }
-                        }}
-                      >
-                        Continue
-                      </Button>
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs text-muted-foreground">
+                          Take as much time as you need. There are no right or wrong answers.
+                        </p>
+                        <Button
+                          onClick={() => {
+                            const textarea = document.getElementById(`textarea-${currentQuestion.id}`) as HTMLTextAreaElement;
+                            if (textarea?.value.trim()) {
+                              handleTextResponse(textarea.value);
+                            }
+                          }}
+                          className="ml-4"
+                        >
+                          Continue
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </>
