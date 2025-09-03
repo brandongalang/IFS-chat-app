@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx scripts/test-onboarding.ts",
     "dev:mastra": "mastra dev --dir mastra",
     "build:mastra": "mastra build --dir mastra",
     "smoke:insights": "tsx scripts/smoke-test-insights.ts",
