@@ -36,3 +36,6 @@ supabase/.env
 
 # Build artifacts
 tsconfig.tsbuildinfo
+
+# Project planning (internal)
+plan.md
