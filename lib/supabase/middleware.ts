@@ -36,45 +36,76 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getClaims(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
+  // Do not run code between createServerClient and any auth calls.
+  // A simple mistake could make it very hard to debug issues with sessions.
 
-  // IMPORTANT: If you remove getClaims() and you use server-side rendering
-  // with the Supabase client, your users may be randomly logged out.
-  // In development persona mode, allow pass-through without forcing login
-  if (dev.enabled) {
-    // In dev mode, we can just pass through without checking for a user.
-    // The client-side logic will handle fetching data for the test persona.
+  // Auth check
+  // In development persona mode, do not force login redirect for unauthenticated users,
+  // but still allow onboarding redirects for authenticated users below.
+  const isDevPersona = dev.enabled === true
+
+  // Use session to reliably get the user id
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  const path = request.nextUrl.pathname
+
+  // If unauthenticated and not in dev persona mode, redirect to login (except /auth and /login)
+  if (!session && !isDevPersona) {
+    if (!path.startsWith('/login') && !path.startsWith('/auth')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/login'
+      const redirect = NextResponse.redirect(url)
+      // Preserve cookies set by Supabase
+      for (const c of supabaseResponse.cookies.getAll()) {
+        redirect.cookies.set(c)
+      }
+      return redirect
+    }
+    // Allow auth routes
     return supabaseResponse
   }
 
-  const { data } = await supabase.auth.getClaims()
-  const user = data?.claims
+  // At this point: either unauthenticated in dev persona mode OR authenticated.
+  // Only perform onboarding redirects for authenticated users.
+  if (session) {
+    // Do not interfere with API, assets, or explicitly allowed paths
+    const isApi = path.startsWith('/api')
+    const isAsset = path.startsWith('/_next') || /\.(?:svg|png|jpg|jpeg|gif|webp|ico)$/.test(path)
+    const isAllowed = path.startsWith('/onboarding') || path.startsWith('/auth')
 
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/auth')
-  ) {
-    // Otherwise, redirect to login
-    const url = request.nextUrl.clone()
-    url.pathname = '/auth/login'
-    return NextResponse.redirect(url)
+    if (!isApi && !isAsset) {
+      // Lightweight onboarding status lookup
+      const { data: onboarding, error } = await supabase
+        .from('user_onboarding')
+        .select('status')
+        .eq('user_id', session.user.id)
+        .maybeSingle()
+
+      const status = onboarding?.status || 'incomplete'
+      const isCompleted = status === 'completed'
+
+      // Prevent loop: if user completed but hits /onboarding, send to /today
+      if (path.startsWith('/onboarding') && isCompleted) {
+        const redirect = NextResponse.redirect(new URL('/today', request.url))
+        for (const c of supabaseResponse.cookies.getAll()) {
+          redirect.cookies.set(c)
+        }
+        return redirect
+      }
+
+      // Redirect incomplete users away from non-allowed paths to /onboarding
+      if (!isCompleted && !isAllowed) {
+        const redirect = NextResponse.redirect(new URL('/onboarding', request.url))
+        for (const c of supabaseResponse.cookies.getAll()) {
+          redirect.cookies.set(c)
+        }
+        return redirect
+      }
+    }
   }
 
-  // IMPORTANT: You *must* return the supabaseResponse object as it is.
-  // If you're creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
-
+  // IMPORTANT: You must return the supabaseResponse object as it is for pass-through.
   return supabaseResponse
 }
