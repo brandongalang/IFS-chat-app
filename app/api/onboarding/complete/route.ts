@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { 
   CompletionRequest, 
-  CompletionResponse, 
-  UserOnboardingState 
+  CompletionResponse 
 } from '@/lib/onboarding/types';
 
 /**
@@ -82,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Mark as completed
     const now = new Date().toISOString();
-    const { data: completedState, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from('user_onboarding')
       .update({
         status: 'completed',
@@ -147,7 +146,7 @@ async function validateOnboardingCompletion(
       missing.push('stage1_responses_check_failed');
     } else {
       const requiredS1 = ['S1_Q1', 'S1_Q2', 'S1_Q3', 'S1_Q4', 'S1_Q5'];
-      const existingS1 = stage1Responses.map(r => r.question_id);
+      const existingS1 = stage1Responses.map((r: { question_id: string }) => r.question_id);
       const missingS1 = requiredS1.filter(qId => !existingS1.includes(qId));
       missing.push(...missingS1);
     }
@@ -178,7 +177,7 @@ async function validateOnboardingCompletion(
       missing.push('stage3_responses_check_failed');
     } else {
       const requiredS3 = ['S3_Q1', 'S3_Q2', 'S3_Q3', 'S3_Q4'];
-      const existingS3 = stage3Responses.map(r => r.question_id);
+      const existingS3 = stage3Responses.map((r: { question_id: string }) => r.question_id);
       const missingS3 = requiredS3.filter(qId => !existingS3.includes(qId));
       missing.push(...missingS3);
     }

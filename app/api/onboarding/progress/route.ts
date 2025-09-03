@@ -42,11 +42,13 @@ export async function POST(request: NextRequest) {
     const { stage, questionId, response, version } = validation.data;
 
     // Get or create user onboarding state
-    let { data: userState, error: fetchError } = await supabase
+    const fetchResult = await supabase
       .from('user_onboarding')
       .select('*')
       .eq('user_id', user.id)
       .single();
+    let userState = fetchResult.data;
+    const fetchError = fetchResult.error;
 
     if (fetchError && fetchError.code === 'PGRST116') {
       // User doesn't have onboarding state yet, create it
@@ -104,7 +106,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Prepare update payload
-    let updateData: Partial<UserOnboardingState> = {
+    const updateData: Partial<UserOnboardingState> = {
       answers_snapshot: updatedAnswers,
       last_saved_at: new Date().toISOString()
     };
