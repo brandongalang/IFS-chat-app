@@ -18,6 +18,7 @@ import { useState, useRef } from 'react'
 import { useGoogleAuth } from '@/lib/hooks/use-google-auth'
 
 export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
+  // Added test comment to trigger AI docs workflow validation
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
