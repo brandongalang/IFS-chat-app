@@ -260,5 +260,308 @@
       "updated": "2025-08-23T21:01:11.799Z",
       "description": "Tasks for master context"
     }
+  },
+  "onboarding": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Set up feature flag system for onboarding rollout control",
+        "description": "Implement a comprehensive feature flag system with typed helpers to control onboarding flow rollout across different environments.",
+        "details": "Create a feature flag infrastructure with three primary flags: onboarding_v1 (master onboarding flag), onboarding_redirect (controls post-OAuth user routing), and intervention_cards (gates InterventionCard system access). Set up environment-specific defaults (off in production, on in staging). Implement typed flag helpers in lib/flags/index.ts with proper TypeScript interfaces for type safety. Configure flag evaluation logic with fallback mechanisms and error handling. Gate all onboarding-related routes, UI component mounts, and middleware-based redirects behind appropriate feature flags. Include flag override capabilities for testing and debugging purposes.",
+        "testStrategy": "Verify flag system loads correctly in both staging and production environments with expected default values. Test flag toggle functionality through admin interface or configuration changes. Confirm onboarding routes are properly gated and inaccessible when flags are disabled. Validate middleware redirects respect flag states. Test intervention card system activation/deactivation via flags. Verify TypeScript compilation with flag helper types. Test flag fallback behavior when flag service is unavailable.",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Update middleware.ts with feature flag gating and onboarding redirect logic",
+        "description": "Implement middleware logic to check feature flags and redirect authenticated users to onboarding flow based on completion status while preserving asset and API route access.",
+        "details": "Update middleware.ts to integrate with the feature flag system and implement conditional redirect logic. Check onboarding_redirect feature flag status first. For authenticated users, use Supabase middleware client to read session and perform lightweight select on user_onboarding table to check completion status. If onboarding_redirect is enabled, user is authenticated, and user_onboarding.status != 'completed', redirect to /onboarding. Implement route exclusion logic to prevent redirects for asset routes (/_next/*, /favicon.ico, etc.), API routes (/api/*), and specific allowed paths (/api/onboarding/*, /onboarding, /auth/*). Handle OAuth callback flows by setting appropriate redirect destinations - /onboarding for incomplete users or /today for completed users based on onboarding status. Ensure middleware runs efficiently with minimal database queries and proper error handling for edge cases like missing user_onboarding records.",
+        "testStrategy": "Test middleware behavior with feature flags enabled and disabled to ensure redirects only occur when onboarding_redirect is active. Verify authenticated users with incomplete onboarding status get redirected to /onboarding while completed users can access protected routes normally. Confirm asset routes (CSS, JS, images) and API endpoints remain accessible without redirects. Test OAuth callback scenarios to validate correct redirect destinations based on user completion status. Verify middleware handles edge cases like missing user_onboarding records gracefully. Test performance with database query optimization and confirm middleware doesn't interfere with normal app navigation for completed users.",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Create onboarding wizard foundation with card-based UI components",
+        "description": "Build the core onboarding wizard interface at app/onboarding/page.tsx using shadcn/ui components with accessibility features and autosave functionality.",
+        "details": "Create app/onboarding/page.tsx as the main onboarding route with OnboardingWizard client component that manages wizard state, stage progression, and autosave functionality. Implement QuestionCard component with support for different question types (radio, checkbox, textarea) using shadcn/ui RadioGroup, Checkbox, and Textarea components. Build reusable card layout using Card component with proper semantic structure. Create WizardFooter component with Next/Back/Save & Exit buttons using Button component, implement autosave status indicator, and disable Next button until required responses are complete. Add Progress component to show completion status and use Separator for visual hierarchy. Implement Badge components for question categorization. Use Skeleton components for loading states during autosave operations. Ensure all components follow accessibility best practices with proper ARIA labels, keyboard navigation support, and screen reader compatibility. Apply soft, invitational copy throughout with brief helper text for each question type. Integrate with the existing feature flag system to gate access to the onboarding flow.",
+        "testStrategy": "Verify onboarding route renders correctly at /onboarding with all shadcn/ui components properly styled and functional. Test keyboard navigation through all interactive elements including radio groups, checkboxes, and buttons. Validate screen reader compatibility by testing with accessibility tools to ensure proper announcements and navigation. Test wizard progression with Next/Back button functionality and verify Next button remains disabled until required fields are completed. Confirm autosave functionality triggers on user input with visual feedback through status indicators. Test responsive design across different screen sizes to ensure card-based layout adapts properly. Verify feature flag integration prevents access when onboarding flags are disabled.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          2
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement Stage 1 UI with 5 fixed probe questions and API integration",
+        "description": "Build the Stage 1 onboarding interface that fetches and renders 5 single-choice questions with radio groups, implements debounced progress saving, and handles stage progression with analytics tracking.",
+        "details": "Create Stage1Questions component that fetches questions via GET /api/onboarding/questions?stage=1 on mount. Implement question rendering using shadcn/ui RadioGroup components for single_choice question types. Add debounced progress saving (500ms delay) that triggers POST /api/onboarding/progress for each answer change with optimistic local state updates. Update progress indicator to reflect completion status. Implement stage completion logic that detects when all 5 questions are answered, then fetches Stage 2 questions via GET /api/onboarding/questions?stage=2. Add 'Continue (4 quick context questions)' CTA button that appears after all questions are completed. Integrate analytics tracking with events: stage_viewed (on component mount), question_answered (on each selection), and stage_completed (when advancing to next stage). Handle loading states, error handling for API calls, and proper state management for question data and user responses. Ensure proper TypeScript typing for question data structure and API responses.",
+        "testStrategy": "Verify Stage 1 questions load correctly from API endpoint with proper error handling for network failures. Test radio group interactions ensure only one option can be selected per question and trigger debounced progress saves. Confirm optimistic UI updates work correctly while API calls are in progress. Validate progress indicator accurately reflects completion status as questions are answered. Test stage completion flow triggers Stage 2 data fetch and shows continue button only when all 5 questions are answered. Verify analytics events fire correctly: stage_viewed on load, question_answered on each selection, stage_completed on advancement. Test debouncing behavior ensures multiple rapid selections don't create excessive API calls. Confirm proper loading states and error handling for all API interactions.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          2,
+          3
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement Stage 2 UI with 4 adaptive contextual questions and server integration",
+        "description": "Build the Stage 2 onboarding interface that fetches 4 personalized questions from the server, locks the selection for consistency, and renders interactive question cards with navigation and autosave functionality.",
+        "details": "Create Stage2Questions component that fetches adaptive questions via GET /api/onboarding/questions?stage=2 on mount and stores selected questions in user_onboarding.stage2_selected_questions to ensure consistency across sessions. Implement single question per card rendering using QuestionCard component with proper question type handling (radio, checkbox, textarea). Build navigation system with Next/Back buttons that allow users to navigate between questions and skip back to edit previous responses. Implement autosave functionality that triggers POST /api/onboarding/progress on each answer change with debounced saves (500ms delay) and optimistic UI updates. Add copy that emphasizes curiosity and gentle noticing throughout the interface. Include optional info tooltips that provide brief explanations of why specific questions were selected for the user. Implement comprehensive analytics tracking for stage_viewed (when Stage 2 loads), question_shown (for each question display), question_answered (for each response), and stage_completed (when all 4 questions answered). Ensure proper error handling for API failures and loading states. Update progress indicator to reflect Stage 2 completion status and integrate with overall wizard flow.",
+        "testStrategy": "Verify Stage 2 questions fetch correctly from API endpoint with proper error handling for network failures and empty responses. Test question locking mechanism ensures the same 4 questions are displayed consistently across browser sessions and page refreshes. Validate single question per card rendering with proper question type display and interaction handling. Test navigation system allows forward/backward movement between questions and preserves previously entered answers when returning to edit. Confirm autosave functionality triggers appropriately with debounced timing and handles optimistic UI updates correctly during API calls. Verify analytics events fire correctly for all tracking points (stage_viewed, question_shown, question_answered, stage_completed) with proper event data. Test tooltip functionality displays question selection explanations when available. Validate accessibility features including keyboard navigation, screen reader compatibility, and proper ARIA labels. Test integration with overall wizard flow and progress indicator updates.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement Stage 3 UI with 4 fixed somatic & belief mapping questions and multi-select interactions",
+        "description": "Build the Stage 3 onboarding interface that fetches and renders 4 fixed questions with multi-select body map and protection intents, free-text inputs for beliefs and supportive messages, and autosave functionality with completion flow.",
+        "details": "Create Stage3Questions component that fetches fixed Stage 3 questions via GET /api/onboarding/questions?stage=3 on mount and renders all 4 questions in a single view layout. Implement multi-select functionality using shadcn/ui Checkbox components for body map areas and protection intent options, allowing users to select multiple values per question. Build free-text input fields using Textarea components for belief mapping and supportive message questions with proper validation and character limits. Add debounced autosave functionality (500ms delay) that triggers POST /api/onboarding/progress for any form changes with optimistic UI updates. Implement body map visualization component with clickable regions that sync with checkbox selections. Create completion logic that validates all required fields are filled and enables 'Finish and go to Today' button. Integrate analytics tracking for stage_viewed (on mount), question_answered (on each input change), and complete_clicked (on completion button press) events. Handle stage completion by updating user_onboarding.status to 'completed' and redirecting to main application dashboard.",
+        "testStrategy": "Verify Stage 3 questions load correctly from API endpoint with proper error handling for network failures and validate all 4 fixed questions are displayed. Test multi-select checkbox interactions for body map and protection intent questions ensuring multiple selections are properly stored and retrieved. Validate free-text textarea inputs for belief mapping and supportive messages with character limits and required field validation. Confirm debounced autosave functionality works correctly with 500ms delay and optimistic UI updates while API calls are in progress. Test body map visualization component with clickable regions that sync bidirectionally with checkbox selections. Verify completion button remains disabled until all required fields are completed and enables analytics tracking. Confirm analytics events fire correctly for stage_viewed on component mount, question_answered on each input change, and complete_clicked on submission. Test stage completion flow updates user_onboarding.status to 'completed' and redirects to dashboard successfully.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implement autosave functionality with debouncing and resumability across all onboarding stages",
+        "description": "Add comprehensive autosave functionality that debounces changes every 500ms, displays saved state with timestamps, persists data to localStorage as fallback, and implements resume logic on page load.",
+        "details": "Implement useAutosave hook that debounces onboarding progress saves every 500ms using lodash.debounce or custom implementation. Hook should handle POST /api/onboarding/progress API calls with optimistic updates and error handling. Create SavedIndicator component that displays 'Saved' status with last_saved_at timestamp, showing temporary success state after each save operation. Implement localStorage persistence as fallback storage keyed by `${userId}_onboarding_v${feature_version}` to handle offline scenarios and API failures. Build resume logic in OnboardingWizard component that fetches current user_onboarding data via GET /api/onboarding/current on page load, determines the appropriate stage based on completion status, navigates to the correct stage UI, and prefills all previously answered questions. Add error boundaries and retry logic for failed autosave attempts. Implement conflict resolution for cases where localStorage and server data differ. Update all stage components (Stage1Questions, Stage2Questions, Stage3Questions) to integrate with the autosave system and display saved indicators consistently.",
+        "testStrategy": "Verify autosave triggers correctly on answer changes with 500ms debounce delay and doesn't fire multiple requests for rapid consecutive changes. Test SavedIndicator appears after successful saves and shows accurate last_saved_at timestamps. Confirm localStorage persistence works correctly by filling answers, refreshing the page, and verifying data restoration even when offline. Test resume logic by completing partial onboarding, refreshing browser, and confirming user returns to correct stage with all previous answers prefilled. Validate error handling for failed API calls falls back to localStorage gracefully. Test conflict resolution scenarios where localStorage and server data differ to ensure appropriate user prompts or automatic resolution. Verify autosave works consistently across all three onboarding stages with different question types (radio, checkbox, textarea).",
+        "status": "pending",
+        "dependencies": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Build reusable InterventionCard component with analytics and accessibility",
+        "description": "Create a comprehensive InterventionCard component using shadcn/ui Card primitives with configurable props for interventions, built-in analytics tracking, and full accessibility support.",
+        "details": "Create components/InterventionCard.tsx component built on shadcn/ui Card, CardHeader, CardContent, and CardFooter primitives. Define TypeScript interface with props: id (string), title (string), subtitle (string), icon (React.ComponentType), tone ('info' | 'warning' | 'success' | 'error'), severity ('low' | 'medium' | 'high'), priority (number), canSupersedeCheckins (boolean), actions (array of action objects with label, onClick, variant), onDismiss (function), trackingId (string). Implement flexible slot system for media content and action buttons. Add conditional rendering based on tone and severity with appropriate styling variants. Integrate analytics tracking that emits 'intervention_viewed' event on mount, 'intervention_action_clicked' on action button clicks, and 'intervention_dismissed' on dismiss. Implement accessibility features including role='region', aria-labelledby pointing to title element, and proper focus management for keyboard navigation.",
+        "testStrategy": "Verify component renders correctly with all prop combinations and displays appropriate styling for different tone/severity combinations. Test analytics events fire correctly by mocking analytics service and confirming intervention_viewed, intervention_action_clicked, and intervention_dismissed events emit with proper payload. Validate accessibility by testing with screen readers, confirming role='region' and aria-labelledby attributes are present, and verifying keyboard navigation works through all interactive elements. Test slot functionality by passing different media content and action configurations to ensure flexible rendering works as expected.",
+        "status": "pending",
+        "dependencies": [
+          3
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Phase 4.2: Today Screen Integration - Create hook lib/today/useInterventions.ts or server function getTodayInterventions(userId). If onboarding not completed and onboarding_v1 enabled, return InterventionCard model with specific onboarding prompt. Update app/today/page.tsx: if any card has canSupersedeCheckins = true, hide standard check-in container. After completion: show reflective InterventionCard for 1–2 days with supportive message from S3_Q4.",
+        "description": "Integrate intervention system with today screen by creating useInterventions hook/server function that returns onboarding prompts for incomplete users and manages check-in superseding logic with post-completion reflective cards.",
+        "details": "Create lib/today/useInterventions.ts hook or getTodayInterventions(userId) server function that checks user onboarding status and feature flags. If user hasn't completed onboarding and onboarding_v1 flag is enabled, return InterventionCard model with onboarding-specific prompt using appropriate tone/severity. Implement logic to fetch user's onboarding progress from database and determine current stage. For completed onboarding users, implement time-based logic to show reflective InterventionCard for 1-2 days post-completion with supportive message retrieved from S3_Q4 data. Update app/today/page.tsx to consume intervention data and implement conditional rendering: when any returned intervention card has canSupersedeCheckins = true, hide the standard check-in container completely. Ensure proper error handling for API failures and graceful degradation when intervention service is unavailable. Add analytics tracking for intervention display and user interactions. Implement caching strategy to avoid repeated database queries for intervention data within same session.",
+        "testStrategy": "Verify useInterventions hook returns correct intervention data for users at different onboarding stages and properly respects onboarding_v1 feature flag settings. Test that incomplete onboarding users receive appropriate intervention prompts while completed users get reflective cards for 1-2 days post-completion. Confirm app/today/page.tsx correctly hides standard check-in container when canSupersedeCheckins is true and displays normally otherwise. Test error handling scenarios including API failures, network timeouts, and missing user data. Validate analytics events fire correctly for intervention displays and user interactions. Test caching behavior to ensure intervention data doesn't cause unnecessary database load during same session usage.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          8
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Phase 5.1: User Memory Synthesis - Create synthesizeOnboarding server function with deterministic memory generation",
+        "description": "Create lib/memory/synthesizeOnboarding.ts server function that takes userId, reads onboarding responses and stage1_scores, and deterministically synthesizes 3-5 concise memory entries with proper tagging and upserts to user memory system.",
+        "details": "Create lib/memory/synthesizeOnboarding.ts server function with TypeScript interface accepting userId parameter. Implement data retrieval logic to fetch user onboarding responses from user_onboarding table and derived stage1_scores from database. Build deterministic synthesis algorithm that processes responses into exactly 5 memory entries: onboarding:v1:themes (extract and normalize top 2-3 themes with scores), onboarding:v1:somatic (aggregate selected body areas from Stage 3), onboarding:v1:protections (compile selected 'protecting from' intents), onboarding:v1:beliefs (summarize free-text belief responses into brief coherent summary), and onboarding:v1:self_compassion (extract supportive message from Stage 3). Implement upsert logic that integrates with existing user memory system, ensuring proper conflict resolution and data consistency. Add comprehensive tagging system with ['onboarding','ifs','v1'] tags for future retrieval capabilities. Create POST /api/onboarding/complete endpoint integration that fires synthesizeOnboarding function. Ensure function is idempotent and can be safely called multiple times without data corruption or duplication. Include proper error handling, logging, and validation for all data transformations.",
+        "testStrategy": "Verify synthesizeOnboarding function correctly retrieves user onboarding data for test users across all stages and processes responses into exactly 5 memory entries with proper structure and content. Test deterministic behavior by running function multiple times with same input data and confirming identical output. Validate memory upsert functionality integrates properly with existing user memory system without conflicts or data loss. Test idempotency by calling function multiple times and ensuring no duplicate memory entries are created. Confirm POST /api/onboarding/complete endpoint properly triggers synthesis function and handles success/error responses. Test edge cases including incomplete onboarding data, missing stage1_scores, and malformed response data to ensure graceful error handling.",
+        "status": "pending",
+        "dependencies": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Phase 5.2: Analytics Implementation - Build comprehensive analytics system with client/server wrappers and PII-safe event tracking",
+        "description": "Implement analytics infrastructure with lib/analytics client and server wrappers, define comprehensive onboarding and intervention event catalog, and create basic funnels and dashboards for completion rates and drop-off analysis.",
+        "details": "Create lib/analytics directory with client.ts and server.ts wrapper modules that provide consistent analytics interface across frontend and backend. Implement event catalog with onboarding events: onboarding_started, onboarding_stage_viewed, onboarding_question_shown, onboarding_question_answered, onboarding_stage_completed, onboarding_progress_saved, onboarding_completed. Add intervention events: intervention_viewed, intervention_action_clicked, intervention_dismissed. Implement PII protection by avoiding raw free-text in events - instead send text lengths, character counts, and SHA-256 hashes for S3 free-text responses. Create analytics configuration with environment-based providers (development: console logging, production: analytics service). Build basic funnel analysis for onboarding completion rates tracking users from onboarding_started through each stage to onboarding_completed. Implement drop-off point identification by tracking stage transitions and question abandonment. Create dashboard components or API endpoints for completion rate visualization and funnel metrics. Integrate analytics calls throughout existing onboarding components (Stage 1-3, autosave, intervention cards) ensuring events fire at appropriate user interaction points with proper context data.",
+        "testStrategy": "Verify analytics client and server wrappers correctly initialize and send events to configured providers in both development and production environments. Test all onboarding events fire at correct interaction points by walking through complete onboarding flow and confirming event sequence matches expected user journey. Validate PII protection by checking that free-text responses are replaced with length/hash values and no raw user input appears in analytics payloads. Test intervention analytics by triggering intervention_viewed, intervention_action_clicked, and intervention_dismissed events through InterventionCard component interactions. Verify funnel analysis correctly tracks user progression through onboarding stages and identifies common drop-off points. Test dashboard functionality displays accurate completion rates and funnel metrics based on tracked analytics data. Confirm analytics integration doesn't impact onboarding performance or user experience through load testing.",
+        "status": "pending",
+        "dependencies": [
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Phase 6.1: Security Hardening - Input validation, rate limiting, RLS enforcement, and query optimization",
+        "description": "Implement comprehensive security measures including zod validation for all API payloads, rate limiting on progress endpoints, proper RLS enforcement with Supabase server client, and query plan optimization for onboarding tables.",
+        "details": "Create lib/validation/schemas.ts with zod schemas for all onboarding API payloads including progress saves, question responses, and stage completions. Implement middleware in pages/api/onboarding/* to validate all incoming requests against schemas and return 400 errors for invalid data. Add rate limiting middleware using next-rate-limit or similar library to restrict progress endpoints to 20 requests per minute per user, tracking by user ID or IP. Implement payload size limits (e.g., 1MB) to prevent abuse. Audit all database queries to ensure proper Row Level Security (RLS) by replacing any direct database calls with Supabase server client that includes user session context. Review and optimize query performance on onboarding_responses and onboarding_questions tables by analyzing EXPLAIN ANALYZE output and adding appropriate indexes for common query patterns. Create security testing suite to verify all validation rules and rate limits function correctly.",
+        "testStrategy": "Verify zod validation correctly rejects malformed payloads and accepts valid data structures for all onboarding endpoints. Test rate limiting by making 21+ requests within 60 seconds and confirming the 21st request returns 429 status. Confirm payload size limits reject oversized requests. Audit database queries using EXPLAIN ANALYZE to verify all queries use proper indexes and RLS policies are enforced by testing with different user contexts. Create automated security tests that attempt to bypass validation, exceed rate limits, and access unauthorized data to ensure all security measures are properly implemented.",
+        "status": "pending",
+        "dependencies": [
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Phase 7.1: Unit Tests - Comprehensive test coverage for scoring, selection, and API routes",
+        "description": "Create comprehensive unit test suites for scoring.test.ts, selector.test.ts, and API route tests covering theme mapping edge cases, normalization logic, tie-breaking, diverse theme coverage, deterministic selection, and API validation.",
+        "details": "Create lib/scoring/scoring.test.ts with test cases for theme mapping edge cases including duplicate themes, invalid theme IDs, missing mappings, and boundary values. Test normalization functions with extreme values (0, 1, negative numbers) and precision handling. Implement tie-breaking logic tests with identical scores and multiple tied candidates. Create lib/selector/selector.test.ts with diverse theme coverage tests across all available themes, deterministic selection validation using fixed seeds to ensure consistent results across runs, and constraint enforcement tests for user preferences and business rules. Build comprehensive API route tests using supertest or Next.js test utilities for progress upsert endpoints (POST /api/onboarding/progress) testing successful saves, duplicate handling, and validation errors. Create version conflict tests simulating concurrent updates and optimistic locking scenarios. Implement completion validation tests for stage transitions and final onboarding completion flow. Set up test data fixtures and mock database interactions using proper test isolation and cleanup patterns.",
+        "testStrategy": "Verify scoring.test.ts achieves 100% code coverage of theme mapping functions and handles all documented edge cases without throwing unhandled exceptions. Test normalization produces consistent results within acceptable precision tolerance (±0.001). Validate tie-breaking produces deterministic results with reproducible test cases. Confirm selector.test.ts covers all theme types and validates deterministic selection by running same seed 10+ times and verifying identical results. Test constraint enforcement rejects invalid selections and respects user preferences. Verify API route tests achieve full endpoint coverage with proper HTTP status codes, error messages, and response schemas. Validate version conflict handling returns appropriate 409 status and retry instructions. Confirm completion validation properly transitions users through stages and marks onboarding complete only when all requirements are met.",
+        "status": "pending",
+        "dependencies": [
+          4,
+          5,
+          6,
+          7,
+          10,
+          12
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Phase 7.2: E2E Tests - Complete onboarding flow with Playwright scenarios and front-end issue resolution",
+        "description": "Create comprehensive Playwright end-to-end test scenarios covering the complete user onboarding journey from new user redirect through all stages to today screen completion, including mid-flow resumption and intervention card superseding logic.",
+        "details": "Create tests/e2e/onboarding-flow.spec.ts using Playwright to test complete user journey: new user authentication → automatic redirect to /onboarding → Stage 1 completion with 5 probe questions → dynamic Stage 2 rendering based on Stage 1 responses → Stage 3 completion with somatic mapping → final completion redirect to /today screen. Implement test scenarios for mid-flow resumption by simulating page reload at each stage and verifying users resume at correct stage with previously saved answers intact. Create tests for today screen behavior including verification that InterventionCard displays for incomplete onboarding users and supersedes standard check-ins when canSupersedeCheckins=true. Set up Playwright MCP integration for automated test execution and failure reporting. Implement visual regression testing for key UI components and responsive design validation across different viewport sizes. Add network condition testing to ensure graceful handling of slow/failed API responses. Create helper functions for common test patterns like user authentication, stage navigation, and answer submission. Configure test data setup and teardown to ensure clean test state. Add accessibility testing using Playwright's accessibility tools to validate ARIA labels, keyboard navigation, and screen reader compatibility throughout the flow.",
+        "testStrategy": "Execute Playwright test suites to verify complete onboarding flow works end-to-end from new user through completion. Test mid-flow resumption by intentionally reloading pages at each stage and confirming users resume at correct position with saved data. Validate InterventionCard behavior on today screen for both incomplete and completed onboarding users. Run tests across multiple browsers (Chrome, Firefox, Safari) and device types (desktop, tablet, mobile). Verify all accessibility requirements are met using Playwright's accessibility scanning. Test network resilience by throttling connections and simulating API failures. Use Playwright MCP to automatically identify and report front-end issues, then iteratively fix issues and re-run tests until all scenarios pass. Confirm visual consistency across different screen sizes and ensure responsive design works correctly. Validate that all analytics events fire correctly during test execution using mock analytics providers.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          3,
+          4,
+          5,
+          6,
+          8,
+          9,
+          10,
+          11,
+          13
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Phase 7.3: Accessibility & Copy - IFS-aligned copy pass and comprehensive A11y audit",
+        "description": "Implement IFS-aligned copywriting throughout onboarding flow with welcoming, non-pathologizing language and 'parts' terminology, plus comprehensive accessibility audit ensuring proper ARIA labels, keyboard navigation, color contrast, and localization readiness.",
+        "details": "Create comprehensive copy pass replacing all onboarding text with IFS-aligned language: welcoming tone that avoids pathologizing language, gentle introduction of 'parts' terminology without overwhelming users, elimination of clinical jargon in favor of accessible language. Implement short, clear helper text with optional information popovers for complex concepts. Create lib/copy/onboarding-copy.ts with localization-ready text keys structure even if only English is implemented initially. Conduct full accessibility audit: add proper ARIA labels to all form elements, interactive components, and dynamic content; implement comprehensive aria-describedby relationships for helper text and error messages; ensure proper focus ring visibility and focus management between onboarding stages; verify tab order follows logical flow through each stage; test keyboard-only navigation for complete onboarding flow; validate color contrast meets WCAG AA standards (4.5:1 for normal text, 3:1 for large text); implement screen reader announcements for stage transitions and progress updates; add skip links for keyboard users; ensure all interactive elements have accessible names and roles.",
+        "testStrategy": "Verify copy changes maintain IFS therapeutic principles by reviewing all text with mental health professional or IFS-trained team member to confirm welcoming, non-pathologizing tone and appropriate 'parts' language introduction. Test accessibility compliance using axe-core automated testing suite and manual keyboard navigation through complete onboarding flow without mouse interaction. Validate color contrast ratios using WebAIM contrast checker on all text/background combinations. Test screen reader compatibility using NVDA, JAWS, or VoiceOver to ensure proper content announcement and navigation. Confirm ARIA labels and descriptions provide meaningful context for assistive technology users. Verify localization structure by attempting to add second language keys and confirming text renders properly with longer/shorter translations.",
+        "status": "pending",
+        "dependencies": [
+          6,
+          8,
+          9,
+          10,
+          13,
+          14
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Phase 8: Verification & Integration - OAuth callback routing, integration tests, and analytics assertions",
+        "description": "Implement comprehensive verification of Google OAuth callback routing logic, create integration tests to prevent route loops, and ensure proper analytics tracking for intervention views and check-in superseding behavior.",
+        "details": "Implement OAuth callback handler in pages/api/auth/callback/google.js to check user onboarding status and redirect appropriately: if onboarding_v1 flag exists and onboarding_redirect is true, redirect to /onboarding (only if not completed), otherwise redirect to /today. Create integration test suite in tests/integration/oauth-routing.spec.ts using Playwright to simulate complete OAuth flow and verify no infinite redirect loops occur between /onboarding, /today, and /chat routes. Implement unit tests for getTodayInterventions function in lib/interventions/getTodayInterventions.test.ts to verify supersede behavior correctly hides check-ins when canSupersedeCheckins=true and InterventionCard is active, and confirm priority sorting algorithm works correctly. Add analytics assertions in tests/unit/analytics/intervention-tracking.test.ts to verify intervention_viewed event fires on component mount with correct metadata. Create middleware to prevent /chat route access post-onboarding completion by checking user onboarding status and redirecting to /today. Implement comprehensive routing validation that ensures users cannot manually navigate to restricted routes during onboarding flow.",
+        "testStrategy": "Execute OAuth integration tests by simulating complete Google authentication flow and verifying correct redirects based on onboarding status flags. Test route loop prevention by attempting to navigate between /onboarding, /today, and /chat in various states and confirming no infinite redirects occur. Validate getTodayInterventions unit tests show check-ins are hidden only when canSupersedeCheckins=true AND InterventionCard is actively displayed, not just when intervention exists. Verify priority sorting produces consistent, deterministic results across multiple test runs. Confirm intervention_viewed analytics event fires exactly once on component mount with correct intervention ID, user ID, and timestamp metadata. Test /chat route blocking by attempting access post-onboarding and verifying automatic redirect to /today occurs. Execute full user journey tests covering new user OAuth → onboarding completion → /today access → intervention interaction to ensure complete flow works without routing issues.",
+        "status": "pending",
+        "dependencies": [
+          3,
+          11,
+          12,
+          13,
+          14
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Phase 9.1: Create comprehensive project documentation, ADR, and update CHANGELOG",
+        "description": "Create key documentation for the onboarding feature, including a detailed architecture overview, data dictionary, and developer guides. This also involves writing an Architecture Decision Record (ADR) for a key technical choice and updating the project's CHANGELOG.",
+        "details": "1. **Create `docs/onboarding.md`:** A comprehensive document covering the entire feature. \n   - **Architecture Overview:** Detail the system's structure, including frontend components, server-side functions, and database interactions. Include a diagram of the data flow from user input to memory synthesis.\n   - **User Flows:** Document the complete user journey from initial redirect, through all onboarding stages, to the post-completion experience on the `/today` screen.\n   - **API Endpoints:** List all new API routes (e.g., `/api/onboarding/questions`, `/api/onboarding/progress`), detailing their HTTP methods, payload structures (referencing Zod schemas), and expected success/error responses.\n   - **Scoring & Synthesis Details:** Explain the deterministic logic in `synthesizeOnboarding`, including how scores are calculated, normalized, and used to generate memory entries.\n   - **RLS Policies:** Document the Row-Level Security policies applied to onboarding-related tables, specifying user data access rules.\n   - **Feature Flags:** List all feature flags (`onboarding_v1`, `onboarding_redirect`, `intervention_cards`), their purpose, and how they control the system's behavior.\n   - **Data Dictionary:** Provide a schema for all new database tables, including column names, data types, descriptions, indexes, and data retention policies.\n   - **Developer Guide:** Write a step-by-step guide on 'How to add new onboarding questions'.\n2. **Create `docs/adr/001-server-side-selection.md`:**\n   - **Title:** Server-Side TypeScript Logic for Intervention Selection over Database Function.\n   - **Context:** Describe the requirement to select interventions based on user data and scores.\n   - **Decision:** Document the choice to implement selection logic in a server-side TypeScript function.\n   - **Rationale & Tradeoffs:** Justify the decision by highlighting benefits like testability, debuggability, and language consistency, while acknowledging tradeoffs like potential latency compared to a pure database function.\n3. **Update `CHANGELOG.md`:**\n   - Add a new version entry summarizing all major features delivered in the onboarding epic.\n   - Explicitly list the new features (e.g., 'Multi-stage user onboarding flow') and the feature flags introduced.",
+        "testStrategy": "1. **Peer Review:** Conduct a thorough review of `docs/onboarding.md` with the development team to ensure technical accuracy, clarity, and completeness. Verify that all documented endpoints, flags, and RLS policies match the final implementation.\n2. **Guide Validation:** Ask a developer not involved in the core implementation to follow the 'How to add new questions' guide and provide feedback on its clarity and correctness.\n3. **ADR Review:** Ensure the ADR clearly articulates the problem, decision, and rationale, and is understandable to new team members.\n4. **CHANGELOG Verification:** Confirm that the `CHANGELOG.md` entry is correctly formatted and accurately reflects all the features and changes delivered as part of the onboarding project.\n5. **Link & Snippet Check:** Manually verify that all hyperlinks in the documentation are correct and that all code snippets are accurate and well-formatted.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          3,
+          4,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Phase 9.2: Rollout Plan - Staged production deployment with feature flags, monitoring, and comprehensive QA validation",
+        "description": "Implement staged production rollout strategy using feature flags (0% → 5% → 25% → 100%) with comprehensive monitoring, SLO targets, alerting, and thorough manual QA validation across staging and production environments.",
+        "details": "Configure feature flag rollout strategy starting with 0% production traffic (internal QA in staging only), progressing through 5% → 25% → 100% production deployment stages. Set Service Level Objectives: Progress save operations p95 < 200ms, Completion rate target > 70%. Implement comprehensive alerting system with anomaly detection for drop-off between Stage 1 and Stage 2, API error rate alerts when >= 1%. Deploy complete onboarding system to staging environment and enable all feature flags: onboarding_v1, onboarding_redirect, and intervention_cards. Execute thorough manual QA testing with multiple test accounts covering: OAuth redirect correctness from authentication to /onboarding, Row Level Security (RLS) validation ensuring no cross-user data leakage, autosave/resume functionality across all onboarding stages, analytics event firing verification for all tracked interactions, Today screen superseding behavior when intervention cards are displayed. Implement gradual production rollout via feature flag percentage controls, establish continuous dashboard monitoring for completion rates, API performance metrics, and user drop-off patterns. Create rollback procedures enabling immediate flag disabling if critical issues are detected during any rollout stage.",
+        "testStrategy": "Validate staging deployment by enabling all feature flags and conducting comprehensive manual QA with multiple test accounts to verify redirect flows, RLS isolation, autosave functionality, and analytics tracking. Monitor SLO compliance during each rollout stage: confirm progress save p95 stays below 200ms and completion rates exceed 70%. Test alerting system by artificially triggering conditions (simulated drop-offs, elevated error rates) and verifying alert delivery. Execute rollback procedures during 5% rollout stage to validate immediate flag disabling capability and measure rollback time. Verify dashboard accuracy by cross-referencing manual test results with displayed metrics and analytics events.",
+        "status": "pending",
+        "dependencies": [
+          11,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        "priority": "low",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-09-03T11:43:23.308Z",
+      "updated": "2025-09-03T11:50:49.401Z",
+      "description": "IFS User Onboarding Implementation - Resume from Phase 1"
+    }
   }
 }
