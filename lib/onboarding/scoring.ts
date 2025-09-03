@@ -4,7 +4,6 @@ import {
   ThemeScores, 
   QuestionResponse, 
   STAGE1_RESPONSE_VALUES,
-  isStage1Question,
   Stage1QuestionId 
 } from './types';
 
@@ -30,8 +29,8 @@ export function computeStage1Scores(answersSnapshot: Record<string, QuestionResp
     
     if (valueWeights) {
       // Add weighted contributions to theme scores
-      for (const [theme, weight] of Object.entries(valueWeights)) {
-        if (theme in scores) {
+      for (const [theme, weight] of Object.entries(valueWeights as Record<string, number>)) {
+        if (THEMES.includes(theme as Theme)) {
           scores[theme as Theme] += weight;
         }
       }
@@ -127,9 +126,9 @@ export function debugScoring(answersSnapshot: Record<string, QuestionResponse>):
       const valueWeights = responseMapping[response.value as keyof typeof responseMapping];
       
       if (valueWeights) {
-        contributions[questionId] = {};
-        for (const [theme, weight] of Object.entries(valueWeights)) {
-          if (theme in THEMES) {
+        contributions[questionId] = {} as Record<Theme, number>;
+        for (const [theme, weight] of Object.entries(valueWeights as Record<string, number>)) {
+          if (THEMES.includes(theme as Theme)) {
             contributions[questionId][theme as Theme] = weight;
           }
         }
