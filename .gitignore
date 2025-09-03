@@ -34,8 +34,35 @@ out/
 !.env.local.example
 supabase/.env
 
-# Build artifacts
+# Build and test artifacts
 tsconfig.tsbuildinfo
+test-results/
+.scripts/
 
 # Project planning (internal)
 plan.md
+
+# Claude Code files
+CLAUDE.md
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Development artifacts and logs  
+*.log
+*.pid
+dev.log
+.next-dev*.log
+.mastra-dev.log
+.mastra-dev.pid
+
+# Task management and scratch work
+task.md
+*.scratch/
+jules-scratch/
+
+# Documentation artifacts (generated)
+feat-*.md
+linkedin-*.md
+
+# Obsidian vault
+.obsidian/
