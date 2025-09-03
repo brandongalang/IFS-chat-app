@@ -71,7 +71,7 @@ function runOpenCode(prompt, useDocsAgent = true) {
     const agentFlag = useDocsAgent ? ' --agent docs-updater' : '';
     const command = `GOOGLE_API_KEY="${process.env.GOOGLE_API_KEY}" opencode -p "${escapedPrompt}"${agentFlag}`;
     
-    const result = execSync(command, { 
+    const result = execSync(command, {
       encoding: 'utf8',
       maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large responses
       timeout: 120000, // 2 minute timeout (reduced for CI)

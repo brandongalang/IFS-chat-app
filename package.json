@@ -21,7 +21,11 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed --debug"
+    "test:e2e:headed": "playwright test --headed --debug",
+    "dev:onboarding": "NEXT_PUBLIC_IFS_DEV_MODE=true next dev",
+    "test:unit:onboarding": "npm run test:unit",
+    "e2e:dev:onboarding": "NEXT_PUBLIC_IFS_DEV_MODE=true playwright test e2e/dev-onboarding.spec.ts",
+    "dev:flow": "NEXT_PUBLIC_IFS_DEV_MODE=true next dev"
   },
   "dependencies": {
     "@ai-sdk/react": "^2.0.26",
