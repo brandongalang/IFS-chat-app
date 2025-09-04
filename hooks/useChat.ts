@@ -224,7 +224,8 @@ export function useChat() {
     }
 
     try {
-      const chosenApiPath = devMode ? '/api/chat/dev' : '/api/chat'
+      // Always use main agent for ethereal chat (not the dev stream)
+      const chosenApiPath = '/api/chat'
       let doneReceived = false
 
       await streamFromMastra({

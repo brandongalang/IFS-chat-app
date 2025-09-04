@@ -85,7 +85,7 @@ export function BottomTabs() {
 
       {/* Floating + button */}
       <div className="absolute inset-x-0 -top-6 flex justify-center pointer-events-none">
-        <Link href="/chat" aria-label="Start a new chat" className="pointer-events-auto">
+        <Link href={process.env.NEXT_PUBLIC_IFS_ETHEREAL_CHAT === 'false' ? '/chat' : '/chat/ethereal'} aria-label="Start a new chat" className="pointer-events-auto">
           <div className="size-14 rounded-full bg-primary text-primary-foreground shadow-xl grid place-items-center">
             <Plus className="w-7 h-7" />
           </div>
