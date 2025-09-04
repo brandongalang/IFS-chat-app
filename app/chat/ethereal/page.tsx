@@ -4,7 +4,7 @@ import { Suspense } from "react"
 import { Nunito } from "next/font/google"
 import { EtherealChat } from "@/components/ethereal/EtherealChat"
 
-const nunito = Nunito({ subsets: ["latin"], weight: ["300", "400", "600"], variable: "--font-ethereal" })
+const nunito = Nunito({ subsets: ["latin"], weight: ["200", "300", "400", "600"], variable: "--font-ethereal" })
 
 export default function EtherealChatPage() {
   return (
