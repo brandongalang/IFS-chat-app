@@ -66,3 +66,12 @@ linkedin-*.md
 
 # Obsidian vault
 .obsidian/
+
+# Task management tools
+.taskmaster/
+
+# Playwright MCP
+.playwright-mcp/
+
+# OpenCode CI agent
+.opencode/
