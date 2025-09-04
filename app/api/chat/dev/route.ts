@@ -27,8 +27,8 @@ export async function POST() {
   ]
 
   const stream = simulateReadableStream({
-    initialDelayInMs: 100,
-    chunkDelayInMs: 100,
+    initialDelayInMs: 140,
+    chunkDelayInMs: 140,
     chunks,
   }).pipeThrough(new TextEncoderStream())
 
