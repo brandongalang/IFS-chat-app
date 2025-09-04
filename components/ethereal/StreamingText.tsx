@@ -34,9 +34,9 @@ export function StreamingText({ text }: { text: string }) {
         return (
           <motion.span
             key={`w-${i}`}
-            initial={isNewWord ? { opacity: 0.35, filter: 'blur(3px)', y: 4, color: 'rgba(128, 200, 200, 0.95)' } : {}}
-            animate={{ opacity: 1, filter: 'blur(0px)', y: 0, color: 'rgba(255,255,255,1)' }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
+            initial={isNewWord ? { opacity: 0, y: 6, color: 'rgba(128, 200, 200, 0.95)' } : {}}
+            animate={{ opacity: 1, y: 0, color: 'rgba(255,255,255,1)' }}
+            transition={{ duration: 0.9, ease: [0.25, 0.1, 0, 1] }}
             className="inline-block"
           >
             {chars.map((ch, ci) => {
@@ -47,7 +47,7 @@ export function StreamingText({ text }: { text: string }) {
                   key={ci}
                   initial={isNewChar ? { opacity: 0 } : {}}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.4, ease: 'easeOut' }}
+                  transition={{ duration: 0.55, ease: [0.25, 0.1, 0, 1] }}
                 >
                   {ch}
                 </motion.span>

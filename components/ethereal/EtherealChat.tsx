@@ -57,7 +57,7 @@ export function EtherealChat() {
       <BackgroundImageLayer />
       <GradientBackdrop />
       {/* Subtle vignette to improve contrast over bright areas */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.15)_0%,rgba(0,0,0,0.25)_55%,rgba(0,0,0,0.45)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.10)_0%,rgba(0,0,0,0.22)_55%,rgba(0,0,0,0.38)_100%)]" />
 
       {/* Top bar with translucent End button (only when a session exists) */}
       <div className="pointer-events-none absolute top-[calc(env(safe-area-inset-top)+8px)] right-3 z-20">
@@ -89,14 +89,16 @@ export function EtherealChat() {
                 className={[
                   "max-w-[84%] whitespace-pre-wrap leading-7",
                   m.role === "assistant"
-                    ? "text-3xl sm:text-4xl leading-snug text-white/90 lowercase font-light italic drop-shadow-[0_1px_1px_rgba(0,0,0,0.85)]"
+                    ? "text-3xl sm:text-4xl leading-snug text-white/90 lowercase font-light drop-shadow-[0_1px_1px_rgba(0,0,0,0.85)]"
                     : "text-[15px] sm:text-[16px] text-white/85 font-light drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]",
                 ].join(" ")}
               >
                 {m.id === "ethereal-welcome" && (
-                  <p className="mb-2 text-sm text-white/60">dive back in.</p>
+                  <p className="mb-2 text-sm text-white/60 not-italic">dive back in.</p>
                 )}
-                <StreamingText text={m.content} />
+                <span className={m.role === "assistant" ? "italic" : undefined}>
+                  <StreamingText text={m.content} />
+                </span>
               </div>
             </motion.div>
           ))}
@@ -186,7 +188,7 @@ function GradientBackdrop() {
         reduceMotion ? (
           <div
             key={i}
-            className="absolute -z-10 blur-3xl"
+          className="absolute -z-20 blur-3xl"
             style={{
               opacity: 0.5,
               width: b.size,
@@ -201,7 +203,7 @@ function GradientBackdrop() {
         ) : (
           <motion.div
             key={i}
-            initial={{ x: b.x, y: b.y, opacity: 0.6 }}
+          initial={{ x: b.x, y: b.y, opacity: 0.4 }}
             animate={{
               x: [b.x, b.x + (i % 2 === 0 ? 30 : -20), b.x],
               y: [b.y, b.y + (i % 2 === 0 ? -20 : 30), b.y],
@@ -230,7 +232,7 @@ function BackgroundImageLayer() {
     <img
       src="/ethereal-bg.jpg"
       alt="background"
-      className="absolute inset-0 h-full w-full object-cover -z-20 blur-2xl scale-110 opacity-80"
+      className="absolute inset-0 h-full w-full object-cover z-0 blur-xl scale-105 opacity-90"
       onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
       loading="eager"
       draggable={false}
