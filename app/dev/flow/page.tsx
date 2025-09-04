@@ -257,7 +257,7 @@ export default function OnboardingFlowPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-center text-muted-foreground">
-                You've successfully completed the onboarding flow.
+                You&apos;ve successfully completed the onboarding flow.
               </p>
               <div className="text-xs bg-muted p-3 rounded">
                 <strong>Answers collected:</strong>
@@ -331,9 +331,12 @@ export default function OnboardingFlowPage() {
 
                   {/* Single Choice Questions */}
                   {currentQuestion.type === 'single_choice' && (
-                    <RadioGroup
+<RadioGroup
                       onValueChange={handleSingleChoice}
-                      value={answers[currentQuestion.id]?.type === 'single_choice' ? answers[currentQuestion.id].value : ''}
+                      value={((): string => {
+                        const sel = answers[currentQuestion.id];
+                        return sel && sel.type === 'single_choice' ? sel.value : ''
+                      })()}
                     >
                       <div className="space-y-3">
                         {currentQuestion.options.map((option) => (
@@ -354,7 +357,10 @@ export default function OnboardingFlowPage() {
                       <Textarea
                         placeholder="Take your time to reflect and share your thoughts..."
                         className="min-h-40 text-base leading-relaxed"
-                        defaultValue={answers[currentQuestion.id]?.type === 'free_text' ? answers[currentQuestion.id].text : ''}
+defaultValue={((): string => {
+                          const sel = answers[currentQuestion.id];
+                          return sel && sel.type === 'free_text' ? sel.text : ''
+                        })()}
                         id={`textarea-${currentQuestion.id}`}
                       />
                       <div className="flex justify-between items-center">
