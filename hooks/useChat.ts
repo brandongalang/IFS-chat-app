@@ -197,15 +197,23 @@ export function useChat() {
     let accumulated = '';
     let buffer = '';
     let flushInterval: any = null
+    const stepMs = 70
+    const stepChars = 10
     const startFlusher = () => {
       if (flushInterval) return
       flushInterval = setInterval(() => {
         if (buffer.length > 0) {
-          accumulated += buffer
-          buffer = ''
+          const take = Math.min(stepChars, buffer.length)
+          const part = buffer.slice(0, take)
+          buffer = buffer.slice(take)
+          accumulated += part
           updateMessage(assistantId, { content: accumulated, streaming: true })
+        } else {
+          // no buffer left; flusher can stop; finalization handled by onChunk(done)
+          clearInterval(flushInterval)
+          flushInterval = null
         }
-      }, 60) // smooth streaming cadence ~16 chars per second depending on chunk sizes
+      }, stepMs)
     }
     const stopFlusher = () => {
       if (flushInterval) {
@@ -215,31 +223,37 @@ export function useChat() {
     }
 
     try {
+      const forceDev = typeof window !== 'undefined' && window.location && window.location.pathname.startsWith('/chat/ethereal')
+      const chosenApiPath = forceDev ? '/api/chat/dev' : (devMode ? '/api/chat/dev' : '/api/chat')
+      let doneReceived = false
+
       await streamFromMastra({
         messages: apiMessages,
         sessionId,
         userId: userIdRef.current,
         profile,
         signal: controller.signal,
-        apiPath: devMode ? '/api/chat/dev' : '/api/chat',
+        apiPath: chosenApiPath,
         onTask: (evt) => {
           upsertTaskForMessage(assistantId, evt)
         },
         onChunk: (chunk, done) => {
-          // accumulate into buffer; a timer flushes it periodically for smoother updates
-          buffer += chunk
+          // accumulate; flusher reveals a few characters per tick for ethereal smoothness
+          if (chunk) buffer += chunk
           startFlusher()
           if (done) {
-            stopFlusher()
-            if (buffer.length > 0) {
-              accumulated += buffer
-              buffer = ''
+            doneReceived = true
+            // finalize happens in the flusher once buffer empties
+            const finishIfReady = () => {
+              if (!flushInterval && (buffer.length === 0)) {
+                updateMessage(assistantId, { content: accumulated, streaming: false })
+                setState((prev: any) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
+                streamingCancelRef.current = null;
+                persistMessage(sessionId, 'assistant', accumulated).catch(() => {});
+              }
             }
-            updateMessage(assistantId, { content: accumulated, streaming: false })
-            setState((prev: any) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
-            streamingCancelRef.current = null;
-            // Persist assistant message (fire-and-forget)
-            persistMessage(sessionId, 'assistant', accumulated).catch(() => {});
+            // small timeout to allow last tick to run
+            setTimeout(finishIfReady, 80)
           }
         },
       });
