@@ -120,6 +120,27 @@ export function useChat() {
     }
   }, []);
 
+  // Add a non-streaming assistant message (optionally persisted)
+  const addAssistantMessage = useCallback(async (content: string, opts?: { persist?: boolean; id?: string; persona?: 'claude' | 'default' }) => {
+    const id = (opts && opts.id) || generateId()
+    const msg: Message = {
+      id,
+      role: 'assistant',
+      content,
+      timestamp: Date.now(),
+      persona: opts?.persona || 'claude',
+      streaming: false,
+      tasks: [],
+    }
+    setState((prev: any) => ({ ...prev, messages: [...prev.messages, msg] }))
+    if (opts?.persist) {
+      try {
+        const sessionId = await ensureSession()
+        await persistMessage(sessionId, 'assistant', content)
+      } catch {}
+    }
+  }, [ensureSession, persistMessage])
+
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || (state as any).isStreaming) return;
 
@@ -174,6 +195,25 @@ export function useChat() {
     const apiMessages = [...(state as any).messages, userMessage].map((m: any) => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content }));
 
     let accumulated = '';
+    let buffer = '';
+    let flushInterval: any = null
+    const startFlusher = () => {
+      if (flushInterval) return
+      flushInterval = setInterval(() => {
+        if (buffer.length > 0) {
+          accumulated += buffer
+          buffer = ''
+          updateMessage(assistantId, { content: accumulated, streaming: true })
+        }
+      }, 60) // smooth streaming cadence ~16 chars per second depending on chunk sizes
+    }
+    const stopFlusher = () => {
+      if (flushInterval) {
+        clearInterval(flushInterval)
+        flushInterval = null
+      }
+    }
+
     try {
       await streamFromMastra({
         messages: apiMessages,
@@ -186,9 +226,16 @@ export function useChat() {
           upsertTaskForMessage(assistantId, evt)
         },
         onChunk: (chunk, done) => {
-          accumulated += chunk;
-          updateMessage(assistantId, { content: accumulated, streaming: !done });
+          // accumulate into buffer; a timer flushes it periodically for smoother updates
+          buffer += chunk
+          startFlusher()
           if (done) {
+            stopFlusher()
+            if (buffer.length > 0) {
+              accumulated += buffer
+              buffer = ''
+            }
+            updateMessage(assistantId, { content: accumulated, streaming: false })
             setState((prev: any) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
             streamingCancelRef.current = null;
             // Persist assistant message (fire-and-forget)
@@ -198,6 +245,7 @@ export function useChat() {
       });
     } catch (e) {
       // Mark stream ended and show basic error if needed
+      stopFlusher()
       setState((prev: any) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
       streamingCancelRef.current = null;
       if (accumulated.length === 0) {
@@ -299,6 +347,7 @@ export function useChat() {
     hasActiveSession: (state as any).hasActiveSession as boolean,
     tasksByMessage: (state as any).tasksByMessage as Record<string, TaskEvent[]>,
     sendMessage,
+    addAssistantMessage,
     clearChat,
     endSession,
     rerunTool,

@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation"
 
 // Minimal, bubble-less chat presentation for /chat/ethereal
 export function EtherealChat() {
-  const { messages, sendMessage, isStreaming, hasActiveSession, endSession } = useChat()
+  const { messages, sendMessage, isStreaming, hasActiveSession, endSession, addAssistantMessage } = useChat()
   const router = useRouter()
 
   // UI state
@@ -40,15 +40,15 @@ export function EtherealChat() {
     }
   }
 
-  // Display a synthetic first assistant message to seed the conversation in-place
-  const initialAssistant: ChatMessage = useMemo(() => ({
-    id: "ethereal-welcome",
-    role: "assistant",
-    content: "what feels unresolved or undefined for you right now?",
-    timestamp: Date.now(),
-    streaming: false,
-  }), [])
-  const displayMessages: ChatMessage[] = (messages?.length ?? 0) === 0 ? [initialAssistant] : (messages as ChatMessage[])
+  // Ensure the hero message is present and persisted on a fresh session
+  const seededRef = useRef(false)
+  useEffect(() => {
+    if (seededRef.current) return
+    if ((messages?.length ?? 0) === 0) {
+      seededRef.current = true
+      addAssistantMessage("what feels unresolved or undefined for you right now?", { persist: true, id: "ethereal-welcome" })
+    }
+  }, [messages?.length, addAssistantMessage])
 
   return (
     <div className="absolute inset-0 flex flex-col">
@@ -73,8 +73,14 @@ export function EtherealChat() {
       {/* Messages area */}
       <div className="relative z-10 flex-1 overflow-y-auto px-4 pb-[120px] pt-[calc(env(safe-area-inset-top)+16px)]">
         <div className="mx-auto flex max-w-[820px] flex-col gap-6">
-          {displayMessages.map((m) => (
-            <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+          {(messages as ChatMessage[]).map((m) => (
+            <motion.div
+              key={m.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+            >
               <div
                 className={[
                   "max-w-[84%] whitespace-pre-wrap leading-7",
@@ -91,7 +97,7 @@ export function EtherealChat() {
                   <span className="ml-1 inline-block animate-pulse">▊</span>
                 )}
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -163,28 +169,55 @@ function GradientBackdrop() {
     []
   )
 
+  const [reduceMotion, setReduceMotion] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('matchMedia' in window)) return
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const handler = () => setReduceMotion(mq.matches)
+    handler()
+    mq.addEventListener?.('change', handler)
+    return () => mq.removeEventListener?.('change', handler)
+  }, [])
+
   return (
     <div className="absolute inset-0">
       {blobs.map((b, i) => (
-        <motion.div
-          key={i}
-          initial={{ x: b.x, y: b.y, opacity: 0.6 }}
-          animate={{
-            x: [b.x, b.x + (i % 2 === 0 ? 30 : -20), b.x],
-            y: [b.y, b.y + (i % 2 === 0 ? -20 : 30), b.y],
-            transition: { duration: 20 + i * 3, repeat: Infinity, ease: "easeInOut" },
-          }}
-          className="absolute -z-10 blur-3xl"
-          style={{
-            width: b.size,
-            height: b.size,
-            left: `calc(50% - ${b.size / 2}px)`,
-            top: `calc(50% - ${b.size / 2}px)`,
-            borderRadius: b.size,
-            background: `radial-gradient(closest-side, ${b.color} 0%, rgba(0,0,0,0) 70%)`,
-            filter: "blur(60px)",
-          }}
-        />
+        reduceMotion ? (
+          <div
+            key={i}
+            className="absolute -z-10 blur-3xl"
+            style={{
+              opacity: 0.5,
+              width: b.size,
+              height: b.size,
+              left: `calc(50% - ${b.size / 2}px)`,
+              top: `calc(50% - ${b.size / 2}px)`,
+              borderRadius: b.size,
+              background: `radial-gradient(closest-side, ${b.color} 0%, rgba(0,0,0,0) 70%)`,
+              filter: "blur(60px)",
+            }}
+          />
+        ) : (
+          <motion.div
+            key={i}
+            initial={{ x: b.x, y: b.y, opacity: 0.6 }}
+            animate={{
+              x: [b.x, b.x + (i % 2 === 0 ? 30 : -20), b.x],
+              y: [b.y, b.y + (i % 2 === 0 ? -20 : 30), b.y],
+              transition: { duration: 20 + i * 3, repeat: Infinity, ease: "easeInOut" },
+            }}
+            className="absolute -z-10 blur-3xl"
+            style={{
+              width: b.size,
+              height: b.size,
+              left: `calc(50% - ${b.size / 2}px)`,
+              top: `calc(50% - ${b.size / 2}px)`,
+              borderRadius: b.size,
+              background: `radial-gradient(closest-side, ${b.color} 0%, rgba(0,0,0,0) 70%)`,
+              filter: "blur(60px)",
+            }}
+          />
+        )
       ))}
     </div>
   )
