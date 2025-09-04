@@ -36,7 +36,7 @@ export function StreamingText({ text }: { text: string }) {
             key={`w-${i}`}
             initial={isNewWord ? { opacity: 0, y: 8, color: 'rgba(128, 200, 200, 0.95)' } : {}}
             animate={{ opacity: 1, y: 0, color: 'rgba(255,255,255,1)' }}
-            transition={{ duration: 1.4, ease: [0.25, 0.1, 0, 1] }}
+            transition={{ duration: 2.0, ease: [0.25, 0.1, 0, 1] }}
             className="inline-block"
           >
             {chars.map((ch, ci) => {

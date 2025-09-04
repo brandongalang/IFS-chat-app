@@ -89,8 +89,8 @@ export function EtherealChat() {
                 className={[
                   "max-w-[84%] whitespace-pre-wrap leading-7",
                   m.role === "assistant"
-                    ? "text-3xl sm:text-4xl leading-snug text-white/90 lowercase font-extralight tracking-wide drop-shadow-[0_1px_1px_rgba(0,0,0,0.75)]"
-                    : "text-[15px] sm:text-[16px] text-white/85 font-light lowercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]",
+                    ? "text-3xl sm:text-4xl leading-snug text-white/85 lowercase font-thin tracking-widest drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]"
+                    : "text-[15px] sm:text-[16px] text-white/80 font-thin lowercase tracking-wide drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]",
                 ].join(" ")}
               >
                 {m.id === "ethereal-welcome" && (
