@@ -75,3 +75,6 @@ linkedin-*.md
 
 # OpenCode CI agent
 .opencode/
+
+# Root docs kept local-only
+AGENTS.md
