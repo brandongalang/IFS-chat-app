@@ -53,8 +53,11 @@ export function EtherealChat() {
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      {/* Animated, blurred gradient blobs for an ethereal vibe */}
+      {/* Background image (optional) with gradient fallback */}
+      <BackgroundImageLayer />
       <GradientBackdrop />
+      {/* Subtle vignette to improve contrast over bright areas */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.15)_0%,rgba(0,0,0,0.25)_55%,rgba(0,0,0,0.45)_100%)]" />
 
       {/* Top bar with translucent End button (only when a session exists) */}
       <div className="pointer-events-none absolute top-[calc(env(safe-area-inset-top)+8px)] right-3 z-20">
@@ -86,8 +89,8 @@ export function EtherealChat() {
                 className={[
                   "max-w-[84%] whitespace-pre-wrap leading-7",
                   m.role === "assistant"
-                    ? "text-3xl sm:text-4xl leading-snug text-white/90 lowercase"
-                    : "text-[15px] sm:text-[16px] text-white/80",
+                    ? "text-3xl sm:text-4xl leading-snug text-white/90 lowercase font-light drop-shadow-[0_1px_1px_rgba(0,0,0,0.85)]"
+                    : "text-[15px] sm:text-[16px] text-white/85 font-light drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]",
                 ].join(" ")}
               >
                 {m.id === "ethereal-welcome" && (
@@ -160,9 +163,9 @@ function GradientBackdrop() {
   // animated blurred blobs using framer-motion; colors tuned to teal-gray ambiance
   const blobs = useMemo(
     () => [
-      { x: -120, y: -60, size: 420, color: "#1f3a3f" },
-      { x: 120, y: 40, size: 360, color: "#2a4d52" },
-      { x: 0, y: 160, size: 520, color: "#0f1f22" },
+      { x: -140, y: -80, size: 520, color: "#1f3a3f" }, // deep teal
+      { x: 140, y: 60, size: 460, color: "#2a4d52" },  // mid teal
+      { x: 20, y: 180, size: 620, color: "#d39a78" },  // warm peach accent
     ],
     []
   )
@@ -218,5 +221,19 @@ function GradientBackdrop() {
         )
       ))}
     </div>
+  )
+}
+
+function BackgroundImageLayer() {
+  // Attempts to show /ethereal-bg.jpg; remains silent if not found
+  return (
+    <img
+      src="/ethereal-bg.jpg"
+      alt="background"
+      className="absolute inset-0 h-full w-full object-cover -z-20 blur-2xl scale-110 opacity-80"
+      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+      loading="eager"
+      draggable={false}
+    />
   )
 }
