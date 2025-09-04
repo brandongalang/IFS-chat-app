@@ -477,3 +477,32 @@ This project reveals how modern AI tools change the software development landsca
 - **Tool Specialization**: Different AI tools excel at different cognitive tasks, requiring strategic selection
 
 The gap between having a clear vision for software and implementing it continues to shrink through intelligent application of AI development tools.
+
+---
+
+## 📄 License & Commercial Rights
+
+**This project is proprietary software owned by Galang Consulting LLC.**
+
+### Portfolio Display License
+This repository is made publicly available solely for **portfolio demonstration and educational purposes**. You are welcome to:
+- View and study the source code
+- Reference the architectural patterns and implementation techniques
+- Use this work to evaluate technical capabilities
+
+### Commercial Rights Reserved
+**All commercial rights are reserved.** The following are strictly prohibited:
+- Commercial use of any kind
+- Distribution, copying, or reproduction
+- Creating derivative works or modifications
+- Incorporating any part of this code into other projects
+- Reverse engineering proprietary algorithms or business logic
+
+### Contact Information
+For commercial licensing inquiries or permission requests beyond portfolio viewing, please contact:
+
+**Galang Consulting LLC**  
+Email: brandongalang@aya.yale.edu  
+Jurisdiction: New York, United States
+
+This application represents proprietary intellectual property being developed for future commercial release as a therapy companion platform.
