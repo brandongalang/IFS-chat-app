@@ -223,8 +223,7 @@ export function useChat() {
     }
 
     try {
-      const forceDev = typeof window !== 'undefined' && window.location && window.location.pathname.startsWith('/chat/ethereal')
-      const chosenApiPath = forceDev ? '/api/chat/dev' : (devMode ? '/api/chat/dev' : '/api/chat')
+      const chosenApiPath = devMode ? '/api/chat/dev' : '/api/chat'
       let doneReceived = false
 
       await streamFromMastra({
