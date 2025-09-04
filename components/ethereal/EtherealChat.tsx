@@ -89,9 +89,14 @@ export function EtherealChat() {
                 className={[
                   "max-w-[84%] whitespace-pre-wrap leading-7",
                   m.role === "assistant"
-                    ? "text-3xl sm:text-4xl leading-snug text-white/85 lowercase font-thin italic tracking-normal drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]"
-                    : "text-[15px] sm:text-[16px] text-white/80 font-thin lowercase tracking-normal drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]",
+                    ? "text-3xl sm:text-4xl leading-snug lowercase font-thin italic drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]"
+                    : "text-[15px] sm:text-[16px] font-thin lowercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]",
                 ].join(" ")}
+                style={{
+                  letterSpacing: m.role === 'assistant' ? 'var(--eth-letter-spacing-assistant)' : 'var(--eth-letter-spacing-user)',
+                  color: 'rgba(255,255,255,var(--eth-assistant-opacity))',
+                  opacity: m.role === 'assistant' ? undefined : (Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-user-opacity').trim()) || 0.8),
+                }}
               >
                 {m.id === "ethereal-welcome" && (
                   <p className="mb-2 text-sm text-white/60">dive back in.</p>

@@ -19,6 +19,14 @@ export function StreamingText({ text }: { text: string }) {
   let wordIndex = 0
   let charSeen = 0
 
+  // Read CSS variables for durations (ms)
+  const wordMs = typeof window !== 'undefined'
+    ? Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-word-duration').trim() || 0) || 2000
+    : 2000
+  const charMs = typeof window !== 'undefined'
+    ? Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-char-duration').trim() || 0) || 1000
+    : 1000
+
   return (
     <span aria-live="polite">
       {tokens.map((tok, i) => {
@@ -36,7 +44,7 @@ export function StreamingText({ text }: { text: string }) {
             key={`w-${i}`}
             initial={isNewWord ? { opacity: 0, y: 8, color: 'rgba(128, 200, 200, 0.95)' } : {}}
             animate={{ opacity: 1, y: 0, color: 'rgba(255,255,255,1)' }}
-            transition={{ duration: 2.0, ease: [0.25, 0.1, 0, 1] }}
+            transition={{ duration: wordMs / 1000, ease: [0.25, 0.1, 0, 1] }}
             className="inline-block"
           >
             {chars.map((ch, ci) => {
@@ -47,7 +55,7 @@ export function StreamingText({ text }: { text: string }) {
                   key={ci}
                   initial={isNewChar ? { opacity: 0 } : {}}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 1.0, ease: [0.25, 0.1, 0, 1] }}
+                  transition={{ duration: charMs / 1000, ease: [0.25, 0.1, 0, 1] }}
                 >
                   {ch}
                 </motion.span>

@@ -197,8 +197,9 @@ export function useChat() {
     let accumulated = '';
     let buffer = '';
     let flushInterval: any = null
-    const stepMs = 150
-    const stepChars = 8
+    // Read CSS variables for streaming cadence
+    const stepMs = typeof window !== 'undefined' ? (Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-stream-tick').trim()) || 150) : 150
+    const stepChars = typeof window !== 'undefined' ? (Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-stream-chars').trim()) || 8) : 8
     const startFlusher = () => {
       if (flushInterval) return
       flushInterval = setInterval(() => {
