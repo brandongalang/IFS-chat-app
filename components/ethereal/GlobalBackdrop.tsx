@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 
 export function GlobalBackdrop() {
   return (
-    <div className="pointer-events-none fixed inset-0 -z-30 overflow-hidden">
+    <div className="pointer-events-none fixed inset-0 -z-30 overflow-hidden" style={{ opacity: 'var(--eth-enabled, 1)' }}>
       <BackgroundImageLayer />
       <GradientBackdrop />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.10)_0%,rgba(0,0,0,0.22)_55%,rgba(0,0,0,0.38)_100%)]" />

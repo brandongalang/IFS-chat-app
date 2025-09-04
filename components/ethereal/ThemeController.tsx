@@ -7,7 +7,7 @@ export function ThemeController() {
   useEffect(() => {
     const r = document.documentElement
     const apply = () => {
-      r.style.setProperty('--eth-enabled', String(T.enabled))
+      r.style.setProperty('--eth-enabled', T.enabled ? '1' : '0')
       r.style.setProperty('--eth-image-url', T.imageUrl)
       r.style.setProperty('--eth-vignette-inner', String(T.vignette.inner))
       r.style.setProperty('--eth-vignette-mid', String(T.vignette.mid))
