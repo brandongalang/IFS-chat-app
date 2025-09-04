@@ -90,15 +90,13 @@ export function EtherealChat() {
                   "max-w-[84%] whitespace-pre-wrap leading-7",
                   m.role === "assistant"
                     ? "text-3xl sm:text-4xl leading-snug text-white/90 lowercase font-extralight tracking-wide drop-shadow-[0_1px_1px_rgba(0,0,0,0.75)]"
-                    : "text-[15px] sm:text-[16px] text-white/85 font-light drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]",
+                    : "text-[15px] sm:text-[16px] text-white/85 font-light lowercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]",
                 ].join(" ")}
               >
                 {m.id === "ethereal-welcome" && (
-                  <p className="mb-2 text-sm text-white/60 not-italic">dive back in.</p>
+                  <p className="mb-2 text-sm text-white/60">dive back in.</p>
                 )}
-                <span className={m.role === "assistant" ? "italic" : undefined}>
-                  <StreamingText text={m.content} />
-                </span>
+                <StreamingText text={m.content} />
               </div>
             </motion.div>
           ))}
