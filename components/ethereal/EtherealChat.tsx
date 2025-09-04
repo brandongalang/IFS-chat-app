@@ -7,10 +7,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import type { Message as ChatMessage } from "@/types/chat"
+import { useRouter } from "next/navigation"
 
 // Minimal, bubble-less chat presentation for /chat/ethereal
 export function EtherealChat() {
   const { messages, sendMessage, isStreaming, hasActiveSession, endSession } = useChat()
+  const router = useRouter()
 
   // UI state
   const [text, setText] = useState("")
@@ -77,9 +79,7 @@ export function EtherealChat() {
                 className={[
                   "max-w-[84%] whitespace-pre-wrap leading-7",
                   m.role === "assistant"
-                    ? (m.id === "ethereal-welcome"
-                        ? "text-3xl sm:text-4xl leading-snug text-white/90 lowercase"
-                        : "text-[17px] sm:text-[18px] text-white/95 lowercase")
+                    ? "text-3xl sm:text-4xl leading-snug text-white/90 lowercase"
                     : "text-[15px] sm:text-[16px] text-white/80",
                 ].join(" ")}
               >
@@ -140,6 +140,7 @@ export function EtherealChat() {
               onClick={async () => {
                 await endSession()
                 setConfirmOpen(false)
+                router.push('/today')
               }}
             >
               End session
