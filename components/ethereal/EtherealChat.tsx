@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import type { Message as ChatMessage } from "@/types/chat"
 import { useRouter } from "next/navigation"
+import { StreamingText } from "./StreamingText"
 
 // Minimal, bubble-less chat presentation for /chat/ethereal
 export function EtherealChat() {
@@ -92,10 +93,7 @@ export function EtherealChat() {
                 {m.id === "ethereal-welcome" && (
                   <p className="mb-2 text-sm text-white/60">dive back in.</p>
                 )}
-                {m.content}
-                {m.streaming && m.role === "assistant" && (
-                  <span className="ml-1 inline-block animate-pulse">▊</span>
-                )}
+                <StreamingText text={m.content} />
               </div>
             </motion.div>
           ))}
