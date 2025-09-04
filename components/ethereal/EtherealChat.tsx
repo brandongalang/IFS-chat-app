@@ -1,0 +1,189 @@
+"use client"
+
+import { useEffect, useMemo, useRef, useState } from "react"
+import { motion } from "framer-motion"
+import { useChat } from "@/hooks/useChat"
+import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+
+// Minimal, bubble-less chat presentation for /chat/ethereal
+export function EtherealChat() {
+  const { messages, sendMessage, isStreaming, hasActiveSession, endSession } = useChat()
+
+  // UI state
+  const [text, setText] = useState("")
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (!inputRef.current) return
+    inputRef.current.style.height = "auto"
+    inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 132)}px`
+  }, [text])
+
+  const onSubmit = () => {
+    const value = text.trim()
+    if (!value || isStreaming) return
+    sendMessage(value)
+    setText("")
+  }
+
+  const onKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      onSubmit()
+    }
+  }
+
+  const showOverlayPrompt = (messages?.length ?? 0) === 0
+
+  return (
+    <div className="absolute inset-0 flex flex-col">
+      {/* Animated, blurred gradient blobs for an ethereal vibe */}
+      <GradientBackdrop />
+
+      {/* Top bar with translucent End button (only when a session exists) */}
+      <div className="pointer-events-none absolute top-[calc(env(safe-area-inset-top)+8px)] right-3 z-20">
+        <div className="flex items-center gap-2">
+          {hasActiveSession && (
+            <button
+              onClick={() => setConfirmOpen(true)}
+              className="pointer-events-auto rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs text-white/90 backdrop-blur-sm hover:bg-white/15 active:scale-[0.98] transition"
+              aria-label="End session"
+            >
+              end
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Messages area */}
+      <div className="relative z-10 flex-1 overflow-y-auto px-4 pb-[120px] pt-[calc(env(safe-area-inset-top)+16px)]">
+        {showOverlayPrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute left-0 right-0 top-[18vh] mx-auto max-w-[680px] px-6 text-left"
+          >
+            <p className="mb-2 text-sm text-white/60">dive back in.</p>
+            <h1 className="text-3xl leading-snug text-white/90 sm:text-4xl">
+              what feels unresolved or undefined for you right now?
+            </h1>
+          </motion.div>
+        )}
+
+        <div className="mx-auto flex max-w-[820px] flex-col gap-6">
+          {messages.map((m) => (
+            <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                className={[
+                  "max-w-[84%] whitespace-pre-wrap leading-7",
+                  m.role === "assistant"
+                    ? "text-[17px] sm:text-[18px] text-white/95 lowercase"
+                    : "text-[15px] sm:text-[16px] text-white/80",
+                ].join(" ")}
+              >
+                {m.content}
+                {m.streaming && m.role === "assistant" && (
+                  <span className="ml-1 inline-block animate-pulse">▊</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Translucent input bar (always visible) */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pb-[calc(12px+env(safe-area-inset-bottom))]">
+        <div className="mx-auto w-full max-w-[900px] px-3">
+          <div className="pointer-events-auto rounded-2xl border border-white/15 bg-white/10 p-2 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.25)]">
+            <Textarea
+              ref={inputRef}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder="type your thought…"
+              className="min-h-[44px] max-h-[132px] w-full resize-none border-0 bg-transparent p-3 text-[16px] text-white/90 placeholder:text-white/50 focus-visible:ring-0"
+              data-testid="ethereal-input"
+              aria-label="Message"
+              disabled={isStreaming}
+            />
+            <div className="flex items-center justify-end px-2 pb-1">
+              <Button
+                size="sm"
+                onClick={onSubmit}
+                disabled={!text.trim() || isStreaming}
+                className="h-8 rounded-full bg-white/20 px-4 text-white hover:bg-white/30"
+              >
+                send
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Confirm end session dialog */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>End current session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ending will clear the current conversation flow. You can start a new one anytime.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                await endSession()
+                setConfirmOpen(false)
+              }}
+            >
+              End session
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}
+
+function GradientBackdrop() {
+  // animated blurred blobs using framer-motion; colors tuned to teal-gray ambiance
+  const blobs = useMemo(
+    () => [
+      { x: -120, y: -60, size: 420, color: "#1f3a3f" },
+      { x: 120, y: 40, size: 360, color: "#2a4d52" },
+      { x: 0, y: 160, size: 520, color: "#0f1f22" },
+    ],
+    []
+  )
+
+  return (
+    <div className="absolute inset-0">
+      {blobs.map((b, i) => (
+        <motion.div
+          key={i}
+          initial={{ x: b.x, y: b.y, opacity: 0.6 }}
+          animate={{
+            x: [b.x, b.x + (i % 2 === 0 ? 30 : -20), b.x],
+            y: [b.y, b.y + (i % 2 === 0 ? -20 : 30), b.y],
+            transition: { duration: 20 + i * 3, repeat: Infinity, ease: "easeInOut" },
+          }}
+          className="absolute -z-10 blur-3xl"
+          style={{
+            width: b.size,
+            height: b.size,
+            left: `calc(50% - ${b.size / 2}px)`,
+            top: `calc(50% - ${b.size / 2}px)`,
+            borderRadius: b.size,
+            background: `radial-gradient(closest-side, ${b.color} 0%, rgba(0,0,0,0) 70%)`,
+            filter: "blur(60px)",
+          }}
+        />
+      ))}
+    </div>
+  )
+}
