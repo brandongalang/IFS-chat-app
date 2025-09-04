@@ -109,6 +109,26 @@ This planning step:
 
 **Workflow**: Rubber duck with GPT-5-Thinking-High first → let it crawl codebase and develop approach → execute that plan with appropriate tool
 
+## Ethereal Theme (global)
+
+The ethereal visual style is controlled centrally via ThemeController and CSS variables.
+
+- Enable globally: set `NEXT_PUBLIC_IFS_ETHEREAL_THEME=true` (default is enabled when unset)
+- Switch standard `/chat` to ethereal presentation: `NEXT_PUBLIC_IFS_ETHEREAL_CHAT=true` (we default to ethereal unless explicitly disabled)
+- Dev override (no redeploy):
+  ```js
+  // In browser console
+  localStorage.setItem('eth-theme', JSON.stringify({ enabled: 1 })) // or 0 to hide backdrop
+  // Change background image (must exist in /public)
+  localStorage.setItem('eth-theme', JSON.stringify({ imageUrl: '/ethereal-bg.jpg' }))
+  location.reload()
+  ```
+- Central tokens live in `config/etherealTheme.ts`:
+  - Background image URL, vignette levels, blob colors/positions
+  - Text opacities and letter spacing (assistant/user)
+  - Animation timings (word/char fade, streaming cadence)
+- Components consume CSS variables; avoid hardcoding visuals in components. See `warp.md` for rules and a PR checklist.
+
 ## 🔧 AI Development Workflow Management
 
 ### Sprint Planning with AI Agents

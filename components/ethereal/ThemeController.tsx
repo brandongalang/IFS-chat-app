@@ -36,6 +36,11 @@ export function ThemeController() {
       }
     } catch {}
     apply()
+    // Also set background image src dynamically if element exists
+    try {
+      const img = document.getElementById('ethereal-bg-img') as HTMLImageElement | null
+      if (img && T.imageUrl) img.src = T.imageUrl
+    } catch {}
   }, [])
   return null
 }
