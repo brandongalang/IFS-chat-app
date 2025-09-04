@@ -197,8 +197,8 @@ export function useChat() {
     let accumulated = '';
     let buffer = '';
     let flushInterval: any = null
-    const stepMs = 120
-    const stepChars = 6
+    const stepMs = 160
+    const stepChars = 4
     const startFlusher = () => {
       if (flushInterval) return
       flushInterval = setInterval(() => {
