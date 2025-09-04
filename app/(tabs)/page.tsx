@@ -15,10 +15,10 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Header */}
-      <header className="px-4 pt-6 pb-2 max-w-md w-full mx-auto">
+      <header className="px-4 pt-6 pb-2 max-w-md w-full mx-auto" style={{ letterSpacing: 'var(--eth-letter-spacing-user)' }}>
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>09:57</span>
-          <span className="font-medium">good evening.</span>
+          <span className="font-medium" style={{ color: 'rgba(255,255,255,var(--eth-user-opacity))' }}>good evening.</span>
           <GuardedLink href="/profile" aria-label="profile" className="size-6 rounded-full bg-muted" />
         </div>
         <div className="mt-2 flex items-center gap-2">

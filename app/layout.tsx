@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ComingSoonProvider } from '@/components/common/ComingSoonProvider'
+import { GlobalBackdrop } from '@/components/ethereal/GlobalBackdrop'
+import { ThemeController } from '@/components/ethereal/ThemeController'
 
 export const metadata: Metadata = {
   title: 'IFS Therapy Companion',
@@ -18,6 +20,9 @@ export default function RootLayout({
       <body className="bg-background text-foreground">
         <ThemeProvider>
           <ComingSoonProvider>
+            {/* Global ethereal backdrop & theme controller */}
+            <GlobalBackdrop />
+            <ThemeController />
             {children}
           </ComingSoonProvider>
         </ThemeProvider>
