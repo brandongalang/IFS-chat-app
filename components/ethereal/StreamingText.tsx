@@ -34,7 +34,7 @@ export function StreamingText({ text }: { text: string }) {
         return (
           <motion.span
             key={`w-${i}`}
-            initial={isNewWord ? { opacity: 0.35, filter: 'blur(2px)', y: 2, color: 'rgba(128, 200, 200, 0.95)' } : {}}
+            initial={isNewWord ? { opacity: 0.35, filter: 'blur(3px)', y: 4, color: 'rgba(128, 200, 200, 0.95)' } : {}}
             animate={{ opacity: 1, filter: 'blur(0px)', y: 0, color: 'rgba(255,255,255,1)' }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
             className="inline-block"
