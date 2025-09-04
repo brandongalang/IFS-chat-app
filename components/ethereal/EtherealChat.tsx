@@ -6,6 +6,7 @@ import { useChat } from "@/hooks/useChat"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import type { Message as ChatMessage } from "@/types/chat"
 
 // Minimal, bubble-less chat presentation for /chat/ethereal
 export function EtherealChat() {
@@ -37,7 +38,15 @@ export function EtherealChat() {
     }
   }
 
-  const showOverlayPrompt = (messages?.length ?? 0) === 0
+  // Display a synthetic first assistant message to seed the conversation in-place
+  const initialAssistant: ChatMessage = useMemo(() => ({
+    id: "ethereal-welcome",
+    role: "assistant",
+    content: "what feels unresolved or undefined for you right now?",
+    timestamp: Date.now(),
+    streaming: false,
+  }), [])
+  const displayMessages: ChatMessage[] = (messages?.length ?? 0) === 0 ? [initialAssistant] : (messages as ChatMessage[])
 
   return (
     <div className="absolute inset-0 flex flex-col">
@@ -61,30 +70,22 @@ export function EtherealChat() {
 
       {/* Messages area */}
       <div className="relative z-10 flex-1 overflow-y-auto px-4 pb-[120px] pt-[calc(env(safe-area-inset-top)+16px)]">
-        {showOverlayPrompt && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute left-0 right-0 top-[18vh] mx-auto max-w-[680px] px-6 text-left"
-          >
-            <p className="mb-2 text-sm text-white/60">dive back in.</p>
-            <h1 className="text-3xl leading-snug text-white/90 sm:text-4xl">
-              what feels unresolved or undefined for you right now?
-            </h1>
-          </motion.div>
-        )}
-
         <div className="mx-auto flex max-w-[820px] flex-col gap-6">
-          {messages.map((m) => (
+          {displayMessages.map((m) => (
             <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
                 className={[
                   "max-w-[84%] whitespace-pre-wrap leading-7",
                   m.role === "assistant"
-                    ? "text-[17px] sm:text-[18px] text-white/95 lowercase"
+                    ? (m.id === "ethereal-welcome"
+                        ? "text-3xl sm:text-4xl leading-snug text-white/90 lowercase"
+                        : "text-[17px] sm:text-[18px] text-white/95 lowercase")
                     : "text-[15px] sm:text-[16px] text-white/80",
                 ].join(" ")}
               >
+                {m.id === "ethereal-welcome" && (
+                  <p className="mb-2 text-sm text-white/60">dive back in.</p>
+                )}
                 {m.content}
                 {m.streaming && m.role === "assistant" && (
                   <span className="ml-1 inline-block animate-pulse">▊</span>
