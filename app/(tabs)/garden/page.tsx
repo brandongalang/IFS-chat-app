@@ -175,9 +175,9 @@ export default function GardenPage() {
     return { nodes, links }
   }, [parts, relationships])
 
-  const handleNodeClick = useCallback((node: any, _event: MouseEvent) => {
-    const id = (node as GraphNode).id
-    if (id) window.location.href = `/garden/${id}`
+  const handleNodeClick = useCallback((node: { id?: string | number }, _event: MouseEvent) => {
+    const id = node.id
+    if (id != null) window.location.href = `/garden/${String(id)}`
   }, []);
 
   const handleDrawNode = useCallback((node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {

@@ -117,7 +117,7 @@ export function summarizeScores(scores: ThemeScores): {
   let themeBalance: 'focused' | 'balanced' | 'scattered' = 'balanced';
   
   if (topThreeScores.length > 0) {
-    const [first, second = 0, third = 0] = topThreeScores;
+    const [first, second = 0] = topThreeScores;
     
     if (first > 0.7 && second < 0.3) {
       themeBalance = 'focused'; // One dominant theme

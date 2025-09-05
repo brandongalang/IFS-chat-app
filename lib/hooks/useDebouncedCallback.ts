@@ -2,7 +2,7 @@
 
 import { useCallback, useRef } from 'react'
 
-export function useDebouncedCallback<T extends (...args: any[]) => void>(fn: T, delay = 500) {
+export function useDebouncedCallback<T extends (...args: unknown[]) => void>(fn: T, delay = 500) {
   const timer = useRef<number | null>(null)
 
   return useCallback((...args: Parameters<T>) => {

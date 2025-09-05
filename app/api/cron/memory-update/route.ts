@@ -29,8 +29,9 @@ async function runDailyMemoryUpdate(): Promise<Response> {
       const next = await generateMemoryUpdate({ userId, oldMemory: previous, todayData: today })
       const saved = await saveNewSnapshot({ userId, previous, next, source: 'cron-daily' })
       results.push({ userId, version: saved.version })
-    } catch (e: any) {
-      results.push({ userId, error: e?.message || 'unknown-error' })
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'unknown-error'
+      results.push({ userId, error: message })
     }
   }
 
@@ -41,8 +42,9 @@ export async function GET(req: Request) {
   if (!requireCronAuth(req)) return new NextResponse('Unauthorized', { status: 401 })
   try {
     return await runDailyMemoryUpdate()
-  } catch (e: any) {
-    return new NextResponse(e?.message || 'Internal Error', { status: 500 })
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Internal Error'
+    return new NextResponse(message, { status: 500 })
   }
 }
 
@@ -50,8 +52,9 @@ export async function POST(req: Request) {
   if (!requireCronAuth(req)) return new NextResponse('Unauthorized', { status: 401 })
   try {
     return await runDailyMemoryUpdate()
-  } catch (e: any) {
-    return new NextResponse(e?.message || 'Internal Error', { status: 500 })
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Internal Error'
+    return new NextResponse(message, { status: 500 })
   }
 }
 

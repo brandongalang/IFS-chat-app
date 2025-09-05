@@ -14,8 +14,7 @@ import { selectStage2Questions, validateStage2Selection } from '@/lib/onboarding
 import { 
   ANSWER_PRESETS, 
   DEV_STAGE_2_QUESTION_BANK, 
-  type PresetKey,
-  makeThemeScores 
+  type PresetKey
 } from '@/lib/dev/fixtures';
 import type { OnboardingQuestion, QuestionResponse, ThemeScores } from '@/lib/onboarding/types';
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
@@ -52,12 +51,18 @@ function DevModeGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+type Stage2Results = {
+  selection: { ids: string[]; rationale: { top_themes: string[] } & Record<string, unknown> };
+  validation: { valid: boolean; coverage_score?: number; issues?: string[] };
+  questionBank: OnboardingQuestion[];
+}
+
 export default function OnboardingDevPage() {
   // State management
   const [selectedPreset, setSelectedPreset] = useState<PresetKey>('perfectionism_anxiety');
   const [customAnswers, setCustomAnswers] = useState<Record<string, QuestionResponse>>({});
   const [stage1Scores, setStage1Scores] = useState<ThemeScores | null>(null);
-  const [stage2Results, setStage2Results] = useState<any>(null);
+  const [stage2Results, setStage2Results] = useState<Stage2Results | null>(null);
   const [useLiveData, setUseLiveData] = useState(false);
   const [liveQuestions, setLiveQuestions] = useState<OnboardingQuestion[]>([]);
 
@@ -333,7 +338,7 @@ export default function OnboardingDevPage() {
                       <div>
                         <h4 className="font-semibold">Top Themes</h4>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {stage2Results.selection.rationale.top_themes.map((theme: string) => (
+                          {(stage2Results.selection.rationale.top_themes ?? []).map((theme: string) => (
                             <Badge key={theme} variant="default">{theme}</Badge>
                           ))}
                         </div>
@@ -356,11 +361,11 @@ export default function OnboardingDevPage() {
                         </div>
                       </div>
                       
-                      {stage2Results.validation.issues?.length > 0 && (
+                      {(stage2Results.validation.issues ?? []).length > 0 && (
                         <Alert variant="destructive">
                           <AlertDescription>
                             <ul className="list-disc list-inside">
-                              {stage2Results.validation.issues.map((issue: string, i: number) => (
+                              {(stage2Results.validation.issues ?? []).map((issue: string, i: number) => (
                                 <li key={i}>{issue}</li>
                               ))}
                             </ul>

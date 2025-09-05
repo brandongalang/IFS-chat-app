@@ -131,8 +131,8 @@ function selectWithDiversity(
  */
 function getQuestionThemes(question: OnboardingQuestion): Theme[] {
   return Object.entries(question.theme_weights)
-    .filter(([_, weight]) => weight > 0)
-    .map(([theme, _]) => theme as Theme);
+    .filter(([, weight]) => weight > 0)
+    .map(([theme]) => theme as Theme);
 }
 
 /**

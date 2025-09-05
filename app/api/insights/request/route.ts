@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import { mastra } from '@/mastra';
 import { createClient } from '@/lib/supabase/server';
 import { resolveUserId } from '@/config/dev';
-import type { Database, Json } from '@/lib/types/database';
+import type { Json } from '@/lib/types/database';
 
 async function saveInsightsToDb(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
-  insights: any[]
+  insights: Array<{ type: string; title: string; body: string; sourceSessionIds?: string[] }>
 ): Promise<boolean> {
   if (!insights || insights.length === 0) {
     return true; // Nothing to save
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
       input: { userId },
     });
 
-    let generatedInsights: any[] = [];
+  let generatedInsights: Array<{ type: string; title: string; body: string; sourceSessionIds?: string[] }> = [];
     if (workflowRun.status === 'success') {
       generatedInsights = workflowRun.output || [];
     }

@@ -84,7 +84,7 @@ export async function updateSession(request: NextRequest) {
 
     if (!isApi && !isAsset) {
       // Lightweight onboarding status lookup
-      const { data: onboarding, error } = await supabase
+      const { data: onboarding } = await supabase
         .from('user_onboarding')
         .select('status')
         .eq('user_id', session.user.id)

@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { mastra } from '@/mastra';
 import { createClient } from '@/lib/supabase/server';
-import type { Database, Json } from '@/lib/types/database';
+import type { Json } from '@/lib/types/database';
 
 const COOL_DOWN_HOURS = 48;
 
 async function saveInsightsToDb(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
-  insights: any[]
+  insights: Array<{ type: string; title: string; body: string; sourceSessionIds?: string[] }>
 ): Promise<boolean> {
   if (!insights || insights.length === 0) {
     return true;
@@ -88,7 +88,7 @@ export async function GET(request: Request) {
       input: { userId },
     });
 
-    let generatedInsights: any[] = [];
+  let generatedInsights: Array<{ type: string; title: string; body: string; sourceSessionIds?: string[] }> = [];
     if (workflowRun.status === 'success') {
       generatedInsights = workflowRun.output || [];
     }

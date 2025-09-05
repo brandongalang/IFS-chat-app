@@ -127,8 +127,11 @@ export async function POST(request: NextRequest) {
 /**
  * Validates that all required onboarding responses are present
  */
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/lib/types/database'
+
 async function validateOnboardingCompletion(
-  supabase: any, 
+  supabase: SupabaseClient<Database>, 
   userId: string
 ): Promise<{ valid: boolean; missing: string[] }> {
   const missing: string[] = [];

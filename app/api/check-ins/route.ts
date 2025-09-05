@@ -52,7 +52,8 @@ export async function POST(req: NextRequest) {
     if (error) {
       console.error('Error inserting check-in:', error)
       // Handle unique constraint violation
-      if ((error as any).code === '23505') { // unique_violation
+      const pgCode = (error as { code?: string } | null)?.code
+      if (pgCode === '23505') { // unique_violation
         return NextResponse.json({ error: 'A check-in of this type already exists for this date.' }, { status: 409 })
       }
       return NextResponse.json({ error: 'Failed to save check-in' }, { status: 500 })

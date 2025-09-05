@@ -41,7 +41,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       })
     }
 
-    const updates: Record<string, any> = { rating, feedback }
+    const updates: Record<string, unknown> = { rating, feedback }
     if (current.status !== 'actioned') {
       updates.status = 'actioned'
       updates.actioned_at = new Date().toISOString()

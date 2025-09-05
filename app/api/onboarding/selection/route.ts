@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .single()
 
-    const update: any = { stage2_selected_questions: ids }
+    const update: { stage2_selected_questions: string[]; stage?: string } = { stage2_selected_questions: ids }
     if (state?.stage === 'stage1') update.stage = 'stage2'
 
     const { data: rows, error } = await supabase
