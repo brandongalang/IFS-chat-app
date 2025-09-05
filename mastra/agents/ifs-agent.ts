@@ -11,7 +11,8 @@ import { generateSystemPrompt } from './ifs_agent_prompt'
 
 // Configure OpenRouter provider through Mastra
 const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: 'http://0.0.0.0:4000'
 })
 
 type Profile = { name?: string; bio?: string } | null
@@ -20,7 +21,7 @@ export function createIfsAgent(profile: Profile) {
   return new Agent({
     name: 'ifs-companion',
     instructions: generateSystemPrompt(profile),
-    model: openrouter('z-ai/glm-4.5'),
+    model: openrouter('z-ai/glm-4-9b-chat'),
     tools: {
       ...partTools, // Part management tools
       ...rollbackTools, // Rollback/undo tools

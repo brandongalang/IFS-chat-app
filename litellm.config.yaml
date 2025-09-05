@@ -1,0 +1,15 @@
+# litellm.config.yaml
+model_list:
+  - model_name: z-ai/glm-4-9b-chat
+    litellm_params:
+      model: openrouter/z-ai/glm-4-9b-chat
+      api_key: env/OPENROUTER_API_KEY
+
+litellm_settings:
+  set_verbose: True
+
+guardrail_settings:
+  prompt_injection:
+    callbacks:
+      - "lakera_prompt_injection"
+    default_on: True
