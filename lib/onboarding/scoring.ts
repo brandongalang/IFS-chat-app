@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { 
   THEMES, 
   Theme, 
@@ -7,11 +5,8 @@ import {
   QuestionResponse, 
   Stage1QuestionId 
 } from './types';
-
-// Load Stage 1 response values from JSON file
-const stage1ResponseValuesPath = path.join(process.cwd(), 'config', 'onboarding-weights.json');
-const stage1ResponseValuesFile = fs.readFileSync(stage1ResponseValuesPath, 'utf-8');
-export const STAGE1_RESPONSE_VALUES = JSON.parse(stage1ResponseValuesFile);
+import STAGE1_RESPONSE_VALUES from '../../config/onboarding-weights.json';
+export { STAGE1_RESPONSE_VALUES };
 
 // Utility function to check if a question ID is a Stage 1 question
 export function isStage1Question(questionId: string): questionId is Stage1QuestionId {
@@ -35,11 +30,11 @@ const MAX_THEME_SCORES = (() => {
     // Find the max weight for each theme in the current question's options
     for (const option in responseMapping) {
       const weights = responseMapping[option as keyof typeof responseMapping];
-      for (const [theme, weight] of Object.entries(weights)) {
+      for (const [theme, weight] of Object.entries(weights as Record<string, number>)) {
         if (THEMES.includes(theme as Theme)) {
           themeContributions[theme as Theme] = Math.max(
             themeContributions[theme as Theme] || 0,
-            weight
+            Number(weight)
           );
         }
       }
