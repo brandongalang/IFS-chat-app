@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { 
   THEMES, 
   Theme, 
@@ -9,11 +7,6 @@ import {
 } from './types';
 import STAGE1_RESPONSE_VALUES from '../../config/onboarding-weights.json';
 export { STAGE1_RESPONSE_VALUES };
-
-// Utility function to check if a question ID is a Stage 1 question
-export function isStage1Question(questionId: string): questionId is Stage1QuestionId {
-  return questionId in STAGE1_RESPONSE_VALUES;
-}
 
 /**
  * Pre-computes the maximum possible score for each theme
@@ -37,52 +30,6 @@ const MAX_THEME_SCORES = (() => {
           themeContributions[theme as Theme] = Math.max(
             themeContributions[theme as Theme] || 0,
             Number(weight)
-          );
-        }
-      }
-    }
-
-    // Add the max contributions to the total max scores
-    for (const [theme, maxWeight] of Object.entries(themeContributions)) {
-      maxScores[theme as Theme] += maxWeight;
-    }
-  }
-
-  return maxScores;
-})();
-
-// Load Stage 1 response values from JSON file
-const stage1ResponseValuesPath = path.join(process.cwd(), 'config', 'onboarding-weights.json');
-const stage1ResponseValuesFile = fs.readFileSync(stage1ResponseValuesPath, 'utf-8');
-export const STAGE1_RESPONSE_VALUES = JSON.parse(stage1ResponseValuesFile);
-
-// Utility function to check if a question ID is a Stage 1 question
-export function isStage1Question(questionId: string): questionId is Stage1QuestionId {
-  return questionId in STAGE1_RESPONSE_VALUES;
-}
-
-/**
- * Pre-computes the maximum possible score for each theme
- */
-const MAX_THEME_SCORES = (() => {
-  const maxScores: ThemeScores = Object.fromEntries(
-    THEMES.map(theme => [theme, 0])
-  ) as ThemeScores;
-
-  // Sum the max possible contribution for each theme from each question
-  for (const questionId in STAGE1_RESPONSE_VALUES) {
-    const themeContributions: Record<Theme, number> = {} as Record<Theme, number>;
-
-    const responseMapping = STAGE1_RESPONSE_VALUES[questionId as Stage1QuestionId];
-
-    // Find the max weight for each theme in the current question's options
-    for (const option in responseMapping) {
-      const weights = responseMapping[option as keyof typeof responseMapping];
-      for (const [theme, weight] of Object.entries(weights)) {
-        if (THEMES.includes(theme as Theme)) {
-          themeContributions[theme as Theme] = Math.max(
-            themeContributions[theme as Theme] || 0,
-            weight
           );
         }
       }
