@@ -5,10 +5,21 @@ import { motion } from "framer-motion"
 import { useChat } from "@/hooks/useChat"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import type { Message as ChatMessage } from "@/types/chat"
 import { useRouter } from "next/navigation"
 import { StreamingText } from "./StreamingText"
+import { BackgroundImageLayer } from "./BackgroundImageLayer"
+import { Vignette } from "./Vignette"
 
 // Minimal, bubble-less chat presentation for /chat/ethereal
 export function EtherealChat() {
@@ -47,7 +58,10 @@ export function EtherealChat() {
     if (seededRef.current) return
     if ((messages?.length ?? 0) === 0) {
       seededRef.current = true
-      addAssistantMessage("what feels unresolved or undefined for you right now?", { persist: true, id: "ethereal-welcome" })
+      addAssistantMessage("what feels unresolved or undefined for you right now?", {
+        persist: true,
+        id: "ethereal-welcome",
+      })
     }
   }, [messages?.length, addAssistantMessage])
 
@@ -57,7 +71,7 @@ export function EtherealChat() {
       <BackgroundImageLayer />
       <GradientBackdrop />
       {/* Subtle vignette to improve contrast over bright areas */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.10)_0%,rgba(0,0,0,0.22)_55%,rgba(0,0,0,0.38)_100%)]" />
+      <Vignette />
 
       {/* Top bar with translucent End button (only when a session exists) */}
       <div className="pointer-events-none absolute top-[calc(env(safe-area-inset-top)+8px)] right-3 z-20">
@@ -93,14 +107,16 @@ export function EtherealChat() {
                     : "text-[15px] sm:text-[16px] font-thin lowercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]",
                 ].join(" ")}
                 style={{
-                  letterSpacing: m.role === 'assistant' ? 'var(--eth-letter-spacing-assistant)' : 'var(--eth-letter-spacing-user)',
-                  color: 'rgba(255,255,255,var(--eth-assistant-opacity))',
-                  opacity: m.role === 'assistant' ? undefined : (Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-user-opacity').trim()) || 0.8),
+                  letterSpacing: m.role === "assistant" ? "var(--eth-letter-spacing-assistant)" : "var(--eth-letter-spacing-user)",
+                  color: "rgba(255,255,255,var(--eth-assistant-opacity))",
+                  opacity:
+                    m.role === "assistant"
+                      ? undefined
+                      : Number(getComputedStyle(document.documentElement).getPropertyValue("--eth-user-opacity").trim()) ||
+                        0.8,
                 }}
               >
-                {m.id === "ethereal-welcome" && (
-                  <p className="mb-2 text-sm text-white/60">dive back in.</p>
-                )}
+                {m.id === "ethereal-welcome" && <p className="mb-2 text-sm text-white/60">dive back in.</p>}
                 <StreamingText text={m.content} />
               </div>
             </motion.div>
@@ -152,7 +168,7 @@ export function EtherealChat() {
               onClick={async () => {
                 await endSession()
                 setConfirmOpen(false)
-                router.push('/today')
+                router.push("/today")
               }}
             >
               End session
@@ -169,29 +185,29 @@ function GradientBackdrop() {
   const blobs = useMemo(
     () => [
       { x: -140, y: -80, size: 520, color: "#1f3a3f" }, // deep teal
-      { x: 140, y: 60, size: 460, color: "#2a4d52" },  // mid teal
-      { x: 20, y: 180, size: 620, color: "#d39a78" },  // warm peach accent
+      { x: 140, y: 60, size: 460, color: "#2a4d52" }, // mid teal
+      { x: 20, y: 180, size: 620, color: "#d39a78" }, // warm peach accent
     ],
     []
   )
 
   const [reduceMotion, setReduceMotion] = useState(false)
   useEffect(() => {
-    if (typeof window === 'undefined' || !('matchMedia' in window)) return
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    if (typeof window === "undefined" || !("matchMedia" in window)) return
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
     const handler = () => setReduceMotion(mq.matches)
     handler()
-    mq.addEventListener?.('change', handler)
-    return () => mq.removeEventListener?.('change', handler)
+    mq.addEventListener?.("change", handler)
+    return () => mq.removeEventListener?.("change", handler)
   }, [])
 
   return (
     <div className="absolute inset-0">
-      {blobs.map((b, i) => (
+      {blobs.map((b, i) =>
         reduceMotion ? (
           <div
             key={i}
-          className="absolute -z-20 blur-3xl"
+            className="absolute -z-20 blur-3xl"
             style={{
               opacity: 0.5,
               width: b.size,
@@ -206,7 +222,7 @@ function GradientBackdrop() {
         ) : (
           <motion.div
             key={i}
-          initial={{ x: b.x, y: b.y, opacity: 0.4 }}
+            initial={{ x: b.x, y: b.y, opacity: 0.4 }}
             animate={{
               x: [b.x, b.x + (i % 2 === 0 ? 30 : -20), b.x],
               y: [b.y, b.y + (i % 2 === 0 ? -20 : 30), b.y],
@@ -224,21 +240,7 @@ function GradientBackdrop() {
             }}
           />
         )
-      ))}
+      )}
     </div>
-  )
-}
-
-function BackgroundImageLayer() {
-  // Attempts to show /ethereal-bg.jpg; remains silent if not found
-  return (
-    <img
-      src="/ethereal-bg.jpg"
-      alt="background"
-      className="absolute inset-0 h-full w-full object-cover z-0 blur-xl scale-105 opacity-90"
-      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-      loading="eager"
-      draggable={false}
-    />
   )
 }

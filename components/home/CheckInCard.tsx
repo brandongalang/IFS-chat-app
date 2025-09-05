@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { GuardedLink } from '@/components/common/GuardedLink'
 
@@ -19,9 +18,9 @@ export function CheckInCard() {
 
   if (timeOfDay === 'none') {
     return (
-        <div className="col-span-2 rounded-xl border border-border bg-muted p-4">
-            <div className="text-base font-medium">Come back later</div>
-            <div className="text-xs text-muted-foreground mt-1">Check-ins are available in the morning and evening.</div>
+        <div className="col-span-2 rounded-xl border border-white/15 bg-white/10 backdrop-blur-xl p-4">
+            <div className="text-base font-medium text-white/90">Come back later</div>
+            <div className="text-xs text-white/60 mt-1">Check-ins are available in the morning and evening.</div>
         </div>
     )
   }
@@ -29,11 +28,11 @@ export function CheckInCard() {
   const isMorning = timeOfDay === 'morning'
 
   return (
-    <div className={`col-span-2 rounded-xl border border-border p-4 ${isMorning ? 'bg-green-600 text-white' : 'bg-indigo-600 text-white'}`}>
-      <div className="text-xs opacity-90">{isMorning ? 'Morning' : 'Evening'}</div>
-      <div className="text-lg font-semibold">{isMorning ? 'Fresh start!' : 'Daily review'}</div>
+    <div className="col-span-2 rounded-xl border border-white/15 bg-white/10 backdrop-blur-xl p-4">
+      <div className="text-xs text-white/60">{isMorning ? 'Morning' : 'Evening'}</div>
+      <div className="text-lg font-semibold text-white/90">{isMorning ? 'Fresh start!' : 'Daily review'}</div>
       <GuardedLink href="/check-in">
-        <Button className="mt-4 bg-white text-black hover:bg-white/90">
+        <Button className="mt-4 bg-white/20 text-white hover:bg-white/30">
           Begin
         </Button>
       </GuardedLink>
