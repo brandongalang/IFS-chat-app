@@ -23,6 +23,9 @@ async function main() {
   const expectedNameString = `- Name: \`\`\`${maliciousProfile.name}\`\`\``;
   assert(prompt.includes(expectedNameString), `Prompt should contain the sanitized user name. Got: ${prompt}`);
 
+  const expectedBioString = `- Bio: \`\`\`${maliciousProfile.bio}\`\`\``;
+  assert(prompt.includes(expectedBioString), `Prompt should contain the sanitized user bio. Got: ${prompt}`);
+
   console.log('Prompt injection unit test passed.');
 }
 
