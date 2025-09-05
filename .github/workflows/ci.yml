@@ -33,8 +33,8 @@ jobs:
         with:
           sarif_file: gitleaks.sarif
  
-   build:
-     name: Typecheck, Lint, and Build
+  build:
+    name: Typecheck, Lint, and Build
     runs-on: ubuntu-latest
     needs: secrets-scan
     env:

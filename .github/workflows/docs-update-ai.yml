@@ -20,6 +20,7 @@ jobs:
           node-version: 20
       
       - name: Install OpenCode
+        if: ${{ secrets.GOOGLE_API_KEY != '' }}
         run: |
           curl -fsSL https://opencode.ai/install | bash
           echo "$HOME/.local/bin" >> $GITHUB_PATH
@@ -28,6 +29,7 @@ jobs:
           rm -rf ~/.opencode/config.toml || true
       
       - name: Test OpenCode Installation
+        if: ${{ secrets.GOOGLE_API_KEY != '' }}
         env:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
         run: |
@@ -41,6 +43,7 @@ jobs:
           opencode -p "Hello, respond with just 'OpenCode working'" || echo "OpenCode test failed, proceeding anyway"
       
       - name: Analyze Changes and Update Docs
+        if: ${{ secrets.GOOGLE_API_KEY != '' }}
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
@@ -66,16 +69,18 @@ jobs:
           git config --local user.name "GitHub Action Bot"
           
           git add docs/
-          git commit -m "docs: AI-powered documentation updates
+          git commit -F - << 'MSG'
+          docs: AI-powered documentation updates
 
-🤖 Automated documentation updates based on PR changes
-- Analyzed code changes using OpenCode + Gemini 2.5 Flash  
-- Updated existing documentation to reflect implementation changes
-- Added new feature documentation where needed
-- Updated code paths and API references
+          🤖 Automated documentation updates based on PR changes
+          - Analyzed code changes using OpenCode + Gemini 2.5 Flash  
+          - Updated existing documentation to reflect implementation changes
+          - Added new feature documentation where needed
+          - Updated code paths and API references
 
-Co-authored-by: OpenCode AI <opencode@ai>"
-          
+          Co-authored-by: OpenCode AI <opencode@ai>
+          MSG
+
           git push
       
       - name: Add PR Comment
