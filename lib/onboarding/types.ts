@@ -171,52 +171,8 @@ export const OnboardingAnalyticsEvent = z.object({
 });
 export type OnboardingAnalyticsEvent = z.infer<typeof OnboardingAnalyticsEvent>;
 
-// Stage 1 response value mappings (for scoring)
-export const STAGE1_RESPONSE_VALUES = {
-  // S1_Q1: sharing work publicly
-  'S1_Q1': {
-    'surge_energy': { achievement: 0.8, restlessness: 0.3 },
-    'methodical_checking': { perfectionism: 0.9, anxiety: 0.4 },
-    'wondering_reception': { relational: 0.7, anxiety: 0.5 },
-    'noticing_improvement': { self_criticism: 0.8, perfectionism: 0.6 },
-  },
-  // S1_Q2: plans changed
-  'S1_Q2': {
-    'energized_possibilities': { achievement: 0.7, restlessness: 0.5 },
-    'protect_secure': { safety: 0.9, control: 0.7 },
-    'check_affected': { relational: 0.8, caretaking: 0.6 },
-    'analyze_wrong': { self_criticism: 0.7, perfectionism: 0.5 },
-  },
-  // S1_Q3: someone upset
-  'S1_Q3': {
-    'give_space': { avoidance: 0.6, independence: 0.4 },
-    'directly_ask': { relational: 0.7, control: 0.3 },
-    'review_actions': { self_criticism: 0.9, anxiety: 0.6 },
-    'focus_elsewhere': { avoidance: 0.9, overwhelm: 0.4 },
-  },
-  // S1_Q4: finished something significant  
-  'S1_Q4': {
-    'whats_next': { achievement: 0.8, restlessness: 0.7 },
-    'ensure_perfect': { perfectionism: 0.9, anxiety: 0.5 },
-    'who_share': { relational: 0.8, caretaking: 0.3 },
-    'could_be_better': { self_criticism: 0.9, perfectionism: 0.6 },
-  },
-  // S1_Q5: wave of sadness
-  'S1_Q5': {
-    'push_down_busy': { avoidance: 0.9, restlessness: 0.6 },
-    'analyze_logical': { self_criticism: 0.6, control: 0.7 },
-    'let_feel': { relational: 0.4, independence: 0.3 }, // lower scores = healthier
-    'judge_emotional': { self_criticism: 0.9, shame: 0.8 },
-  },
-} as const;
-
 // Helper type for stage 1 question IDs
-export type Stage1QuestionId = keyof typeof STAGE1_RESPONSE_VALUES;
-
-// Utility functions
-export function isStage1Question(questionId: string): questionId is Stage1QuestionId {
-  return questionId in STAGE1_RESPONSE_VALUES;
-}
+export type Stage1QuestionId = 'S1_Q1' | 'S1_Q2' | 'S1_Q3' | 'S1_Q4' | 'S1_Q5';
 
 export function getQuestionsByStage(questions: OnboardingQuestion[], stage: number): OnboardingQuestion[] {
   return questions
