@@ -5,6 +5,10 @@ import { QuestionCard } from './QuestionCard'
 import { WizardFooter } from './WizardFooter'
 import { track } from '@/lib/analytics'
 import type { OnboardingQuestion, OnboardingStage, ProgressUpdateRequest, ProgressUpdateResponse, QuestionResponse } from '@/lib/onboarding/types'
+import { QUESTION_BANK } from '@/lib/onboarding/question-bank'
+import { getQuestionsByStage } from '@/lib/onboarding/types'
+import { computeStage1Scores } from '@/lib/onboarding/scoring'
+import { selectStage2Questions } from '@/lib/onboarding/selector'
 
 interface StateSummary {
   stage: OnboardingStage
@@ -43,10 +47,8 @@ export function OnboardingWizard() {
         setVersion(stateData.version)
         setStage(stateData.stage)
 
-        const q1Res = await fetch('/api/onboarding/questions?stage=1', { cache: 'no-store' })
-        if (!q1Res.ok) throw new Error('Failed to load Stage 1 questions')
-        const q1Data = await q1Res.json() as { questions: OnboardingQuestion[] }
-        if (!cancelled) setStage1Questions(q1Data.questions)
+        const questions = getQuestionsByStage(QUESTION_BANK, 1)
+        if (!cancelled) setStage1Questions(questions)
 
         track('onboarding_stage_viewed', { stage: stateData.stage })
       } catch (e: any) {
@@ -87,9 +89,8 @@ export function OnboardingWizard() {
       const data = await res.json() as ProgressUpdateResponse
       setVersion(data.state.version)
 
-      if (data.next?.stage === 'stage2' && data.next.questions) {
+      if (data.next?.stage === 'stage2' && !data.next.questions) {
         setStage('stage2')
-        setStage2Questions(data.next.questions)
         track('onboarding_stage_completed', { stage: 'stage1' })
         track('onboarding_stage_viewed', { stage: 'stage2' })
       }
@@ -118,21 +119,19 @@ export function OnboardingWizard() {
     return ids.length > 0 && ids.every(id => answers[id] && (answers[id] as any))
   }, [stage1Questions, answers])
 
-  // If user reaches stage2 and questions not fetched via progress, fetch explicitly
-  useEffect(() => {
-    let cancelled = false
-    async function fetchStage2() {
-      if (stage !== 'stage2' || stage2Questions.length > 0) return
-      try {
-        const res = await fetch('/api/onboarding/questions?stage=2', { cache: 'no-store' })
-        if (!res.ok) return
-        const data = await res.json() as { questions: OnboardingQuestion[] }
-        if (!cancelled) setStage2Questions(data.questions)
-      } catch {}
-    }
-    void fetchStage2()
-    return () => { cancelled = true }
-  }, [stage, stage2Questions.length])
+  const handleGoToStage2 = useCallback(() => {
+    if (!stage1Completion) return
+
+    const stage1Scores = computeStage1Scores(answers)
+    const stage2QuestionBank = getQuestionsByStage(QUESTION_BANK, 2)
+    const selection = selectStage2Questions(stage1Scores, stage2QuestionBank)
+    const selectedQuestions = QUESTION_BANK.filter(q => selection.ids.includes(q.id))
+
+    setStage2Questions(selectedQuestions)
+    setStage('stage2')
+    track('onboarding_stage_completed', { stage: 'stage1' })
+    track('onboarding_stage_viewed', { stage: 'stage2' })
+  }, [stage1Completion, answers])
 
   if (loading) {
     return (
@@ -171,10 +170,7 @@ export function OnboardingWizard() {
           <WizardFooter
             saving={saving}
             nextDisabled={!stage1Completion}
-            onNext={() => {
-              // If Stage 1 is complete but Stage 2 not yet selected, fetch Stage 2
-              setStage('stage2')
-            }}
+            onNext={handleGoToStage2}
           />
         </section>
       )}
