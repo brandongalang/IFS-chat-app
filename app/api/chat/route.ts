@@ -42,7 +42,7 @@ const { createIfsAgent } = await import('../../../mastra/agents/ifs-agent')
       }>
       let stream: unknown = null
       if (typeof agent.streamVNext === 'function') {
-        const vNext = agent.streamVNext(messages, { format: 'aisdk' }) as unknown
+        const vNext = await (agent.streamVNext(messages, { format: 'aisdk' }) as unknown)
         stream = vNext
         if (
           vNext && typeof (vNext as { toUIMessageStreamResponse?: unknown }).toUIMessageStreamResponse === 'function'
@@ -52,7 +52,7 @@ const { createIfsAgent } = await import('../../../mastra/agents/ifs-agent')
       }
       // Fallback to v2 streaming
       if (!stream && typeof agent.stream === 'function') {
-        const v2 = agent.stream(messages) as unknown
+        const v2 = await (agent.stream(messages) as unknown)
         if (v2 && typeof (v2 as { toDataStreamResponse?: unknown }).toDataStreamResponse === 'function') {
           return (v2 as { toDataStreamResponse: () => Response }).toDataStreamResponse()
         }
