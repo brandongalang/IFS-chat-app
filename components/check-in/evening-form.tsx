@@ -1,20 +1,13 @@
 'use client'
 
-import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import { CheckInTemplate, FormField } from './CheckInTemplate'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 
 export function EveningCheckInForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
   const [morningIntention, setMorningIntention] = useState('')
@@ -31,8 +24,11 @@ export function EveningCheckInForm({ className, ...props }: React.ComponentProps
 
   useEffect(() => {
     const fetchMorningData = async () => {
+      setIsLoading(true)
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
       if (user) {
         const { data: checkIns, error } = await supabase
@@ -45,11 +41,7 @@ export function EveningCheckInForm({ className, ...props }: React.ComponentProps
 
         if (error) {
           setError('Could not load your morning check-in. Please try again later.')
-          setIsLoading(false)
-          return
-        }
-
-        if (checkIns && checkIns.length > 0) {
+        } else if (checkIns && checkIns.length > 0) {
           const morningCheckIn = checkIns[0]
           setCheckInId(morningCheckIn.id)
           setMorningIntention(morningCheckIn.morning_intention || '')
@@ -96,6 +88,67 @@ export function EveningCheckInForm({ className, ...props }: React.ComponentProps
     }
   }
 
+  const fields: FormField[] = [
+    {
+      id: 'gratitude',
+      label: "What's one thing you're grateful for today?",
+      placeholder: 'e.g., A quiet cup of tea.',
+      value: gratitude,
+      onChange: (e) => setGratitude(e.target.value),
+    },
+  ]
+
+  const preFieldsContent = (
+    <>
+      {morningIntention && (
+        <div className="grid gap-2 text-sm">
+          <p className="text-muted-foreground">This morning, your intention was:</p>
+          <blockquote className="border-l-2 pl-3 italic">&quot;{morningIntention}&quot;</blockquote>
+          <Label htmlFor="reflectionOnIntention" className="mt-2">
+            How did that go?
+          </Label>
+          <Textarea
+            id="reflectionOnIntention"
+            placeholder="e.g., I made some progress, but it was a struggle at times."
+            required
+            value={reflectionOnIntention}
+            onChange={(e) => setReflectionOnIntention(e.target.value)}
+          />
+        </div>
+      )}
+      {morningWorries && (
+        <div className="grid gap-2 text-sm">
+          <p className="text-muted-foreground">You were worried about:</p>
+          <blockquote className="border-l-2 pl-3 italic">&quot;{morningWorries}&quot;</blockquote>
+          <Label htmlFor="reflectionOnWorries" className="mt-2">
+            How are you feeling about that now?
+          </Label>
+          <Textarea
+            id="reflectionOnWorries"
+            placeholder="e.g., It wasn't as bad as I thought."
+            value={reflectionOnWorries}
+            onChange={(e) => setReflectionOnWorries(e.target.value)}
+          />
+        </div>
+      )}
+      {morningLookingForwardTo && (
+        <div className="grid gap-2 text-sm">
+          <p className="text-muted-foreground">You were looking forward to:</p>
+          <blockquote className="border-l-2 pl-3 italic">&quot;{morningLookingForwardTo}&quot;</blockquote>
+          <Label htmlFor="reflectionOnLookingForwardTo" className="mt-2">
+            How was it?
+          </Label>
+          <Textarea
+            id="reflectionOnLookingForwardTo"
+            placeholder="e.g., It was wonderful!"
+            value={reflectionOnLookingForwardTo}
+            onChange={(e) => setReflectionOnLookingForwardTo(e.target.value)}
+          />
+        </div>
+      )}
+    </>
+  )
+
   if (isLoading) {
     return (
       <Card>
@@ -115,72 +168,18 @@ export function EveningCheckInForm({ className, ...props }: React.ComponentProps
   }
 
   return (
-    <div className={cn('flex flex-col gap-6', className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Evening Review</CardTitle>
-          <CardDescription>Let&apos;s reflect on your day.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-6">
-              {morningIntention && (
-                <div className="grid gap-2 text-sm">
-                  <p className="text-muted-foreground">This morning, your intention was:</p>
-                  <blockquote className="border-l-2 pl-3 italic">&quot;{morningIntention}&quot;</blockquote>
-                  <Label htmlFor="reflectionOnIntention" className="mt-2">How did that go?</Label>
-                  <Textarea
-                    id="reflectionOnIntention"
-                    placeholder="e.g., I made some progress, but it was a struggle at times."
-                    required
-                    value={reflectionOnIntention}
-                    onChange={(e) => setReflectionOnIntention(e.target.value)}
-                  />
-                </div>
-              )}
-              {morningWorries && (
-                <div className="grid gap-2 text-sm">
-                  <p className="text-muted-foreground">You were worried about:</p>
-                  <blockquote className="border-l-2 pl-3 italic">&quot;{morningWorries}&quot;</blockquote>
-                  <Label htmlFor="reflectionOnWorries" className="mt-2">How are you feeling about that now?</Label>
-                  <Textarea
-                    id="reflectionOnWorries"
-                    placeholder="e.g., It wasn't as bad as I thought."
-                    value={reflectionOnWorries}
-                    onChange={(e) => setReflectionOnWorries(e.target.value)}
-                  />
-                </div>
-              )}
-              {morningLookingForwardTo && (
-                <div className="grid gap-2 text-sm">
-                  <p className="text-muted-foreground">You were looking forward to:</p>
-                  <blockquote className="border-l-2 pl-3 italic">&quot;{morningLookingForwardTo}&quot;</blockquote>
-                  <Label htmlFor="reflectionOnLookingForwardTo" className="mt-2">How was it?</Label>
-                  <Textarea
-                    id="reflectionOnLookingForwardTo"
-                    placeholder="e.g., It was wonderful!"
-                    value={reflectionOnLookingForwardTo}
-                    onChange={(e) => setReflectionOnLookingForwardTo(e.target.value)}
-                  />
-                </div>
-              )}
-              <div className="grid gap-2">
-                <Label htmlFor="gratitude">What&apos;s one thing you&apos;re grateful for today?</Label>
-                <Textarea
-                  id="gratitude"
-                  placeholder="e.g., A quiet cup of tea."
-                  value={gratitude}
-                  onChange={(e) => setGratitude(e.target.value)}
-                />
-              </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading || !checkInId}>
-                {isLoading ? 'Saving...' : 'Complete Review'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    <CheckInTemplate
+      title="Evening Review"
+      description="Let's reflect on your day."
+      fields={fields}
+      preFieldsContent={preFieldsContent}
+      onSubmit={handleSubmit}
+      isLoading={isLoading}
+      submitText="Complete Review"
+      submitDisabled={!checkInId}
+      error={error}
+      className={className}
+      {...props}
+    />
   )
 }

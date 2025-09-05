@@ -1,19 +1,9 @@
 'use client'
 
-import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { CheckInTemplate, FormField } from './CheckInTemplate'
 
 export function MorningCheckInForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
   const [intention, setIntention] = useState('')
@@ -30,7 +20,6 @@ export function MorningCheckInForm({ className, ...props }: React.ComponentProps
     setError(null)
 
     try {
-      // TODO: Get the user ID from the session
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -50,7 +39,6 @@ export function MorningCheckInForm({ className, ...props }: React.ComponentProps
 
       if (error) throw error
 
-      // Redirect to home page on successful submission
       router.push('/')
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred')
@@ -59,52 +47,42 @@ export function MorningCheckInForm({ className, ...props }: React.ComponentProps
     }
   }
 
+  const fields: FormField[] = [
+    {
+      id: 'intention',
+      label: 'What is your main intention for today?',
+      placeholder: 'e.g., To be present in my conversations.',
+      required: true,
+      value: intention,
+      onChange: (e) => setIntention(e.target.value),
+    },
+    {
+      id: 'worries',
+      label: "What's one thing you're worried about?",
+      placeholder: 'e.g., My upcoming presentation.',
+      value: worries,
+      onChange: (e) => setWorries(e.target.value),
+    },
+    {
+      id: 'lookingForwardTo',
+      label: 'What are you looking forward to today?',
+      placeholder: 'e.g., A walk in the park.',
+      value: lookingForwardTo,
+      onChange: (e) => setLookingForwardTo(e.target.value),
+    },
+  ]
+
   return (
-    <div className={cn('flex flex-col gap-6', className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Morning Check-in</CardTitle>
-          <CardDescription>What&apos;s on your mind this morning?</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="intention">What is your main intention for today?</Label>
-                <Textarea
-                  id="intention"
-                  placeholder="e.g., To be present in my conversations."
-                  required
-                  value={intention}
-                  onChange={(e) => setIntention(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="worries">What&apos;s one thing you&apos;re worried about?</Label>
-                <Textarea
-                  id="worries"
-                  placeholder="e.g., My upcoming presentation."
-                  value={worries}
-                  onChange={(e) => setWorries(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="lookingForwardTo">What are you looking forward to today?</Label>
-                <Textarea
-                  id="lookingForwardTo"
-                  placeholder="e.g., A walk in the park."
-                  value={lookingForwardTo}
-                  onChange={(e) => setLookingForwardTo(e.target.value)}
-                />
-              </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Saving...' : 'Complete Check-in'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    <CheckInTemplate
+      title="Morning Check-in"
+      description="What's on your mind this morning?"
+      fields={fields}
+      onSubmit={handleSubmit}
+      isLoading={isLoading}
+      submitText="Complete Check-in"
+      error={error}
+      className={className}
+      {...props}
+    />
   )
 }
