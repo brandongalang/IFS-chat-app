@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { LogoutButton } from '@/components/auth/logout-button'
+import { isPromptInjection } from '@/lib/security'
 
 export default function ProfileClient() {
   const supabase = createClient()
@@ -46,9 +47,20 @@ export default function ProfileClient() {
 
   const [saving, setSaving] = useState(false)
 
+  const [injectionAttempt, setInjectionAttempt] = useState(false);
+
   const handleSave = async () => {
     if (!user) return
     setSaving(true)
+    setInjectionAttempt(false);
+
+    const isInjection = await isPromptInjection(name);
+    if (isInjection) {
+      setInjectionAttempt(true);
+      setSaving(false);
+      return;
+    }
+
     const { error } = await supabase
       .from('users')
       .update({ name: name })
@@ -90,6 +102,11 @@ export default function ProfileClient() {
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
+          {injectionAttempt && (
+            <p className="text-red-500 text-sm mt-2">
+              Potential prompt injection detected. Please use a different name.
+            </p>
+          )}
         </div>
 
         <div className="flex space-x-2">
