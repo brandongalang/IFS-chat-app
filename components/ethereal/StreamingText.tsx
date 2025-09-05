@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { motion } from 'framer-motion'
 
 // Streams text with gentle, per-word glow, color shift, upward motion, and per-char fade for newly arrived content
-export function StreamingText({ text }: { text: string }) {
+export function StreamingText({ text, onAnimationComplete }: { text: string, onAnimationComplete?: () => void }) {
   const prevCharLen = useRef(0)
   const prevWordCount = useRef(0)
 
@@ -46,6 +46,7 @@ export function StreamingText({ text }: { text: string }) {
             animate={{ opacity: 1, y: 0, color: 'rgba(255,255,255,1)' }}
             transition={{ duration: wordMs / 1000, ease: [0.25, 0.1, 0, 1] }}
             className="inline-block"
+            onAnimationComplete={onAnimationComplete}
           >
             {chars.map((ch, ci) => {
               const globalIndex = startCharIndex + ci
