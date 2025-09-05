@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useState, useEffect } from 'react'
+import { useId, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { OnboardingQuestion, QuestionResponse } from '@/lib/onboarding/types'
 import { StreamingText } from '@/components/ethereal/StreamingText'

@@ -46,7 +46,7 @@ export function CheckInForm() {
         if (!response.ok) throw new Error('Failed to fetch parts')
         const data = await response.json()
         setParts(data)
-      } catch (error) {
+      } catch {
         toast({
           title: 'Error',
           description: 'Could not load your parts. Please try again later.',
@@ -95,8 +95,9 @@ export function CheckInForm() {
       }
       toast({ title: 'Success', description: 'Your check-in has been saved.' })
       setStep(step + 1) // Move to a "thank you" step
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to submit check-in'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
     } finally {
       setIsLoading(false)
     }

@@ -1,7 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
 import { QuestionCard } from './QuestionCard'
 import { WizardFooter } from './WizardFooter'
 import { track } from '@/lib/analytics'
@@ -28,9 +27,6 @@ export function OnboardingWizard() {
 
   const [answers, setAnswers] = useState<Record<string, QuestionResponse>>({})
 
-  const [saving, setSaving] = useState(false)
-  const saveTimer = useRef<number | null>(null)
-  const router = useRouter()
 
   // Initial load of state and Stage 1 questions (from local JSON)
   useEffect(() => {
@@ -55,9 +51,11 @@ export function OnboardingWizard() {
         const s1 = all.questions.filter(q => q.stage === 1 && q.active).sort((a,b)=>a.order_hint-b.order_hint)
         if (!cancelled) setStage1Questions(s1)
 
-        track('onboarding_stage_viewed', { stage })
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || 'Something went wrong')
+      } catch (e: unknown) {
+        if (!cancelled) {
+          const msg = e instanceof Error ? e.message : 'Something went wrong'
+          setError(msg)
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -66,52 +64,12 @@ export function OnboardingWizard() {
     return () => { cancelled = true }
   }, [])
 
-  // Debounced save
-  const saveProgress = useCallback(async (payload: ProgressUpdateRequest) => {
-    setSaving(true)
-    try {
-      const res = await fetch('/api/onboarding/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+  // Track stage view when stage changes
+  useEffect(() => {
+    track('onboarding_stage_viewed', { stage })
+  }, [stage])
 
-      if (res.status === 409) {
-        // Version conflict — refresh version from server state
-        const s = await fetch('/api/onboarding/state', { cache: 'no-store' })
-        if (s.ok) {
-          const sd: StateSummary = await s.json()
-          setVersion(sd.version)
-        }
-        return
-      }
 
-      if (!res.ok) {
-        // Non-fatal; keep UI responsive
-        return
-      }
-
-      const data = await res.json() as ProgressUpdateResponse
-      setVersion(data.state.version)
-
-      if (data.next?.stage === 'stage2' && data.next.questions) {
-        setStage('stage2')
-        setStage2Questions(data.next.questions)
-        track('onboarding_stage_completed', { stage: 'stage1' })
-        track('onboarding_stage_viewed', { stage: 'stage2' })
-      }
-    } finally {
-      setSaving(false)
-    }
-  }, [])
-
-  const scheduleSave = useCallback((payload: ProgressUpdateRequest) => {
-    // 500ms debounce
-    if (saveTimer.current) window.clearTimeout(saveTimer.current)
-    saveTimer.current = window.setTimeout(() => {
-      void saveProgress(payload)
-    }, 500)
-  }, [saveProgress])
 
   // Local answer update + schedule save
   const handleAnswerChange = useCallback((q: OnboardingQuestion, response: QuestionResponse) => {
@@ -121,7 +79,7 @@ export function OnboardingWizard() {
 
   // Stage 2 questions will be computed client-side on transition from Stage 1
 
-  const questions = stage === 'stage1' ? stage1Questions : stage2Questions
+  const questions = stage === 'stage1' ? stage1Questions : stage === 'stage2' ? stage2Questions : stage3Questions
   const currentQuestion = questions[currentQuestionIndex]
 
   async function saveAllForStage(target: OnboardingStage) {
@@ -129,7 +87,7 @@ export function OnboardingWizard() {
     const all = (await import('../../config/onboarding-questions.json')).default as { questions: OnboardingQuestion[] }
     const bank = all.questions.filter(q => (q.stage === 1 && target==='stage1') || (q.stage===2 && target==='stage2') || (q.stage===3 && target==='stage3'))
     // sequential saves with 409 retry
-    const doPost = async (v: number, payload: any) => fetch('/api/onboarding/progress', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
+    const doPost = async (v: number, payload: ProgressUpdateRequest) => fetch('/api/onboarding/progress', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
     let currentVersion = version
     for (const q of bank) {
       const resp = answers[q.id]
@@ -188,7 +146,7 @@ export function OnboardingWizard() {
           setStage2Questions(selectedQuestions)
           setStage('stage2')
           setCurrentQuestionIndex(0)
-        } catch (e) {
+        } catch {
           // Fallback: just move to stage2 with first four questions if selection failed
           const all = (await import('../../config/onboarding-questions.json')).default as { questions: OnboardingQuestion[] }
           const stage2Bank = all.questions.filter(q => q.stage === 2 && q.active).slice(0,4)
@@ -266,10 +224,10 @@ export function OnboardingWizard() {
           )}
         </div>
         <WizardFooter
-          saving={saving}
+          saving={false}
           onNext={handleNext}
           nextDisabled={!currentQuestion || !answers[currentQuestion.id]}
-          nextLabel={currentQuestionIndex === questions.length - 1 && stage === 'stage2' ? 'Finish' : 'Continue'}
+          nextLabel={currentQuestionIndex === questions.length - 1 && (stage === 'stage2' || stage === 'stage3') ? 'Finish' : 'Continue'}
           totalQuestions={questions.length}
           currentQuestionIndex={currentQuestionIndex}
         />
