@@ -1,4 +1,4 @@
--- Migration: 008_message_feedback
+-- Migration: 013_message_feedback (renamed from 008 to ensure unique version)
 -- Created: 2025-08-29
 
 -- Create the message_feedback table
