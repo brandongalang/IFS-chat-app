@@ -1,6 +1,7 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { QuestionCard } from './QuestionCard'
 import { WizardFooter } from './WizardFooter'
 import { track } from '@/lib/analytics'
@@ -19,6 +20,7 @@ export function OnboardingWizard() {
 
   const [version, setVersion] = useState<number>(0)
   const [stage, setStage] = useState<OnboardingStage>('stage1')
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
 
   const [stage1Questions, setStage1Questions] = useState<OnboardingQuestion[]>([])
   const [stage2Questions, setStage2Questions] = useState<OnboardingQuestion[]>([])
@@ -27,6 +29,7 @@ export function OnboardingWizard() {
 
   const [saving, setSaving] = useState(false)
   const saveTimer = useRef<number | null>(null)
+  const router = useRouter()
 
   // Initial load of state and Stage 1 questions
   useEffect(() => {
@@ -113,11 +116,6 @@ export function OnboardingWizard() {
     scheduleSave({ stage, questionId: q.id, response, version })
   }, [scheduleSave, stage, version])
 
-  const stage1Completion = useMemo(() => {
-    const ids = stage1Questions.map(q => q.id)
-    return ids.length > 0 && ids.every(id => answers[id] && (answers[id] as any))
-  }, [stage1Questions, answers])
-
   // If user reaches stage2 and questions not fetched via progress, fetch explicitly
   useEffect(() => {
     let cancelled = false
@@ -133,6 +131,23 @@ export function OnboardingWizard() {
     void fetchStage2()
     return () => { cancelled = true }
   }, [stage, stage2Questions.length])
+
+  const questions = stage === 'stage1' ? stage1Questions : stage2Questions
+  const currentQuestion = questions[currentQuestionIndex]
+
+  const handleNext = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1)
+    } else {
+      // Advance to next stage or finish
+      if (stage === 'stage1') {
+        setStage('stage2')
+        setCurrentQuestionIndex(0)
+      } else {
+        router.push('/today')
+      }
+    }
+  }
 
   if (loading) {
     return (
@@ -152,59 +167,35 @@ export function OnboardingWizard() {
     )
   }
 
+  const stageTitles: Record<OnboardingStage, string> = {
+    stage1: 'Stage 1 — 5 quick probes',
+    stage2: 'Stage 2 — A few context questions',
+  }
+
   return (
     <div className="space-y-6">
-      {stage === 'stage1' && (
-        <section aria-labelledby="s1">
-          <h2 id="s1" className="text-lg font-medium">Stage 1 — 5 quick probes</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Select what fits best. Some questions may allow multiple selections.</p>
-          <div className="mt-4 space-y-4">
-            {stage1Questions.map(q => (
-              <QuestionCard
-                key={q.id}
-                question={q}
-                value={answers[q.id]}
-                onChange={(resp) => handleAnswerChange(q, resp)}
-              />
-            ))}
-          </div>
-          <WizardFooter
-            saving={saving}
-            nextDisabled={!stage1Completion}
-            onNext={() => {
-              // If Stage 1 is complete but Stage 2 not yet selected, fetch Stage 2
-              setStage('stage2')
-            }}
-          />
-        </section>
-      )}
-
-      {stage === 'stage2' && (
-        <section aria-labelledby="s2">
-          <h2 id="s2" className="text-lg font-medium">Stage 2 — A few context questions</h2>
-          <p className="mt-1 text-sm text-muted-foreground">These may be personalized based on your earlier answers.</p>
-          <div className="mt-4 space-y-4">
-            {stage2Questions.map(q => (
-              <QuestionCard
-                key={q.id}
-                question={q}
-                value={answers[q.id]}
-                onChange={(resp) => handleAnswerChange(q, resp)}
-              />
-            ))}
-          </div>
-          <WizardFooter
-            saving={saving}
-            nextDisabled={!stage2Questions.every(q => !!answers[q.id])}
-            onNext={() => {
-              // Completion is handled by a separate button in a later iteration
-              // For MVP, we can navigate to /today and rely on completion later.
-              window.location.href = '/today'
-            }}
-            nextLabel="Finish"
-          />
-        </section>
-      )}
+      <section aria-labelledby="s1">
+        <h2 id="s1" className="text-lg font-medium">{stageTitles[stage]}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Select what fits best. Some questions may allow multiple selections.</p>
+        <div className="mt-4 space-y-4">
+          {currentQuestion && (
+            <QuestionCard
+              key={currentQuestion.id}
+              question={currentQuestion}
+              value={answers[currentQuestion.id]}
+              onChange={(resp) => handleAnswerChange(currentQuestion, resp)}
+            />
+          )}
+        </div>
+        <WizardFooter
+          saving={saving}
+          onNext={handleNext}
+          nextDisabled={!currentQuestion || !answers[currentQuestion.id]}
+          nextLabel={currentQuestionIndex === questions.length - 1 && stage === 'stage2' ? 'Finish' : 'Continue'}
+          totalQuestions={questions.length}
+          currentQuestionIndex={currentQuestionIndex}
+        />
+      </section>
     </div>
   )
 }

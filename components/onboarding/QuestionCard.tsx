@@ -1,7 +1,24 @@
 "use client"
 
-import { useId } from 'react'
+import { useId, useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import type { OnboardingQuestion, QuestionResponse } from '@/lib/onboarding/types'
+import { StreamingText } from '@/components/ethereal/StreamingText'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 },
+}
 
 export function QuestionCard({
   question,
@@ -15,24 +32,25 @@ export function QuestionCard({
   const baseId = useId()
   const labelId = `${baseId}-label`
   const helpId = `${baseId}-help`
+  const [promptStreamed, setPromptStreamed] = useState(false)
 
   return (
     <div className="rounded-md border p-4">
       <div className="flex items-start justify-between">
         <div>
           <h3 id={labelId} className="font-medium">
-            {question.prompt}
+            <StreamingText text={question.prompt} onAnimationComplete={() => setPromptStreamed(true)} />
           </h3>
           {question.helper ? (
             <p id={helpId} className="mt-1 text-xs text-muted-foreground">
-              {question.helper}
+              <StreamingText text={question.helper} />
             </p>
           ) : null}
         </div>
       </div>
 
       <div className="mt-3" aria-labelledby={labelId} aria-describedby={question.helper ? helpId : undefined}>
-        {renderInput(question, value, onChange)}
+        {renderInput(question, value, onChange, promptStreamed)}
       </div>
     </div>
   )
@@ -41,15 +59,27 @@ export function QuestionCard({
 function renderInput(
   question: OnboardingQuestion,
   value: QuestionResponse | undefined,
-  onChange: (r: QuestionResponse) => void
+  onChange: (r: QuestionResponse) => void,
+  promptStreamed: boolean,
 ) {
+  if (!promptStreamed) return null
+
   switch (question.type) {
     case 'single_choice': {
       const v = value?.type === 'single_choice' ? value.value : ''
       return (
-        <div className="space-y-2">
+        <motion.div
+          className="space-y-2"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
           {question.options.map((opt) => (
-            <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-sm">
+            <motion.label
+              key={opt.value}
+              className="flex cursor-pointer items-center gap-2 text-sm"
+              variants={itemVariants}
+            >
               <input
                 type="radio"
                 name={question.id}
@@ -57,20 +87,29 @@ function renderInput(
                 checked={v === opt.value}
                 onChange={() => onChange({ type: 'single_choice', value: opt.value })}
               />
-              <span>{opt.label}</span>
-            </label>
+              <span><StreamingText text={opt.label} /></span>
+            </motion.label>
           ))}
-        </div>
+        </motion.div>
       )
     }
     case 'multi_select': {
       const selected = value?.type === 'multi_select' ? new Set(value.values) : new Set<string>()
       return (
-        <div className="space-y-2">
+        <motion.div
+          className="space-y-2"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
           {question.options.map((opt) => {
             const checked = selected.has(opt.value)
             return (
-              <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-sm">
+              <motion.label
+                key={opt.value}
+                className="flex cursor-pointer items-center gap-2 text-sm"
+                variants={itemVariants}
+              >
                 <input
                   type="checkbox"
                   name={`${question.id}[]`}
@@ -83,11 +122,11 @@ function renderInput(
                     onChange({ type: 'multi_select', values: Array.from(next) })
                   }}
                 />
-                <span>{opt.label}</span>
-              </label>
+                <span><StreamingText text={opt.label} /></span>
+              </motion.label>
             )
           })}
-        </div>
+        </motion.div>
       )
     }
     case 'likert5': {
