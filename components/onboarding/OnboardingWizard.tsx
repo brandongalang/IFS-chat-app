@@ -116,33 +116,52 @@ export function OnboardingWizard() {
     scheduleSave({ stage, questionId: q.id, response, version })
   }, [scheduleSave, stage, version])
 
-  // If user reaches stage2 and questions not fetched via progress, fetch explicitly
-  useEffect(() => {
-    let cancelled = false
-    async function fetchStage2() {
-      if (stage !== 'stage2' || stage2Questions.length > 0) return
-      try {
-        const res = await fetch('/api/onboarding/questions?stage=2', { cache: 'no-store' })
-        if (!res.ok) return
-        const data = await res.json() as { questions: OnboardingQuestion[] }
-        if (!cancelled) setStage2Questions(data.questions)
-      } catch {}
-    }
-    void fetchStage2()
-    return () => { cancelled = true }
-  }, [stage, stage2Questions.length])
+  // Stage 2 questions will be computed client-side on transition from Stage 1
 
   const questions = stage === 'stage1' ? stage1Questions : stage2Questions
   const currentQuestion = questions[currentQuestionIndex]
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1)
     } else {
-      // Advance to next stage or finish
       if (stage === 'stage1') {
-        setStage('stage2')
-        setCurrentQuestionIndex(0)
+        // Compute Stage 1 scores and select Stage 2 questions from local JSON
+        try {
+          const all = (await import('../../config/onboarding-questions.json')).default as { questions: OnboardingQuestion[] }
+          const stage2Bank = all.questions.filter(q => q.stage === 2 && q.active)
+          const scoringMod = await import('@/lib/onboarding/scoring')
+          const selectorMod = await import('@/lib/onboarding/selector')
+          const stage1Scores = scoringMod.computeStage1Scores(answers)
+          const selection = selectorMod.selectStage2Questions(stage1Scores, stage2Bank)
+
+          // Persist selection and advance stage on server (version-aware)
+          const doPost = async (v: number) => fetch('/api/onboarding/selection', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ version: v, ids: selection.ids })
+          })
+          let res = await doPost(version)
+          if (res.status === 409) {
+            const s = await fetch('/api/onboarding/state', { cache: 'no-store' })
+            if (s.ok) {
+              const sd: StateSummary = await s.json()
+              setVersion(sd.version)
+              res = await doPost(sd.version)
+            }
+          }
+          // Regardless of response, proceed locally (server will catch up)
+          const selectedQuestions = stage2Bank.filter(q => selection.ids.includes(q.id)).sort((a,b)=>a.order_hint-b.order_hint)
+          setStage2Questions(selectedQuestions)
+          setStage('stage2')
+          setCurrentQuestionIndex(0)
+        } catch (e) {
+          // Fallback: just move to stage2 with first four questions if selection failed
+          const all = (await import('../../config/onboarding-questions.json')).default as { questions: OnboardingQuestion[] }
+          const stage2Bank = all.questions.filter(q => q.stage === 2 && q.active).slice(0,4)
+          setStage2Questions(stage2Bank)
+          setStage('stage2')
+          setCurrentQuestionIndex(0)
+        }
       } else {
         router.push('/today')
       }
@@ -170,6 +189,8 @@ export function OnboardingWizard() {
   const stageTitles: Record<OnboardingStage, string> = {
     stage1: 'Stage 1 — 5 quick probes',
     stage2: 'Stage 2 — A few context questions',
+    stage3: 'Stage 3 — Somatic & Belief Mapping',
+    complete: 'Onboarding Complete',
   }
 
   return (
