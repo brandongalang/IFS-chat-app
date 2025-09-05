@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { CheckInTemplate, FormField } from './CheckInTemplate'
 
-export function MorningCheckInForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
+export function MorningCheckInForm({ className, ...props }: Omit<React.ComponentPropsWithoutRef<'div'>, 'onSubmit'>) {
   const [intention, setIntention] = useState('')
   const [worries, setWorries] = useState('')
   const [lookingForwardTo, setLookingForwardTo] = useState('')
@@ -13,7 +13,7 @@ export function MorningCheckInForm({ className, ...props }: React.ComponentProps
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault()
     const supabase = createClient()
     setIsLoading(true)

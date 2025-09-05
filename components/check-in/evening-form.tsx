@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
-export function EveningCheckInForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
+export function EveningCheckInForm({ className, ...props }: Omit<React.ComponentPropsWithoutRef<'div'>, 'onSubmit'>) {
   const [morningIntention, setMorningIntention] = useState('')
   const [morningWorries, setMorningWorries] = useState('')
   const [morningLookingForwardTo, setMorningLookingForwardTo] = useState('')
@@ -57,7 +57,7 @@ export function EveningCheckInForm({ className, ...props }: React.ComponentProps
     fetchMorningData()
   }, [])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault()
     if (!checkInId) return
 

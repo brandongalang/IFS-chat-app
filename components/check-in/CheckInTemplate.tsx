@@ -26,7 +26,7 @@ interface CheckInTemplateProps {
   title: string
   description: string
   fields: FormField[]
-  onSubmit: (e: React.FormEvent) => void
+  onSubmit: React.FormEventHandler<HTMLFormElement>
   isLoading: boolean
   submitText: string
   submitDisabled?: boolean
@@ -46,10 +46,9 @@ export function CheckInTemplate({
   error,
   preFieldsContent,
   className,
-  ...props
-}: CheckInTemplateProps & React.ComponentPropsWithoutRef<'div'>) {
+}: CheckInTemplateProps) {
   return (
-    <div className={cn('flex flex-col gap-6', className)} {...props}>
+    <div className={cn('flex flex-col gap-6', className)}>
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">{title}</CardTitle>
