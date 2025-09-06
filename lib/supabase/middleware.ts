@@ -93,9 +93,9 @@ export async function updateSession(request: NextRequest) {
       const status = onboarding?.status || 'incomplete'
       const isCompleted = status === 'completed'
 
-      // Prevent loop: if user completed but hits /onboarding, send to /today
+      // Prevent loop: if user completed but hits /onboarding, send to home (/)
       if (path.startsWith('/onboarding') && isCompleted) {
-        const redirect = NextResponse.redirect(new URL('/today', request.url))
+        const redirect = NextResponse.redirect(new URL('/', request.url))
         for (const c of supabaseResponse.cookies.getAll()) {
           redirect.cookies.set(c)
         }
