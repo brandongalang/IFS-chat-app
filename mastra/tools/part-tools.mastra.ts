@@ -20,17 +20,14 @@ const searchPartsSchema = z.object({
   status: z.enum(['emerging', 'acknowledged', 'active', 'integrated']).optional(),
   category: z.enum(['manager', 'firefighter', 'exile', 'unknown']).optional(),
   limit: z.number().min(1).max(50).default(20),
-  userId: z.string().uuid().optional(),
 })
 
 const getPartByIdSchema = z.object({
   partId: z.string().uuid(),
-  userId: z.string().uuid().optional(),
 })
 
 const getPartDetailSchema = z.object({
   partId: z.string().uuid(),
-  userId: z.string().uuid().optional(),
 })
 
 const createEmergingPartSchema = z.object({
@@ -49,13 +46,11 @@ const createEmergingPartSchema = z.object({
   emotions: z.array(z.string()).optional().default([]),
   beliefs: z.array(z.string()).optional().default([]),
   somaticMarkers: z.array(z.string()).optional().default([]),
-  userId: z.string().uuid().optional(),
   userConfirmed: z.boolean(),
 })
 
 const updatePartSchema = z.object({
   partId: z.string().uuid(),
-  userId: z.string().uuid().optional(),
   updates: z.object({
     name: z.string().min(1).max(100).optional(),
     status: z.enum(['emerging', 'acknowledged', 'active', 'integrated']).optional(),
@@ -82,7 +77,6 @@ const updatePartSchema = z.object({
 })
 
 const getPartRelationshipsSchema = z.object({
-  userId: z.string().uuid().optional(),
   partId: z.string().uuid().optional(),
   relationshipType: z.enum(['polarized', 'protector-exile', 'allied']).optional(),
   status: z.enum(['active', 'healing', 'resolved']).optional(),
@@ -91,7 +85,6 @@ const getPartRelationshipsSchema = z.object({
 })
 
 const logRelationshipSchema = z.object({
-  userId: z.string().uuid().optional(),
   partIds: z.array(z.string().uuid()).min(2).max(2),
   type: z.enum(['polarized', 'protector-exile', 'allied']),
   description: z.string().optional(),
@@ -109,93 +102,89 @@ const logRelationshipSchema = z.object({
   upsert: z.boolean().default(true),
 })
 
-export const searchPartsTool = createTool({
-  id: 'searchParts',
-  description: 'Search for parts based on query, status, or category',
-  inputSchema: searchPartsSchema,
-  execute: async ({ context }) => {
-    const result = await searchParts(context as any)
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  },
-})
 
-export const getPartByIdTool = createTool({
-  id: 'getPartById',
-  description: 'Get a specific part by its ID',
-  inputSchema: getPartByIdSchema,
-  execute: async ({ context }) => {
-    const result = await getPartById(context as any)
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  },
-})
-
-export const getPartDetailTool = createTool({
-  id: 'getPartDetail',
-  description:
-    'Retrieves a complete dossier for a given part, including core attributes, relationships, and recent evidence.',
-  inputSchema: getPartDetailSchema,
-  execute: async ({ context }) => {
-    const result = await getPartDetail(context as any)
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  },
-})
-
-export const createEmergingPartTool = createTool({
-  id: 'createEmergingPart',
-  description: 'Create a new emerging part (requires 3+ evidence and user confirmation)',
-  inputSchema: createEmergingPartSchema,
-  execute: async ({ context }) => {
-    const result = await createEmergingPart(context as any)
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  },
-})
-
-export const updatePartTool = createTool({
-  id: 'updatePart',
-  description: 'Update an existing part with confidence increment and audit trail',
-  inputSchema: updatePartSchema,
-  execute: async ({ context }) => {
-    const result = await updatePart(context as any)
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  },
-})
-
-export const getPartRelationshipsTool = createTool({
-  id: 'getPartRelationships',
-  description:
-    'Get part relationships with optional filtering by part, type, status, and include part details',
-  inputSchema: getPartRelationshipsSchema,
-  execute: async ({ context }) => {
-    const result = await getPartRelationships(context as any)
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  },
-})
-
-export const logRelationshipTool = createTool({
-  id: 'logRelationship',
-  description:
-    'Create or update a relationship between two parts; optionally append a dynamic observation and adjust polarization.',
-  inputSchema: logRelationshipSchema,
-  execute: async ({ context }) => {
-    const result = await logRelationship(context as any)
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  },
-})
-
-export const partTools = {
-  searchParts: searchPartsTool,
-  getPartById: getPartByIdTool,
-  getPartDetail: getPartDetailTool,
-  createEmergingPart: createEmergingPartTool,
-  updatePart: updatePartTool,
-  getPartRelationships: getPartRelationshipsTool,
-  logRelationship: logRelationshipTool,
+export function getPartTools(userId?: string) {
+  return {
+    searchParts: createTool({
+      id: 'searchParts',
+      description: 'Search for parts based on query, status, or category',
+      inputSchema: searchPartsSchema,
+      execute: async ({ context }: any) => {
+        const secureContext = { ...context, userId };
+        const result = await searchParts(secureContext);
+        if (!result.success) throw new Error(result.error);
+        return result.data;
+      },
+    }),
+    getPartById: createTool({
+      id: 'getPartById',
+      description: 'Get a specific part by its ID',
+      inputSchema: getPartByIdSchema,
+      execute: async ({ context }: any) => {
+        const secureContext = { ...context, userId };
+        const result = await getPartById(secureContext);
+        if (!result.success) throw new Error(result.error);
+        return result.data;
+      },
+    }),
+    getPartDetail: createTool({
+      id: 'getPartDetail',
+      description:
+        'Retrieves a complete dossier for a given part, including core attributes, relationships, and recent evidence.',
+      inputSchema: getPartDetailSchema,
+      execute: async ({ context }: any) => {
+        const secureContext = { ...context, userId };
+        const result = await getPartDetail(secureContext);
+        if (!result.success) throw new Error(result.error);
+        return result.data;
+      },
+    }),
+    createEmergingPart: createTool({
+      id: 'createEmergingPart',
+      description: 'Create a new emerging part (requires 3+ evidence and user confirmation)',
+      inputSchema: createEmergingPartSchema,
+      execute: async ({ context }: any) => {
+        const secureContext = { ...context, userId };
+        const result = await createEmergingPart(secureContext);
+        if (!result.success) throw new Error(result.error);
+        return result.data;
+      },
+    }),
+    updatePart: createTool({
+      id: 'updatePart',
+      description: 'Update an existing part with confidence increment and audit trail',
+      inputSchema: updatePartSchema,
+      execute: async ({ context }: any) => {
+        const secureContext = { ...context, userId };
+        const result = await updatePart(secureContext);
+        if (!result.success) throw new Error(result.error);
+        return result.data;
+      },
+    }),
+    getPartRelationships: createTool({
+      id: 'getPartRelationships',
+      description:
+        'Get part relationships with optional filtering by part, type, status, and include part details',
+      inputSchema: getPartRelationshipsSchema,
+      execute: async ({ context }: any) => {
+        const secureContext = { ...context, userId };
+        const result = await getPartRelationships(secureContext);
+        if (!result.success) throw new Error(result.error);
+        return result.data;
+      },
+    }),
+    logRelationship: createTool({
+      id: 'logRelationship',
+      description:
+        'Create or update a relationship between two parts; optionally append a dynamic observation and adjust polarization.',
+      inputSchema: logRelationshipSchema,
+      execute: async ({ context }: any) => {
+        const secureContext = { ...context, userId };
+        const result = await logRelationship(secureContext);
+        if (!result.success) throw new Error(result.error);
+        return result.data;
+      },
+    }),
+  }
 }
 

@@ -1,4 +1,6 @@
 import { NextRequest } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { dev } from '@/config/dev'
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,6 +12,20 @@ export async function POST(req: NextRequest) {
         headers: { 'Content-Type': 'application/json' }
       })
     }
+
+    const supabase = await createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    const userId = session?.user?.id
+
+    if (!userId && !dev.enabled) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Add the secure user ID to the profile object
+    const secureProfile = { ...profile, userId: userId }
 
     // If no OpenRouter credentials, provide a dev fallback text stream so the UI works
     const hasOpenrouter = typeof process.env.OPENROUTER_API_KEY === 'string' && process.env.OPENROUTER_API_KEY.length > 10
@@ -33,7 +49,7 @@ export async function POST(req: NextRequest) {
     try {
       // Lazy-load the agent only when credentials are available to avoid dev import side-effects
 const { createIfsAgent } = await import('../../../mastra/agents/ifs-agent')
-      const ifsAgent = createIfsAgent(profile)
+      const ifsAgent = createIfsAgent(secureProfile)
 
       // Prefer vNext streaming in AI SDK (UI message) format so we can parse consistently on the client
       const agent = ifsAgent as unknown as Partial<{
