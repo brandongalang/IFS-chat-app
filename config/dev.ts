@@ -24,16 +24,39 @@ export function resolveUserId(providedUserId?: string): string {
   if (providedUserId) return providedUserId
 
   if (dev.enabled) {
-    // Prefer client-selected persona when available
-    const persona = typeof window !== 'undefined' ? getCurrentPersona() : dev.currentPersona
-    const personaUserId = getPersonaUserId(persona)
-    if (personaUserId) {
-      if (dev.verbose) {
-        const cfg = TEST_PERSONAS[persona]
-        console.log(`[IFS-DEV] Using persona user ID: ${personaUserId} (${cfg.name})`)
-      }
-      return personaUserId
+    // Prefer a server-visible override first (cookie), then client localStorage, then env
+    let persona: TestPersona | null = null
+
+    if (typeof window !== 'undefined') {
+      // Check cookie override in the browser so SSR and CSR agree after a switch
+      try {
+        const cookieStr = document.cookie || ''
+        const m = cookieStr.match(/(?:^|; )ifs-test-persona=([^;]+)/)
+        if (m) {
+          const val = decodeURIComponent(m[1])
+          if (['beginner','moderate','advanced'].includes(val)) {
+            persona = val as TestPersona
+          }
+        }
+      } catch {}
+      // Fallback to client localStorage (old behavior)
+      if (!persona) persona = getCurrentPersona()
+    } else {
+      // Server: we cannot read cookies here; fallback to env persona
+      persona = dev.currentPersona
     }
+
+    if (persona) {
+      const personaUserId = getPersonaUserId(persona)
+      if (personaUserId) {
+        if (dev.verbose) {
+          const cfg = TEST_PERSONAS[persona]
+          console.log(`[IFS-DEV] Using persona user ID: ${personaUserId} (${cfg.name})`)
+        }
+        return personaUserId
+      }
+    }
+
     if (dev.defaultUserId) {
       if (dev.verbose) console.log(`[IFS-DEV] Using default user ID: ${dev.defaultUserId}`)
       return dev.defaultUserId

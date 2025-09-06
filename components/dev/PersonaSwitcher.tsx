@@ -23,12 +23,21 @@ export function PersonaSwitcher({ className = '' }: PersonaSwitcherProps) {
     return null
   }
 
-  const handlePersonaChange = (newPersona: TestPersona) => {
-    setCurrentPersona(newPersona)
-    setCurrentPersonaState(newPersona)
-    setIsOpen(false)
-    
-    // Refresh the page to load new persona data
+  const handlePersonaChange = async (newPersona: TestPersona) => {
+    try {
+      // Update client setting (optional; still used as fallback)
+      setCurrentPersona(newPersona)
+      setCurrentPersonaState(newPersona)
+      setIsOpen(false)
+
+      // Tell the server via cookie so SSR/API see the new persona
+      await fetch('/api/dev/persona', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ persona: newPersona })
+      })
+    } catch {}
+    // Reload to ensure SSR/API pick up cookie and client state aligns
     window.location.reload()
   }
 
