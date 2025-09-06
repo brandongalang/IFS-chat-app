@@ -266,6 +266,27 @@ find app/api -name "*.ts" | head -5
 cat config/features.ts
 ```
 
+## 🚀 Running the liteLLM Proxy
+
+This project uses `liteLLM` to provide a proxy layer for LLM calls, enabling features like prompt injection detection. To run the application locally, you'll need to start the `liteLLM` proxy in a separate terminal.
+
+**1. Set your OpenRouter API Key:**
+
+Make sure your `OPENROUTER_API_KEY` is set as an environment variable. You can add it to a `.env.local` file in the root of the project:
+
+```
+OPENROUTER_API_KEY=your_api_key_here
+```
+
+**2. Start the liteLLM Proxy:**
+
+Open a new terminal window and run the following command:
+
+```bash
+litellm --config litellm.config.yaml
+```
+
+This will start the proxy on `http://0.0.0.0:4000`, which the application is configured to use for all LLM requests.
 
 ## 🔌 Agent API Architecture
 
