@@ -74,13 +74,38 @@ export function computeStage1Scores(answersSnapshot: Record<string, QuestionResp
     }
   }
 
+  // Calculate max possible scores dynamically
+  const maxScores: ThemeScores = Object.fromEntries(
+    THEMES.map(theme => [theme, 0])
+  ) as ThemeScores;
+
+  for (const questionId of stage1Questions) {
+    const questionResponses = STAGE1_RESPONSE_VALUES[questionId];
+    const themeMaxForQuestion: Partial<ThemeScores> = {};
+
+    for (const responseKey in questionResponses) {
+      const weights = questionResponses[responseKey as keyof typeof questionResponses];
+      if (weights) {
+        for (const [theme, weight] of Object.entries(weights as Record<string, number>)) {
+          if (THEMES.includes(theme as Theme)) {
+            themeMaxForQuestion[theme as Theme] = Math.max(themeMaxForQuestion[theme as Theme] || 0, weight);
+          }
+        }
+      }
+    }
+
+    for (const [theme, maxWeight] of Object.entries(themeMaxForQuestion)) {
+      if (maxWeight) {
+        maxScores[theme as Theme] += maxWeight;
+      }
+    }
+  }
+
   // Normalize scores to [0, 1] range
   for (const theme of THEMES) {
-    const maxScore = MAX_THEME_SCORES[theme];
-    if (maxScore > 0) {
-      // Clamp score to max to avoid exceeding 1.0 due to rounding
-      const clampedScore = Math.min(scores[theme], maxScore);
-      scores[theme] = clampedScore / maxScore;
+    const maxPossibleScore = maxScores[theme];
+    if (maxPossibleScore > 0) {
+      scores[theme] = Math.min(1, scores[theme] / maxPossibleScore);
     } else {
       scores[theme] = 0;
     }
