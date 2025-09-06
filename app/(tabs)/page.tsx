@@ -1,16 +1,11 @@
 'use client'
 
-import Link from 'next/link'
-import { Plus, CalendarDays, Lightbulb, Sprout, Map } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { GuardedLink } from '@/components/common/GuardedLink'
-import { useComingSoon } from '@/components/common/ComingSoonProvider'
 import PersonaSwitcher from '@/components/dev/PersonaSwitcher'
 import { showDevToggle } from '@/config/features'
 import { CheckInCard } from '@/components/home/CheckInCard'
 
 export default function HomePage() {
-  const { openComingSoon } = useComingSoon()
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">

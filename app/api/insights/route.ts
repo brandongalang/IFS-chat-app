@@ -87,7 +87,7 @@ if (!userId) {
     if (error) throw error
 
     const sorted = (data || [])
-      .sort((a: any, b: any) => {
+      .sort((a: { status: string; created_at: string }, b: { status: string; created_at: string }) => {
         const aw = a.status === 'revealed' ? 0 : 1
         const bw = b.status === 'revealed' ? 0 : 1
         if (aw !== bw) return aw - bw

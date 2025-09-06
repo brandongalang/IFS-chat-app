@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { 
   QuestionsResponse, 
-  OnboardingQuestion,
-  getQuestionsByStage 
+  OnboardingQuestion
 } from '@/lib/onboarding/types';
 import { computeStage1Scores } from '@/lib/onboarding/scoring';
 import { selectStage2Questions } from '@/lib/onboarding/selector';

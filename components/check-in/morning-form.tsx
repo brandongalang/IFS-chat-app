@@ -77,12 +77,12 @@ export function MorningCheckInForm({ className, ...props }: Omit<React.Component
       title="Morning Check-in"
       description="What's on your mind this morning?"
       fields={fields}
-      onSubmit={handleSubmit}
       isLoading={isLoading}
       submitText="Complete Check-in"
       error={error}
       className={className}
       {...props}
+      onSubmit={handleSubmit}
     />
   )
 }

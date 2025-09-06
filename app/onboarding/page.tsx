@@ -1,5 +1,4 @@
 import { cookies, headers } from 'next/headers'
-import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 

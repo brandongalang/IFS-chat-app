@@ -8,11 +8,6 @@ import {
 import STAGE1_RESPONSE_VALUES from '../../config/onboarding-weights.json';
 export { STAGE1_RESPONSE_VALUES };
 
-// Utility function to check if a question ID is a Stage 1 question
-export function isStage1Question(questionId: string): questionId is Stage1QuestionId {
-  return questionId in STAGE1_RESPONSE_VALUES;
-}
-
 /**
  * Pre-computes the maximum possible score for each theme
  */
@@ -147,7 +142,7 @@ export function summarizeScores(scores: ThemeScores): {
   let themeBalance: 'focused' | 'balanced' | 'scattered' = 'balanced';
   
   if (topThreeScores.length > 0) {
-    const [first, second = 0, third = 0] = topThreeScores;
+    const [first, second = 0] = topThreeScores;
     
     if (first > 0.7 && second < 0.3) {
       themeBalance = 'focused'; // One dominant theme

@@ -149,13 +149,13 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
             <CardContent>
               {relationships && relationships.length > 0 ? (
                 <ul className="space-y-4">
-                  {relationships.map((rel: any) => (
+                  {relationships.map((rel: { id: string; type: string; parts: { id: string; name: string }[] }) => (
                     <li key={rel.id} className="text-sm flex items-baseline">
                       <span className="font-semibold capitalize w-24">{rel.type}:</span>
                       <div className="flex flex-wrap gap-1 ml-2">
                         {rel.parts
-                          .filter((p: any) => p.id !== part.id)
-                          .map((p: any) => (
+                          .filter((p) => p.id !== part.id)
+                          .map((p) => (
                             <Button asChild variant="link" size="sm" className="p-0 h-auto" key={p.id}>
                                <Link href={`/garden/${p.id}`}>{p.name}</Link>
                             </Button>

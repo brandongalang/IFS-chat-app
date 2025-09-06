@@ -152,7 +152,6 @@ export default function OnboardingFlowPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, QuestionResponse>>({});
   const [questions, setQuestions] = useState<OnboardingQuestion[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
   // Initialize questions based on stage

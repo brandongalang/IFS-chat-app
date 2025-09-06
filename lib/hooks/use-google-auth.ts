@@ -6,7 +6,25 @@ import { useState } from 'react'
 
 declare global {
   interface Window {
-    google: any
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string;
+            callback: (response: { credential: string }) => void;
+            auto_select?: boolean;
+            cancel_on_tap_outside?: boolean;
+          }) => void;
+          prompt: (
+            cb: (notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => void
+          ) => void;
+          renderButton: (
+            container: HTMLElement | null,
+            options: { theme: 'outline' | 'filled_blue' | 'filled_black' | 'standard' | 'icon' | 'text'; size: 'large' | 'medium' | 'small'; width?: string }
+          ) => void;
+        };
+      };
+    };
   }
 }
 
@@ -55,14 +73,17 @@ export function useGoogleAuth() {
       }
 
       // Initialize Google Identity Services
+      if (!window.google) {
+        throw new Error('Google Identity not initialized')
+      }
       window.google.accounts.id.initialize({
         client_id: clientId,
-        callback: async (response: any) => {
+        callback: async (response: { credential: string }) => {
           try {
             const { credential } = response
             
             // Use Supabase's signInWithIdToken method
-            const { data, error } = await supabase.auth.signInWithIdToken({
+            const { error } = await supabase.auth.signInWithIdToken({
               provider: 'google',
               token: credential,
             })
@@ -84,10 +105,13 @@ export function useGoogleAuth() {
       })
 
       // Prompt the user to sign in
-      window.google.accounts.id.prompt((notification: any) => {
+      if (!window.google) {
+        throw new Error('Google Identity not initialized')
+      }
+      window.google.accounts.id.prompt((notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
           // Fallback to popup if prompt is not displayed
-          window.google.accounts.id.renderButton(
+          window.google!.accounts.id.renderButton(
             document.getElementById('google-signin-button'),
             {
               theme: 'outline',

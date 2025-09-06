@@ -173,13 +173,13 @@ export function EveningCheckInForm({ className, ...props }: Omit<React.Component
       description="Let's reflect on your day."
       fields={fields}
       preFieldsContent={preFieldsContent}
-      onSubmit={handleSubmit}
       isLoading={isLoading}
       submitText="Complete Review"
       submitDisabled={!checkInId}
       error={error}
       className={className}
       {...props}
+      onSubmit={handleSubmit}
     />
   )
 }
