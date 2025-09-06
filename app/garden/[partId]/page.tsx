@@ -1,4 +1,4 @@
-import { getPartById, getPartRelationships } from '@/mastra/tools/part-tools'
+import { getPartById, getPartRelationships } from '@/lib/data/parts'
 import type { PartRow } from '@/lib/types/database'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
