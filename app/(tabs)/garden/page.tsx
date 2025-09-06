@@ -6,6 +6,7 @@ import { searchParts, getPartRelationships } from '@/lib/data/parts'
 import type { PartRow, PartRelationshipRow, PartCategory, RelationshipType } from '@/lib/types/database'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { dev } from '@/config/dev'
 
 // Dynamically import the ForceGraph2D component to avoid SSR issues
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
@@ -125,6 +126,17 @@ export default function GardenPage() {
   useEffect(() => {
     async function fetchData() {
       try {
+        if (dev.enabled) {
+          // Use server API (service role) in dev to bypass RLS for persona data
+          const res = await fetch('/api/dev/garden/graph', { credentials: 'include' })
+          if (!res.ok) throw new Error(`API error: ${res.status}`)
+          const json = await res.json()
+          if (!json?.ok) throw new Error(json?.error || 'Failed to load graph')
+          setParts(json.parts as PartRow[])
+          setRelationships(json.relationships as PartRelationshipRow[])
+          return
+        }
+        // Fallback (prod): use client tools with authenticated user
         const [partsResult, relationshipsResult] = await Promise.all([
           searchParts({ limit: 50 }),
           getPartRelationships({ includePartDetails: false, limit: 50 }),
