@@ -5,7 +5,9 @@ import { TEST_PERSONAS, getPersonaUserId, getCurrentPersona, type TestPersona } 
 const isProd = process.env.NODE_ENV === 'production'
 const publicDev = process.env.NEXT_PUBLIC_IFS_DEV_MODE === 'true'
 const serverDev = process.env.IFS_DEV_MODE === 'true'
-const enabled = !isProd && (publicDev || serverDev)
+// Enable dev mode for all non-production builds to reduce friction
+// If you want stricter gating, restore: !isProd && (publicDev || serverDev)
+const enabled = !isProd
 
 const defaultUserId = process.env.IFS_DEFAULT_USER_ID ?? null
 const verbose = process.env.IFS_VERBOSE === 'true'
