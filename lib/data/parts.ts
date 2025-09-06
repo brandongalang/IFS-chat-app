@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { actionLogger } from '../database/action-logger'
 import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/dev'
 import type { Database, PartRow, PartInsert, PartUpdate, PartEvidence, PartRelationshipRow, PartRelationshipInsert, PartRelationshipUpdate, RelationshipType, RelationshipStatus, ToolResult, RelationshipDynamic } from '../types/database'
+import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 // Input schemas for tool validation
 const searchPartsSchema = z.object({
@@ -104,39 +106,18 @@ const logRelationshipSchema = z.object({
 })
 
 // Helper to resolve env with fallbacks (supports Vite and Next-style vars)
-function getEnvVar(keys: string[]): string | undefined {
-  // Prefer Node envs (Next.js, CI, server)
-  const nodeEnv = typeof process !== 'undefined' ? (process as any).env : undefined
-  if (nodeEnv) {
-    for (const k of keys) {
-      const v = nodeEnv[k]
-      if (v) return v as string
-    }
-  }
-
-  // Attempt to read from Vite's import.meta.env without directly referencing import.meta
-  let metaEnv: any
-  try {
-    // Use indirect eval; bundlers that don't support import.meta won't error
-    metaEnv = Function('try { return import.meta && import.meta.env } catch (_) { return undefined }')()
-  } catch {
-    metaEnv = undefined
-  }
-  if (metaEnv) {
-    for (const k of keys) {
-      const v = metaEnv[k]
-      if (v) return v as string
-    }
-  }
-
-  return undefined
-}
-
-// Helper function to get Supabase client
 function getSupabaseClient() {
-  const url = getEnvVar(['NEXT_PUBLIC_SUPABASE_URL', 'VITE_SUPABASE_URL'])
-  const anonKey = getEnvVar(['NEXT_PUBLIC_SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY'])
-  const serviceRole = getEnvVar(['SUPABASE_SERVICE_ROLE_KEY'])
+  // Browser: use the preconfigured Next.js helper so env is inlined at build time
+  if (typeof window !== 'undefined') {
+    return createBrowserSupabase()
+  }
+
+  // Server: read from Node env and optionally use service role in dev
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
 
   if (!url || !anonKey) {
     throw new Error(
@@ -146,26 +127,18 @@ function getSupabaseClient() {
     )
   }
 
-  // Dev-only service role bypass similar to evidence-tools
-  const devEnabled = dev.enabled
-
-  if (typeof window === 'undefined' && devEnabled && serviceRole) {
-    // Use service role on server to bypass RLS in development
-    return createBrowserClient<Database>(url, serviceRole)
+  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (dev.enabled && serviceRole) {
+    // Dev-only bypass with service role on server
+    return createAdminClient()
   }
 
-  if (typeof window !== 'undefined') {
-    // Browser client
-    return createBrowserClient<Database>(url, anonKey)
-  } else {
-    // Server client (for API routes)
-    return createServerClient<Database>(url, anonKey, {
-      cookies: {
-        getAll: () => [],
-        setAll: () => {}
-      }
-    })
-  }
+  return createServerClient<Database>(url, anonKey, {
+    cookies: {
+      getAll: () => [],
+      setAll: () => {},
+    },
+  })
 }
 
 /**
@@ -782,7 +755,7 @@ export async function logRelationship(input: z.infer<typeof logRelationshipSchem
       ;(updates as any).updated_at = nowIso
 
       // Dev bypass with service role to avoid RLS, and manual action log
-      const serviceRole = getEnvVar(['SUPABASE_SERVICE_ROLE_KEY'])
+const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
       if (typeof window === 'undefined' && dev.enabled && serviceRole) {
         try {
           devLog('logRelationship update payload', updates)
@@ -857,7 +830,7 @@ export async function logRelationship(input: z.infer<typeof logRelationshipSchem
     }
 
     // Dev bypass with service role to avoid RLS, and manual action log
-    const serviceRoleCreate = getEnvVar(['SUPABASE_SERVICE_ROLE_KEY'])
+const serviceRoleCreate = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (typeof window === 'undefined' && dev.enabled && serviceRoleCreate) {
       const { data: createdDirect, error: insErr } = await supabase
         .from('part_relationships')
