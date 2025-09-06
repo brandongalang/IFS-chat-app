@@ -48,6 +48,17 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        ethereal: {
+          'text-user': 'rgba(255, 255, 255, var(--eth-user-opacity))',
+          'text-assistant': 'rgba(255, 255, 255, var(--eth-assistant-opacity))',
+          'bg-1': 'rgba(255, 255, 255, 0.05)',
+          'bg-2': 'rgba(255, 255, 255, 0.1)',
+          'border': 'rgba(255, 255, 255, 0.2)',
+          'gradient-from-morning': 'rgba(211, 154, 120, 0.1)',
+          'gradient-to-morning': 'rgba(42, 77, 82, 0.2)',
+          'gradient-from-evening': 'rgba(31, 58, 63, 0.2)',
+          'gradient-to-evening': 'rgba(211, 154, 120, 0.1)',
+        }
       }
     },
   },
