@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     const res = NextResponse.json({ ok: true, persona })
     // Set a server-visible cookie so SSR/API can read it
     res.cookies.set('ifs-test-persona', persona, {
-      httpOnly: true,
+      httpOnly: false, // client must read this in Garden (client-side data fetch)
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 30 // 30 days

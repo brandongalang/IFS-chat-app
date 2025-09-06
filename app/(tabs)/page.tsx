@@ -1,8 +1,11 @@
 'use client'
 
 import { GuardedLink } from '@/components/common/GuardedLink'
-import PersonaSwitcher from '@/components/dev/PersonaSwitcher'
+import dynamic from 'next/dynamic'
 import { CheckInCard } from '@/components/home/CheckInCard'
+
+// Render persona switcher on client only to avoid SSR/CSR mismatch
+const PersonaSwitcher = dynamic(() => import('@/components/dev/PersonaSwitcher'), { ssr: false })
 
 export default function HomePage() {
 
