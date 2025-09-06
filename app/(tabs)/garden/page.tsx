@@ -127,7 +127,7 @@ export default function GardenPage() {
       try {
         const [partsResult, relationshipsResult] = await Promise.all([
           searchParts({ limit: 50 }),
-          getPartRelationships({ includePartDetails: false, limit: 100 }),
+          getPartRelationships({ includePartDetails: false, limit: 50 }),
         ])
 
         if (partsResult.success && partsResult.data) {
