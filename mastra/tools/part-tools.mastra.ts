@@ -7,7 +7,7 @@ import {
   updatePart,
   getPartRelationships,
   logRelationship,
-} from './part-tools'
+} from '@/lib/data/parts'
 import {
   // reuse schemas from part-tools via type inference
 } from './part-tools'

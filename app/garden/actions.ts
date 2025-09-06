@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { updatePart } from '@/mastra/tools/part-tools'
+import { updatePart } from '@/lib/data/parts'
 import { z } from 'zod'
 
 const updateDetailsSchema = z.object({
