@@ -210,106 +210,111 @@ Don't create new docs for:
 }
 
 async function main() {
-  // Skip if bypassed
-  if (process.env.DOCS_SKIP === 'true') {
-    console.log('docs-update-ai: bypassed via DOCS_SKIP env');
-    return;
-  }
+  try {
+    // Skip if bypassed
+    if (process.env.DOCS_SKIP === 'true') {
+      console.log('docs-update-ai: bypassed via DOCS_SKIP env');
+      return;
+    }
 
-  const prContext = getPRContext();
-  if (prContext?.labels.includes('docs:skip')) {
-    console.log('docs-update-ai: bypassed via docs:skip label');
-    return;
-  }
+    const prContext = getPRContext();
+    if (prContext?.labels.includes('docs:skip')) {
+      console.log('docs-update-ai: bypassed via docs:skip label');
+      return;
+    }
 
-  const docmapPath = path.join(process.cwd(), 'docs/.docmap.json');
-  if (!existsSync(docmapPath)) {
-    console.log('docs-update-ai: no docs/.docmap.json found; skipping');
-    return;
-  }
+    const docmapPath = path.join(process.cwd(), 'docs/.docmap.json');
+    if (!existsSync(docmapPath)) {
+      console.log('docs-update-ai: no docs/.docmap.json found; skipping');
+      return;
+    }
 
-  const docmap = JSON.parse(readFileSync(docmapPath, 'utf8'));
-  const base = process.env.BASE_SHA || '';
-  const head = process.env.HEAD_SHA || '';
-  
-  if (!base || !head) {
-    console.log('docs-update-ai: BASE_SHA/HEAD_SHA not set; skipping');
-    return;
-  }
+    const docmap = JSON.parse(readFileSync(docmapPath, 'utf8'));
+    const base = process.env.BASE_SHA || '';
+    const head = process.env.HEAD_SHA || '';
 
-  const changedFiles = getChangedFiles(base, head);
-  if (changedFiles.length === 0) {
-    console.log('docs-update-ai: no files changed');
-    return;
-  }
+    if (!base || !head) {
+      console.log('docs-update-ai: BASE_SHA/HEAD_SHA not set; skipping');
+      return;
+    }
 
-  console.log(`Analyzing ${changedFiles.length} changed files...`);
-  const codeAnalyses = analyzeCodeChanges(changedFiles, base, head);
-  
-  if (codeAnalyses.length === 0) {
-    console.log('docs-update-ai: no code changes requiring documentation updates');
-    return;
-  }
+    const changedFiles = getChangedFiles(base, head);
+    if (changedFiles.length === 0) {
+      console.log('docs-update-ai: no files changed');
+      return;
+    }
 
-  // Check if we should create a new feature doc
-  const newFeatureCheck = shouldCreateNewFeatureDoc(changedFiles, codeAnalyses);
-  if (newFeatureCheck?.createNew) {
-    console.log(`Creating new feature documentation: ${newFeatureCheck.featureName}`);
-    console.log(`Reason: ${newFeatureCheck.reason}`);
-    
-    const newDocPath = `docs/features/${newFeatureCheck.featureName}.md`;
-    const newDocContent = generateDocumentationUpdate(newDocPath, codeAnalyses, prContext);
-    
-    if (newDocContent && newDocContent.trim() !== '') {
-      writeFileSync(newDocPath, newDocContent);
-      console.log(`Created: ${newDocPath}`);
-      
-      // Add to docmap for future updates
-      const relevantPaths = changedFiles.filter(f => 
-        !f.startsWith('docs/') && 
-        !f.startsWith('.github/') && 
-        !f.endsWith('.md')
+    console.log(`Analyzing ${changedFiles.length} changed files...`);
+    const codeAnalyses = analyzeCodeChanges(changedFiles, base, head);
+
+    if (codeAnalyses.length === 0) {
+      console.log('docs-update-ai: no code changes requiring documentation updates');
+      return;
+    }
+
+    // Check if we should create a new feature doc
+    const newFeatureCheck = shouldCreateNewFeatureDoc(changedFiles, codeAnalyses);
+    if (newFeatureCheck?.createNew) {
+      console.log(`Creating new feature documentation: ${newFeatureCheck.featureName}`);
+      console.log(`Reason: ${newFeatureCheck.reason}`);
+
+      const newDocPath = `docs/features/${newFeatureCheck.featureName}.md`;
+      const newDocContent = generateDocumentationUpdate(newDocPath, codeAnalyses, prContext);
+
+      if (newDocContent && newDocContent.trim() !== '') {
+        writeFileSync(newDocPath, newDocContent);
+        console.log(`Created: ${newDocPath}`);
+
+        // Add to docmap for future updates
+        const relevantPaths = changedFiles.filter(f =>
+          !f.startsWith('docs/') &&
+          !f.startsWith('.github/') &&
+          !f.endsWith('.md')
+        );
+        if (relevantPaths.length > 0) {
+          docmap.mappings.push({
+            paths: relevantPaths,
+            docs: [newDocPath]
+          });
+          writeFileSync(docmapPath, JSON.stringify(docmap, null, 2));
+          console.log(`Updated docmap.json with new mapping`);
+        }
+      }
+    }
+
+    // Update existing mapped documentation
+    const updatedDocs = new Set();
+
+    for (const mapping of docmap.mappings || []) {
+      const patterns = (mapping.paths || []).map(globToRegExp);
+      const matchingChanges = codeAnalyses.filter(change =>
+        patterns.some(pattern => pattern.test(change.file))
       );
-      if (relevantPaths.length > 0) {
-        docmap.mappings.push({
-          paths: relevantPaths,
-          docs: [newDocPath]
-        });
-        writeFileSync(docmapPath, JSON.stringify(docmap, null, 2));
-        console.log(`Updated docmap.json with new mapping`);
+
+      if (matchingChanges.length === 0) continue;
+
+      for (const docFile of mapping.docs || []) {
+        if (updatedDocs.has(docFile)) continue;
+
+        console.log(`Updating documentation: ${docFile}`);
+        const updatedContent = generateDocumentationUpdate(docFile, matchingChanges, prContext);
+
+        if (updatedContent && updatedContent.trim() !== '') {
+          writeFileSync(docFile, updatedContent);
+          updatedDocs.add(docFile);
+          console.log(`Updated: ${docFile}`);
+        }
       }
     }
-  }
 
-  // Update existing mapped documentation
-  const updatedDocs = new Set();
-  
-  for (const mapping of docmap.mappings || []) {
-    const patterns = (mapping.paths || []).map(globToRegExp);
-    const matchingChanges = codeAnalyses.filter(change => 
-      patterns.some(pattern => pattern.test(change.file))
-    );
-    
-    if (matchingChanges.length === 0) continue;
-    
-    for (const docFile of mapping.docs || []) {
-      if (updatedDocs.has(docFile)) continue;
-      
-      console.log(`Updating documentation: ${docFile}`);
-      const updatedContent = generateDocumentationUpdate(docFile, matchingChanges, prContext);
-      
-      if (updatedContent && updatedContent.trim() !== '') {
-        writeFileSync(docFile, updatedContent);
-        updatedDocs.add(docFile);
-        console.log(`Updated: ${docFile}`);
-      }
+    if (updatedDocs.size === 0 && !newFeatureCheck?.createNew) {
+      console.log('docs-update-ai: no documentation updates needed');
+    } else {
+      console.log(`docs-update-ai: updated ${updatedDocs.size} existing docs, created ${newFeatureCheck?.createNew ? 1 : 0} new docs`);
     }
-  }
-
-  if (updatedDocs.size === 0 && !newFeatureCheck?.createNew) {
-    console.log('docs-update-ai: no documentation updates needed');
-  } else {
-    console.log(`docs-update-ai: updated ${updatedDocs.size} existing docs, created ${newFeatureCheck?.createNew ? 1 : 0} new docs`);
+  } catch (error) {
+    console.error(`docs-update-ai: an unexpected error occurred: ${error.message}`);
+    // Exit gracefully, but this will be caught by the action's failure check
   }
 }
 

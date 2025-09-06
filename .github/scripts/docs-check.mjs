@@ -95,7 +95,8 @@ function main() {
       console.error('- Changed code matched paths:', v.mapping.paths.join(', '));
       console.error('  Expected docs to be updated:', v.mapping.docs.join(', '));
     }
-    console.error('\nEither update the mapped docs file(s) or apply the label "docs:skip" with justification.');
+    console.error('\nThe AI-powered documentation update may have failed or was skipped.');
+    console.error('Either update the mapped docs file(s) manually or apply the label "docs:skip" with justification.');
     process.exit(1);
   } else {
     console.log('docs-check: All good. Relevant docs updated.');

@@ -1,0 +1,74 @@
+name: Documentation
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install OpenCode
+        if: ${{ secrets.GOOGLE_API_KEY != '' }}
+        run: |
+          curl -fsSL https://opencode.ai/install | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          rm -rf ~/.opencode/config.toml || true
+
+      - name: Analyze and Update Docs via AI
+        id: ai-update
+        if: ${{ secrets.GOOGLE_API_KEY != '' }}
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+        run: node .github/scripts/docs-update-ai.mjs
+
+      - name: Check for AI-generated changes
+        id: docs-check
+        run: |
+          if [ -n "$(git diff --name-only docs/)" ]; then
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit Documentation Updates
+        if: steps.docs-check.outputs.has-changes == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Bot"
+          git add docs/
+          git commit -m "docs: AI-powered documentation updates"
+          git push
+
+      - name: Add PR Comment
+        if: steps.docs-check.outputs.has-changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "🤖 I've automatically updated the documentation based on your changes."
+            })
+
+      - name: Verify Documentation Requirements
+        if: steps.docs-check.outputs.has-changes == 'false'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: node .github/scripts/docs-check.mjs
