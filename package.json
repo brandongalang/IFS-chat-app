@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     "test:unit": "npm exec tsx scripts/tests/unit/scoring.test.ts && npm exec tsx scripts/tests/unit/selector.test.ts && npm exec tsx scripts/tests/unit/prompt.test.ts && npm exec tsx scripts/tests/unit/security.test.ts",
     "test": "npm run test:unit && tsx scripts/test-onboarding.ts",
     "dev:mastra": "mastra dev --dir mastra",
