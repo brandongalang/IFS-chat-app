@@ -21,8 +21,6 @@ export const dev = {
 }
 
 export function resolveUserId(providedUserId?: string): string {
-  if (providedUserId) return providedUserId
-
   if (dev.enabled) {
     // Prefer client-selected persona when available
     const persona = typeof window !== 'undefined' ? getCurrentPersona() : dev.currentPersona
