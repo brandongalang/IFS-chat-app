@@ -1,3 +1,16 @@
+[allowlist]
+description = "Allow known false positives and generated output"
+paths = [
+  '''^\.mastra/output/.*''',
+  '''^docs/.*'''
+]
+regexes = [
+  '''OPENROUTER_API_KEY''',
+  '''NEXT_PUBLIC_SUPABASE_ANON_KEY''',
+  '''SUPABASE_SERVICE_ROLE_KEY''',
+  '''GOOGLE_API_KEY'''
+]
+
 title = "IFS Gitleaks Config"
 
 [allowlist]
