@@ -2,6 +2,8 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { actionLogger } from '../../lib/database/action-logger'
+import { isMemoryV2Enabled } from '@/lib/memory/config'
+import { onPartCreated, onPartUpdated } from '@/lib/memory/snapshots/updater'
 import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/dev'
 import type { Database, PartRow, PartInsert, PartUpdate, PartEvidence, PartRelationshipRow, PartRelationshipInsert, PartRelationshipUpdate, RelationshipType, RelationshipStatus, ToolResult, RelationshipDynamic } from '../../lib/types/database'
 
@@ -415,6 +417,19 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
       }
     )
 
+    // Memory v2: create part profile snapshot and append change log (behind flag)
+    if (isMemoryV2Enabled()) {
+      try {
+        await onPartCreated({
+          userId,
+          partId: data.id,
+          name: validated.name,
+          status: 'emerging',
+          category: validated.category,
+        })
+      } catch (e) { try { console.warn('onPartCreated error', e) } catch {} }
+    }
+
     return {
       success: true,
       data,
@@ -554,6 +569,17 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
         auditNote: validated.auditNote
       }
     )
+
+    if (isMemoryV2Enabled()) {
+      try {
+        await onPartUpdated({
+          userId,
+          partId: validated.partId,
+          name: currentPart.name,
+          change: changeDescription,
+        })
+      } catch (e) { try { console.warn('onPartUpdated error', e) } catch {} }
+    }
 
     return {
       success: true,
