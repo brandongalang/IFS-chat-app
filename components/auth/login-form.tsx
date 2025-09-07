@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useGoogleAuth } from '@/lib/hooks/use-google-auth'
 
 export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
@@ -25,8 +25,8 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
-  const { signInWithGoogle, isLoading: googleLoading, error: googleError } = useGoogleAuth()
-  const googleButtonRef = useRef<HTMLButtonElement>(null)
+  const { initGoogleButton, signInWithGoogle, isLoading: googleLoading, error: googleError } = useGoogleAuth()
+  const googleContainerRef = useRef<HTMLDivElement>(null)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,7 +48,15 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
     }
   }
 
+  // Initialize the standard Google button on mount
+  useEffect(() => {
+    // Render into the container; GIS handles click + callback
+    initGoogleButton('google-btn-container', '/')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const handleGoogleLogin = async () => {
+    // Fallback: programmatic prompt if GIS button fails to render
     await signInWithGoogle('/')
   }
 
@@ -106,15 +114,21 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
                 <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
               </div>
             </div>
+            {/* Standard Google Identity Services button container */}
+            <div
+              ref={googleContainerRef}
+              id="google-btn-container"
+              aria-label="Sign in with Google"
+              className="w-full flex justify-center"
+            />
+            {/* Fallback button if GIS fails to load */}
             <Button
-              ref={googleButtonRef}
               variant="outline"
-              className="w-full"
+              className="w-full mt-2"
               onClick={handleGoogleLogin}
               disabled={isLoading || googleLoading}
-              id="google-signin-button"
             >
-              {googleLoading ? 'Connecting...' : 'Continue with Google'}
+              {googleLoading ? 'Connecting...' : 'Sign in with Google'}
             </Button>
             <div className="text-center text-sm">
               Don&apos;t have an account?{' '}
