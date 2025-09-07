@@ -60,6 +60,93 @@ export function useGoogleAuth() {
     })
   }
 
+  const redirectAfterSignIn = async (fallbackPath: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.replace(fallbackPath)
+        return
+      }
+
+      // Check onboarding status; create initial state if missing
+      let needsOnboarding = true
+      const { data: onboarding, error: fetchErr } = await supabase
+        .from('user_onboarding')
+        .select('status')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!fetchErr && onboarding) {
+        needsOnboarding = onboarding.status !== 'completed'
+      } else if (fetchErr) {
+        // If fetch failed for some reason, fall back to treating as needs onboarding
+        needsOnboarding = true
+      } else if (!onboarding) {
+        // Create initial state if none exists
+        const { error: createErr } = await supabase
+          .from('user_onboarding')
+          .insert({ user_id: user.id, stage: 'stage1', status: 'in_progress' })
+        if (createErr) {
+          // Non-fatal; still treat as needs onboarding
+          // console.warn('Failed to create onboarding state', createErr)
+        }
+        needsOnboarding = true
+      }
+
+      // Hint middleware/UX with a lightweight cookie (not security-critical)
+      try {
+        document.cookie = `ifs_onb=${needsOnboarding ? '1' : '0'}; Path=/; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`
+      } catch {}
+
+      router.replace(needsOnboarding ? '/onboarding' : fallbackPath)
+    } catch {
+      router.replace(fallbackPath)
+    }
+  }
+
+  // Initialize and render the standard Google button into a container
+  const initGoogleButton = async (containerId: string = 'google-btn-container', redirectPath = '/') => {
+    setError(null)
+    try {
+      await initializeGoogleSignIn()
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+      if (!clientId) throw new Error('Google Client ID not configured')
+      if (!window.google) throw new Error('Google Identity not initialized')
+
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (response: { credential: string }) => {
+          try {
+            const { credential } = response
+            const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: credential })
+            if (error) throw error
+            await redirectAfterSignIn(redirectPath)
+          } catch (authError) {
+            setError(authError instanceof Error ? authError.message : 'Authentication failed')
+            setIsLoading(false)
+          }
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      })
+
+      const container = document.getElementById(containerId)
+      if (container) {
+        container.innerHTML = ''
+        window.google.accounts.id.renderButton(container, {
+          theme: 'outline',
+          size: 'large',
+          width: '100%',
+          text: 'signin_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+        })
+      }
+    } catch (authError) {
+      setError(authError instanceof Error ? authError.message : 'Failed to initialize Google Sign-In')
+    }
+  }
+
   const signInWithGoogle = async (redirectPath = '/') => {
     setIsLoading(true)
     setError(null)
@@ -92,11 +179,10 @@ export function useGoogleAuth() {
               throw error
             }
 
-            // Successful authentication, redirect
-            router.push(redirectPath)
+            // Successful authentication: immediately decide where to go
+            await redirectAfterSignIn(redirectPath)
           } catch (authError) {
             setError(authError instanceof Error ? authError.message : 'Authentication failed')
-          } finally {
             setIsLoading(false)
           }
         },
@@ -112,11 +198,14 @@ export function useGoogleAuth() {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
           // Fallback to popup if prompt is not displayed
           window.google!.accounts.id.renderButton(
-            document.getElementById('google-signin-button'),
+            document.getElementById('google-btn-container'),
             {
               theme: 'outline',
               size: 'large',
               width: '100%',
+              text: 'signin_with',
+              shape: 'rectangular',
+              logo_alignment: 'left',
             }
           )
         }
@@ -128,6 +217,7 @@ export function useGoogleAuth() {
   }
 
   return {
+    initGoogleButton,
     signInWithGoogle,
     isLoading,
     error,

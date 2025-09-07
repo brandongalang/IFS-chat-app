@@ -77,12 +77,21 @@ export async function updateSession(request: NextRequest) {
   // At this point: either unauthenticated in dev persona mode OR authenticated.
   // Only perform onboarding redirects for authenticated users.
   if (session) {
-    // Do not interfere with API, assets, or explicitly allowed paths
+    // Do not interfere with API, assets
     const isApi = path.startsWith('/api')
     const isAsset = path.startsWith('/_next') || /\.(?:svg|png|jpg|jpeg|gif|webp|ico)$/.test(path)
-    const isAllowed = path.startsWith('/onboarding') || path.startsWith('/auth')
-
     if (!isApi && !isAsset) {
+      // First, honor the lightweight cookie hint if present
+      const onbCookie = request.cookies.get('ifs_onb')?.value
+      // Determine if path is in the "allowed" zone (auth/onboarding)
+      const isAllowed = path.startsWith('/onboarding') || path.startsWith('/auth')
+
+      // If cookie is present and no redirect was needed above, skip DB lookup for perf
+      if (onbCookie === '0' || onbCookie === '1') {
+        return supabaseResponse
+      }
+
+      // Cookie missing — perform authoritative check
       // Lightweight onboarding status lookup
       const { data: onboarding } = await supabase
         .from('user_onboarding')
@@ -93,9 +102,9 @@ export async function updateSession(request: NextRequest) {
       const status = onboarding?.status || 'incomplete'
       const isCompleted = status === 'completed'
 
-      // Prevent loop: if user completed but hits /onboarding, send to /today
+      // Prevent loop: if user completed but hits /onboarding, send to home
       if (path.startsWith('/onboarding') && isCompleted) {
-        const redirect = NextResponse.redirect(new URL('/today', request.url))
+        const redirect = NextResponse.redirect(new URL('/', request.url))
         for (const c of supabaseResponse.cookies.getAll()) {
           redirect.cookies.set(c)
         }

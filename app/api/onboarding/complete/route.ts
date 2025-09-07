@@ -116,7 +116,18 @@ export async function POST(request: NextRequest) {
       completed_at: now
     };
 
-    return NextResponse.json(response);
+    // Also set a lightweight cookie hint so middleware/UX can skip the DB check
+    const res = NextResponse.json(response)
+    try {
+      res.cookies.set('ifs_onb', '0', {
+        path: '/',
+        httpOnly: false,
+        sameSite: 'lax',
+        secure: true,
+      })
+    } catch {}
+
+    return res;
 
   } catch (error) {
     console.error('Unexpected error in completion route:', error);
