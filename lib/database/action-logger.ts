@@ -1,4 +1,5 @@
 import { createClient } from '../supabase/client'
+import { logEvent } from '@/lib/memory/events-logger'
 
 export type ActionType = 
   | 'create_emerging_part'
@@ -143,148 +144,43 @@ export class DatabaseActionLogger {
   /**
    * Get recent actions for a user with rich context
    */
-  async getRecentActions(
-    userId: string,
-    limit: number = 10,
-    actionTypes?: ActionType[],
-    sessionId?: string,
-    withinMinutes?: number
+async getRecentActions(
+    _userId: string,
+    _limit: number = 10,
+    _actionTypes?: ActionType[],
+    _sessionId?: string,
+    _withinMinutes?: number
   ): Promise<ActionSummary[]> {
-    let query = this.supabase
-      .from('agent_actions')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('rolled_back', false)
-      .order('created_at', { ascending: false })
-      .limit(limit)
-
-    if (actionTypes?.length) {
-      query = query.in('action_type', actionTypes)
-    }
-
-    if (sessionId) {
-      query = query.eq('metadata->sessionId', sessionId)
-    }
-
-    if (withinMinutes) {
-      const cutoff = new Date(Date.now() - withinMinutes * 60 * 1000).toISOString()
-      query = query.gte('created_at', cutoff)
-    }
-
-    const { data, error } = await query
-
-    if (error) throw error
-
-    return (data || []).map(action => ({
-      id: action.id,
-      summary: this.generateActionSummary(action as AgentAction),
-      timestamp: action.created_at,
-      canRollback: !action.rolled_back,
-      actionType: action.action_type as ActionType,
-      metadata: action.metadata as ActionMetadata
-    }))
+    // Memory v2: legacy agent_actions removed. Expose empty list for now.
+    return []
   }
 
   /**
    * Rollback an action by description/summary
    */
-  async rollbackByDescription(
-    userId: string,
+async rollbackByDescription(
+    _userId: string,
     description: string,
-    reason: string = 'Agent rollback',
-    withinMinutes: number = 30
+    _reason: string = 'Agent rollback',
+    _withinMinutes: number = 30
   ): Promise<{ success: boolean; message: string; actionType?: ActionType }> {
-    // Get recent actions
-    const recentActions = await this.getRecentActions(userId, 20, undefined, undefined, withinMinutes)
-    
-    // Find best match using simple string similarity
-    const matchedAction = this.findBestMatch(description, recentActions)
-    
-    if (!matchedAction) {
-      return {
-        success: false,
-        message: `No recent action found matching: "${description}"`
-      }
-    }
-
-    return await this.rollbackAction(matchedAction.id, reason)
+    return { success: false, message: `Rollback unavailable in Memory v2 (requested: ${description})` }
   }
 
   /**
    * Rollback a specific action by ID
    */
-  async rollbackAction(
-    actionId: string,
-    reason: string = 'Agent rollback'
+async rollbackAction(
+    _actionId: string,
+    _reason: string = 'Agent rollback'
   ): Promise<{ success: boolean; message: string; actionType?: ActionType }> {
-    // Get the action
-    const { data: action, error } = await this.supabase
-      .from('agent_actions')
-      .select('*')
-      .eq('id', actionId)
-      .single<AgentAction>()
-
-    if (error || !action) {
-      return {
-        success: false,
-        message: 'Action not found'
-      }
-    }
-
-    if (action.rolled_back) {
-      return {
-        success: false,
-        message: 'Action already rolled back'
-      }
-    }
-
-    try {
-      // Restore old state
-      if (action.old_state) {
-        // UPDATE rollback - restore previous state
-        const { error: restoreError } = await this.supabase
-          .from(action.target_table)
-          .update(action.old_state)
-          .eq('id', action.target_id)
-
-        if (restoreError) throw restoreError
-      } else {
-        // CREATE rollback - delete the created record
-        const { error: deleteError } = await this.supabase
-          .from(action.target_table)
-          .delete()
-          .eq('id', action.target_id)
-
-        if (deleteError) throw deleteError
-      }
-
-      // Mark action as rolled back
-      await this.supabase
-        .from('agent_actions')
-        .update({
-          rolled_back: true,
-          rollback_reason: reason,
-          rollback_at: new Date().toISOString()
-        })
-        .eq('id', actionId)
-
-      return {
-        success: true,
-        message: `Successfully rolled back: ${this.generateActionSummary(action)}`,
-        actionType: action.action_type as ActionType
-      }
-    } catch (error) {
-      return {
-        success: false,
-        message: `Failed to rollback: ${error instanceof Error ? error.message : 'Unknown error'}`
-      }
-    }
+    return { success: false, message: 'Rollback unavailable in Memory v2' }
   }
 
   /**
    * Private method to log an action
    */
-  private async logAction(params: {
+private async logAction(params: {
     userId: string
     actionType: ActionType
     targetTable: string
@@ -293,22 +189,22 @@ export class DatabaseActionLogger {
     newState: DataObject | null
     metadata: ActionMetadata
   }) {
-    const { error } = await this.supabase
-      .from('agent_actions')
-      .insert({
-        user_id: params.userId,
-        action_type: params.actionType,
-        target_table: params.targetTable,
-        target_id: params.targetId,
-        old_state: params.oldState,
-        new_state: params.newState,
-        metadata: params.metadata,
-        created_by: 'agent'
+    try {
+      await logEvent({
+        userId: params.userId,
+        entityType: params.targetTable === 'part_relationships' ? 'relationship' : 'part',
+        entityId: params.targetId,
+        type: 'action',
+        op: null,
+        rationale: params.metadata?.changeDescription || null,
+        evidenceRefs: [],
+        lint: {},
+        integritySource: { kind: 'json', value: { old: params.oldState, new: params.newState, meta: params.metadata } },
+        status: 'committed',
       })
-
-    if (error) {
-      console.error('Failed to log action:', error)
-      // Don't throw - we don't want logging failures to break the main operation
+    } catch (error) {
+      console.error('Failed to log event (Memory v2):', error)
+      // Don't throw - do not break primary operation
     }
   }
 
