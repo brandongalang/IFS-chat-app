@@ -1,6 +1,6 @@
 import { Agent } from '@mastra/core'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
-import { partTools } from '../tools/part-tools.mastra'
+import { getPartTools } from '../tools/part-tools.mastra'
 import { rollbackTools } from '../tools/rollback-tools'
 import { assessmentTools } from '../tools/assessment-tools'
 import { proposalTools } from '../tools/proposal-tools'
@@ -15,15 +15,16 @@ const openrouter = createOpenRouter({
   baseURL: 'http://0.0.0.0:4000'
 })
 
-type Profile = { name?: string; bio?: string } | null
+type Profile = { name?: string; bio?: string, userId?: string } | null
 
 export function createIfsAgent(profile: Profile) {
+  const userId = profile?.userId
   return new Agent({
     name: 'ifs-companion',
     instructions: generateSystemPrompt(profile),
     model: openrouter('z-ai/glm-4-9b-chat'),
     tools: {
-      ...partTools, // Part management tools
+      ...getPartTools(userId), // Part management tools
       ...rollbackTools, // Rollback/undo tools
       ...assessmentTools, // Confidence assessment tool
       ...proposalTools, // Split/Merge proposal workflow
