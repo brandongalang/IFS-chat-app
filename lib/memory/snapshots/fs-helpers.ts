@@ -17,3 +17,7 @@ export function userOverviewPath(userId: string) {
   return `users/${userId}/overview.md`
 }
 
+export function relationshipProfilePath(userId: string, relId: string) {
+  return `users/${userId}/relationships/${relId}/profile.md`
+}
+

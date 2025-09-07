@@ -1,8 +1,31 @@
 import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
 import { buildUserOverviewMarkdown, buildPartProfileMarkdown } from '@/lib/memory/snapshots/grammar'
-import { userOverviewPath, partProfilePath } from '@/lib/memory/snapshots/fs-helpers'
+import { userOverviewPath, partProfilePath, relationshipProfilePath } from '@/lib/memory/snapshots/fs-helpers'
 import { editMarkdownSection } from '@/lib/memory/markdown/editor'
+import { buildRelationshipProfileMarkdown } from '@/lib/memory/snapshots/grammar'
+import { logEvent } from '@/lib/memory/events-logger'
 
+export async function ensureRelationshipProfileExists(params: { userId: string; relId: string; type: string }): Promise<string> {
+  const storage = getStorageAdapter()
+  const path = relationshipProfilePath(params.userId, params.relId)
+  const exists = await storage.exists(path)
+  if (!exists) {
+    const md = buildRelationshipProfileMarkdown(params)
+    await storage.putText(path, md, { contentType: 'text/markdown; charset=utf-8' })
+  }
+  return path
+}
+
+export async function onRelationshipLogged(params: { userId: string; relId: string; type: string; summary: string }) {
+  const path = await ensureRelationshipProfileExists({ userId: params.userId, relId: params.relId, type: params.type })
+  await appendChangeLogWithEvent({
+    userId: params.userId,
+    entityType: 'relationship',
+    entityId: params.relId,
+    filePath: path,
+    line: params.summary,
+  })
+}
 function isoNow() { return new Date().toISOString() }
 
 export async function ensureUserOverviewExists(userId: string): Promise<string> {
@@ -27,18 +50,48 @@ export async function ensurePartProfileExists(params: { userId: string; partId: 
   return path
 }
 
-export async function appendChangeLog(path: string, line: string) {
+export async function appendChangeLogWithEvent(params: { userId: string; entityType: 'part' | 'relationship'; entityId: string; filePath: string; line: string }) {
   const ts = isoNow()
-  await editMarkdownSection(path, 'change_log v1', { append: `\n- ${ts}: ${line}\n` })
+  const res = await editMarkdownSection(params.filePath, 'change_log v1', { append: `\n- ${ts}: ${params.line}\n` })
+  try {
+    await logEvent({
+      userId: params.userId,
+      entityType: params.entityType,
+      entityId: params.entityId,
+      type: 'profile_update',
+      op: 'append_section',
+      sectionAnchor: 'change_log v1',
+      filePath: params.filePath,
+      rationale: params.line,
+      beforeHash: res.beforeHash,
+      afterHash: res.afterHash,
+      evidenceRefs: [],
+      lint: { warnings: res.lint.warnings },
+      integritySource: { kind: 'text', value: res.text },
+      status: 'committed',
+    })
+  } catch (e) { try { console.warn('logEvent error', e) } catch {} }
 }
 
 export async function onPartCreated(params: { userId: string; partId: string; name: string; status: string; category: string }) {
   const path = await ensurePartProfileExists(params)
-  await appendChangeLog(path, `created part \"${params.name}\" (status: ${params.status}, category: ${params.category})`)
+  await appendChangeLogWithEvent({
+    userId: params.userId,
+    entityType: 'part',
+    entityId: params.partId,
+    filePath: path,
+    line: `created part \"${params.name}\" (status: ${params.status}, category: ${params.category})`,
+  })
 }
 
 export async function onPartUpdated(params: { userId: string; partId: string; name: string; change: string }) {
   const path = await ensurePartProfileExists({ userId: params.userId, partId: params.partId, name: params.name, status: 'unknown', category: 'unknown' })
-  await appendChangeLog(path, `updated part \"${params.name}\": ${params.change}`)
+  await appendChangeLogWithEvent({
+    userId: params.userId,
+    entityType: 'part',
+    entityId: params.partId,
+    filePath: path,
+    line: `updated part \"${params.name}\": ${params.change}`,
+  })
 }
 
