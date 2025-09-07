@@ -27,6 +27,16 @@ export async function POST(req: NextRequest) {
     // Add the secure user ID to the profile object
     const secureProfile = { ...profile, userId: userId }
 
+    // Memory v2 first-run scaffolding: ensure overview exists for this user
+    try {
+      const { isMemoryV2Enabled } = await import('@/lib/memory/config')
+      if (userId && isMemoryV2Enabled()) {
+        await import('@/lib/memory/snapshots/scaffold').then(({ ensureOverviewExists }) => ensureOverviewExists(userId))
+      }
+    } catch (e) {
+      console.warn('first-run scaffold skipped', e)
+    }
+
     // If no OpenRouter credentials, provide a dev fallback text stream so the UI works
     const hasOpenrouter = typeof process.env.OPENROUTER_API_KEY === 'string' && process.env.OPENROUTER_API_KEY.length > 10
     if (!hasOpenrouter) {
