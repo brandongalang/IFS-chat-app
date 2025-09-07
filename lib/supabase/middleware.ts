@@ -83,24 +83,15 @@ export async function updateSession(request: NextRequest) {
     if (!isApi && !isAsset) {
       // First, honor the lightweight cookie hint if present
       const onbCookie = request.cookies.get('ifs_onb')?.value
-      if (onbCookie === '1' && !path.startsWith('/onboarding') && !path.startsWith('/auth')) {
-        const redirect = NextResponse.redirect(new URL('/onboarding', request.url))
-        for (const c of supabaseResponse.cookies.getAll()) {
-          redirect.cookies.set(c)
-        }
-        return redirect
-      }
-      if (onbCookie === '0' && path.startsWith('/onboarding')) {
-        const redirect = NextResponse.redirect(new URL('/', request.url))
-        for (const c of supabaseResponse.cookies.getAll()) {
-          redirect.cookies.set(c)
-        }
-        return redirect
-      }
-
-      // Cookie missing or inconclusive — perform authoritative check
+      // Determine if path is in the "allowed" zone (auth/onboarding)
       const isAllowed = path.startsWith('/onboarding') || path.startsWith('/auth')
 
+      // If cookie is present and no redirect was needed above, skip DB lookup for perf
+      if (onbCookie === '0' || onbCookie === '1') {
+        return supabaseResponse
+      }
+
+      // Cookie missing — perform authoritative check
       // Lightweight onboarding status lookup
       const { data: onboarding } = await supabase
         .from('user_onboarding')
