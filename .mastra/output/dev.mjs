@@ -52,6 +52,7 @@ const dev = {
   currentPersona: currentPersonaEnv
 };
 function resolveUserId(providedUserId) {
+  if (providedUserId) return providedUserId;
   if (dev.enabled) {
     const persona = typeof window !== "undefined" ? getCurrentPersona() : dev.currentPersona;
     const personaUserId = getPersonaUserId(persona);
