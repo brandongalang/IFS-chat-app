@@ -5,8 +5,6 @@
  * It can be versioned and updated independently from the agent configuration.
  */
 
-import { isMemoryV2Enabled } from '@/lib/memory/config'
-
 type Profile = { name?: string; bio?: string } | null
 
 const BASE_IFS_PROMPT = `You are an IFS (Internal Family Systems) companion. Your role is to help people discover and understand their internal parts through curious, non-judgmental conversation.
@@ -49,9 +47,8 @@ You have access to part management tools to help track and work with discovered 
 - updatePart: Update parts with new info. Use this to change a part's name, category, or emoji if the user requests it. It is also used to update a part's "charge" level for the visual garden.
 - getPartRelationships: Get relationships between parts with filtering options (by part, type, status) and optional part details
 
-${isMemoryV2Enabled() ? `
-### Memory v2 snapshot context (feature-flagged)
-When available, tool responses will include markdown snapshot sections that provide rich narrative context:
+### Memory v2 snapshot context
+Tool responses may include markdown snapshot sections that provide rich narrative context:
 - getPartById: may include \`snapshot_sections\` for the part profile.
 - getPartDetail: may include \`snapshots\` with:
   - \`overview_sections\` (user overview)
@@ -63,7 +60,6 @@ How to use:
 - Prefer "current_focus v1" and "change_log v1" from the user overview when present to understand what's most relevant now.
 - Use part and relationship profile sections to inform your questions and reflections.
 - These snapshots are supplemental context; continue to respect and verify with the user.
-` : ''}
 
 **Managing the Visual Parts Garden:**
 The user can see their parts in a visual "garden". Your actions directly affect this visualization.
