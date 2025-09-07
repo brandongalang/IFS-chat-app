@@ -60,6 +60,50 @@ export function useGoogleAuth() {
     })
   }
 
+  const redirectAfterSignIn = async (fallbackPath: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.replace(fallbackPath)
+        return
+      }
+
+      // Check onboarding status; create initial state if missing
+      let needsOnboarding = true
+      const { data: onboarding, error: fetchErr } = await supabase
+        .from('user_onboarding')
+        .select('status')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!fetchErr && onboarding) {
+        needsOnboarding = onboarding.status !== 'completed'
+      } else if (fetchErr) {
+        // If fetch failed for some reason, fall back to treating as needs onboarding
+        needsOnboarding = true
+      } else if (!onboarding) {
+        // Create initial state if none exists
+        const { error: createErr } = await supabase
+          .from('user_onboarding')
+          .insert({ user_id: user.id, stage: 'stage1', status: 'in_progress' })
+        if (createErr) {
+          // Non-fatal; still treat as needs onboarding
+          // console.warn('Failed to create onboarding state', createErr)
+        }
+        needsOnboarding = true
+      }
+
+      // Hint middleware/UX with a lightweight cookie (not security-critical)
+      try {
+        document.cookie = `ifs_onb=${needsOnboarding ? '1' : '0'}; Path=/; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}`
+      } catch {}
+
+      router.replace(needsOnboarding ? '/onboarding' : fallbackPath)
+    } catch {
+      router.replace(fallbackPath)
+    }
+  }
+
   const signInWithGoogle = async (redirectPath = '/') => {
     setIsLoading(true)
     setError(null)
@@ -92,11 +136,10 @@ export function useGoogleAuth() {
               throw error
             }
 
-            // Successful authentication, redirect
-            router.push(redirectPath)
+            // Successful authentication: immediately decide where to go
+            await redirectAfterSignIn(redirectPath)
           } catch (authError) {
             setError(authError instanceof Error ? authError.message : 'Authentication failed')
-          } finally {
             setIsLoading(false)
           }
         },
