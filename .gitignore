@@ -78,3 +78,6 @@ linkedin-*.md
 
 # Root docs kept local-only
 AGENTS.md
+
+# Local memory snapshots
+.data/
