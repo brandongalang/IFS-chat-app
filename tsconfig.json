@@ -36,6 +36,10 @@
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "scripts/seed-agent-actions.ts",
+    "scripts/seed-check-ins.ts",
+    "scripts/seed-message-feedback.ts",
+    "scripts/seed-onboarding-personas.ts"
   ]
 }
