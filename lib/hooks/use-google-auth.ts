@@ -104,6 +104,49 @@ export function useGoogleAuth() {
     }
   }
 
+  // Initialize and render the standard Google button into a container
+  const initGoogleButton = async (containerId: string = 'google-btn-container', redirectPath = '/') => {
+    setError(null)
+    try {
+      await initializeGoogleSignIn()
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+      if (!clientId) throw new Error('Google Client ID not configured')
+      if (!window.google) throw new Error('Google Identity not initialized')
+
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (response: { credential: string }) => {
+          try {
+            const { credential } = response
+            const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: credential })
+            if (error) throw error
+            await redirectAfterSignIn(redirectPath)
+          } catch (authError) {
+            setError(authError instanceof Error ? authError.message : 'Authentication failed')
+            setIsLoading(false)
+          }
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      })
+
+      const container = document.getElementById(containerId)
+      if (container) {
+        container.innerHTML = ''
+        window.google.accounts.id.renderButton(container, {
+          theme: 'outline',
+          size: 'large',
+          width: '100%',
+          text: 'signin_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+        })
+      }
+    } catch (authError) {
+      setError(authError instanceof Error ? authError.message : 'Failed to initialize Google Sign-In')
+    }
+  }
+
   const signInWithGoogle = async (redirectPath = '/') => {
     setIsLoading(true)
     setError(null)
@@ -155,11 +198,14 @@ export function useGoogleAuth() {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
           // Fallback to popup if prompt is not displayed
           window.google!.accounts.id.renderButton(
-            document.getElementById('google-signin-button'),
+            document.getElementById('google-btn-container'),
             {
               theme: 'outline',
               size: 'large',
               width: '100%',
+              text: 'signin_with',
+              shape: 'rectangular',
+              logo_alignment: 'left',
             }
           )
         }
@@ -171,6 +217,7 @@ export function useGoogleAuth() {
   }
 
   return {
+    initGoogleButton,
     signInWithGoogle,
     isLoading,
     error,
