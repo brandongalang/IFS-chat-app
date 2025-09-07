@@ -1,13 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import { z } from 'zod'
-import { actionLogger } from '../database/action-logger'
 import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/dev'
 import type { Database, PartRow, PartInsert, PartUpdate, PartEvidence, PartRelationshipRow, PartRelationshipInsert, PartRelationshipUpdate, RelationshipType, RelationshipStatus, ToolResult, RelationshipDynamic } from '../types/database'
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isMemoryV2Enabled } from '@/lib/memory/config'
-import { readOverviewSections, readPartProfileSections, readRelationshipProfileSections } from '@/lib/memory/read'
 import { recordSnapshotUsage } from '@/lib/memory/observability'
 
 // Input schemas for tool validation
@@ -227,11 +225,12 @@ export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Pro
       }
     }
 
-    // Optionally enrich with snapshot sections (Memory V2)
+    // Optionally enrich with snapshot sections (Memory V2 — server-only)
     let snapshot_sections: any = undefined
-    if (isMemoryV2Enabled() && data) {
+    if (typeof window === 'undefined' && isMemoryV2Enabled() && data) {
       const t0 = Date.now()
       try {
+        const { readPartProfileSections } = await import('@/lib/memory/read')
         snapshot_sections = await readPartProfileSections(userId, validated.partId)
         recordSnapshotUsage('part_profile', snapshot_sections ? 'hit' : 'miss', { latencyMs: Date.now() - t0, userId, partId: validated.partId })
       } catch (e) {
@@ -290,14 +289,15 @@ export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>):
       return { success: false, error: `Database error (relationships): ${relationshipsError.message}` }
     }
 
-    // Optionally enrich with snapshot sections (Memory V2)
+    // Optionally enrich with snapshot sections (Memory V2 — server-only)
     let overview_sections: any = undefined
     let part_profile_sections: any = undefined
     let relationship_profiles: Record<string, any> | undefined = undefined
-    if (isMemoryV2Enabled()) {
+    if (typeof window === 'undefined' && isMemoryV2Enabled()) {
       const t0 = Date.now()
       try {
         const rels = relationships || []
+        const { readOverviewSections, readPartProfileSections, readRelationshipProfileSections } = await import('@/lib/memory/read')
         const reads = [
           (async () => { const s = await readOverviewSections(userId); recordSnapshotUsage('overview', s ? 'hit' : 'miss', { latencyMs: Date.now() - t0, userId }); return s })(),
           (async () => { const s = await readPartProfileSections(userId, validated.partId); recordSnapshotUsage('part_profile', s ? 'hit' : 'miss', { latencyMs: Date.now() - t0, userId, partId: validated.partId }); return s })(),
@@ -428,6 +428,7 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
     }
 
     // Use action logger for INSERT with rollback capability
+    const { actionLogger } = await import('../database/action-logger')
     const data = await actionLogger.loggedInsert<PartRow>(
       'parts',
       partInsert as any,
@@ -563,6 +564,7 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
     }
 
     // Use action logger for UPDATE with rollback capability
+    const { actionLogger } = await import('../database/action-logger')
     const data = await actionLogger.loggedUpdate<PartRow>(
       'parts',
       validated.partId,
@@ -870,6 +872,7 @@ const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
       }
 
       try {
+        const { actionLogger } = await import('../database/action-logger')
         const updated = await actionLogger.loggedUpdate<PartRelationshipRow>(
           'part_relationships',
           existing.id,
@@ -936,6 +939,7 @@ const serviceRoleCreate = process.env.SUPABASE_SERVICE_ROLE_KEY
       return { success: true, data: createdDirect as any, confidence: 1.0 }
     }
 
+    const { actionLogger } = await import('../database/action-logger')
     const created = await actionLogger.loggedInsert<PartRelationshipRow>(
       'part_relationships',
       insert as any,

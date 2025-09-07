@@ -5,7 +5,7 @@ import { userOverviewPath, partProfilePath, relationshipProfilePath } from '@/li
 export interface SectionMap { [anchor: string]: { heading: string; text: string } }
 
 async function readFileText(path: string): Promise<string | null> {
-  const storage = getStorageAdapter()
+  const storage = await getStorageAdapter()
   return await storage.getText(path)
 }
 

@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation'
 import { Message, ChatState, TaskEvent } from '@/types/chat';
-import { getPartById } from '@/lib/data/parts'
+import { getPartById } from '@/lib/data/parts-lite'
 import { detectTool } from '@/lib/toolDetection';
 import { streamFromMastra } from '@/lib/chatClient';
 import { devMode } from '@/config/features';

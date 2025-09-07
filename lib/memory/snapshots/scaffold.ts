@@ -9,7 +9,7 @@ import { readOverviewSections } from '@/lib/memory/read'
 export async function ensureOverviewExists(userId: string) {
   const existing = await readOverviewSections(userId)
   if (existing) return { created: false }
-  const storage = getStorageAdapter()
+  const storage = await getStorageAdapter()
   const path = userOverviewPath(userId)
   const md = buildUserOverviewMarkdown(userId)
   await storage.putText(path, md, { contentType: 'text/markdown; charset=utf-8' })

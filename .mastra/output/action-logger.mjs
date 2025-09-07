@@ -1,9 +1,37 @@
-import { createBrowserClient } from '@supabase/ssr';
+import { a as createAdminClient, c as createClient } from './admin.mjs';
+import { g as generateEventId, c as canonicalizeText, a as canonicalizeJson, h as hmacSha256Hex } from './canonicalize.mjs';
 
-function createClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
-  return createBrowserClient(url, key);
+async function logEvent(input) {
+  const sb = createAdminClient();
+  const eventId = input.eventId || generateEventId();
+  const secret = process.env.MEMORY_EVENTS_HMAC_SECRET || "dev-only-secret";
+  const integrityText = input.integritySource ? input.integritySource.kind === "text" ? canonicalizeText(input.integritySource.value) : canonicalizeJson(input.integritySource.value) : canonicalizeJson({ userId: input.userId, type: input.type, ts: (/* @__PURE__ */ new Date()).toISOString() });
+  const integrityLineHash = "hmac:" + hmacSha256Hex(secret, integrityText);
+  const payload = {
+    event_id: eventId,
+    user_id: input.userId,
+    schema_version: 1,
+    entity_type: input.entityType,
+    entity_id: input.entityId ?? null,
+    type: input.type,
+    op: input.op ?? null,
+    section_anchor: input.sectionAnchor ?? null,
+    file_path: input.filePath ?? null,
+    rationale: input.rationale ?? null,
+    before_hash: input.beforeHash ?? null,
+    after_hash: input.afterHash ?? null,
+    evidence_refs: Array.isArray(input.evidenceRefs) ? input.evidenceRefs : [],
+    lint: input.lint ?? {},
+    idempotency_key: input.idempotencyKey ?? null,
+    transaction_id: input.transactionId ?? null,
+    tool_call_id: input.toolCallId ?? null,
+    integrity_line_hash: integrityLineHash,
+    integrity_salt_version: "v1",
+    status: input.status ?? "committed"
+  };
+  const { error } = await sb.from("events").insert(payload);
+  if (error) throw error;
+  return { eventId };
 }
 
 class DatabaseActionLogger {
@@ -50,101 +78,40 @@ class DatabaseActionLogger {
   /**
    * Get recent actions for a user with rich context
    */
-  async getRecentActions(userId, limit = 10, actionTypes, sessionId, withinMinutes) {
-    let query = this.supabase.from("agent_actions").select("*").eq("user_id", userId).eq("rolled_back", false).order("created_at", { ascending: false }).limit(limit);
-    if (actionTypes?.length) {
-      query = query.in("action_type", actionTypes);
-    }
-    if (sessionId) {
-      query = query.eq("metadata->sessionId", sessionId);
-    }
-    if (withinMinutes) {
-      const cutoff = new Date(Date.now() - withinMinutes * 60 * 1e3).toISOString();
-      query = query.gte("created_at", cutoff);
-    }
-    const { data, error } = await query;
-    if (error) throw error;
-    return (data || []).map((action) => ({
-      id: action.id,
-      summary: this.generateActionSummary(action),
-      timestamp: action.created_at,
-      canRollback: !action.rolled_back,
-      actionType: action.action_type,
-      metadata: action.metadata
-    }));
+  async getRecentActions(_userId, _limit = 10, _actionTypes, _sessionId, _withinMinutes) {
+    return [];
   }
   /**
    * Rollback an action by description/summary
    */
-  async rollbackByDescription(userId, description, reason = "Agent rollback", withinMinutes = 30) {
-    const recentActions = await this.getRecentActions(userId, 20, void 0, void 0, withinMinutes);
-    const matchedAction = this.findBestMatch(description, recentActions);
-    if (!matchedAction) {
-      return {
-        success: false,
-        message: `No recent action found matching: "${description}"`
-      };
-    }
-    return await this.rollbackAction(matchedAction.id, reason);
+  async rollbackByDescription(_userId, description, _reason = "Agent rollback", _withinMinutes = 30) {
+    return { success: false, message: `Rollback unavailable in Memory v2 (requested: ${description})` };
   }
   /**
    * Rollback a specific action by ID
    */
-  async rollbackAction(actionId, reason = "Agent rollback") {
-    const { data: action, error } = await this.supabase.from("agent_actions").select("*").eq("id", actionId).single();
-    if (error || !action) {
-      return {
-        success: false,
-        message: "Action not found"
-      };
-    }
-    if (action.rolled_back) {
-      return {
-        success: false,
-        message: "Action already rolled back"
-      };
-    }
-    try {
-      if (action.old_state) {
-        const { error: restoreError } = await this.supabase.from(action.target_table).update(action.old_state).eq("id", action.target_id);
-        if (restoreError) throw restoreError;
-      } else {
-        const { error: deleteError } = await this.supabase.from(action.target_table).delete().eq("id", action.target_id);
-        if (deleteError) throw deleteError;
-      }
-      await this.supabase.from("agent_actions").update({
-        rolled_back: true,
-        rollback_reason: reason,
-        rollback_at: (/* @__PURE__ */ new Date()).toISOString()
-      }).eq("id", actionId);
-      return {
-        success: true,
-        message: `Successfully rolled back: ${this.generateActionSummary(action)}`,
-        actionType: action.action_type
-      };
-    } catch (error2) {
-      return {
-        success: false,
-        message: `Failed to rollback: ${error2 instanceof Error ? error2.message : "Unknown error"}`
-      };
-    }
+  async rollbackAction(_actionId, _reason = "Agent rollback") {
+    return { success: false, message: "Rollback unavailable in Memory v2" };
   }
   /**
    * Private method to log an action
    */
   async logAction(params) {
-    const { error } = await this.supabase.from("agent_actions").insert({
-      user_id: params.userId,
-      action_type: params.actionType,
-      target_table: params.targetTable,
-      target_id: params.targetId,
-      old_state: params.oldState,
-      new_state: params.newState,
-      metadata: params.metadata,
-      created_by: "agent"
-    });
-    if (error) {
-      console.error("Failed to log action:", error);
+    try {
+      await logEvent({
+        userId: params.userId,
+        entityType: params.targetTable === "part_relationships" ? "relationship" : "part",
+        entityId: params.targetId,
+        type: "action",
+        op: null,
+        rationale: params.metadata?.changeDescription || null,
+        evidenceRefs: [],
+        lint: {},
+        integritySource: { kind: "json", value: { old: params.oldState, new: params.newState, meta: params.metadata } },
+        status: "committed"
+      });
+    } catch (error) {
+      console.error("Failed to log event (Memory v2):", error);
     }
   }
   /**
@@ -232,4 +199,10 @@ class NoopActionLogger {
 }
 const actionLogger = hasSupabase ? new DatabaseActionLogger() : new NoopActionLogger();
 
-export { actionLogger as a };
+var actionLogger$1 = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  DatabaseActionLogger: DatabaseActionLogger,
+  actionLogger: actionLogger
+});
+
+export { actionLogger as a, actionLogger$1 as b, logEvent as l };
