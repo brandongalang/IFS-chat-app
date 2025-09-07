@@ -1,7 +1,6 @@
 import { Agent } from '@mastra/core'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { getPartTools } from '../tools/part-tools.mastra'
-import { rollbackTools } from '../tools/rollback-tools'
 import { assessmentTools } from '../tools/assessment-tools'
 import { proposalTools } from '../tools/proposal-tools'
 import { evidenceTools } from '../tools/evidence-tools'
@@ -25,7 +24,6 @@ export function createIfsAgent(profile: Profile) {
     model: openrouter('z-ai/glm-4-9b-chat'),
     tools: {
       ...getPartTools(userId), // Part management tools
-      ...rollbackTools, // Rollback/undo tools
       ...assessmentTools, // Confidence assessment tool
       ...proposalTools, // Split/Merge proposal workflow
       ...evidenceTools, // Evidence and pattern tools

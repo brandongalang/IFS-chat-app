@@ -251,7 +251,6 @@ Six months ago, manually building Trailhead would have been laughable. Terms lik
 ## 🔍 Project Exploration Guide
 
 ### Key Files Demonstrating PM + AI Integration
->>>>>>> 2bdf921a195b39545e92929f5aad84c910ab9d36
 ```bash
 # View AI agent configuration
 cat mastra/agents/ifs-agent.ts
