@@ -807,7 +807,7 @@ if (!dev.disablePolarizationUpdate) {
       // Always bump updated_at
       (updates as any).updated_at = nowIso
 
-      // Dev bypass with service role to avoid RLS, and manual action log
+      // Dev bypass with service role to avoid RLS (no legacy agent_actions logging)
       const serviceRole = getEnvVar(['SUPABASE_SERVICE_ROLE_KEY'])
 if (typeof window === 'undefined' && dev.enabled && serviceRole) {
         try {
@@ -822,22 +822,6 @@ if (typeof window === 'undefined' && dev.enabled && serviceRole) {
           if (updErr || !updatedDirect) {
             return { success: false, error: `Failed to update relationship (service role): ${updErr?.message || 'unknown'}` }
           }
-
-          await supabase.from('agent_actions').insert({
-            user_id: userId,
-            action_type: 'update_relationship',
-            target_table: 'part_relationships',
-            target_id: existing.id,
-            old_state: existing,
-            new_state: updatedDirect,
-            metadata: {
-              changeDescription: dyn ? `Appended dynamic: ${dyn.observation.substring(0, 60)}...` : 'Updated relationship fields',
-              polarizationDelta,
-              type: validated.type,
-              partIds
-            },
-            created_by: 'agent'
-          })
 
           return { success: true, data: updatedDirect as any, confidence: 1.0 }
         } catch (e: any) {
@@ -895,7 +879,7 @@ if (typeof window === 'undefined' && dev.enabled && serviceRole) {
       updated_at: nowIso
     }
 
-    // Dev bypass with service role to avoid RLS, and manual action log
+    // Dev bypass with service role to avoid RLS (no legacy agent_actions logging)
     const serviceRoleCreate = getEnvVar(['SUPABASE_SERVICE_ROLE_KEY'])
 if (typeof window === 'undefined' && dev.enabled && serviceRoleCreate) {
       const { data: createdDirect, error: insErr } = await supabase
@@ -906,21 +890,6 @@ if (typeof window === 'undefined' && dev.enabled && serviceRoleCreate) {
       if (insErr || !createdDirect) {
         return { success: false, error: `Failed to create relationship (service role): ${insErr?.message || 'unknown'}` }
       }
-
-      await supabase.from('agent_actions').insert({
-        user_id: userId,
-        action_type: 'create_relationship',
-        target_table: 'part_relationships',
-        target_id: createdDirect.id,
-        old_state: null,
-        new_state: createdDirect,
-        metadata: {
-          changeDescription: `Created ${validated.type} relationship between parts`,
-          type: validated.type,
-          partIds
-        },
-        created_by: 'agent'
-      })
 
       return { success: true, data: createdDirect as any, confidence: 1.0 }
     }

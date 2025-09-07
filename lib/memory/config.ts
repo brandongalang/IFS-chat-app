@@ -8,9 +8,13 @@ export function getStorageMode(): 'local' | 'supabase' {
 }
 
 // Feature flag helper for Memory v2 rollout
-// Enabled when MEMORY_AGENTIC_V2_ENABLED is a truthy value like: '1', 'true', 'yes'
+// Defaults to enabled unless explicitly disabled with '0', 'false', or 'no'.
 export function isMemoryV2Enabled(): boolean {
-  const val = (process.env.MEMORY_AGENTIC_V2_ENABLED || '').toString().trim().toLowerCase()
-  return val === '1' || val === 'true' || val === 'yes'
+  const raw = process.env.MEMORY_AGENTIC_V2_ENABLED
+  const val = (raw ?? '').toString().trim().toLowerCase()
+  if (!val) return true
+  if (val === '0' || val === 'false' || val === 'no') return false
+  // Any other value (including '1','true','yes') enables
+  return true
 }
 
