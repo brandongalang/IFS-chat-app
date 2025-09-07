@@ -1,11 +1,16 @@
-import { MEMORY_SNAPSHOTS_BUCKET, MEMORY_LOCAL_ROOT, getStorageMode } from '../config'
+import { getStorageMode } from '../config'
 import type { StorageAdapter } from '../storage/adapter'
-import { LocalFsStorageAdapter } from '../storage/local-fs-adapter'
-import { SupabaseStorageAdapter } from '../storage/supabase-storage-adapter'
 
-export function getStorageAdapter(): StorageAdapter {
+export async function getStorageAdapter(): Promise<StorageAdapter> {
   const mode = getStorageMode()
-  if (mode === 'supabase') return new SupabaseStorageAdapter()
+  if (mode === 'supabase') {
+    const { SupabaseStorageAdapter } = await import('../storage/supabase-storage-adapter')
+    return new SupabaseStorageAdapter()
+  }
+  if (typeof window !== 'undefined') {
+    throw new Error('Local filesystem storage is server-only. Avoid calling snapshot storage from client code.')
+  }
+  const { LocalFsStorageAdapter } = await import('../storage/local-fs-adapter')
   return new LocalFsStorageAdapter()
 }
 

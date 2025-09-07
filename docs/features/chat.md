@@ -22,7 +22,9 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
 ## How it works
 - UI at app/chat/page.tsx with streaming responses
 - useChat hook manages message state and streaming
-- Agent actions are logged via lib/database/action-logger.ts
+- Client data access uses `@/lib/data/parts-lite` (browser-safe)
+- Server routes/actions use `@/lib/data/parts-server` for writes, logging, and snapshots
+- Agent actions are logged via lib/database/action-logger.ts (server-only)
 
 ## Data model
 - sessions, messages, agent_actions tables

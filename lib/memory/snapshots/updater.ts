@@ -6,7 +6,7 @@ import { buildRelationshipProfileMarkdown } from '@/lib/memory/snapshots/grammar
 import { logEvent } from '@/lib/memory/events-logger'
 
 export async function ensureRelationshipProfileExists(params: { userId: string; relId: string; type: string }): Promise<string> {
-  const storage = getStorageAdapter()
+  const storage = await getStorageAdapter()
   const path = relationshipProfilePath(params.userId, params.relId)
   const exists = await storage.exists(path)
   if (!exists) {
@@ -29,7 +29,7 @@ export async function onRelationshipLogged(params: { userId: string; relId: stri
 function isoNow() { return new Date().toISOString() }
 
 export async function ensureUserOverviewExists(userId: string): Promise<string> {
-  const storage = getStorageAdapter()
+  const storage = await getStorageAdapter()
   const path = userOverviewPath(userId)
   const exists = await storage.exists(path)
   if (!exists) {
@@ -40,7 +40,7 @@ export async function ensureUserOverviewExists(userId: string): Promise<string> 
 }
 
 export async function ensurePartProfileExists(params: { userId: string; partId: string; name: string; status: string; category: string }): Promise<string> {
-  const storage = getStorageAdapter()
+  const storage = await getStorageAdapter()
   const path = partProfilePath(params.userId, params.partId)
   const exists = await storage.exists(path)
   if (!exists) {
