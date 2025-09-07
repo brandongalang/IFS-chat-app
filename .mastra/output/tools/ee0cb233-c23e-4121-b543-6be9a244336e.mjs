@@ -1,6 +1,6 @@
 import { createTool } from '@mastra/core';
-import { createServerClient } from '@supabase/ssr';
 import { z } from 'zod';
+import { createServerClient } from '@supabase/ssr';
 import { r as resolveUserId, d as devLog, a as dev, b as requiresUserConfirmation } from '../dev.mjs';
 import { c as createClient, a as createAdminClient } from '../admin.mjs';
 import { i as isMemoryV2Enabled } from '../config.mjs';
@@ -253,7 +253,7 @@ async function getPartDetail(input) {
       const t0 = Date.now();
       try {
         const rels = relationships || [];
-        const { readOverviewSections, readPartProfileSections, readRelationshipProfileSections: readRelationshipProfileSections2 } = await import('../read.mjs');
+        const { readOverviewSections, readPartProfileSections, readRelationshipProfileSections } = await import('../read.mjs');
         const reads = [
           (async () => {
             const s = await readOverviewSections(userId);
@@ -268,7 +268,7 @@ async function getPartDetail(input) {
           Promise.all(rels.map(async (r) => {
             const tRel = Date.now();
             try {
-              const m = await readRelationshipProfileSections2(userId, r.id);
+              const m = await readRelationshipProfileSections(userId, r.id);
               recordSnapshotUsage("relationship_profile", m ? "hit" : "miss", { latencyMs: Date.now() - tRel, userId, relId: r.id });
               return m;
             } catch (e) {
@@ -562,8 +562,9 @@ async function getPartRelationships(input) {
       }
     }
     let relSectionMaps;
-    if (isMemoryV2Enabled()) {
+    if (typeof window === "undefined" && isMemoryV2Enabled()) {
       try {
+        const { readRelationshipProfileSections } = await import('../read.mjs');
         relSectionMaps = await Promise.all(
           filtered.map(async (rel) => {
             const tRel = Date.now();

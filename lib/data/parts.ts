@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { createServerClient } from '@supabase/ssr'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import { z } from 'zod'
@@ -690,8 +692,9 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
 
     // Optionally enrich each relationship with snapshot sections (Memory V2)
     let relSectionMaps: Array<any> | undefined
-    if (isMemoryV2Enabled()) {
+    if (typeof window === 'undefined' && isMemoryV2Enabled()) {
       try {
+        const { readRelationshipProfileSections } = await import('@/lib/memory/read')
         relSectionMaps = await Promise.all(
           (filtered as any[]).map(async rel => {
             const tRel = Date.now()

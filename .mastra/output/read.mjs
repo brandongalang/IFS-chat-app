@@ -1,4 +1,4 @@
-import { g as getStorageAdapter, u as userOverviewPath, b as listSections, a as partProfilePath, r as relationshipProfilePath } from './md.mjs';
+import { g as getStorageAdapter, r as relationshipProfilePath, b as listSections, u as userOverviewPath, a as partProfilePath } from './md.mjs';
 import './config.mjs';
 import './canonicalize.mjs';
 import 'node:crypto';
