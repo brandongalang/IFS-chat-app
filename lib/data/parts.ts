@@ -8,6 +8,7 @@ import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isMemoryV2Enabled } from '@/lib/memory/config'
 import { readOverviewSections, readPartProfileSections, readRelationshipProfileSections } from '@/lib/memory/read'
+import { recordSnapshotUsage } from '@/lib/memory/observability'
 
 // Input schemas for tool validation
 const searchPartsSchema = z.object({
@@ -229,9 +230,14 @@ export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Pro
     // Optionally enrich with snapshot sections (Memory V2)
     let snapshot_sections: any = undefined
     if (isMemoryV2Enabled() && data) {
+      const t0 = Date.now()
       try {
         snapshot_sections = await readPartProfileSections(userId, validated.partId)
-      } catch (e) { try { devLog('readPartProfileSections error', { e }) } catch {} }
+        recordSnapshotUsage('part_profile', snapshot_sections ? 'hit' : 'miss', { latencyMs: Date.now() - t0, userId, partId: validated.partId })
+      } catch (e) {
+        recordSnapshotUsage('part_profile', 'error', { latencyMs: Date.now() - t0, userId, partId: validated.partId, error: e })
+        try { devLog('readPartProfileSections error', { e }) } catch {}
+      }
     }
 
     return {
@@ -289,12 +295,23 @@ export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>):
     let part_profile_sections: any = undefined
     let relationship_profiles: Record<string, any> | undefined = undefined
     if (isMemoryV2Enabled()) {
+      const t0 = Date.now()
       try {
         const rels = relationships || []
         const reads = [
-          readOverviewSections(userId),
-          readPartProfileSections(userId, validated.partId),
-          Promise.all(rels.map(r => readRelationshipProfileSections(userId, (r as any).id)))
+          (async () => { const s = await readOverviewSections(userId); recordSnapshotUsage('overview', s ? 'hit' : 'miss', { latencyMs: Date.now() - t0, userId }); return s })(),
+          (async () => { const s = await readPartProfileSections(userId, validated.partId); recordSnapshotUsage('part_profile', s ? 'hit' : 'miss', { latencyMs: Date.now() - t0, userId, partId: validated.partId }); return s })(),
+          Promise.all(rels.map(async (r) => {
+            const tRel = Date.now()
+            try {
+              const m = await readRelationshipProfileSections(userId, (r as any).id)
+              recordSnapshotUsage('relationship_profile', m ? 'hit' : 'miss', { latencyMs: Date.now() - tRel, userId, relId: (r as any).id })
+              return m
+            } catch (e) {
+              recordSnapshotUsage('relationship_profile', 'error', { latencyMs: Date.now() - tRel, userId, relId: (r as any).id, error: e })
+              return null
+            }
+          }))
         ] as const
         const [ovv, partProf, relMaps] = await Promise.all(reads)
         overview_sections = ovv || undefined
@@ -674,7 +691,17 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
     if (isMemoryV2Enabled()) {
       try {
         relSectionMaps = await Promise.all(
-          (filtered as any[]).map(rel => readRelationshipProfileSections(userId, (rel as any).id))
+          (filtered as any[]).map(async rel => {
+            const tRel = Date.now()
+            try {
+              const m = await readRelationshipProfileSections(userId, (rel as any).id)
+              recordSnapshotUsage('relationship_profile', m ? 'hit' : 'miss', { latencyMs: Date.now() - tRel, userId, relId: (rel as any).id })
+              return m
+            } catch (e) {
+              recordSnapshotUsage('relationship_profile', 'error', { latencyMs: Date.now() - tRel, userId, relId: (rel as any).id, error: e })
+              return null
+            }
+          })
         )
       } catch (e) { try { devLog('snapshot read (relationships) error', { e }) } catch {} }
     }
