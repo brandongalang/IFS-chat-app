@@ -282,10 +282,90 @@ OPENROUTER_API_KEY=your_api_key_here
 Open a new terminal window and run the following command:
 
 ```bash
-litellm --config litellm.config.yaml
+litellm --config litellm.config.yaml --port 4000
 ```
 
-This will start the proxy on `http://0.0.0.0:4000`, which the application is configured to use for all LLM requests.
+This will start the proxy bound on `0.0.0.0:4000` (a wildcard bind address).
+
+**3. Point the app to your local proxy (client connection):**
+
+Add this to `.env.local` (note we connect via `127.0.0.1`, not `0.0.0.0`):
+
+```
+OPENROUTER_BASE_URL=http://127.0.0.1:4000
+```
+
+Then restart your Next.js dev server so env changes apply.
+
+- Default behavior without `OPENROUTER_BASE_URL` is to call OpenRouter cloud at `https://openrouter.ai/api/v1`.
+- If port 4000 is busy, pick another (e.g., 4001) and set `OPENROUTER_BASE_URL=http://127.0.0.1:4001`.
+
+**Sanity check the proxy:**
+
+```bash
+curl -s -X POST http://127.0.0.1:4000/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"openrouter/llama-3.1-8b-instruct","messages":[{"role":"user","content":"hello"}]}'
+```
+
+If your litellm config exposes `/v1/chat/completions`, use that path instead.
+
+---
+
+## 🧩 Local Development: Processes to Run
+
+To run the full experience locally, you’ll typically run three processes in parallel:
+
+1) LiteLLM proxy (LLM gateway)
+- Purpose: Provide a local OpenAI-compatible endpoint to route LLM calls.
+- Terminal A:
+```bash
+# Ensure your OpenRouter API key is set in this terminal
+export OPENROUTER_API_KEY=YOUR_KEY_HERE
+# Start the proxy and bind to port 4000
+npx litellm --config litellm.config.yaml --port 4000
+```
+- App config in `.env.local`:
+```bash
+# Connect the app to your local proxy
+OPENROUTER_BASE_URL=http://127.0.0.1:4000
+# Or, if your proxy exposes /v1/chat/completions:
+# OPENROUTER_BASE_URL=http://127.0.0.1:4000/v1
+```
+- Sanity check the proxy:
+```bash
+curl -s -X POST http://127.0.0.1:4000/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"openrouter/llama-3.1-8b-instruct","messages":[{"role":"user","content":"hello"}]}'
+```
+If that 404s but `/v1/chat/completions` works, use the `/v1` base URL as shown above.
+
+2) Mastra (agent tools). Pick one:
+- Dev mode (watches for changes):
+```bash
+npm run dev:mastra   # equivalent to: mastra dev --dir mastra
+```
+- One-time build (generate/update outputs):
+```bash
+npm run build:mastra # equivalent to: mastra build --dir mastra
+```
+Note: The Next.js API route imports agent code from `mastra/agents`. If you change tools or agent config, keep Mastra dev running or re-run the build.
+
+3) Next.js app server
+- Terminal C:
+```bash
+npm run dev
+```
+- After any changes to `.env.local`, restart this server so env vars apply.
+
+### Troubleshooting
+- ECONNREFUSED 127.0.0.1:4000:
+  - Make sure LiteLLM is running and listening on port 4000.
+  - Verify the correct endpoint path: `/chat/completions` vs `/v1/chat/completions`.
+  - Ensure `OPENROUTER_API_KEY` is present in the LiteLLM process environment.
+  - If 4000 is busy, start LiteLLM on another port and update `OPENROUTER_BASE_URL` accordingly.
+- Webpack hot-update 404 during dev: benign during HMR.
+- Hydration mismatch: avoid browser-only APIs (`window`, `localStorage`) in SSR render paths; move to `useEffect`, or mark components `ssr: false`.
 
 ## 🔌 Agent API Architecture
 
