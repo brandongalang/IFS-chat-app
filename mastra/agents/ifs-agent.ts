@@ -11,7 +11,8 @@ import { generateSystemPrompt } from './ifs_agent_prompt'
 // Configure OpenRouter provider through Mastra
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: 'http://0.0.0.0:4000'
+  // Use env-driven base URL; default to OpenRouter cloud if unset
+  baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
 })
 
 type Profile = { name?: string; bio?: string, userId?: string } | null

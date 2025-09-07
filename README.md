@@ -282,10 +282,33 @@ OPENROUTER_API_KEY=your_api_key_here
 Open a new terminal window and run the following command:
 
 ```bash
-litellm --config litellm.config.yaml
+litellm --config litellm.config.yaml --port 4000
 ```
 
-This will start the proxy on `http://0.0.0.0:4000`, which the application is configured to use for all LLM requests.
+This will start the proxy bound on `0.0.0.0:4000` (a wildcard bind address).
+
+**3. Point the app to your local proxy (client connection):**
+
+Add this to `.env.local` (note we connect via `127.0.0.1`, not `0.0.0.0`):
+
+```
+OPENROUTER_BASE_URL=http://127.0.0.1:4000
+```
+
+Then restart your Next.js dev server so env changes apply.
+
+- Default behavior without `OPENROUTER_BASE_URL` is to call OpenRouter cloud at `https://openrouter.ai/api/v1`.
+- If port 4000 is busy, pick another (e.g., 4001) and set `OPENROUTER_BASE_URL=http://127.0.0.1:4001`.
+
+**Sanity check the proxy:**
+
+```bash
+curl -s -X POST http://127.0.0.1:4000/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"openrouter/llama-3.1-8b-instruct","messages":[{"role":"user","content":"hello"}]}'
+```
+
+If your litellm config exposes `/v1/chat/completions`, use that path instead.
 
 ## 🔌 Agent API Architecture
 
