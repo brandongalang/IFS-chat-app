@@ -6,6 +6,8 @@ import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/d
 import type { Database, PartRow, PartInsert, PartUpdate, PartEvidence, PartRelationshipRow, PartRelationshipInsert, PartRelationshipUpdate, RelationshipType, RelationshipStatus, ToolResult, RelationshipDynamic } from '../types/database'
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isMemoryV2Enabled } from '@/lib/memory/config'
+import { readOverviewSections, readPartProfileSections, readRelationshipProfileSections } from '@/lib/memory/read'
 
 // Input schemas for tool validation
 const searchPartsSchema = z.object({
@@ -195,7 +197,7 @@ export async function searchParts(input: z.infer<typeof searchPartsSchema>): Pro
 /**
  * Get a specific part by ID
  */
-export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Promise<ToolResult<PartRow | null>> {
+export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Promise<ToolResult<any>> {
   try {
     const validated = getPartByIdSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -224,9 +226,17 @@ export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Pro
       }
     }
 
+    // Optionally enrich with snapshot sections (Memory V2)
+    let snapshot_sections: any = undefined
+    if (isMemoryV2Enabled() && data) {
+      try {
+        snapshot_sections = await readPartProfileSections(userId, validated.partId)
+      } catch (e) { try { devLog('readPartProfileSections error', { e }) } catch {} }
+    }
+
     return {
       success: true,
-      data,
+      data: snapshot_sections ? { ...data, snapshot_sections } : data,
       confidence: 1.0
     }
   } catch (error) {
@@ -274,11 +284,39 @@ export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>):
       return { success: false, error: `Database error (relationships): ${relationshipsError.message}` }
     }
 
+    // Optionally enrich with snapshot sections (Memory V2)
+    let overview_sections: any = undefined
+    let part_profile_sections: any = undefined
+    let relationship_profiles: Record<string, any> | undefined = undefined
+    if (isMemoryV2Enabled()) {
+      try {
+        const rels = relationships || []
+        const reads = [
+          readOverviewSections(userId),
+          readPartProfileSections(userId, validated.partId),
+          Promise.all(rels.map(r => readRelationshipProfileSections(userId, (r as any).id)))
+        ] as const
+        const [ovv, partProf, relMaps] = await Promise.all(reads)
+        overview_sections = ovv || undefined
+        part_profile_sections = partProf || undefined
+        if (relMaps && relMaps.length > 0) {
+          relationship_profiles = {}
+          rels.forEach((r, idx) => {
+            const m = relMaps[idx]
+            if (m) relationship_profiles![(r as any).id] = m
+          })
+        }
+      } catch (e) { try { devLog('snapshot read (detail) error', { e }) } catch {} }
+    }
+
     return {
       success: true,
       data: {
         ...part,
-        relationships: relationships || []
+        relationships: relationships || [],
+        ...(overview_sections || part_profile_sections || relationship_profiles
+          ? { snapshots: { overview_sections, part_profile_sections, relationship_profiles } }
+          : {})
       },
       confidence: 1.0
     }
@@ -631,9 +669,20 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
       }
     }
 
-    // Format response with optional part details
-    const formattedRelationships = filtered.map(rel => {
+    // Optionally enrich each relationship with snapshot sections (Memory V2)
+    let relSectionMaps: Array<any> | undefined
+    if (isMemoryV2Enabled()) {
+      try {
+        relSectionMaps = await Promise.all(
+          (filtered as any[]).map(rel => readRelationshipProfileSections(userId, (rel as any).id))
+        )
+      } catch (e) { try { devLog('snapshot read (relationships) error', { e }) } catch {} }
+    }
+
+    // Format response with optional part details and snapshot sections
+    const formattedRelationships = filtered.map((rel, idx) => {
       const partIds = Array.isArray(rel.parts) ? rel.parts : []
+      const snapshot_sections = relSectionMaps ? relSectionMaps[idx] : undefined
       
       return {
         id: rel.id,
@@ -653,7 +702,8 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
         })),
         last_addressed: rel.last_addressed,
         created_at: rel.created_at,
-        updated_at: rel.updated_at
+        updated_at: rel.updated_at,
+        ...(snapshot_sections ? { snapshot_sections } : {})
       }
     })
 
