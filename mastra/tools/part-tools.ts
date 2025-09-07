@@ -768,8 +768,8 @@ export async function logRelationship(input: z.infer<typeof logRelationshipSchem
       }) as any || null
     }
 
-    if (existing) {
-      // Update existing relationship
+      if (existing) {
+        // Update existing relationship
       const updates: PartRelationshipUpdate = {}
 
       // Append dynamic if provided
@@ -860,6 +860,19 @@ if (typeof window === 'undefined' && dev.enabled && serviceRole) {
           }
         )
 
+        // Memory v2 snapshot update (behind flag)
+        if (isMemoryV2Enabled()) {
+          try {
+            await import('@/lib/memory/snapshots/updater').then(({ onRelationshipLogged }) =>
+              onRelationshipLogged({
+                userId,
+                relId: existing!.id,
+                type: validated.type,
+                summary: dyn ? `Appended dynamic: ${dyn.observation.substring(0, 60)}...` : 'Updated relationship fields',
+              })
+            )
+          } catch (e) { try { console.warn('onRelationshipLogged error', e) } catch {} }
+        }
         return { success: true, data: updated, confidence: 1.0 }
       } catch (e: any) {
         return { success: false, error: `LOGGED_UPDATE_BRANCH: ${e?.stack || e?.message || String(e)}` }
@@ -923,6 +936,20 @@ if (typeof window === 'undefined' && dev.enabled && serviceRoleCreate) {
         partIds
       }
     )
+
+    // Memory v2 snapshot update (behind flag)
+    if (isMemoryV2Enabled()) {
+      try {
+        await import('@/lib/memory/snapshots/updater').then(({ onRelationshipLogged }) =>
+          onRelationshipLogged({
+            userId,
+            relId: created.id,
+            type: validated.type,
+            summary: `Created ${validated.type} relationship between parts`,
+          })
+        )
+      } catch (e) { try { console.warn('onRelationshipLogged error', e) } catch {} }
+    }
 
     return { success: true, data: created, confidence: 1.0 }
   } catch (error) {
