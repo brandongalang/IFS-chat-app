@@ -22,7 +22,7 @@ export function createIfsAgent(profile: Profile) {
   return new Agent({
     name: 'ifs-companion',
     instructions: generateSystemPrompt(profile),
-    model: openrouter('z-ai/glm-4-9b-chat'),
+    model: openrouter('z-ai/glm-4.5-air'),
     tools: {
       ...getPartTools(userId), // Part management tools
       ...assessmentTools, // Confidence assessment tool

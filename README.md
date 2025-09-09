@@ -303,9 +303,9 @@ Then restart your Next.js dev server so env changes apply.
 **Sanity check the proxy:**
 
 ```bash
-curl -s -X POST http://127.0.0.1:4000/chat/completions \
+curl -s -X POST http://127.0.0.1:4000/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{"model":"openrouter/llama-3.1-8b-instruct","messages":[{"role":"user","content":"hello"}]}'
+  -d '{"model":"openrouter/z-ai/glm-4.5-air","messages":[{"role":"user","content":"hello"}]}'
 ```
 
 If your litellm config exposes `/v1/chat/completions`, use that path instead.
