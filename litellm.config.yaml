@@ -3,11 +3,7 @@ model_list:
   - model_name: z-ai/glm-4.5-air
     litellm_params:
       model: openrouter/z-ai/glm-4.5-air
-      api_base: https://openrouter.ai/api/v1
-      api_key: os.environ/OPENROUTER_API_KEY
-      extra_headers:
-        HTTP-Referer: http://localhost:4000
-        X-Title: LiteLLM Local
+      api_key: env/OPENROUTER_API_KEY
 
 litellm_settings:
   set_verbose: True
