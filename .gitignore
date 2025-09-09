@@ -36,8 +36,19 @@ supabase/.env
 
 # Build and test artifacts
 tsconfig.tsbuildinfo
+tsconfig.typecheck.tsbuildinfo
 test-results/
 .scripts/
+
+# Mastra generated output
+.mastra/output/
+
+# Backup files
+*.bak-*
+
+# Local markdown directories
+MD-ACTIVE/
+MD-ARCHIVE/
 
 # Project planning (internal)
 plan.md
@@ -81,3 +92,9 @@ AGENTS.md
 
 # Local memory snapshots
 .data/
+
+.env*
+.env.local
+.env.honeypot
+*.pem
+.ssh/

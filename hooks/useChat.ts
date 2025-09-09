@@ -197,6 +197,25 @@ export function useChat() {
     let accumulated = '';
     let buffer = '';
     let flushInterval: any = null
+    let finalizeTimer: any = null
+
+    const finalize = () => {
+      updateMessage(assistantId, { content: accumulated, streaming: false })
+      setState((prev: any) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
+      streamingCancelRef.current = null;
+    }
+
+    const scheduleFinalizeCheck = () => {
+      if (finalizeTimer) return
+      finalizeTimer = setInterval(() => {
+        if (!flushInterval && buffer.length === 0) {
+          clearInterval(finalizeTimer)
+          finalizeTimer = null
+          finalize()
+        }
+      }, 60)
+    }
+
     // Read CSS variables for streaming cadence
     const stepMs = typeof window !== 'undefined' ? (Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-stream-tick').trim()) || 150) : 150
     const stepChars = typeof window !== 'undefined' ? (Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-stream-chars').trim()) || 8) : 8
@@ -210,9 +229,11 @@ export function useChat() {
           accumulated += part
           updateMessage(assistantId, { content: accumulated, streaming: true })
         } else {
-          // no buffer left; flusher can stop; finalization handled by onChunk(done)
+          // no buffer left; flusher can stop
           clearInterval(flushInterval)
           flushInterval = null
+          // If a done signal was received earlier, ensure finalization proceeds
+          scheduleFinalizeCheck()
         }
       }, stepMs)
     }
@@ -244,17 +265,20 @@ export function useChat() {
           startFlusher()
           if (done) {
             doneReceived = true
-            // finalize happens in the flusher once buffer empties
-            const finishIfReady = () => {
-              if (!flushInterval && (buffer.length === 0)) {
-                updateMessage(assistantId, { content: accumulated, streaming: false })
-                setState((prev: any) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
-                streamingCancelRef.current = null;
-                persistMessage(sessionId, 'assistant', accumulated).catch(() => {});
+            // Begin polling for flusher completion; finalize when buffer empties
+            scheduleFinalizeCheck()
+            // Also persist once finalized; we hook into finalize() by adding a microtask here
+            queueMicrotask(() => {
+              const tryPersist = () => {
+                if (!flushInterval && buffer.length === 0) {
+                  persistMessage(sessionId, 'assistant', accumulated).catch(() => {})
+                } else {
+                  // retry shortly until finalize completes
+                  setTimeout(tryPersist, 120)
+                }
               }
-            }
-            // small timeout to allow last tick to run
-            setTimeout(finishIfReady, 80)
+              tryPersist()
+            })
           }
         },
       });

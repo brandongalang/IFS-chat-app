@@ -13,9 +13,24 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const supabase = await createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    const userId = session?.user?.id
+    // Only attempt to create a Supabase server client if env is configured
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const hasSupabase =
+      typeof supabaseUrl === 'string' && /^https?:\/\//.test(supabaseUrl) &&
+      typeof supabaseAnon === 'string' && supabaseAnon.length > 20
+
+    let userId: string | undefined = undefined
+    if (hasSupabase) {
+      try {
+        const supabase = await createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        userId = session?.user?.id
+      } catch (e) {
+        // If Supabase is misconfigured in local dev, continue without a user
+        userId = undefined
+      }
+    }
 
     if (!userId && !dev.enabled) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -38,7 +53,9 @@ export async function POST(req: NextRequest) {
     }
 
     // If no OpenRouter credentials, provide a dev fallback text stream so the UI works
+    const baseURL = process.env.OPENROUTER_BASE_URL
     const hasOpenrouter = typeof process.env.OPENROUTER_API_KEY === 'string' && process.env.OPENROUTER_API_KEY.length > 10
+    console.log('[CHAT] OpenRouter env', { hasOpenrouter, baseURL })
     if (!hasOpenrouter) {
       const encoder = new TextEncoder()
       const devText = 'Hello! (dev fallback stream)\nThis is a placeholder response because OPENROUTER_API_KEY is not configured.'
