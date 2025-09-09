@@ -1,8 +1,8 @@
 # litellm.config.yaml
 model_list:
-  - model_name: z-ai/glm-4-9b-chat
+  - model_name: z-ai/glm-4.5-air
     litellm_params:
-      model: openrouter/z-ai/glm-4-9b-chat
+      model: openrouter/z-ai/glm-4.5-air
       api_key: env/OPENROUTER_API_KEY
 
 litellm_settings:
