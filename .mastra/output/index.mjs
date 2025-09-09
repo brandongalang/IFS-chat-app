@@ -5,14 +5,14 @@ import { checkEvalStorageFields } from '@mastra/core/utils';
 import { Agent, createWorkflow, Mastra, generateEmptyFromSchema, Telemetry } from '@mastra/core';
 import { PinoLogger } from '@mastra/loggers';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { getPartTools } from './tools/ee0cb233-c23e-4121-b543-6be9a244336e.mjs';
-import { assessmentTools } from './tools/6eb130d1-63a3-4a97-9408-26767b3cf15a.mjs';
-import { proposalTools } from './tools/81614ede-27b5-4c15-9332-2f03353000a7.mjs';
-import { evidenceTools } from './tools/b49f7978-c3b6-4e6b-a6ec-ec80dfec32fa.mjs';
-import { stubTools } from './tools/80be75fd-9ce1-48c8-b805-c177fb43506b.mjs';
-import { memoryTools } from './tools/ceac1e5c-e389-4fd2-9f26-0de396fa1093.mjs';
+import { getPartTools } from './tools/db42b517-3063-43b1-8d4b-29855a5b5443.mjs';
+import { assessmentTools } from './tools/04f3d3d7-475a-4af6-9b28-17bca5741012.mjs';
+import { proposalTools } from './tools/b1b0b1a5-754c-4452-9131-6b92e663c613.mjs';
+import { evidenceTools } from './tools/6539779f-a35d-4ca7-a896-dbd725983664.mjs';
+import { stubTools } from './tools/ca380f5d-f639-4961-a6b3-75f55aea9b39.mjs';
+import { memoryTools } from './tools/bf352fca-628e-478c-805e-51b95ee2f106.mjs';
 import { z, ZodFirstPartyTypeKind } from 'zod';
-import { insightResearchTools, getRecentSessions, getActiveParts, getPolarizedRelationships, getRecentInsights } from './tools/14be68c7-383f-4785-b3c5-99ab6da25a31.mjs';
+import { insightResearchTools, getRecentSessions, getActiveParts, getPolarizedRelationships, getRecentInsights } from './tools/32b15cd8-d109-4cd9-bac3-03da736e694f.mjs';
 import crypto$1, { randomUUID } from 'crypto';
 import { readFile } from 'fs/promises';
 import { join } from 'path/posix';
@@ -137,14 +137,15 @@ Remember to be personal and reference their name when appropriate, but do not le
 
 const openrouter$1 = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: "http://0.0.0.0:4000"
+  // Use env-driven base URL; default to OpenRouter cloud if unset
+  baseURL: process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1"
 });
 function createIfsAgent(profile) {
   const userId = profile?.userId;
   return new Agent({
     name: "ifs-companion",
     instructions: generateSystemPrompt(),
-    model: openrouter$1("z-ai/glm-4-9b-chat"),
+    model: openrouter$1("z-ai/glm-4.5-air"),
     tools: {
       ...getPartTools(userId),
       // Part management tools

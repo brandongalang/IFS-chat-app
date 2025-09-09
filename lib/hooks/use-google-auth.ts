@@ -137,9 +137,6 @@ export function useGoogleAuth() {
           theme: 'outline',
           size: 'large',
           width: '100%',
-          text: 'signin_with',
-          shape: 'rectangular',
-          logo_alignment: 'left',
         })
       }
     } catch (authError) {
@@ -203,9 +200,6 @@ export function useGoogleAuth() {
               theme: 'outline',
               size: 'large',
               width: '100%',
-              text: 'signin_with',
-              shape: 'rectangular',
-              logo_alignment: 'left',
             }
           )
         }
