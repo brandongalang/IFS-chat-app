@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { motion } from "framer-motion"
 import { useChat } from "@/hooks/useChat"
 import { Textarea } from "@/components/ui/textarea"
@@ -9,11 +9,29 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { Message as ChatMessage } from "@/types/chat"
 import { useRouter } from "next/navigation"
 import { StreamingText } from "./StreamingText"
+import { TaskList } from "@/components/chat/TaskList"
+import { ActiveTaskOverlay } from "./ActiveTaskOverlay"
 
 // Minimal, bubble-less chat presentation for /chat/ethereal
 export function EtherealChat() {
-  const { messages, sendMessage, isStreaming, hasActiveSession, endSession, addAssistantMessage } = useChat()
+  const {
+    messages,
+    sendMessage,
+    isStreaming,
+    hasActiveSession,
+    endSession,
+    addAssistantMessage,
+    tasksByMessage,
+    currentStreamingId,
+  } = useChat()
   const router = useRouter()
+  const taskListStyles: CSSProperties = {
+    '--muted-foreground': '0 0% 80%',
+    '--foreground': '0 0% 100%',
+    '--secondary': '0 0% 100% / 0.1',
+    '--secondary-foreground': '0 0% 100%',
+    '--border': '0 0% 100% / 0.2',
+  } as CSSProperties
 
   // UI state
   const [text, setText] = useState("")
@@ -50,6 +68,8 @@ export function EtherealChat() {
       addAssistantMessage("what feels unresolved or undefined for you right now?", { persist: true, id: "ethereal-welcome" })
     }
   }, [messages?.length, addAssistantMessage])
+
+  const currentTasks = currentStreamingId ? tasksByMessage?.[currentStreamingId] : undefined
 
   return (
     <div className="absolute inset-0 flex flex-col">
@@ -94,12 +114,21 @@ export function EtherealChat() {
                 ].join(" ")}
                 style={{
                   letterSpacing: m.role === 'assistant' ? 'var(--eth-letter-spacing-assistant)' : 'var(--eth-letter-spacing-user)',
-                  color: 'rgba(255,255,255,var(--eth-assistant-opacity))',
+                  color: m.role === 'assistant'
+                    ? (m.id === currentStreamingId
+                      ? 'rgba(255,255,255,1)'
+                      : 'rgba(255,255,255,var(--eth-assistant-opacity))')
+                    : 'rgba(255,255,255,var(--eth-assistant-opacity))',
                   opacity: m.role === 'assistant' ? undefined : (Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-user-opacity').trim()) || 0.8),
                 }}
               >
                 {m.id === "ethereal-welcome" && (
                   <p className="mb-2 text-sm text-white/60">dive back in.</p>
+                )}
+                {m.role === 'assistant' && (
+                  <div className="mb-2 text-base" style={taskListStyles}>
+                    <TaskList tasks={tasksByMessage?.[m.id]} />
+                  </div>
                 )}
                 <StreamingText text={m.content} />
               </div>
@@ -107,6 +136,15 @@ export function EtherealChat() {
           ))}
         </div>
       </div>
+
+      {/* Task overlay for current streaming message */}
+      {currentTasks?.length ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(100px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3">
+          <div className="pointer-events-auto w-full max-w-[900px]">
+            <ActiveTaskOverlay tasks={currentTasks} />
+          </div>
+        </div>
+      ) : null}
 
       {/* Translucent input bar (always visible) */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pb-[calc(12px+env(safe-area-inset-bottom))]">

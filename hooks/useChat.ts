@@ -5,9 +5,7 @@ import { useUser } from '@/context/UserContext'
 import { useSearchParams } from 'next/navigation'
 import { Message, ChatState, TaskEvent } from '@/types/chat';
 import { getPartById } from '@/lib/data/parts-lite'
-import { detectTool } from '@/lib/toolDetection';
 import { streamFromMastra } from '@/lib/chatClient';
-import { devMode } from '@/config/features';
 import { useToast } from './use-toast';
 
 export function useChat() {
@@ -141,9 +139,6 @@ export function useChat() {
     };
 
     setState((prev: any) => ({ ...prev, messages: [...prev.messages, userMessage] }));
-
-    // Detect tool to show in UI (still purely client-side for now)
-    const tool = detectTool(content);
 
     // Create streaming assistant placeholder
     const assistantId = generateId();
@@ -305,16 +300,6 @@ export function useChat() {
     }
   }, [])
 
-  const rerunTool = useCallback((messageId: string) => {
-    const message = (state as any).messages.find((m: any) => m.id === messageId);
-    if (!message || !message.tool) return;
-    const idx = (state as any).messages.findIndex((m: any) => m.id === messageId);
-    const userMessage = idx > 0 ? (state as any).messages[idx - 1] : null;
-    if (userMessage && userMessage.role === 'user') {
-      sendMessage(userMessage.content);
-    }
-  }, [(state as any).messages, sendMessage]);
-
   const { toast } = useToast();
 
   const sendFeedback = useCallback(async (
@@ -372,7 +357,6 @@ export function useChat() {
     addAssistantMessage,
     clearChat,
     endSession,
-    rerunTool,
     sendFeedback,
   };
 }
