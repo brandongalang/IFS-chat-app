@@ -111,9 +111,11 @@ export function getPartTools(userId?: string) {
       inputSchema: searchPartsSchema,
       execute: async ({ context }: any) => {
         const secureContext = { ...context, userId };
-        const result = await searchParts(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await searchParts(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       },
     }),
     getPartById: createTool({
@@ -122,9 +124,11 @@ export function getPartTools(userId?: string) {
       inputSchema: getPartByIdSchema,
       execute: async ({ context }: any) => {
         const secureContext = { ...context, userId };
-        const result = await getPartById(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await getPartById(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       },
     }),
     getPartDetail: createTool({
@@ -134,9 +138,11 @@ export function getPartTools(userId?: string) {
       inputSchema: getPartDetailSchema,
       execute: async ({ context }: any) => {
         const secureContext = { ...context, userId };
-        const result = await getPartDetail(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await getPartDetail(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       },
     }),
     createEmergingPart: createTool({
@@ -145,9 +151,11 @@ export function getPartTools(userId?: string) {
       inputSchema: createEmergingPartSchema,
       execute: async ({ context }: any) => {
         const secureContext = { ...context, userId };
-        const result = await createEmergingPart(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await createEmergingPart(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       },
     }),
     updatePart: createTool({
@@ -156,9 +164,11 @@ export function getPartTools(userId?: string) {
       inputSchema: updatePartSchema,
       execute: async ({ context }: any) => {
         const secureContext = { ...context, userId };
-        const result = await updatePart(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await updatePart(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       },
     }),
     getPartRelationships: createTool({
@@ -168,9 +178,11 @@ export function getPartTools(userId?: string) {
       inputSchema: getPartRelationshipsSchema,
       execute: async ({ context }: any) => {
         const secureContext = { ...context, userId };
-        const result = await getPartRelationships(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await getPartRelationships(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       },
     }),
     logRelationship: createTool({
@@ -180,9 +192,11 @@ export function getPartTools(userId?: string) {
       inputSchema: logRelationshipSchema,
       execute: async ({ context }: any) => {
         const secureContext = { ...context, userId };
-        const result = await logRelationship(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await logRelationship(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       },
     }),
   }

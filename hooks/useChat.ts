@@ -33,19 +33,23 @@ export function useChat() {
       // This is a new chat session focused on a specific part.
       // Let's create a custom initial message.
       const fetchPartAndStart = async () => {
-        const result = await getPartById({ partId })
-        if (result.success && result.data) {
-          const partName = result.data.name
-          const initialMessage: Message = {
-            id: generateId(),
-            role: 'assistant',
-            content: `Let's talk about your "${partName}" part. What's on your mind regarding it?`,
-            timestamp: Date.now(),
-            persona: 'claude',
-            streaming: false,
-            tasks: [],
+        try {
+          const part = await getPartById({ partId })
+          if (part) {
+            const partName = part.name
+            const initialMessage: Message = {
+              id: generateId(),
+              role: 'assistant',
+              content: `Let's talk about your "${partName}" part. What's on your mind regarding it?`,
+              timestamp: Date.now(),
+              persona: 'claude',
+              streaming: false,
+              tasks: [],
+            }
+            setState((prev: any) => ({ ...prev, messages: [initialMessage] }))
           }
-          setState((prev: any) => ({ ...prev, messages: [initialMessage] }))
+        } catch {
+          // ignore errors fetching part
         }
       }
       fetchPartAndStart()
