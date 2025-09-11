@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { motion } from "framer-motion"
 import { useChat } from "@/hooks/useChat"
 import { Textarea } from "@/components/ui/textarea"
@@ -9,11 +9,19 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { Message as ChatMessage } from "@/types/chat"
 import { useRouter } from "next/navigation"
 import { StreamingText } from "./StreamingText"
+import { TaskList } from "@/components/chat/TaskList"
 
 // Minimal, bubble-less chat presentation for /chat/ethereal
 export function EtherealChat() {
-  const { messages, sendMessage, isStreaming, hasActiveSession, endSession, addAssistantMessage } = useChat()
+  const { messages, sendMessage, isStreaming, hasActiveSession, endSession, addAssistantMessage, tasksByMessage } = useChat()
   const router = useRouter()
+  const taskListStyles: CSSProperties = {
+    '--muted-foreground': '0 0% 80%',
+    '--foreground': '0 0% 100%',
+    '--secondary': '0 0% 100% / 0.1',
+    '--secondary-foreground': '0 0% 100%',
+    '--border': '0 0% 100% / 0.2',
+  }
 
   // UI state
   const [text, setText] = useState("")
@@ -100,6 +108,11 @@ export function EtherealChat() {
               >
                 {m.id === "ethereal-welcome" && (
                   <p className="mb-2 text-sm text-white/60">dive back in.</p>
+                )}
+                {m.role === 'assistant' && (
+                  <div className="mb-2 text-base" style={taskListStyles}>
+                    <TaskList tasks={tasksByMessage[m.id]} />
+                  </div>
                 )}
                 <StreamingText text={m.content} />
               </div>
