@@ -144,7 +144,7 @@ export class DatabaseActionLogger {
   /**
    * Get recent actions for a user with rich context
    */
-async getRecentActions(
+  async getRecentActions(
     _userId: string,
     _limit: number = 10,
     _actionTypes?: ActionType[],
@@ -153,6 +153,38 @@ async getRecentActions(
   ): Promise<ActionSummary[]> {
     // Memory v2: legacy agent_actions removed. Expose empty list for now.
     return []
+  }
+
+  /**
+   * Read recent action events from the events ledger
+   */
+  async getActionEvents(
+    userId: string,
+    limit: number = 10,
+    withinMinutes: number = 30
+  ): Promise<ActionSummary[]> {
+    const cutoff = new Date(Date.now() - withinMinutes * 60 * 1000).toISOString()
+
+    const query = this.supabase
+      .from('events')
+      .select('event_id, ts, rationale')
+      .eq('user_id', userId)
+      .eq('type', 'action')
+      .gte('ts', cutoff)
+      .order('ts', { ascending: false })
+      .limit(limit)
+
+    const { data, error } = await query
+    if (error) throw error
+
+    return (data || []).map((row: any) => ({
+      id: row.event_id,
+      summary: row.rationale || 'Agent action',
+      timestamp: row.ts,
+      canRollback: false,
+      actionType: 'update_part_attributes' as ActionType,
+      metadata: {}
+    }))
   }
 
   /**
@@ -312,6 +344,9 @@ class NoopActionLogger {
     return { ...updates, id } as T
   }
   async getRecentActions() {
+    return [] as ActionSummary[]
+  }
+  async getActionEvents() {
     return [] as ActionSummary[]
   }
   async rollbackByDescription(_userId: string, description: string) {

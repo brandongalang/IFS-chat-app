@@ -1,4 +1,4 @@
-import { g as getStorageMode } from './config.mjs';
+import { d as getStorageMode } from './part-schemas.mjs';
 import { c as canonicalizeText, s as sha256Hex } from './canonicalize.mjs';
 
 async function getStorageAdapter() {

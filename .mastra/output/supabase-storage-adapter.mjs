@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { M as MEMORY_SNAPSHOTS_BUCKET } from './config.mjs';
+import { M as MEMORY_SNAPSHOTS_BUCKET } from './part-schemas.mjs';
+import 'zod';
 
 function getSb() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
