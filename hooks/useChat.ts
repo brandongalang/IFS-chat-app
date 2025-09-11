@@ -18,8 +18,8 @@ export function useChat() {
     // augmenting state shape locally; downstream components only read fields we return
     // hasActiveSession is maintained for UI checks like confirming before exiting chat
     hasActiveSession: false,
-    tasksByMessage: {},
-  } as any);
+    tasksByMessage: {} as Record<string, TaskEvent[]>,
+  });
 
   const streamingCancelRef = useRef<(() => void) | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -29,7 +29,7 @@ export function useChat() {
 
   useEffect(() => {
     const partId = searchParams.get('partId')
-    if (partId && (state as any).messages.length === 0) {
+    if (partId && state.messages.length === 0) {
       // This is a new chat session focused on a specific part.
       // Let's create a custom initial message.
       const fetchPartAndStart = async () => {
@@ -45,7 +45,7 @@ export function useChat() {
             streaming: false,
             tasks: [],
           }
-          setState((prev: any) => ({ ...prev, messages: [initialMessage] }))
+          setState((prev: ChatState) => ({ ...prev, messages: [initialMessage] }))
         }
       }
       fetchPartAndStart()
@@ -53,14 +53,14 @@ export function useChat() {
   }, [searchParams])
 
   const updateMessage = useCallback((id: string, updates: Partial<Message>) => {
-    setState((prev: any) => ({
+    setState((prev: ChatState) => ({
       ...prev,
-      messages: prev.messages.map((msg: Message) => (msg.id === id ? { ...msg, ...updates } : msg)),
+      messages: prev.messages.map((msg) => (msg.id === id ? { ...msg, ...updates } : msg)),
     }));
   }, []);
 
   const upsertTaskForMessage = useCallback((messageId: string, evt: TaskEvent) => {
-    setState((prev: any) => {
+    setState((prev: ChatState) => {
       const existing: Record<string, TaskEvent[]> = prev.tasksByMessage || {}
       const currentList = existing[messageId] || []
       const idx = currentList.findIndex((t) => t.id === evt.id)
@@ -70,7 +70,9 @@ export function useChat() {
       return {
         ...prev,
         tasksByMessage: { ...existing, [messageId]: nextList },
-        messages: (prev.messages || []).map((m: any) => m.id === messageId ? { ...m, tasks: nextList } : m),
+        messages: (prev.messages || []).map((m) =>
+          m.id === messageId ? { ...m, tasks: nextList } : m
+        ),
       }
     })
   }, [])
@@ -85,7 +87,7 @@ export function useChat() {
     if (!res.ok) throw new Error('Failed to start session');
     const data = await res.json();
     sessionIdRef.current = data.sessionId;
-    setState((prev: any) => ({ ...prev, hasActiveSession: true }));
+    setState((prev: ChatState) => ({ ...prev, hasActiveSession: true }));
     return data.sessionId;
   }, []);
 
@@ -113,7 +115,7 @@ export function useChat() {
       streaming: false,
       tasks: [],
     }
-    setState((prev: any) => ({ ...prev, messages: [...prev.messages, msg] }))
+    setState((prev: ChatState) => ({ ...prev, messages: [...prev.messages, msg] }))
     if (opts?.persist) {
       try {
         const sessionId = await ensureSession()
@@ -123,7 +125,7 @@ export function useChat() {
   }, [ensureSession, persistMessage])
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || (state as any).isStreaming) return;
+    if (!content.trim() || state.isStreaming) return;
 
     // Cancel any ongoing streaming
     if (streamingCancelRef.current) {
@@ -138,7 +140,7 @@ export function useChat() {
       timestamp: Date.now(),
     };
 
-    setState((prev: any) => ({ ...prev, messages: [...prev.messages, userMessage] }));
+    setState((prev: ChatState) => ({ ...prev, messages: [...prev.messages, userMessage] }));
 
     // Create streaming assistant placeholder
     const assistantId = generateId();
@@ -153,12 +155,12 @@ export function useChat() {
       tasks: [],
     };
 
-    setState((prev: any) => ({
+    setState((prev: ChatState) => ({
       ...prev,
       messages: [...prev.messages, assistantMessage],
       isStreaming: true,
       currentStreamingId: assistantId,
-      tasksByMessage: { ...(prev as any).tasksByMessage, [assistantId]: [] },
+      tasksByMessage: { ...(prev.tasksByMessage ?? {}), [assistantId]: [] },
     }));
 
     // Ensure session and persist the user message (fire-and-forget)
@@ -170,7 +172,10 @@ export function useChat() {
     streamingCancelRef.current = () => controller.abort();
 
     // Build plain messages array for the API
-    const apiMessages = [...(state as any).messages, userMessage].map((m: any) => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content }));
+    const apiMessages = [...state.messages, userMessage].map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
 
     let accumulated = '';
     let buffer = '';
@@ -179,7 +184,7 @@ export function useChat() {
 
     const finalize = () => {
       updateMessage(assistantId, { content: accumulated, streaming: false })
-      setState((prev: any) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
+      setState((prev: ChatState) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
       streamingCancelRef.current = null;
     }
 
@@ -231,7 +236,7 @@ export function useChat() {
         messages: apiMessages,
         sessionId,
         userId: userIdRef.current,
-        profile,
+        profile: profile!,
         signal: controller.signal,
         apiPath: chosenApiPath,
         onTask: (evt) => {
@@ -263,19 +268,19 @@ export function useChat() {
     } catch (e) {
       // Mark stream ended and show basic error if needed
       stopFlusher()
-      setState((prev: any) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
+      setState((prev: ChatState) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
       streamingCancelRef.current = null;
       if (accumulated.length === 0) {
         updateMessage(assistantId, { content: 'Sorry, something went wrong while streaming the response.', streaming: false });
       }
     }
-  }, [ensureSession, persistMessage, (state as any).isStreaming, (state as any).messages, updateMessage]);
+  }, [ensureSession, persistMessage, state.isStreaming, state.messages, updateMessage]);
 
   const clearChat = useCallback(() => {
     if (streamingCancelRef.current) {
       streamingCancelRef.current();
     }
-    setState((prev: any) => ({ ...prev, messages: [], isStreaming: false, currentStreamingId: undefined }));
+    setState((prev: ChatState) => ({ ...prev, messages: [], isStreaming: false, currentStreamingId: undefined }));
     // Intentionally do not reset sessionIdRef here to satisfy: no resume within same page; new session will be created on first send after reload
   }, []);
 
@@ -283,7 +288,7 @@ export function useChat() {
     const id = sessionIdRef.current
     if (!id) {
       // Nothing to end
-      setState((prev: any) => ({ ...prev, hasActiveSession: false, messages: [], isStreaming: false, currentStreamingId: undefined }))
+      setState((prev: ChatState) => ({ ...prev, hasActiveSession: false, messages: [], isStreaming: false, currentStreamingId: undefined }))
       return
     }
     try {
@@ -296,7 +301,7 @@ export function useChat() {
       // ignore
     } finally {
       sessionIdRef.current = null
-      setState((prev: any) => ({ ...prev, hasActiveSession: false, messages: [], isStreaming: false, currentStreamingId: undefined }))
+      setState((prev: ChatState) => ({ ...prev, hasActiveSession: false, messages: [], isStreaming: false, currentStreamingId: undefined }))
     }
   }, [])
 
@@ -348,11 +353,11 @@ export function useChat() {
   }, [toast]);
 
   return {
-    messages: (state as any).messages,
-    isStreaming: (state as any).isStreaming,
-    currentStreamingId: (state as any).currentStreamingId,
-    hasActiveSession: (state as any).hasActiveSession as boolean,
-    tasksByMessage: (state as any).tasksByMessage as Record<string, TaskEvent[]>,
+    messages: state.messages,
+    isStreaming: state.isStreaming,
+    currentStreamingId: state.currentStreamingId,
+    hasActiveSession: state.hasActiveSession ?? false,
+    tasksByMessage: state.tasksByMessage ?? {},
     sendMessage,
     addAssistantMessage,
     clearChat,

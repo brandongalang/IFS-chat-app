@@ -20,7 +20,14 @@ declare global {
           ) => void;
           renderButton: (
             container: HTMLElement | null,
-            options: { theme: 'outline' | 'filled_blue' | 'filled_black' | 'standard' | 'icon' | 'text'; size: 'large' | 'medium' | 'small'; width?: string }
+            options: {
+              theme: 'outline' | 'filled_blue' | 'filled_black' | 'standard' | 'icon' | 'text';
+              size: 'large' | 'medium' | 'small';
+              width?: string;
+              text?: string;
+              shape?: string;
+              logo_alignment?: string;
+            }
           ) => void;
         };
       };
