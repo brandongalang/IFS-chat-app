@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { jitTopUpInsights } from '@/lib/insights/generator'
+import { jsonResponse, errorResponse } from '@/lib/api/response'
 
 const hasSupabase =
   typeof process.env.NEXT_PUBLIC_SUPABASE_URL === 'string' &&
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
           id: 'dev-insight-1',
           type: 'observation',
           status: 'pending',
-          content: { title: 'Dev Insight', body: 'OPENROUTER_API_KEY/Supabase not configured; this is a sample.' },
+          content: { title: 'Dev Insight', body: 'OPENROUTER_API_KEY\/Supabase not configured; this is a sample.' },
           rating: null,
           feedback: null,
           revealed_at: null,
@@ -36,10 +37,7 @@ export async function GET(req: NextRequest) {
           created_at: new Date().toISOString(),
         },
       ]
-      return new Response(JSON.stringify(sample.slice(0, limit)), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return jsonResponse(sample.slice(0, limit))
     }
 
     const supabase = await createClient()
@@ -58,10 +56,7 @@ if (!userId) {
       if (dev.enabled && dev.defaultUserId) {
         userId = dev.defaultUserId
       } else {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return errorResponse('Unauthorized', 401)
       }
     }
 
@@ -95,16 +90,10 @@ if (!userId) {
       })
       .slice(0, limit)
 
-    return new Response(JSON.stringify(sorted), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return jsonResponse(sorted)
   } catch (e) {
     console.error('GET /api/insights error:', e)
-    return new Response(JSON.stringify({ error: 'Failed to fetch insights' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return errorResponse('Failed to fetch insights', 500)
   }
 }
 

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { jsonResponse, errorResponse } from '@/lib/api/response'
 
 const hasSupabase =
   typeof process.env.NEXT_PUBLIC_SUPABASE_URL === 'string' &&
@@ -13,17 +14,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const { rating, feedback } = await req.json().catch(() => ({}))
 
     if (!id || typeof rating === 'undefined') {
-      return new Response(JSON.stringify({ error: 'rating is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return errorResponse('rating is required', 400)
     }
 
     if (!hasSupabase) {
-      return new Response(JSON.stringify({ ok: true, stored: false }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return jsonResponse({ ok: true, stored: false })
     }
 
     const supabase = await createClient()
@@ -35,10 +30,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       .single()
 
     if (fetchErr) {
-      return new Response(JSON.stringify({ error: 'Not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return errorResponse('Not found', 404)
     }
 
     const updates: Record<string, unknown> = { rating, feedback }
@@ -56,16 +48,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     if (error) throw error
 
-    return new Response(JSON.stringify(updated), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return jsonResponse(updated)
   } catch (e) {
     console.error('POST /api/insights/[id]/feedback error:', e)
-    return new Response(JSON.stringify({ error: 'Failed to submit feedback' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return errorResponse('Failed to submit feedback', 500)
   }
 }
 
