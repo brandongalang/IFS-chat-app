@@ -1,6 +1,7 @@
 import { createClient } from './supabase/client'
 import { actionLogger } from './database/action-logger'
 import type { SessionMessage, SessionRow, SessionInsert, SessionUpdate } from './types/database'
+import { getStorageAdapter, sessionTranscriptPath } from './memory/snapshots/fs-helpers'
 
 export class ChatSessionService {
   private supabase = createClient()
@@ -35,6 +36,19 @@ export class ChatSessionService {
         sessionId: undefined // Will be set after creation
       }
     )
+    const storage = await getStorageAdapter()
+    const transcriptPath = sessionTranscriptPath(userId, data.id)
+    const transcript = {
+      id: data.id,
+      user_id: userId,
+      start_time: session.start_time,
+      end_time: null as string | null,
+      duration: null as number | null,
+      messages: [] as SessionMessage[]
+    }
+    await storage.putText(transcriptPath, JSON.stringify(transcript), {
+      contentType: 'application/json'
+    })
 
     return data.id
   }
@@ -49,7 +63,7 @@ export class ChatSessionService {
     // First get the current session
     const { data: session, error: fetchError } = await this.supabase
       .from('sessions')
-      .select('messages')
+      .select('messages, user_id, start_time, end_time, duration')
       .eq('id', sessionId)
       .single()
 
@@ -77,6 +91,34 @@ export class ChatSessionService {
     if (updateError) {
       throw new Error(`Failed to add message: ${updateError.message}`)
     }
+
+    const storage = await getStorageAdapter()
+    const transcriptPath = sessionTranscriptPath(session.user_id, sessionId)
+    let transcript
+    try {
+      const existing = await storage.getText(transcriptPath)
+      transcript = existing ? JSON.parse(existing) : {
+        id: sessionId,
+        user_id: session.user_id,
+        start_time: session.start_time,
+        end_time: session.end_time,
+        duration: session.duration,
+        messages: [] as SessionMessage[]
+      }
+    } catch {
+      transcript = {
+        id: sessionId,
+        user_id: session.user_id,
+        start_time: session.start_time,
+        end_time: session.end_time,
+        duration: session.duration,
+        messages: [] as SessionMessage[]
+      }
+    }
+    transcript.messages = updatedMessages
+    await storage.putText(transcriptPath, JSON.stringify(transcript), {
+      contentType: 'application/json'
+    })
   }
 
   /**
@@ -88,7 +130,7 @@ export class ChatSessionService {
     // Get session start time to calculate duration
     const { data: session, error: fetchError } = await this.supabase
       .from('sessions')
-      .select('start_time')
+      .select('start_time, user_id, end_time, duration, messages')
       .eq('id', sessionId)
       .single()
 
@@ -111,6 +153,35 @@ export class ChatSessionService {
     if (error) {
       throw new Error(`Failed to end session: ${error.message}`)
     }
+
+    const storage = await getStorageAdapter()
+    const transcriptPath = sessionTranscriptPath(session.user_id, sessionId)
+    let transcript
+    try {
+      const existing = await storage.getText(transcriptPath)
+      transcript = existing ? JSON.parse(existing) : {
+        id: sessionId,
+        user_id: session.user_id,
+        start_time: session.start_time,
+        end_time: null as string | null,
+        duration: null as number | null,
+        messages: session.messages || []
+      }
+    } catch {
+      transcript = {
+        id: sessionId,
+        user_id: session.user_id,
+        start_time: session.start_time,
+        end_time: null as string | null,
+        duration: null as number | null,
+        messages: session.messages || []
+      }
+    }
+    transcript.end_time = endTime
+    transcript.duration = duration
+    await storage.putText(transcriptPath, JSON.stringify(transcript), {
+      contentType: 'application/json'
+    })
   }
 
   /**
