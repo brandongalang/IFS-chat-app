@@ -9,6 +9,15 @@ const nextConfig = {
     // Fail the build on ESLint errors
     ignoreDuringBuilds: false,
   },
+  async redirects() {
+    return [
+      {
+        source: '/ethereal',
+        destination: '/chat',
+        permanent: false,
+      },
+    ]
+  },
 }
 
 export default nextConfig
