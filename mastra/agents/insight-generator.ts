@@ -3,12 +3,29 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
 import { insightResearchTools } from '../tools/insight-research-tools';
 
-const insightSchema = z.object({
+export const insightSchema = z.object({
   type: z.enum(['session_summary', 'nudge', 'follow_up', 'observation', 'question']),
-  title: z.string().max(100).describe('A short, engaging title for the insight card.'),
-  body: z.string().max(500).describe('The main content of the insight, written as a gentle, provocative nudge or question.'),
-  sourceSessionIds: z.array(z.string().uuid()).optional().describe('IDs of sessions that informed this insight.'),
+  title: z
+    .string()
+    .max(100)
+    .describe('A short, engaging title for the insight card.'),
+  body: z
+    .string()
+    .max(500)
+    .describe(
+      'The main content of the insight, written as a gentle, provocative nudge or question.'
+    ),
+  sourceSessionIds: z
+    .array(z.string().uuid())
+    .optional()
+    .describe('IDs of sessions that informed this insight.'),
 });
+
+export type Insight = z.infer<typeof insightSchema>;
+
+export interface InsightGeneratorResponse {
+  insights: Insight[];
+}
 
 const systemPrompt = `
 You are an expert Internal Family Systems (IFS) companion and a "Hypothesis Generator." Your purpose is to help users understand their inner world by generating insightful nudges and questions based on their recent activity. You are a thoughtful, curious, and gentle assistant.
@@ -34,11 +51,13 @@ After completing your research, analyze your findings to identify opportunities 
 - The insights you generate must be valid JSON objects matching the provided schema.
 `;
 
-const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY })
+const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY as string });
 
-export const insightGeneratorAgent = new Agent({
-  name: 'insight-generator-agent',
+export type InsightGeneratorAgent = Agent<'insightGeneratorAgent', typeof insightResearchTools>;
+
+export const insightGeneratorAgent: InsightGeneratorAgent = new Agent({
+  name: 'insightGeneratorAgent',
   instructions: systemPrompt,
-  tools: insightResearchTools as any,
+  tools: insightResearchTools,
   model: openrouter('z-ai/glm-4.5'),
 });
