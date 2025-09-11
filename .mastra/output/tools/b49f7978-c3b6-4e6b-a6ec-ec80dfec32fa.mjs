@@ -50,8 +50,8 @@ const logEvidence = createTool({
   inputSchema: logEvidenceSchema,
   execute: async ({ context }) => {
     try {
-      const { partId, evidence} = context;
-      const resolvedUserId = await resolveUserId();
+      const { partId, evidence, userId } = context;
+      const resolvedUserId = await resolveUserId(userId);
       const supabase = createSupabaseClient();
       const evidenceToAdd = Array.isArray(evidence) ? evidence : [evidence];
       devLog("logEvidence called", { partId, evidenceCount: evidenceToAdd.length, userId: resolvedUserId });
@@ -97,8 +97,8 @@ const findPatterns = createTool({
   inputSchema: findPatternsSchema,
   execute: async ({ context }) => {
     try {
-      const { sessionLimit, minConfidence, includeExistingParts } = context;
-      const resolvedUserId = await resolveUserId();
+      const { userId, sessionLimit, minConfidence, includeExistingParts } = context;
+      const resolvedUserId = await resolveUserId(userId);
       const supabase = createSupabaseClient();
       devLog("findPatterns called", {
         userId: resolvedUserId,

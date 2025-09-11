@@ -1,7 +1,6 @@
 import { createTool } from '@mastra/core'
 import { z } from 'zod'
 import { actionLogger } from '../../lib/database/action-logger'
-import type { ActionType } from '../../lib/database/action-logger'
 
 // Input schemas for rollback tools
 const getRecentActionsSchema = z.object({
@@ -42,12 +41,10 @@ const rollbackActionSchema = z.object({
 export async function getRecentActions(input: z.infer<typeof getRecentActionsSchema>) {
   try {
     const validated = getRecentActionsSchema.parse(input)
-    
-    const actions = await actionLogger.getRecentActions(
+
+    const actions = await actionLogger.getActionEvents(
       validated.userId,
       validated.limit,
-      validated.actionTypes as ActionType[],
-      validated.sessionId,
       validated.withinMinutes
     )
 

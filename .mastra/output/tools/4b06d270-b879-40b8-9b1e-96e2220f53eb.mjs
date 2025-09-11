@@ -39,11 +39,9 @@ const rollbackActionSchema = z.object({
 async function getRecentActions(input) {
   try {
     const validated = getRecentActionsSchema.parse(input);
-    const actions = await actionLogger.getRecentActions(
+    const actions = await actionLogger.getActionEvents(
       validated.userId,
       validated.limit,
-      validated.actionTypes,
-      validated.sessionId,
       validated.withinMinutes
     );
     return {

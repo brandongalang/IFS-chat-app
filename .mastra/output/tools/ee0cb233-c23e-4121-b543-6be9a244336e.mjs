@@ -1,9 +1,9 @@
 import { createTool } from '@mastra/core';
-import { z } from 'zod';
+import { i as isMemoryV2Enabled, l as logRelationshipSchema$1, g as getPartRelationshipsSchema$1, u as updatePartSchema$1, c as createEmergingPartSchema$1, a as getPartDetailSchema$1, b as getPartByIdSchema$1, s as searchPartsSchema$1 } from '../part-schemas.mjs';
 import { createServerClient } from '@supabase/ssr';
+import { z } from 'zod';
 import { r as resolveUserId, d as devLog, a as dev, b as requiresUserConfirmation } from '../dev.mjs';
 import { c as createClient, a as createAdminClient } from '../admin.mjs';
-import { i as isMemoryV2Enabled } from '../config.mjs';
 import '@supabase/supabase-js';
 
 function nowIso() {
@@ -36,22 +36,22 @@ function recordSnapshotUsage(kind, status, extra) {
   }
 }
 
-const searchPartsSchema$1 = z.object({
+const searchPartsSchema = z.object({
   query: z.string().optional().describe("Search query for part names or roles"),
   status: z.enum(["emerging", "acknowledged", "active", "integrated"]).optional().describe("Filter by part status"),
   category: z.enum(["manager", "firefighter", "exile", "unknown"]).optional().describe("Filter by part category"),
   limit: z.number().min(1).max(50).default(20).describe("Maximum number of results to return"),
   userId: z.string().uuid().optional().describe("User ID for the search (optional in development mode)")
 });
-const getPartByIdSchema$1 = z.object({
+const getPartByIdSchema = z.object({
   partId: z.string().uuid().describe("The UUID of the part to retrieve"),
   userId: z.string().uuid().optional().describe("User ID who owns the part (optional in development mode)")
 });
-const getPartDetailSchema$1 = z.object({
+const getPartDetailSchema = z.object({
   partId: z.string().uuid().describe("The UUID of the part to retrieve details for"),
   userId: z.string().uuid().optional().describe("User ID who owns the part (optional in development mode)")
 });
-const createEmergingPartSchema$1 = z.object({
+const createEmergingPartSchema = z.object({
   name: z.string().min(1).max(100).describe("Name of the emerging part"),
   evidence: z.array(z.object({
     type: z.enum(["direct_mention", "pattern", "behavior", "emotion"]),
@@ -70,7 +70,7 @@ const createEmergingPartSchema$1 = z.object({
   userId: z.string().uuid().optional().describe("User ID who owns the part (optional in development mode)"),
   userConfirmed: z.boolean().describe("Whether the user has confirmed this part exists through chat interaction")
 });
-const updatePartSchema$1 = z.object({
+const updatePartSchema = z.object({
   partId: z.string().uuid().describe("The UUID of the part to update"),
   userId: z.string().uuid().optional().describe("User ID who owns the part (optional in development mode)"),
   updates: z.object({
@@ -100,7 +100,7 @@ const updatePartSchema$1 = z.object({
   }).optional().describe("New evidence to add for this update"),
   auditNote: z.string().optional().describe("Note about why this update was made")
 });
-const getPartRelationshipsSchema$1 = z.object({
+const getPartRelationshipsSchema = z.object({
   userId: z.string().uuid().optional().describe("User ID to get relationships for (optional in development mode)"),
   partId: z.string().uuid().optional().describe("Optional: Get relationships for specific part"),
   relationshipType: z.enum(["polarized", "protector-exile", "allied"]).optional().describe("Optional: Filter by relationship type"),
@@ -108,7 +108,7 @@ const getPartRelationshipsSchema$1 = z.object({
   includePartDetails: z.boolean().default(false).describe("Include part names and status in response"),
   limit: z.number().min(1).max(50).default(20).describe("Maximum number of relationships to return")
 });
-const logRelationshipSchema$1 = z.object({
+const logRelationshipSchema = z.object({
   userId: z.string().uuid().optional().describe("User ID who owns the relationship (optional in development mode)"),
   partIds: z.array(z.string().uuid()).min(2).max(2).describe("Exactly two part IDs involved in the relationship"),
   type: z.enum(["polarized", "protector-exile", "allied"]).describe("Relationship type"),
@@ -151,8 +151,8 @@ function getSupabaseClient() {
 }
 async function searchParts(input) {
   try {
-    const validated = searchPartsSchema$1.parse(input);
-    const userId = resolveUserId();
+    const validated = searchPartsSchema.parse(input);
+    const userId = resolveUserId(validated.userId);
     const supabase = getSupabaseClient();
     devLog("searchParts called", { userId, query: validated.query });
     let query = supabase.from("parts").select("*").eq("user_id", userId).order("last_active", { ascending: false }).limit(validated.limit);
@@ -167,40 +167,26 @@ async function searchParts(input) {
     }
     const { data, error } = await query;
     if (error) {
-      return {
-        success: false,
-        error: `Database error: ${error.message}`
-      };
+      throw new Error(`Database error: ${error.message}`);
     }
-    return {
-      success: true,
-      data: data || [],
-      confidence: 1
-    };
+    return data || [];
   } catch (error) {
     const errMsg = error instanceof Error ? dev.verbose ? error.stack || error.message : error.message : "Unknown error occurred";
-    return { success: false, error: errMsg };
+    throw new Error(errMsg);
   }
 }
 async function getPartById(input) {
   try {
-    const validated = getPartByIdSchema$1.parse(input);
-    const userId = resolveUserId();
+    const validated = getPartByIdSchema.parse(input);
+    const userId = resolveUserId(validated.userId);
     const supabase = getSupabaseClient();
     devLog("getPartById called", { userId, partId: validated.partId });
     const { data, error } = await supabase.from("parts").select("*").eq("id", validated.partId).eq("user_id", userId).single();
     if (error) {
       if (error.code === "PGRST116") {
-        return {
-          success: true,
-          data: null,
-          confidence: 1
-        };
+        return null;
       }
-      return {
-        success: false,
-        error: `Database error: ${error.message}`
-      };
+      throw new Error(`Database error: ${error.message}`);
     }
     let snapshot_sections = void 0;
     if (typeof window === "undefined" && isMemoryV2Enabled() && data) {
@@ -217,34 +203,28 @@ async function getPartById(input) {
         }
       }
     }
-    return {
-      success: true,
-      data: snapshot_sections ? { ...data, snapshot_sections } : data,
-      confidence: 1
-    };
+    return snapshot_sections ? { ...data, snapshot_sections } : data;
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred"
-    };
+    const errMsg = error instanceof Error ? error.message : "Unknown error occurred";
+    throw new Error(errMsg);
   }
 }
 async function getPartDetail(input) {
   try {
-    const validated = getPartDetailSchema$1.parse(input);
-    const userId = resolveUserId();
+    const validated = getPartDetailSchema.parse(input);
+    const userId = resolveUserId(validated.userId);
     const supabase = getSupabaseClient();
     devLog("getPartDetail called", { userId, partId: validated.partId });
     const { data: part, error: partError } = await supabase.from("parts").select("*").eq("id", validated.partId).eq("user_id", userId).single();
     if (partError) {
-      return { success: false, error: `Database error (part): ${partError.message}` };
+      throw new Error(`Database error (part): ${partError.message}`);
     }
     if (!part) {
-      return { success: false, error: "Part not found" };
+      throw new Error("Part not found");
     }
     const { data: relationships, error: relationshipsError } = await supabase.from("part_relationships").select("*").eq("user_id", userId).contains("parts", [validated.partId]);
     if (relationshipsError) {
-      return { success: false, error: `Database error (relationships): ${relationshipsError.message}` };
+      throw new Error(`Database error (relationships): ${relationshipsError.message}`);
     }
     let overview_sections = void 0;
     let part_profile_sections = void 0;
@@ -295,48 +275,30 @@ async function getPartDetail(input) {
       }
     }
     return {
-      success: true,
-      data: {
-        ...part,
-        relationships: relationships || [],
-        ...overview_sections || part_profile_sections || relationship_profiles ? { snapshots: { overview_sections, part_profile_sections, relationship_profiles } } : {}
-      },
-      confidence: 1
+      ...part,
+      relationships: relationships || [],
+      ...overview_sections || part_profile_sections || relationship_profiles ? { snapshots: { overview_sections, part_profile_sections, relationship_profiles } } : {}
     };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred"
-    };
+    const errMsg = error instanceof Error ? error.message : "Unknown error occurred";
+    throw new Error(errMsg);
   }
 }
 async function createEmergingPart(input) {
   try {
-    const validated = createEmergingPartSchema$1.parse(input);
-    const userId = resolveUserId();
+    const validated = createEmergingPartSchema.parse(input);
+    const userId = resolveUserId(validated.userId);
     if (validated.evidence.length < 3) {
-      return {
-        success: false,
-        error: "Cannot create emerging part: At least 3 pieces of evidence are required",
-        confidence: 0
-      };
+      throw new Error("Cannot create emerging part: At least 3 pieces of evidence are required");
     }
     if (requiresUserConfirmation(validated.userConfirmed)) {
-      return {
-        success: false,
-        error: "Cannot create emerging part: User confirmation is required through chat interaction",
-        confidence: 0
-      };
+      throw new Error("Cannot create emerging part: User confirmation is required through chat interaction");
     }
     const supabase = getSupabaseClient();
     devLog("createEmergingPart called", { userId, partName: validated.name, evidenceCount: validated.evidence.length });
     const { data: existingPart } = await supabase.from("parts").select("id, name").eq("user_id", userId).eq("name", validated.name).single();
     if (existingPart) {
-      return {
-        success: false,
-        error: `A part named "${validated.name}" already exists for this user`,
-        confidence: 0
-      };
+      throw new Error(`A part named "${validated.name}" already exists for this user`);
     }
     const avgEvidenceConfidence = validated.evidence.reduce((sum, ev) => sum + ev.confidence, 0) / validated.evidence.length;
     const initialConfidence = Math.min(0.95, avgEvidenceConfidence * 0.8);
@@ -385,36 +347,24 @@ async function createEmergingPart(input) {
         confidence: initialConfidence
       }
     );
-    return {
-      success: true,
-      data,
-      confidence: initialConfidence
-    };
+    return data;
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred"
-    };
+    const errMsg = error instanceof Error ? error.message : "Unknown error occurred";
+    throw new Error(errMsg);
   }
 }
 async function updatePart(input) {
   try {
-    const validated = updatePartSchema$1.parse(input);
-    const userId = resolveUserId();
+    const validated = updatePartSchema.parse(input);
+    const userId = resolveUserId(validated.userId);
     const supabase = getSupabaseClient();
     devLog("updatePart called", { userId, partId: validated.partId });
     const { data: currentPart, error: fetchError } = await supabase.from("parts").select("*").eq("id", validated.partId).eq("user_id", userId).single();
     if (fetchError) {
-      return {
-        success: false,
-        error: `Failed to fetch part: ${fetchError.message}`
-      };
+      throw new Error(`Failed to fetch part: ${fetchError.message}`);
     }
     if (!currentPart) {
-      return {
-        success: false,
-        error: "Part not found or access denied"
-      };
+      throw new Error("Part not found or access denied");
     }
     const updates = {
       ...validated.updates,
@@ -493,22 +443,16 @@ async function updatePart(input) {
         auditNote: validated.auditNote
       }
     );
-    return {
-      success: true,
-      data,
-      confidence: data.confidence
-    };
+    return data;
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred"
-    };
+    const errMsg = error instanceof Error ? error.message : "Unknown error occurred";
+    throw new Error(errMsg);
   }
 }
 async function getPartRelationships(input) {
   try {
-    const validated = getPartRelationshipsSchema$1.parse(input);
-    const userId = resolveUserId();
+    const validated = getPartRelationshipsSchema.parse(input);
+    const userId = resolveUserId(validated.userId);
     const supabase = getSupabaseClient();
     devLog("getPartRelationships called", { userId, partId: validated.partId });
     let query = supabase.from("part_relationships").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(validated.limit);
@@ -520,17 +464,10 @@ async function getPartRelationships(input) {
     }
     const { data: relationships, error } = await query;
     if (error) {
-      return {
-        success: false,
-        error: `Database error: ${error.message}`
-      };
+      throw new Error(`Database error: ${error.message}`);
     }
     if (!relationships || relationships.length === 0) {
-      return {
-        success: true,
-        data: [],
-        confidence: 1
-      };
+      return [];
     }
     let filtered = relationships;
     if (validated.partId) {
@@ -550,10 +487,7 @@ async function getPartRelationships(input) {
       if (uniquePartIds.length > 0) {
         const { data: parts, error: partsError } = await supabase.from("parts").select("id, name, status").eq("user_id", userId).in("id", uniquePartIds);
         if (partsError) {
-          return {
-            success: false,
-            error: `Error fetching part details: ${partsError.message}`
-          };
+          throw new Error(`Error fetching part details: ${partsError.message}`);
         }
         partsDetails = (parts || []).reduce((acc, part) => {
           acc[part.id] = { name: part.name, status: part.status };
@@ -610,22 +544,16 @@ async function getPartRelationships(input) {
         ...snapshot_sections ? { snapshot_sections } : {}
       };
     });
-    return {
-      success: true,
-      data: formattedRelationships,
-      confidence: 1
-    };
+    return formattedRelationships;
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred"
-    };
+    const errMsg = error instanceof Error ? error.message : "Unknown error occurred";
+    throw new Error(errMsg);
   }
 }
 async function logRelationship(input) {
   try {
-    const validated = logRelationshipSchema$1.parse(input);
-    const userId = resolveUserId();
+    const validated = logRelationshipSchema.parse(input);
+    const userId = resolveUserId(validated.userId);
     const supabase = getSupabaseClient();
     const partIds = [...validated.partIds].sort();
     const nowIso = (/* @__PURE__ */ new Date()).toISOString();
@@ -643,7 +571,7 @@ async function logRelationship(input) {
     if (validated.upsert) {
       const { data: candidates, error: findErr } = await supabase.from("part_relationships").select("*").eq("user_id", userId).eq("type", validated.type).order("created_at", { ascending: false }).limit(50);
       if (findErr) {
-        return { success: false, error: `Database error (find): ${findErr.message}` };
+        throw new Error(`Database error (find): ${findErr.message}`);
       }
       existing = (candidates || []).find((r) => {
         const p = Array.isArray(r?.parts) ? r.parts : [];
@@ -688,7 +616,7 @@ async function logRelationship(input) {
           devLog("logRelationship update payload", updates);
           const { data: updatedDirect, error: updErr } = await supabase.from("part_relationships").update(updates).eq("id", existing.id).eq("user_id", userId).select("*").single();
           if (updErr || !updatedDirect) {
-            return { success: false, error: `Failed to update relationship (service role): ${updErr?.message || "unknown"}` };
+            throw new Error(`Failed to update relationship (service role): ${updErr?.message || "unknown"}`);
           }
           await supabase.from("agent_actions").insert({
             user_id: userId,
@@ -705,9 +633,9 @@ async function logRelationship(input) {
             },
             created_by: "agent"
           });
-          return { success: true, data: updatedDirect, confidence: 1 };
+          return updatedDirect;
         } catch (e) {
-          return { success: false, error: `UPDATE_BRANCH: ${e?.stack || e?.message || String(e)}` };
+          throw new Error(`UPDATE_BRANCH: ${e?.stack || e?.message || String(e)}`);
         }
       }
       try {
@@ -725,9 +653,9 @@ async function logRelationship(input) {
             partIds
           }
         );
-        return { success: true, data: updated, confidence: 1 };
+        return updated;
       } catch (e) {
-        return { success: false, error: `LOGGED_UPDATE_BRANCH: ${e?.stack || e?.message || String(e)}` };
+        throw new Error(`LOGGED_UPDATE_BRANCH: ${e?.stack || e?.message || String(e)}`);
       }
     }
     const insert = {
@@ -748,7 +676,7 @@ async function logRelationship(input) {
     if (typeof window === "undefined" && dev.enabled && serviceRoleCreate) {
       const { data: createdDirect, error: insErr } = await supabase.from("part_relationships").insert(insert).select("*").single();
       if (insErr || !createdDirect) {
-        return { success: false, error: `Failed to create relationship (service role): ${insErr?.message || "unknown"}` };
+        throw new Error(`Failed to create relationship (service role): ${insErr?.message || "unknown"}`);
       }
       await supabase.from("agent_actions").insert({
         user_id: userId,
@@ -764,7 +692,7 @@ async function logRelationship(input) {
         },
         created_by: "agent"
       });
-      return { success: true, data: createdDirect, confidence: 1 };
+      return createdDirect;
     }
     const { actionLogger } = await import('../action-logger.mjs').then(function (n) { return n.b; });
     const created = await actionLogger.loggedInsert(
@@ -778,172 +706,104 @@ async function logRelationship(input) {
         partIds
       }
     );
-    return { success: true, data: created, confidence: 1 };
+    return created;
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred"
-    };
+    const errMsg = error instanceof Error ? error.message : "Unknown error occurred";
+    throw new Error(errMsg);
   }
 }
 
-const searchPartsSchema = z.object({
-  query: z.string().optional(),
-  status: z.enum(["emerging", "acknowledged", "active", "integrated"]).optional(),
-  category: z.enum(["manager", "firefighter", "exile", "unknown"]).optional(),
-  limit: z.number().min(1).max(50).default(20)
-});
-const getPartByIdSchema = z.object({
-  partId: z.string().uuid()
-});
-const getPartDetailSchema = z.object({
-  partId: z.string().uuid()
-});
-const createEmergingPartSchema = z.object({
-  name: z.string().min(1).max(100),
-  evidence: z.array(z.object({
-    type: z.enum(["direct_mention", "pattern", "behavior", "emotion"]),
-    content: z.string(),
-    confidence: z.number().min(0).max(1),
-    sessionId: z.string().uuid(),
-    timestamp: z.string().datetime()
-  })).min(3),
-  category: z.enum(["manager", "firefighter", "exile", "unknown"]).optional().default("unknown"),
-  age: z.number().min(0).max(100).optional(),
-  role: z.string().optional(),
-  triggers: z.array(z.string()).optional().default([]),
-  emotions: z.array(z.string()).optional().default([]),
-  beliefs: z.array(z.string()).optional().default([]),
-  somaticMarkers: z.array(z.string()).optional().default([]),
-  userConfirmed: z.boolean()
-});
-const updatePartSchema = z.object({
-  partId: z.string().uuid(),
-  updates: z.object({
-    name: z.string().min(1).max(100).optional(),
-    status: z.enum(["emerging", "acknowledged", "active", "integrated"]).optional(),
-    category: z.enum(["manager", "firefighter", "exile", "unknown"]).optional(),
-    age: z.number().min(0).max(100).optional(),
-    role: z.string().optional(),
-    triggers: z.array(z.string()).optional(),
-    emotions: z.array(z.string()).optional(),
-    beliefs: z.array(z.string()).optional(),
-    somaticMarkers: z.array(z.string()).optional(),
-    visualization: z.object({ emoji: z.string(), color: z.string() }).optional(),
-    confidenceBoost: z.number().min(0).max(1).optional(),
-    last_charged_at: z.string().datetime().optional(),
-    last_charge_intensity: z.number().min(0).max(1).optional()
-  }),
-  evidence: z.object({
-    type: z.enum(["direct_mention", "pattern", "behavior", "emotion"]),
-    content: z.string(),
-    confidence: z.number().min(0).max(1),
-    sessionId: z.string().uuid(),
-    timestamp: z.string().datetime()
-  }).optional(),
-  auditNote: z.string().optional()
-});
-const getPartRelationshipsSchema = z.object({
-  partId: z.string().uuid().optional(),
-  relationshipType: z.enum(["polarized", "protector-exile", "allied"]).optional(),
-  status: z.enum(["active", "healing", "resolved"]).optional(),
-  includePartDetails: z.boolean().default(false),
-  limit: z.number().min(1).max(50).default(20)
-});
-const logRelationshipSchema = z.object({
-  partIds: z.array(z.string().uuid()).min(2).max(2),
-  type: z.enum(["polarized", "protector-exile", "allied"]),
-  description: z.string().optional(),
-  issue: z.string().optional(),
-  commonGround: z.string().optional(),
-  status: z.enum(["active", "healing", "resolved"]).optional(),
-  polarizationLevel: z.number().min(0).max(1).optional(),
-  dynamic: z.object({
-    observation: z.string().min(1),
-    context: z.string().min(1),
-    polarizationChange: z.number().min(-1).max(1).optional(),
-    timestamp: z.string().datetime().optional()
-  }).optional(),
-  lastAddressed: z.string().datetime().optional(),
-  upsert: z.boolean().default(true)
-});
 function getPartTools(userId) {
   return {
     searchParts: createTool({
       id: "searchParts",
       description: "Search for parts based on query, status, or category",
-      inputSchema: searchPartsSchema,
+      inputSchema: searchPartsSchema$1,
       execute: async ({ context }) => {
         const secureContext = { ...context, userId };
-        const result = await searchParts(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await searchParts(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       }
     }),
     getPartById: createTool({
       id: "getPartById",
       description: "Get a specific part by its ID",
-      inputSchema: getPartByIdSchema,
+      inputSchema: getPartByIdSchema$1,
       execute: async ({ context }) => {
         const secureContext = { ...context, userId };
-        const result = await getPartById(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await getPartById(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       }
     }),
     getPartDetail: createTool({
       id: "getPartDetail",
       description: "Retrieves a complete dossier for a given part, including core attributes, relationships, and recent evidence.",
-      inputSchema: getPartDetailSchema,
+      inputSchema: getPartDetailSchema$1,
       execute: async ({ context }) => {
         const secureContext = { ...context, userId };
-        const result = await getPartDetail(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await getPartDetail(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       }
     }),
     createEmergingPart: createTool({
       id: "createEmergingPart",
       description: "Create a new emerging part (requires 3+ evidence and user confirmation)",
-      inputSchema: createEmergingPartSchema,
+      inputSchema: createEmergingPartSchema$1,
       execute: async ({ context }) => {
         const secureContext = { ...context, userId };
-        const result = await createEmergingPart(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await createEmergingPart(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       }
     }),
     updatePart: createTool({
       id: "updatePart",
       description: "Update an existing part with confidence increment and audit trail",
-      inputSchema: updatePartSchema,
+      inputSchema: updatePartSchema$1,
       execute: async ({ context }) => {
         const secureContext = { ...context, userId };
-        const result = await updatePart(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await updatePart(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       }
     }),
     getPartRelationships: createTool({
       id: "getPartRelationships",
       description: "Get part relationships with optional filtering by part, type, status, and include part details",
-      inputSchema: getPartRelationshipsSchema,
+      inputSchema: getPartRelationshipsSchema$1,
       execute: async ({ context }) => {
         const secureContext = { ...context, userId };
-        const result = await getPartRelationships(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await getPartRelationships(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       }
     }),
     logRelationship: createTool({
       id: "logRelationship",
       description: "Create or update a relationship between two parts; optionally append a dynamic observation and adjust polarization.",
-      inputSchema: logRelationshipSchema,
+      inputSchema: logRelationshipSchema$1,
       execute: async ({ context }) => {
         const secureContext = { ...context, userId };
-        const result = await logRelationship(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await logRelationship(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       }
     })
   };

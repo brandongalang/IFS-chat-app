@@ -19,7 +19,7 @@ const searchConversationsSchema = z.object({
 async function searchConversations(input) {
   try {
     const validated = searchConversationsSchema.parse(input);
-    const userId = resolveUserId();
+    const userId = resolveUserId(validated.userId);
     const supabase = getSupabaseClient();
     let queryBuilder = supabase.from("sessions").select("id, messages, created_at").eq("user_id", userId).order("created_at", { ascending: false });
     if (validated.timePeriod !== "all_time") {

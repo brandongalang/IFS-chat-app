@@ -82,6 +82,23 @@ class DatabaseActionLogger {
     return [];
   }
   /**
+   * Read recent action events from the events ledger
+   */
+  async getActionEvents(userId, limit = 10, withinMinutes = 30) {
+    const cutoff = new Date(Date.now() - withinMinutes * 60 * 1e3).toISOString();
+    const query = this.supabase.from("events").select("event_id, ts, rationale").eq("user_id", userId).eq("type", "action").gte("ts", cutoff).order("ts", { ascending: false }).limit(limit);
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []).map((row) => ({
+      id: row.event_id,
+      summary: row.rationale || "Agent action",
+      timestamp: row.ts,
+      canRollback: false,
+      actionType: "update_part_attributes",
+      metadata: {}
+    }));
+  }
+  /**
    * Rollback an action by description/summary
    */
   async rollbackByDescription(_userId, description, _reason = "Agent rollback", _withinMinutes = 30) {
@@ -188,6 +205,9 @@ class NoopActionLogger {
     return { ...updates, id };
   }
   async getRecentActions() {
+    return [];
+  }
+  async getActionEvents() {
     return [];
   }
   async rollbackByDescription(_userId, description) {

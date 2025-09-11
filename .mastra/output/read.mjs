@@ -1,5 +1,6 @@
 import { g as getStorageAdapter, r as relationshipProfilePath, b as listSections, u as userOverviewPath, a as partProfilePath } from './md.mjs';
-import './config.mjs';
+import './part-schemas.mjs';
+import 'zod';
 import './canonicalize.mjs';
 import 'node:crypto';
 

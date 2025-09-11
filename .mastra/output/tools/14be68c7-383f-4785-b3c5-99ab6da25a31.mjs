@@ -57,7 +57,7 @@ const getRecentInsightsSchema = z.object({
 async function getRecentSessions(input) {
   try {
     const validated = getRecentSessionsSchema.parse(input);
-    const userId = resolveUserId();
+    const userId = resolveUserId(validated.userId);
     const supabase = getSupabaseClient();
     const lookbackDate = /* @__PURE__ */ new Date();
     lookbackDate.setDate(lookbackDate.getDate() - validated.lookbackDays);
@@ -72,7 +72,7 @@ async function getRecentSessions(input) {
 async function getActiveParts(input) {
   try {
     const validated = getActivePartsSchema.parse(input);
-    const userId = resolveUserId();
+    const userId = resolveUserId(validated.userId);
     const supabase = getSupabaseClient();
     const { data, error } = await supabase.from("parts").select("*").eq("user_id", userId).order("last_active", { ascending: false, nullsFirst: false }).limit(validated.limit);
     if (error) return { success: false, error: `Database error: ${error.message}` };
@@ -85,7 +85,7 @@ async function getActiveParts(input) {
 async function getPolarizedRelationships(input) {
   try {
     const validated = getPolarizedRelationshipsSchema.parse(input);
-    const userId = resolveUserId();
+    const userId = resolveUserId(validated.userId);
     const supabase = getSupabaseClient();
     const { data, error } = await supabase.from("part_relationships").select("*").eq("user_id", userId).eq("type", "polarized").order("polarization_level", { ascending: false }).limit(validated.limit);
     if (error) return { success: false, error: `Database error: ${error.message}` };
@@ -98,7 +98,7 @@ async function getPolarizedRelationships(input) {
 async function getRecentInsights(input) {
   try {
     const validated = getRecentInsightsSchema.parse(input);
-    const userId = resolveUserId();
+    const userId = resolveUserId(validated.userId);
     const supabase = getSupabaseClient();
     const lookbackDate = /* @__PURE__ */ new Date();
     lookbackDate.setDate(lookbackDate.getDate() - validated.lookbackDays);
