@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { Message as ChatMessage } from "@/types/chat"
 import { useRouter } from "next/navigation"
 import { StreamingText } from "./StreamingText"
+import { TaskOverlay } from "./TaskOverlay"
 
 // Minimal, bubble-less chat presentation for /chat/ethereal
 export function EtherealChat() {
@@ -53,6 +54,7 @@ export function EtherealChat() {
 
   return (
     <div className="absolute inset-0 flex flex-col">
+      <TaskOverlay />
       {/* Background image (optional) with gradient fallback */}
       <BackgroundImageLayer />
       <GradientBackdrop />
