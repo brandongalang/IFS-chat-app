@@ -396,3 +396,14 @@ The system includes a sophisticated insights generation system that demonstrates
 
 
 ## 🎨 Advanced Agent Development Patterns
+
+## 🔐 Secret Scanning
+
+This repository uses [gitleaks](https://github.com/gitleaks/gitleaks) to prevent committing secrets.
+Every pull request runs a gitleaks scan in CI and the build fails if any secrets are detected.
+
+Run a scan locally before pushing changes:
+
+```bash
+gitleaks detect --source=. --config=.gitleaks.toml --no-git
+```
