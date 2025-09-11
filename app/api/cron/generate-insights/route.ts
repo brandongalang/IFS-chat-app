@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { mastra } from '@/mastra';
+import { getMastra } from '@/mastra';
 import { createClient } from '@/lib/supabase/server';
 import type { Json } from '@/lib/types/database';
 
@@ -83,6 +83,7 @@ export async function GET(request: Request) {
     }
 
     console.log(`[Cron] Processing user ${userId}.`);
+    const mastra = getMastra();
     const insightWorkflow = mastra.getWorkflow('generateInsightWorkflow');
     const workflowRun = await insightWorkflow.execute({
       input: { userId },
