@@ -41,21 +41,21 @@ export async function updatePartDetails(formData: FormData) {
       color: '#6B7280',
   }
 
-  const result = await updatePart({
-    partId,
-    updates: {
-      name,
-      visualization: newVisualization,
-    },
-    auditNote: 'Updated name and emoji from Garden UI',
-  })
+  try {
+    const updated = await updatePart({
+      partId,
+      updates: {
+        name,
+        visualization: newVisualization,
+      },
+      auditNote: 'Updated name and emoji from Garden UI',
+    })
 
-  if (result.success) {
     // Revalidate the path to ensure the page is updated with the new data
     revalidatePath(`/garden/${partId}`)
     revalidatePath('/garden') // Also revalidate the main garden page
-    return { success: true, data: result.data }
-  } else {
-    return { success: false, error: result.error }
+    return { success: true, data: updated }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 }

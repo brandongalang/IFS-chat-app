@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/dev'
-import type { Database, PartRow, PartInsert, PartUpdate, PartEvidence, PartRelationshipRow, PartRelationshipInsert, PartRelationshipUpdate, RelationshipType, RelationshipStatus, ToolResult, RelationshipDynamic } from '../types/database'
+import type { Database, PartRow, PartInsert, PartUpdate, PartEvidence, PartRelationshipRow, PartRelationshipInsert, PartRelationshipUpdate, RelationshipType, RelationshipStatus, RelationshipDynamic } from '../types/database'
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isMemoryV2Enabled } from '@/lib/memory/config'
@@ -147,7 +147,7 @@ function getSupabaseClient() {
 /**
  * Search for parts based on various criteria
  */
-export async function searchParts(input: z.infer<typeof searchPartsSchema>): Promise<ToolResult<PartRow[]>> {
+export async function searchParts(input: z.infer<typeof searchPartsSchema>): Promise<PartRow[]> {
   try {
     const validated = searchPartsSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -166,11 +166,11 @@ export async function searchParts(input: z.infer<typeof searchPartsSchema>): Pro
     if (validated.query) {
       query = query.or(`name.ilike.%${validated.query}%,role.ilike.%${validated.query}%`)
     }
-    
+
     if (validated.status) {
       query = query.eq('status', validated.status)
     }
-    
+
     if (validated.category) {
       query = query.eq('category', validated.category)
     }
@@ -178,27 +178,20 @@ export async function searchParts(input: z.infer<typeof searchPartsSchema>): Pro
     const { data, error } = await query
 
     if (error) {
-      return {
-        success: false,
-        error: `Database error: ${error.message}`
-      }
+      throw new Error(`Database error: ${error.message}`)
     }
 
-    return {
-      success: true,
-      data: data || [],
-      confidence: 1.0
-    }
+    return data || []
   } catch (error) {
     const errMsg = error instanceof Error ? (dev.verbose ? (error.stack || error.message) : error.message) : 'Unknown error occurred'
-    return { success: false, error: errMsg }
+    throw new Error(errMsg)
   }
 }
 
 /**
  * Get a specific part by ID
  */
-export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Promise<ToolResult<any>> {
+export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Promise<any | null> {
   try {
     const validated = getPartByIdSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -215,16 +208,9 @@ export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Pro
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return {
-          success: true,
-          data: null,
-          confidence: 1.0
-        }
+        return null
       }
-      return {
-        success: false,
-        error: `Database error: ${error.message}`
-      }
+      throw new Error(`Database error: ${error.message}`)
     }
 
     // Optionally enrich with snapshot sections (Memory V2 — server-only)
@@ -241,23 +227,17 @@ export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Pro
       }
     }
 
-    return {
-      success: true,
-      data: snapshot_sections ? { ...data, snapshot_sections } : data,
-      confidence: 1.0
-    }
+    return snapshot_sections ? { ...data, snapshot_sections } : data
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    }
+    const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
+    throw new Error(errMsg)
   }
 }
 
 /**
  * Get a specific part by ID along with its relationships
  */
-export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>): Promise<ToolResult<any>> {
+export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>): Promise<any> {
   try {
     const validated = getPartDetailSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -274,10 +254,10 @@ export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>):
       .single()
 
     if (partError) {
-      return { success: false, error: `Database error (part): ${partError.message}` }
+      throw new Error(`Database error (part): ${partError.message}`)
     }
     if (!part) {
-      return { success: false, error: 'Part not found' }
+      throw new Error('Part not found')
     }
 
     // Fetch relationships involving this part
@@ -288,7 +268,7 @@ export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>):
       .contains('parts', [validated.partId])
 
     if (relationshipsError) {
-      return { success: false, error: `Database error (relationships): ${relationshipsError.message}` }
+      throw new Error(`Database error (relationships): ${relationshipsError.message}`)
     }
 
     // Optionally enrich with snapshot sections (Memory V2 — server-only)
@@ -329,48 +309,34 @@ export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>):
     }
 
     return {
-      success: true,
-      data: {
-        ...part,
-        relationships: relationships || [],
-        ...(overview_sections || part_profile_sections || relationship_profiles
-          ? { snapshots: { overview_sections, part_profile_sections, relationship_profiles } }
-          : {})
-      },
-      confidence: 1.0
+      ...part,
+      relationships: relationships || [],
+      ...(overview_sections || part_profile_sections || relationship_profiles
+        ? { snapshots: { overview_sections, part_profile_sections, relationship_profiles } }
+        : {})
     }
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    }
+    const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
+    throw new Error(errMsg)
   }
 }
 
 /**
  * Create an emerging part with 3+ evidence rule enforcement
  */
-export async function createEmergingPart(input: z.infer<typeof createEmergingPartSchema>): Promise<ToolResult<PartRow>> {
+export async function createEmergingPart(input: z.infer<typeof createEmergingPartSchema>): Promise<PartRow> {
   try {
     const validated = createEmergingPartSchema.parse(input)
     const userId = resolveUserId(validated.userId)
-    
+
     // Enforce 3+ evidence rule
     if (validated.evidence.length < 3) {
-      return {
-        success: false,
-        error: 'Cannot create emerging part: At least 3 pieces of evidence are required',
-        confidence: 0
-      }
+      throw new Error('Cannot create emerging part: At least 3 pieces of evidence are required')
     }
 
     // Check user confirmation (always required - should happen through chat)
     if (requiresUserConfirmation(validated.userConfirmed)) {
-      return {
-        success: false,
-        error: 'Cannot create emerging part: User confirmation is required through chat interaction',
-        confidence: 0
-      }
+      throw new Error('Cannot create emerging part: User confirmation is required through chat interaction')
     }
 
     const supabase = getSupabaseClient()
@@ -386,11 +352,7 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
       .single()
 
     if (existingPart) {
-      return {
-        success: false,
-        error: `A part named "${validated.name}" already exists for this user`,
-        confidence: 0
-      }
+      throw new Error(`A part named "${validated.name}" already exists for this user`)
     }
 
     // Calculate initial confidence based on evidence quality
@@ -446,23 +408,17 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
       }
     )
 
-    return {
-      success: true,
-      data,
-      confidence: initialConfidence
-    }
+    return data
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    }
+    const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
+    throw new Error(errMsg)
   }
 }
 
 /**
  * Update a part with confidence increment and audit trail
  */
-export async function updatePart(input: z.infer<typeof updatePartSchema>): Promise<ToolResult<PartRow>> {
+export async function updatePart(input: z.infer<typeof updatePartSchema>): Promise<PartRow> {
   try {
     const validated = updatePartSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -479,17 +435,11 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
       .single()
 
     if (fetchError) {
-      return {
-        success: false,
-        error: `Failed to fetch part: ${fetchError.message}`
-      }
+      throw new Error(`Failed to fetch part: ${fetchError.message}`)
     }
 
     if (!currentPart) {
-      return {
-        success: false,
-        error: 'Part not found or access denied'
-      }
+      throw new Error('Part not found or access denied')
     }
 
     // Prepare update object
@@ -587,23 +537,17 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
       }
     )
 
-    return {
-      success: true,
-      data,
-      confidence: data.confidence
-    }
+    return data
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    }
+    const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
+    throw new Error(errMsg)
   }
 }
 
 /**
  * Get part relationships with optional filtering and part details
  */
-export async function getPartRelationships(input: z.infer<typeof getPartRelationshipsSchema>): Promise<ToolResult<Array<any>>> {
+export async function getPartRelationships(input: z.infer<typeof getPartRelationshipsSchema>): Promise<Array<any>> {
   try {
     const validated = getPartRelationshipsSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -632,18 +576,11 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
     const { data: relationships, error } = await query
 
     if (error) {
-      return {
-        success: false,
-        error: `Database error: ${error.message}`
-      }
+      throw new Error(`Database error: ${error.message}`)
     }
 
     if (!relationships || relationships.length === 0) {
-      return {
-        success: true,
-        data: [],
-        confidence: 1.0
-      }
+      return []
     }
 
     // Optional client-side filter by partId
@@ -658,14 +595,14 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
 
     // If part details are requested, fetch them efficiently
     let partsDetails: Record<string, { name: string; status: string }> = {}
-    
+
     if (validated.includePartDetails) {
       // Get all unique part IDs from all relationships
       const allPartIds = filtered.reduce((acc, rel) => {
         const partIds = Array.isArray(rel.parts) ? rel.parts : []
         return [...acc, ...partIds]
       }, [] as string[])
-      
+
       const uniquePartIds = [...new Set(allPartIds)]
 
       if (uniquePartIds.length > 0) {
@@ -676,10 +613,7 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
           .in('id', uniquePartIds)
 
         if (partsError) {
-          return {
-            success: false,
-            error: `Error fetching part details: ${partsError.message}`
-          }
+          throw new Error(`Error fetching part details: ${partsError.message}`)
         }
 
         // Create lookup map
@@ -715,7 +649,7 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
     const formattedRelationships = filtered.map((rel, idx) => {
       const partIds = Array.isArray(rel.parts) ? rel.parts : []
       const snapshot_sections = relSectionMaps ? relSectionMaps[idx] : undefined
-      
+
       return {
         id: rel.id,
         type: rel.type,
@@ -739,23 +673,17 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
       }
     })
 
-    return {
-      success: true,
-      data: formattedRelationships,
-      confidence: 1.0
-    }
+    return formattedRelationships
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    }
+    const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
+    throw new Error(errMsg)
   }
 }
 
 /**
  * Create or update a part relationship, optionally appending a dynamic observation
  */
-export async function logRelationship(input: z.infer<typeof logRelationshipSchema>): Promise<ToolResult<PartRelationshipRow>> {
+export async function logRelationship(input: z.infer<typeof logRelationshipSchema>): Promise<PartRelationshipRow> {
   try {
     const validated = logRelationshipSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -787,7 +715,7 @@ export async function logRelationship(input: z.infer<typeof logRelationshipSchem
         .order('created_at', { ascending: false })
         .limit(50)
       if (findErr) {
-        return { success: false, error: `Database error (find): ${findErr.message}` }
+        throw new Error(`Database error (find): ${findErr.message}`)
       }
       existing = (candidates || []).find((r: any) => {
         const p = Array.isArray(r?.parts) ? (r.parts as string[]) : []
@@ -849,7 +777,7 @@ const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
             .select('*')
             .single()
           if (updErr || !updatedDirect) {
-            return { success: false, error: `Failed to update relationship (service role): ${updErr?.message || 'unknown'}` }
+            throw new Error(`Failed to update relationship (service role): ${updErr?.message || 'unknown'}`)
           }
 
           await supabase.from('agent_actions').insert({
@@ -868,9 +796,9 @@ const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
             created_by: 'agent'
           })
 
-          return { success: true, data: updatedDirect as any, confidence: 1.0 }
+          return updatedDirect as any
         } catch (e: any) {
-          return { success: false, error: `UPDATE_BRANCH: ${e?.stack || e?.message || String(e)}` }
+          throw new Error(`UPDATE_BRANCH: ${e?.stack || e?.message || String(e)}`)
         }
       }
 
@@ -889,10 +817,9 @@ const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
             partIds
           }
         )
-
-        return { success: true, data: updated, confidence: 1.0 }
+        return updated
       } catch (e: any) {
-        return { success: false, error: `LOGGED_UPDATE_BRANCH: ${e?.stack || e?.message || String(e)}` }
+        throw new Error(`LOGGED_UPDATE_BRANCH: ${e?.stack || e?.message || String(e)}`)
       }
     }
 
@@ -921,7 +848,7 @@ const serviceRoleCreate = process.env.SUPABASE_SERVICE_ROLE_KEY
         .select('*')
         .single()
       if (insErr || !createdDirect) {
-        return { success: false, error: `Failed to create relationship (service role): ${insErr?.message || 'unknown'}` }
+        throw new Error(`Failed to create relationship (service role): ${insErr?.message || 'unknown'}`)
       }
 
       await supabase.from('agent_actions').insert({
@@ -939,7 +866,7 @@ const serviceRoleCreate = process.env.SUPABASE_SERVICE_ROLE_KEY
         created_by: 'agent'
       })
 
-      return { success: true, data: createdDirect as any, confidence: 1.0 }
+      return createdDirect as any
     }
 
     const { actionLogger } = await import('../database/action-logger')
@@ -955,12 +882,10 @@ const serviceRoleCreate = process.env.SUPABASE_SERVICE_ROLE_KEY
       }
     )
 
-    return { success: true, data: created, confidence: 1.0 }
+    return created
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    }
+    const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
+    throw new Error(errMsg)
   }
 }
 

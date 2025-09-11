@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { Database, PartRow, ToolResult, PartRelationshipRow } from '@/lib/types/database'
+import type { Database, PartRow, PartRelationshipRow } from '@/lib/types/database'
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
 
 function getSupabaseClient() {
@@ -28,7 +28,7 @@ const getPartRelationshipsSchema = z.object({
   limit: z.number().min(1).max(50).default(20),
 })
 
-export async function searchParts(input: z.infer<typeof searchPartsSchema>): Promise<ToolResult<PartRow[]>> {
+export async function searchParts(input: z.infer<typeof searchPartsSchema>): Promise<PartRow[]> {
   try {
     const validated = searchPartsSchema.parse(input)
     const supabase = getSupabaseClient()
@@ -50,15 +50,15 @@ export async function searchParts(input: z.infer<typeof searchPartsSchema>): Pro
     }
 
     const { data, error } = await query
-    if (error) return { success: false, error: `Database error: ${error.message}` }
+    if (error) throw new Error(`Database error: ${error.message}`)
 
-    return { success: true, data: (data as any) || [], confidence: 1.0 }
+    return (data as any) || []
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' }
+    throw error instanceof Error ? error : new Error('Unknown error occurred')
   }
 }
 
-export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Promise<ToolResult<PartRow | null>> {
+export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Promise<PartRow | null> {
   try {
     const validated = getPartByIdSchema.parse(input)
     const supabase = getSupabaseClient()
@@ -71,18 +71,18 @@ export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Pro
 
     if (error) {
       if ((error as any).code === 'PGRST116') {
-        return { success: true, data: null, confidence: 1.0 }
+        return null
       }
-      return { success: false, error: `Database error: ${error.message}` }
+      throw new Error(`Database error: ${error.message}`)
     }
 
-    return { success: true, data: data as any, confidence: 1.0 }
+    return data as any
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' }
+    throw error instanceof Error ? error : new Error('Unknown error occurred')
   }
 }
 
-export async function getPartRelationships(input: z.infer<typeof getPartRelationshipsSchema>): Promise<ToolResult<Array<any>>> {
+export async function getPartRelationships(input: z.infer<typeof getPartRelationshipsSchema>): Promise<Array<any>> {
   try {
     const validated = getPartRelationshipsSchema.parse(input)
     const supabase = getSupabaseClient()
@@ -101,7 +101,7 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
     }
 
     const { data, error } = await query
-    if (error) return { success: false, error: `Database error: ${error.message}` }
+    if (error) throw new Error(`Database error: ${error.message}`)
 
     let relationships = (data || []) as any[]
 
@@ -153,9 +153,9 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
       }
     })
 
-    return { success: true, data: formatted, confidence: 1.0 }
+    return formatted
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' }
+    throw error instanceof Error ? error : new Error('Unknown error occurred')
   }
 }
 
