@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { track } from '@/lib/analytics';
 import { 
   CompletionRequest, 
   CompletionResponse 
@@ -98,17 +99,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to complete onboarding' }, { status: 500 });
     }
 
-    // TODO: Trigger user memory synthesis
-    // This will be implemented in a future task
+    // Trigger user memory synthesis; failures are non-fatal
     try {
       await synthesizeOnboardingMemories(user.id);
     } catch (memoryError) {
-      console.warn('Failed to synthesize onboarding memories:', memoryError);
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Failed to synthesize onboarding memories:', memoryError);
+      }
       // Don't fail the completion for memory synthesis issues
     }
 
-    // TODO: Track analytics event
-    // await trackEvent('onboarding_completed', { userId: user.id, duration: ... });
+    // Track onboarding completion analytics
+    track('onboarding_completed', { userId: user.id });
 
     const response: CompletionResponse = {
       ok: true,
@@ -212,13 +214,8 @@ async function validateOnboardingCompletion(
  * Placeholder implementation - will be expanded in future task
  */
 async function synthesizeOnboardingMemories(userId: string): Promise<void> {
-  // TODO: Implement user memory synthesis
-  // This will read the user's responses and create memory entries like:
-  // - onboarding:v1:themes (top themes with scores)
-  // - onboarding:v1:somatic (body stress locations)
-  // - onboarding:v1:protections (what parts are protecting from)
-  // - onboarding:v1:beliefs (core beliefs from free text)
-  // - onboarding:v1:self_compassion (supportive message to parts)
-  
-  console.log(`TODO: Synthesize onboarding memories for user ${userId}`);
+  // Placeholder: read onboarding responses and create memory entries
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`Synthesize onboarding memories for user ${userId}`);
+  }
 }
