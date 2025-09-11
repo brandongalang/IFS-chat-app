@@ -16,17 +16,8 @@ export interface Message {
   content: string;
   timestamp: number;
   persona?: 'claude' | 'default';
-  tool?: ToolCall; // deprecated: replaced by server-driven TaskEvent UI
   streaming?: boolean;
   tasks?: TaskEvent[]; // server-driven tasks for this assistant message
-}
-
-export interface ToolCall {
-  name: string;
-  summary: string;
-  inputs?: Record<string, any>;
-  details?: string;
-  rawJson?: any;
 }
 
 export interface ChatState {

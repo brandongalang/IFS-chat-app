@@ -6,12 +6,16 @@ import { searchParts, getPartRelationships } from '@/lib/data/parts-lite'
 import type { PartRow, PartRelationshipRow, PartCategory, RelationshipType } from '@/lib/types/database'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import type { ForceGraphProps } from 'react-force-graph-2d'
 
 // Dynamically import the ForceGraph2D component to avoid SSR issues
-const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
-  ssr: false,
-  loading: () => <Skeleton className="w-full h-[600px] rounded-lg" />,
-})
+const ForceGraph2D = dynamic<ForceGraphProps<GraphNode, GraphLink>>(
+  () => import('react-force-graph-2d'),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="w-full h-[600px] rounded-lg" />,
+  }
+)
 
 interface GraphNode {
   id: string;
@@ -175,7 +179,7 @@ export default function GardenPage() {
     return { nodes, links }
   }, [parts, relationships])
 
-  const handleNodeClick = useCallback((node: { id?: string | number }, _event: MouseEvent) => {
+  const handleNodeClick = useCallback((node: GraphNode, _event: MouseEvent) => {
     const id = node.id
     if (id != null) window.location.href = `/garden/${String(id)}`
   }, []);
@@ -218,7 +222,7 @@ export default function GardenPage() {
               }}
               linkWidth={(link: object) => ((link as GraphLink).type === 'protector-exile' ? 3 : 1)}
               linkLineDash={(link: object) => ((link as GraphLink).type === 'polarized' ? [4, 2] : [])}
-              nodeCanvasObject={(node, ctx, globalScale) => handleDrawNode(node as GraphNode, ctx, globalScale)}
+              nodeCanvasObject={(node, ctx, globalScale) => handleDrawNode(node, ctx, globalScale)}
             />
           </Card>
         )}

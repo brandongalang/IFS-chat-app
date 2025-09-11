@@ -9,98 +9,14 @@ import {
   logRelationship,
 } from '@/lib/data/parts-server'
 import {
-  // reuse schemas from part-tools via type inference
-} from './part-tools'
-import { z } from 'zod'
-
-// Re-declare schemas with zod to satisfy createTool inputs without importing @mastra/core in client modules.
-// These must match the shapes in part-tools.ts
-const searchPartsSchema = z.object({
-  query: z.string().optional(),
-  status: z.enum(['emerging', 'acknowledged', 'active', 'integrated']).optional(),
-  category: z.enum(['manager', 'firefighter', 'exile', 'unknown']).optional(),
-  limit: z.number().min(1).max(50).default(20),
-})
-
-const getPartByIdSchema = z.object({
-  partId: z.string().uuid(),
-})
-
-const getPartDetailSchema = z.object({
-  partId: z.string().uuid(),
-})
-
-const createEmergingPartSchema = z.object({
-  name: z.string().min(1).max(100),
-  evidence: z.array(z.object({
-    type: z.enum(['direct_mention', 'pattern', 'behavior', 'emotion']),
-    content: z.string(),
-    confidence: z.number().min(0).max(1),
-    sessionId: z.string().uuid(),
-    timestamp: z.string().datetime()
-  })).min(3),
-  category: z.enum(['manager', 'firefighter', 'exile', 'unknown']).optional().default('unknown'),
-  age: z.number().min(0).max(100).optional(),
-  role: z.string().optional(),
-  triggers: z.array(z.string()).optional().default([]),
-  emotions: z.array(z.string()).optional().default([]),
-  beliefs: z.array(z.string()).optional().default([]),
-  somaticMarkers: z.array(z.string()).optional().default([]),
-  userConfirmed: z.boolean(),
-})
-
-const updatePartSchema = z.object({
-  partId: z.string().uuid(),
-  updates: z.object({
-    name: z.string().min(1).max(100).optional(),
-    status: z.enum(['emerging', 'acknowledged', 'active', 'integrated']).optional(),
-    category: z.enum(['manager', 'firefighter', 'exile', 'unknown']).optional(),
-    age: z.number().min(0).max(100).optional(),
-    role: z.string().optional(),
-    triggers: z.array(z.string()).optional(),
-    emotions: z.array(z.string()).optional(),
-    beliefs: z.array(z.string()).optional(),
-    somaticMarkers: z.array(z.string()).optional(),
-    visualization: z.object({ emoji: z.string(), color: z.string() }).optional(),
-    confidenceBoost: z.number().min(0).max(1).optional(),
-    last_charged_at: z.string().datetime().optional(),
-    last_charge_intensity: z.number().min(0).max(1).optional(),
-  }),
-  evidence: z.object({
-    type: z.enum(['direct_mention', 'pattern', 'behavior', 'emotion']),
-    content: z.string(),
-    confidence: z.number().min(0).max(1),
-    sessionId: z.string().uuid(),
-    timestamp: z.string().datetime()
-  }).optional(),
-  auditNote: z.string().optional(),
-})
-
-const getPartRelationshipsSchema = z.object({
-  partId: z.string().uuid().optional(),
-  relationshipType: z.enum(['polarized', 'protector-exile', 'allied']).optional(),
-  status: z.enum(['active', 'healing', 'resolved']).optional(),
-  includePartDetails: z.boolean().default(false),
-  limit: z.number().min(1).max(50).default(20),
-})
-
-const logRelationshipSchema = z.object({
-  partIds: z.array(z.string().uuid()).min(2).max(2),
-  type: z.enum(['polarized', 'protector-exile', 'allied']),
-  description: z.string().optional(),
-  issue: z.string().optional(),
-  commonGround: z.string().optional(),
-  status: z.enum(['active', 'healing', 'resolved']).optional(),
-  polarizationLevel: z.number().min(0).max(1).optional(),
-  dynamic: z.object({
-    observation: z.string().min(1),
-    context: z.string().min(1),
-    polarizationChange: z.number().min(-1).max(1).optional(),
-    timestamp: z.string().datetime().optional(),
-  }).optional(),
-  lastAddressed: z.string().datetime().optional(),
-  upsert: z.boolean().default(true),
-})
+  searchPartsSchema,
+  getPartByIdSchema,
+  getPartDetailSchema,
+  createEmergingPartSchema,
+  updatePartSchema,
+  getPartRelationshipsSchema,
+  logRelationshipSchema,
+} from './part-schemas'
 
 
 export function getPartTools(userId?: string) {
@@ -111,9 +27,11 @@ export function getPartTools(userId?: string) {
       inputSchema: searchPartsSchema,
       execute: async ({ context }: any) => {
         const secureContext = { ...context, userId };
-        const result = await searchParts(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await searchParts(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       },
     }),
     getPartById: createTool({
@@ -122,9 +40,11 @@ export function getPartTools(userId?: string) {
       inputSchema: getPartByIdSchema,
       execute: async ({ context }: any) => {
         const secureContext = { ...context, userId };
-        const result = await getPartById(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await getPartById(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       },
     }),
     getPartDetail: createTool({
@@ -134,9 +54,11 @@ export function getPartTools(userId?: string) {
       inputSchema: getPartDetailSchema,
       execute: async ({ context }: any) => {
         const secureContext = { ...context, userId };
-        const result = await getPartDetail(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await getPartDetail(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       },
     }),
     createEmergingPart: createTool({
@@ -145,9 +67,11 @@ export function getPartTools(userId?: string) {
       inputSchema: createEmergingPartSchema,
       execute: async ({ context }: any) => {
         const secureContext = { ...context, userId };
-        const result = await createEmergingPart(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await createEmergingPart(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       },
     }),
     updatePart: createTool({
@@ -156,9 +80,11 @@ export function getPartTools(userId?: string) {
       inputSchema: updatePartSchema,
       execute: async ({ context }: any) => {
         const secureContext = { ...context, userId };
-        const result = await updatePart(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await updatePart(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       },
     }),
     getPartRelationships: createTool({
@@ -168,9 +94,11 @@ export function getPartTools(userId?: string) {
       inputSchema: getPartRelationshipsSchema,
       execute: async ({ context }: any) => {
         const secureContext = { ...context, userId };
-        const result = await getPartRelationships(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await getPartRelationships(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       },
     }),
     logRelationship: createTool({
@@ -180,9 +108,11 @@ export function getPartTools(userId?: string) {
       inputSchema: logRelationshipSchema,
       execute: async ({ context }: any) => {
         const secureContext = { ...context, userId };
-        const result = await logRelationship(secureContext);
-        if (!result.success) throw new Error(result.error);
-        return result.data;
+        try {
+          return await logRelationship(secureContext);
+        } catch (err) {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       },
     }),
   }

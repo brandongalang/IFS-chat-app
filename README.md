@@ -113,8 +113,6 @@ This planning step:
 
 The ethereal visual style is controlled centrally via ThemeController and CSS variables.
 
-- Enable globally: set `NEXT_PUBLIC_IFS_ETHEREAL_THEME=true` (default is enabled when unset)
-- Switch standard `/chat` to ethereal presentation: `NEXT_PUBLIC_IFS_ETHEREAL_CHAT=true` (we default to ethereal unless explicitly disabled)
 - Dev override (no redeploy):
   ```js
   // In browser console
@@ -374,9 +372,9 @@ npm run dev
 - **Fallback Systems**: Graceful degradation for development and testing scenarios
 
 #### Development Agent Simulator: `/api/chat/dev`
-- **Local Development**: Full-featured agent simulation without external API dependencies  
+- **Local Development**: Full-featured agent simulation without external API dependencies
 - **Task Visualization**: Realistic streaming task steps and reasoning display
-- **Auto-Activation**: Automatically used when `NEXT_PUBLIC_IFS_DEV_MODE=true`
+- **Access Control**: Available only when dev mode is enabled (`NEXT_PUBLIC_IFS_DEV_MODE=true` or `NODE_ENV=development`)
 
 ### Advanced Analytics & Insights Engine
 

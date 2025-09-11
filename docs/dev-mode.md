@@ -3,7 +3,7 @@
 This app uses a simple feature flag system to gate routes (e.g., Insights, Garden, Journey) while they’re being built. Dev mode makes local iteration easier by enabling non-production areas without flipping each flag.
 
 ## Feature gate behavior
-- Central config: `config/features.ts`
+- Central config: `config/features.ts` (use `isDevMode()` helper for checks)
 - Status values: `enabled | coming_soon | disabled`
 - In dev mode, any feature that is not `disabled` is treated as `enabled` on the client.
 

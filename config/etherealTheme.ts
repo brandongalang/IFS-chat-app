@@ -19,9 +19,7 @@ export type EtherealTheme = {
 }
 
 export const defaultEtherealTheme: EtherealTheme = {
-  enabled: typeof process.env.NEXT_PUBLIC_IFS_ETHEREAL_THEME === 'string'
-    ? /^(1|true|on)$/i.test(process.env.NEXT_PUBLIC_IFS_ETHEREAL_THEME || '')
-    : true,
+  enabled: true,
   imageUrl: '/ethereal-bg.jpg',
   vignette: { inner: 0.10, mid: 0.22, outer: 0.38 },
   blobs: [

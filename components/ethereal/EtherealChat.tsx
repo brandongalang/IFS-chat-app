@@ -12,7 +12,7 @@ import { StreamingText } from "./StreamingText"
 import { TaskList } from "@/components/chat/TaskList"
 import { ActiveTaskOverlay } from "./ActiveTaskOverlay"
 
-// Minimal, bubble-less chat presentation for /chat/ethereal
+// Minimal, bubble-less chat presentation
 export function EtherealChat() {
   const {
     messages,
@@ -37,6 +37,13 @@ export function EtherealChat() {
   const [text, setText] = useState("")
   const [confirmOpen, setConfirmOpen] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // End any active session when this component unmounts
+  useEffect(() => {
+    return () => {
+      if (hasActiveSession) void endSession()
+    }
+  }, [hasActiveSession, endSession])
 
   // Auto-resize textarea
   useEffect(() => {

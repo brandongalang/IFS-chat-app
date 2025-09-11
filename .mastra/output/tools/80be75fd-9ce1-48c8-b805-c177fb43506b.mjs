@@ -25,7 +25,7 @@ const createPartStubSchema = z.object({
 async function createPartStub(input) {
   try {
     const validated = createPartStubSchema.parse(input);
-    const userId = resolveUserId();
+    const userId = resolveUserId(validated.userId);
     const supabase = getSupabaseClient();
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const { data: existingPart } = await supabase.from("parts").select("id, name").eq("user_id", userId).ilike("name", validated.name).single();

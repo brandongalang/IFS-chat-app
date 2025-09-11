@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { a as MEMORY_LOCAL_ROOT } from './config.mjs';
+import { e as MEMORY_LOCAL_ROOT } from './part-schemas.mjs';
+import 'zod';
 
 function resolveSafe(userPath) {
   const rootAbs = path.resolve(process.cwd(), MEMORY_LOCAL_ROOT);

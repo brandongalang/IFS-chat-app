@@ -30,8 +30,12 @@ export const env = {
   isProd: raw.NODE_ENV === 'production',
   isDev: raw.NODE_ENV !== 'production',
   isTest: raw.NODE_ENV === 'test',
-  // Enable IFS dev mode when explicitly requested or when running tests
-  ifsDevMode: raw.NODE_ENV === 'test' || toBool(raw.IFS_DEV_MODE) || toBool(raw.NEXT_PUBLIC_IFS_DEV_MODE),
+  // Enable IFS dev mode in development, tests, or when explicitly requested
+  ifsDevMode:
+    raw.NODE_ENV === 'development' ||
+    raw.NODE_ENV === 'test' ||
+    toBool(raw.IFS_DEV_MODE) ||
+    toBool(raw.NEXT_PUBLIC_IFS_DEV_MODE),
   ifsVerbose: toBool(raw.IFS_VERBOSE),
   ifsDisablePolarizationUpdate: toBool(raw.IFS_DISABLE_POLARIZATION_UPDATE),
 }
