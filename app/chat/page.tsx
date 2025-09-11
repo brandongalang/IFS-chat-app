@@ -1,20 +1,23 @@
-'use client'
+"use client"
 
-import { Suspense } from 'react'
-import { ChatLayout } from '@/components/chat/ChatLayout'
-import { EtherealChat } from '@/components/ethereal/EtherealChat'
+import { Suspense } from "react"
+import { Inter } from "next/font/google"
+import { EtherealChat } from "@/components/ethereal/EtherealChat"
 
-// Default to ethereal presentation unless explicitly disabled
-const isOn = (v?: string) => v === 'true' || v === '1' || v === 'on'
-const isOff = (v?: string) => v === 'false' || v === '0' || v === 'off'
-const CHAT_ENV = process.env.NEXT_PUBLIC_IFS_ETHEREAL_CHAT
-const THEME_ENV = process.env.NEXT_PUBLIC_IFS_ETHEREAL_THEME
-const ETHEREAL_CHAT = isOff(CHAT_ENV) ? false : (isOn(CHAT_ENV) || isOn(THEME_ENV) || CHAT_ENV === undefined)
+const inter = Inter({ subsets: ["latin"], weight: ["100", "300", "400", "600"], variable: "--font-ethereal" })
 
 export default function ChatPage() {
   return (
     <Suspense fallback={null}>
-      {ETHEREAL_CHAT ? <EtherealChat /> : <ChatLayout />}
+      <div
+        className={`${inter.variable} font-sans min-h-dvh h-dvh relative overflow-hidden`}
+        style={{
+          // lock this route to a dark, teal-gray ambiance regardless of theme
+          background: "linear-gradient(180deg, rgba(4,13,16,1) 0%, rgba(14,26,30,1) 50%, rgba(10,20,22,1) 100%)",
+        }}
+      >
+        <EtherealChat />
+      </div>
     </Suspense>
   )
 }

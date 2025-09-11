@@ -96,7 +96,6 @@ These conventions ensure the ethereal visual style remains consistent and easy t
 - [ ] New/changed visuals read from theme variables (no ad-hoc literals).
 - [ ] GlobalBackdrop remains the sole owner of page background.
 - [ ] Streaming timing bound to CSS variables, not constants.
-- [ ] Feature flags used when introducing global theme changes (NEXT_PUBLIC_IFS_ETHEREAL_THEME).
 - [ ] Reduced-motion behavior verified; screenshots attached for mobile/desktop.
 - [ ] Rich PR description includes UI reasoning and architecture decisions.
 

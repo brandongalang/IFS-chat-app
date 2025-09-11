@@ -12,7 +12,7 @@ import { StreamingText } from "./StreamingText"
 import { TaskList } from "@/components/chat/TaskList"
 import { ActiveTaskOverlay } from "./ActiveTaskOverlay"
 
-// Minimal, bubble-less chat presentation for /chat/ethereal
+// Minimal, bubble-less chat presentation
 export function EtherealChat() {
   const {
     messages,
