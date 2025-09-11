@@ -50,10 +50,8 @@ Summary of findings
     - 008_add_charge_to_parts.sql and 008_message_feedback.sql
   - This can break bootstrap on fresh environments where lexicographic order matters
 
-- Cron/API auth inconsistency
-  - app/api/cron/memory-update/route.ts expects x-cron-key/x-cron-secret (allows dev when unset)
-  - app/api/cron/generate-insights/route.ts expects Authorization: Bearer ${CRON_SECRET}
-  - Recommend standardizing on Authorization: Bearer ${CRON_SECRET}
+- Cron/API auth
+  - app/api/cron/memory-update/route.ts and app/api/cron/generate-insights/route.ts both expect Authorization: Bearer ${CRON_SECRET}
 
 - Dependencies security/outdated
   - npm audit: 1 critical (Next.js), 3 moderate (react-syntax-highlighter → refractor → prismjs)
@@ -100,8 +98,7 @@ Details
 - If applied: do not rename; add corrective migrations and a MIGRATIONS.md explaining history and bootstrap order
 
 7) Cron/API auth
-- Standardize on Authorization: Bearer ${CRON_SECRET} (document in README and workflow)
-- Update memory-update route to match generate-insights
+- Cron routes standardized on Authorization: Bearer ${CRON_SECRET} (documented in README and workflow)
 
 8) Dependencies and security
 - Upgrade Next.js to >= 15.5.2 to address critical/high advisories
