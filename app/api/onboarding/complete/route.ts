@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { 
-  CompletionRequest, 
-  CompletionResponse 
+import {
+  CompletionRequest,
+  CompletionResponse
 } from '@/lib/onboarding/types';
+import { track } from '@/lib/analytics';
 
 /**
  * POST /api/onboarding/complete
@@ -102,13 +103,11 @@ export async function POST(request: NextRequest) {
     // This will be implemented in a future task
     try {
       await synthesizeOnboardingMemories(user.id);
+      track('onboarding_completed', { userId: user.id, completed_at: now });
     } catch (memoryError) {
       console.warn('Failed to synthesize onboarding memories:', memoryError);
       // Don't fail the completion for memory synthesis issues
     }
-
-    // TODO: Track analytics event
-    // await trackEvent('onboarding_completed', { userId: user.id, duration: ... });
 
     const response: CompletionResponse = {
       ok: true,
