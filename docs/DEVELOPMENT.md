@@ -44,7 +44,7 @@ In code, prefer using `isDevMode()` from `config/features` to check whether deve
 ### Production Supabase Variables
 
 - `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anonymous key
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key for Storage adapter
 
 ### Agent API Keys
 
@@ -169,7 +169,7 @@ Migration tips:
 
 ### Database Connection Issues
 
-- Verify `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Verify `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
 - Check that the default user ID exists in your parts table (or create test data)
 - Ensure database tables are properly migrated
 

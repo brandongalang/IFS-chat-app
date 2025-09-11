@@ -2,7 +2,7 @@ import { createTool } from '@mastra/core'
 import { z } from 'zod'
 import { resolveUserId } from '@/config/dev'
 import type { ToolResult } from '../../lib/types/database'
-import { getStorageAdapter } from '../../lib/memory/snapshots/fs-helpers'
+import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
 
 const searchConversationsSchema = z.object({
   query: z.string().min(1).describe('The search query for keywords or themes'),
@@ -14,54 +14,42 @@ export async function searchConversations(input: z.infer<typeof searchConversati
   try {
     const validated = searchConversationsSchema.parse(input)
     const userId = resolveUserId(validated.userId)
-    const adapter = await getStorageAdapter()
-    const fileList = (await adapter.list(`users/${userId}/sessions`)).filter(f => f.endsWith('.json'))
+    const storage = await getStorageAdapter()
 
-    let sessions: any[] = []
-
-    for (const file of fileList) {
-      const text = await adapter.getText(file)
-      if (!text) continue
-      try {
-        const parsed = JSON.parse(text)
-        sessions.push(parsed)
-      } catch {}
-    }
-
-    if (validated.timePeriod !== 'all_time') {
-      const cutoff = new Date()
-      const days = validated.timePeriod === 'last_7_days' ? 7 : 30
-      cutoff.setDate(cutoff.getDate() - days)
-      const cutoffMs = cutoff.getTime()
-      sessions = sessions.filter(s => {
-        const created = new Date(s.created_at)
-        return !isNaN(created.getTime()) && created.getTime() >= cutoffMs
-      })
-    }
-
-    sessions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-
+    // List session files for the user and attempt a simple text search.
+    const prefix = `users/${userId}/sessions`
+    const paths = await storage.list(prefix)
     const searchResults: any[] = []
     const lowerCaseQuery = validated.query.toLowerCase()
+    const now = new Date()
 
-    for (const session of sessions) {
-      if (Array.isArray(session.messages)) {
-        for (const message of session.messages) {
+    for (const path of paths) {
+      const text = await storage.getText(path)
+      if (!text) continue
+      try {
+        const session = JSON.parse(text) as { id: string; messages: any[]; created_at: string }
+        if (validated.timePeriod !== 'all_time') {
+          const days = validated.timePeriod === 'last_7_days' ? 7 : 30
+          const cutoff = new Date(now)
+          cutoff.setDate(cutoff.getDate() - days)
+          if (new Date(session.created_at) < cutoff) continue
+        }
+        for (const message of session.messages || []) {
           if (typeof message.content === 'string' && message.content.toLowerCase().includes(lowerCaseQuery)) {
             searchResults.push({
               ...message,
               sessionId: session.id,
-              sessionCreatedAt: session.created_at
+              sessionCreatedAt: session.created_at,
             })
           }
         }
-      }
+      } catch {}
     }
 
     return {
       success: true,
-      data: searchResults.slice(0, 20), // Limit results for now
-      confidence: 1.0
+      data: searchResults.slice(0, 20),
+      confidence: 1.0,
     }
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
