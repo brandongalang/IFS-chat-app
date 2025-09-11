@@ -67,9 +67,9 @@ npm run e2e:dev:onboarding
 # Required for access
 NEXT_PUBLIC_IFS_DEV_MODE=true
 
-# Optional: for live database testing  
+# Optional: for live database testing
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 ```
 
 ### Fixture vs Live Data
