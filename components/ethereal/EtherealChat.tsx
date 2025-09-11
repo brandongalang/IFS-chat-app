@@ -9,10 +9,20 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { Message as ChatMessage } from "@/types/chat"
 import { useRouter } from "next/navigation"
 import { StreamingText } from "./StreamingText"
+import { ActiveTaskOverlay } from "./ActiveTaskOverlay"
 
 // Minimal, bubble-less chat presentation for /chat/ethereal
 export function EtherealChat() {
-  const { messages, sendMessage, isStreaming, hasActiveSession, endSession, addAssistantMessage } = useChat()
+  const {
+    messages,
+    sendMessage,
+    isStreaming,
+    hasActiveSession,
+    endSession,
+    addAssistantMessage,
+    tasksByMessage,
+    currentStreamingId,
+  } = useChat()
   const router = useRouter()
 
   // UI state
@@ -50,6 +60,8 @@ export function EtherealChat() {
       addAssistantMessage("what feels unresolved or undefined for you right now?", { persist: true, id: "ethereal-welcome" })
     }
   }, [messages?.length, addAssistantMessage])
+
+  const currentTasks = currentStreamingId ? tasksByMessage?.[currentStreamingId] : undefined
 
   return (
     <div className="absolute inset-0 flex flex-col">
@@ -105,8 +117,17 @@ export function EtherealChat() {
               </div>
             </motion.div>
           ))}
-        </div>
       </div>
+      </div>
+
+      {/* Task overlay */}
+      {currentTasks?.length ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(100px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3">
+          <div className="pointer-events-auto w-full max-w-[900px]">
+            <ActiveTaskOverlay tasks={currentTasks} />
+          </div>
+        </div>
+      ) : null}
 
       {/* Translucent input bar (always visible) */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pb-[calc(12px+env(safe-area-inset-bottom))]">
