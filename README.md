@@ -113,8 +113,6 @@ This planning step:
 
 The ethereal visual style is controlled centrally via ThemeController and CSS variables.
 
-- Enable globally: set `NEXT_PUBLIC_IFS_ETHEREAL_THEME=true` (default is enabled when unset)
-- Switch standard `/chat` to ethereal presentation: `NEXT_PUBLIC_IFS_ETHEREAL_CHAT=true` (we default to ethereal unless explicitly disabled)
 - Dev override (no redeploy):
   ```js
   // In browser console
