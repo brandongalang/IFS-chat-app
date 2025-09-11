@@ -25,6 +25,8 @@ export function useChat() {
   const sessionIdRef = useRef<string | null>(null);
   const userIdRef = useRef<string>('dev-user-1'); // TODO: replace with real identity later
 
+  const { toast } = useToast();
+
   const generateId = (): string => Math.random().toString(36).substr(2, 9);
 
   useEffect(() => {
@@ -77,29 +79,38 @@ export function useChat() {
 
   const ensureSession = useCallback(async (): Promise<string> => {
     if (sessionIdRef.current) return sessionIdRef.current;
-    const res = await fetch('/api/session/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: userIdRef.current }),
-    });
-    if (!res.ok) throw new Error('Failed to start session');
-    const data = await res.json();
-    sessionIdRef.current = data.sessionId;
-    setState((prev: any) => ({ ...prev, hasActiveSession: true }));
-    return data.sessionId;
-  }, []);
+    try {
+      const res = await fetch('/api/session/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userIdRef.current }),
+      });
+      if (!res.ok) throw new Error('Failed to start session');
+      const data = await res.json();
+      sessionIdRef.current = data.sessionId;
+      setState((prev: any) => ({ ...prev, hasActiveSession: true }));
+      return data.sessionId;
+    } catch (error: any) {
+      console.error('Error starting session:', error);
+      toast({ title: 'Session failed', description: error.message, variant: 'destructive' });
+      throw error;
+    }
+  }, [toast]);
 
   const persistMessage = useCallback(async (sessionId: string, role: 'user' | 'assistant', content: string) => {
     try {
-      await fetch('/api/session/message', {
+      const res = await fetch('/api/session/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, role, content }),
       });
-    } catch {
-      // non-blocking
+      if (!res.ok) throw new Error('Failed to persist message');
+    } catch (error: any) {
+      console.error('Error persisting message:', error);
+      toast({ title: 'Persist failed', description: error.message, variant: 'destructive' });
+      throw error;
     }
-  }, []);
+  }, [toast]);
 
   // Add a non-streaming assistant message (optionally persisted)
   const addAssistantMessage = useCallback(async (content: string, opts?: { persist?: boolean; id?: string; persona?: 'claude' | 'default' }) => {
@@ -260,7 +271,7 @@ export function useChat() {
           }
         },
       });
-    } catch (e) {
+    } catch (error: any) {
       // Mark stream ended and show basic error if needed
       stopFlusher()
       setState((prev: any) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
@@ -268,8 +279,10 @@ export function useChat() {
       if (accumulated.length === 0) {
         updateMessage(assistantId, { content: 'Sorry, something went wrong while streaming the response.', streaming: false });
       }
+      console.error('Stream failed:', error);
+      toast({ title: 'Stream failed', description: error.message, variant: 'destructive' });
     }
-  }, [ensureSession, persistMessage, (state as any).isStreaming, (state as any).messages, updateMessage]);
+  }, [ensureSession, persistMessage, (state as any).isStreaming, (state as any).messages, updateMessage, toast]);
 
   const clearChat = useCallback(() => {
     if (streamingCancelRef.current) {
@@ -299,8 +312,6 @@ export function useChat() {
       setState((prev: any) => ({ ...prev, hasActiveSession: false, messages: [], isStreaming: false, currentStreamingId: undefined }))
     }
   }, [])
-
-  const { toast } = useToast();
 
   const sendFeedback = useCallback(async (
     messageId: string,
