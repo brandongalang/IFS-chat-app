@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useUser } from '@/context/UserContext'
 import { useSearchParams } from 'next/navigation'
 import { Message, ChatState, TaskEvent } from '@/types/chat';
 import { getPartById } from '@/lib/data/parts-lite'
@@ -11,6 +12,7 @@ import { useToast } from './use-toast';
 
 export function useChat() {
   const searchParams = useSearchParams()
+  const { profile } = useUser()
   const [state, setState] = useState<ChatState>({
     messages: [],
     isStreaming: false,
@@ -20,25 +22,6 @@ export function useChat() {
     hasActiveSession: false,
     tasksByMessage: {},
   } as any);
-
-  // #region Proposing Next Steps for Full Integration
-  // In a real app, this profile data would not be managed by local state here.
-  // Instead, it would be provided by a global UserContext or a similar state management solution (like Zustand or Redux).
-  // This would ensure that the profile data is consistent across the application (e.g., in the chat and on the profile page).
-  //
-  // Example with a context:
-  //
-  // import { useUser } from '@/context/UserContext'
-  // const { profile } = useUser()
-  //
-  // The UserContext would be responsible for fetching and storing the user's profile data from Supabase.
-  // #endregion
-
-  // In a real app, this would come from a user context or store
-  const [profile, setProfile] = useState({
-    name: 'Alex',
-    bio: 'Exploring the inner world, one part at a time.',
-  });
 
   const streamingCancelRef = useRef<(() => void) | null>(null);
   const sessionIdRef = useRef<string | null>(null);
