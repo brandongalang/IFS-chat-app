@@ -1,10 +1,11 @@
 import 'server-only'
 
 import { createServerClient } from '@supabase/ssr'
-import { createClient as createBrowserClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/dev'
-import type { Database, PartRow, PartInsert, PartUpdate, PartEvidence, PartRelationshipRow, PartRelationshipInsert, PartRelationshipUpdate, RelationshipType, RelationshipStatus, RelationshipDynamic } from '../types/database'
+import type { Database, PartRow, PartInsert, PartUpdate, PartEvidence, PartRelationshipRow, PartRelationshipInsert, PartRelationshipUpdate, RelationshipType, RelationshipStatus, ToolResult, RelationshipDynamic, PartVisualization } from '../types/database'
+import type { ActionType } from '../database/action-logger'
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isMemoryV2Enabled } from '@/lib/memory/config'
@@ -109,10 +110,10 @@ const logRelationshipSchema = z.object({
 })
 
 // Helper to resolve env with fallbacks (supports Vite and Next-style vars)
-function getSupabaseClient() {
+function getSupabaseClient(): SupabaseClient<Database> {
   // Browser: use the preconfigured Next.js helper so env is inlined at build time
   if (typeof window !== 'undefined') {
-    return createBrowserSupabase()
+    return createBrowserSupabase() as SupabaseClient<Database>
   }
 
   // Server: read from Node env and optionally use service role in dev
@@ -133,7 +134,7 @@ function getSupabaseClient() {
   const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (dev.enabled && serviceRole) {
     // Dev-only bypass with service role on server
-    return createAdminClient()
+    return createAdminClient() as SupabaseClient<Database>
   }
 
   return createServerClient<Database>(url, anonKey, {
@@ -147,7 +148,7 @@ function getSupabaseClient() {
 /**
  * Search for parts based on various criteria
  */
-export async function searchParts(input: z.infer<typeof searchPartsSchema>): Promise<PartRow[]> {
+export async function searchParts(input: z.infer<typeof searchPartsSchema>): Promise<ToolResult<PartRow[]>> {
   try {
     const validated = searchPartsSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -166,11 +167,11 @@ export async function searchParts(input: z.infer<typeof searchPartsSchema>): Pro
     if (validated.query) {
       query = query.or(`name.ilike.%${validated.query}%,role.ilike.%${validated.query}%`)
     }
-
+    
     if (validated.status) {
       query = query.eq('status', validated.status)
     }
-
+    
     if (validated.category) {
       query = query.eq('category', validated.category)
     }
@@ -178,20 +179,27 @@ export async function searchParts(input: z.infer<typeof searchPartsSchema>): Pro
     const { data, error } = await query
 
     if (error) {
-      throw new Error(`Database error: ${error.message}`)
+      return {
+        success: false,
+        error: `Database error: ${error.message}`
+      }
     }
 
-    return data || []
+    return {
+      success: true,
+      data: data || [],
+      confidence: 1.0
+    }
   } catch (error) {
     const errMsg = error instanceof Error ? (dev.verbose ? (error.stack || error.message) : error.message) : 'Unknown error occurred'
-    throw new Error(errMsg)
+    return { success: false, error: errMsg }
   }
 }
 
 /**
  * Get a specific part by ID
  */
-export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Promise<any | null> {
+export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Promise<ToolResult<any>> {
   try {
     const validated = getPartByIdSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -208,9 +216,16 @@ export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Pro
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return null
+        return {
+          success: true,
+          data: null,
+          confidence: 1.0
+        }
       }
-      throw new Error(`Database error: ${error.message}`)
+      return {
+        success: false,
+        error: `Database error: ${error.message}`
+      }
     }
 
     // Optionally enrich with snapshot sections (Memory V2 — server-only)
@@ -227,17 +242,23 @@ export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Pro
       }
     }
 
-    return snapshot_sections ? { ...data, snapshot_sections } : data
+    return {
+      success: true,
+      data: snapshot_sections ? { ...data, snapshot_sections } : data,
+      confidence: 1.0
+    }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
-    throw new Error(errMsg)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    }
   }
 }
 
 /**
  * Get a specific part by ID along with its relationships
  */
-export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>): Promise<any> {
+export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>): Promise<ToolResult<any>> {
   try {
     const validated = getPartDetailSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -254,10 +275,10 @@ export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>):
       .single()
 
     if (partError) {
-      throw new Error(`Database error (part): ${partError.message}`)
+      return { success: false, error: `Database error (part): ${partError.message}` }
     }
     if (!part) {
-      throw new Error('Part not found')
+      return { success: false, error: 'Part not found' }
     }
 
     // Fetch relationships involving this part
@@ -268,14 +289,14 @@ export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>):
       .contains('parts', [validated.partId])
 
     if (relationshipsError) {
-      throw new Error(`Database error (relationships): ${relationshipsError.message}`)
+      return { success: false, error: `Database error (relationships): ${relationshipsError.message}` }
     }
 
-    // Optionally enrich with snapshot sections (Memory V2 — server-only)
-    let overview_sections: any = undefined
-    let part_profile_sections: any = undefined
-    let relationship_profiles: Record<string, any> | undefined = undefined
-    if (typeof window === 'undefined' && isMemoryV2Enabled()) {
+      // Optionally enrich with snapshot sections (Memory V2 — server-only)
+      let overview_sections: unknown = undefined
+      let part_profile_sections: unknown = undefined
+      let relationship_profiles: Record<string, unknown> | undefined = undefined
+      if (typeof window === 'undefined' && isMemoryV2Enabled()) {
       const t0 = Date.now()
       try {
         const rels = relationships || []
@@ -283,60 +304,74 @@ export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>):
         const reads = [
           (async () => { const s = await readOverviewSections(userId); recordSnapshotUsage('overview', s ? 'hit' : 'miss', { latencyMs: Date.now() - t0, userId }); return s })(),
           (async () => { const s = await readPartProfileSections(userId, validated.partId); recordSnapshotUsage('part_profile', s ? 'hit' : 'miss', { latencyMs: Date.now() - t0, userId, partId: validated.partId }); return s })(),
-          Promise.all(rels.map(async (r) => {
-            const tRel = Date.now()
-            try {
-              const m = await readRelationshipProfileSections(userId, (r as any).id)
-              recordSnapshotUsage('relationship_profile', m ? 'hit' : 'miss', { latencyMs: Date.now() - tRel, userId, relId: (r as any).id })
-              return m
-            } catch (e) {
-              recordSnapshotUsage('relationship_profile', 'error', { latencyMs: Date.now() - tRel, userId, relId: (r as any).id, error: e })
-              return null
-            }
-          }))
+            Promise.all(rels.map(async (r) => {
+              const tRel = Date.now()
+              try {
+                const m = await readRelationshipProfileSections(userId, r.id)
+                recordSnapshotUsage('relationship_profile', m ? 'hit' : 'miss', { latencyMs: Date.now() - tRel, userId, relId: r.id })
+                return m
+              } catch (e) {
+                recordSnapshotUsage('relationship_profile', 'error', { latencyMs: Date.now() - tRel, userId, relId: r.id, error: e })
+                return null
+              }
+            }))
         ] as const
         const [ovv, partProf, relMaps] = await Promise.all(reads)
         overview_sections = ovv || undefined
         part_profile_sections = partProf || undefined
         if (relMaps && relMaps.length > 0) {
-          relationship_profiles = {}
-          rels.forEach((r, idx) => {
-            const m = relMaps[idx]
-            if (m) relationship_profiles![(r as any).id] = m
-          })
+            relationship_profiles = {}
+            rels.forEach((r, idx) => {
+              const m = relMaps[idx]
+              if (m) relationship_profiles![r.id] = m
+            })
         }
       } catch (e) { try { devLog('snapshot read (detail) error', { e }) } catch {} }
     }
 
     return {
-      ...part,
-      relationships: relationships || [],
-      ...(overview_sections || part_profile_sections || relationship_profiles
-        ? { snapshots: { overview_sections, part_profile_sections, relationship_profiles } }
-        : {})
+      success: true,
+      data: {
+        ...part,
+        relationships: relationships || [],
+        ...(overview_sections || part_profile_sections || relationship_profiles
+          ? { snapshots: { overview_sections, part_profile_sections, relationship_profiles } }
+          : {})
+      },
+      confidence: 1.0
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
-    throw new Error(errMsg)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    }
   }
 }
 
 /**
  * Create an emerging part with 3+ evidence rule enforcement
  */
-export async function createEmergingPart(input: z.infer<typeof createEmergingPartSchema>): Promise<PartRow> {
+export async function createEmergingPart(input: z.infer<typeof createEmergingPartSchema>): Promise<ToolResult<PartRow>> {
   try {
     const validated = createEmergingPartSchema.parse(input)
     const userId = resolveUserId(validated.userId)
-
+    
     // Enforce 3+ evidence rule
     if (validated.evidence.length < 3) {
-      throw new Error('Cannot create emerging part: At least 3 pieces of evidence are required')
+      return {
+        success: false,
+        error: 'Cannot create emerging part: At least 3 pieces of evidence are required',
+        confidence: 0
+      }
     }
 
     // Check user confirmation (always required - should happen through chat)
     if (requiresUserConfirmation(validated.userConfirmed)) {
-      throw new Error('Cannot create emerging part: User confirmation is required through chat interaction')
+      return {
+        success: false,
+        error: 'Cannot create emerging part: User confirmation is required through chat interaction',
+        confidence: 0
+      }
     }
 
     const supabase = getSupabaseClient()
@@ -352,7 +387,11 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
       .single()
 
     if (existingPart) {
-      throw new Error(`A part named "${validated.name}" already exists for this user`)
+      return {
+        success: false,
+        error: `A part named "${validated.name}" already exists for this user`,
+        confidence: 0
+      }
     }
 
     // Calculate initial confidence based on evidence quality
@@ -392,13 +431,13 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
     }
 
     // Use action logger for INSERT with rollback capability
-    const { actionLogger } = await import('../database/action-logger')
-    const data = await actionLogger.loggedInsert<PartRow>(
-      'parts',
-      partInsert as any,
-      userId,
-      'create_emerging_part',
-      {
+      const { actionLogger } = await import('../database/action-logger')
+      const data = await actionLogger.loggedInsert<PartRow>(
+        'parts',
+        partInsert,
+        userId,
+        'create_emerging_part',
+        {
         partName: validated.name,
         changeDescription: `Created emerging part with ${validated.evidence.length} pieces of evidence`,
         sessionId: validated.evidence[0]?.sessionId,
@@ -408,17 +447,23 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
       }
     )
 
-    return data
+    return {
+      success: true,
+      data,
+      confidence: initialConfidence
+    }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
-    throw new Error(errMsg)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    }
   }
 }
 
 /**
  * Update a part with confidence increment and audit trail
  */
-export async function updatePart(input: z.infer<typeof updatePartSchema>): Promise<PartRow> {
+export async function updatePart(input: z.infer<typeof updatePartSchema>): Promise<ToolResult<PartRow>> {
   try {
     const validated = updatePartSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -435,119 +480,136 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
       .single()
 
     if (fetchError) {
-      throw new Error(`Failed to fetch part: ${fetchError.message}`)
+      return {
+        success: false,
+        error: `Failed to fetch part: ${fetchError.message}`
+      }
     }
 
     if (!currentPart) {
-      throw new Error('Part not found or access denied')
-    }
-
-    // Prepare update object
-    const updates: any = {
-      ...validated.updates,
-      last_active: new Date().toISOString()
-    }
-
-    // If updating visualization, merge with existing
-    if (validated.updates.visualization) {
-      const currentVis = (currentPart.visualization as any) || {}
-      const nextVis = { ...currentVis, ...validated.updates.visualization }
-      if (typeof (nextVis as any).energyLevel !== 'number') {
-        (nextVis as any).energyLevel = currentVis.energyLevel ?? 0.5
+      return {
+        success: false,
+        error: 'Part not found or access denied'
       }
-      updates.visualization = nextVis as any
     }
 
-    // Only update identification confidence if explicitly requested
-    if (typeof validated.updates.confidenceBoost === 'number') {
-      updates.confidence = Math.min(1.0, Math.max(0, currentPart.confidence + validated.updates.confidenceBoost))
-    }
+      // Prepare update object
+      const {
+        somaticMarkers,
+        confidenceBoost,
+        visualization: visUpdate,
+        ...baseUpdates
+      } = validated.updates
 
-    // Add evidence if provided
-    if (validated.evidence) {
-      const currentEvidence = currentPart.recent_evidence || []
-      const newEvidence = [...currentEvidence, validated.evidence].slice(-10) // Keep only last 10
-      updates.recent_evidence = newEvidence
-      updates.evidence_count = currentPart.evidence_count + 1
-    }
-
-    // Update story evolution with audit trail
-    const currentStory = currentPart.story || { origin: null, currentState: null, purpose: null, evolution: [] }
-    const evolutionEntry = {
-      timestamp: new Date().toISOString(),
-      change: validated.auditNote || 'Part updated',
-      trigger: 'Agent tool update'
-    }
-    
-    updates.story = {
-      ...currentStory,
-      evolution: [...(currentStory.evolution || []), evolutionEntry]
-    }
-
-    // Handle somatic_markers correctly (database expects snake_case)
-    if (validated.updates.somaticMarkers) {
-      const somaticMarkersValue = validated.updates.somaticMarkers
-      delete (updates as any).somaticMarkers
-      updates.somatic_markers = somaticMarkersValue
-    }
-
-    // Determine action type and generate change description
-    let actionType: 'update_part_confidence' | 'update_part_category' | 'update_part_attributes' | 'add_part_evidence' | 'update_part_charge' = 'update_part_attributes'
-    let changeDescription = 'Updated part attributes'
-    
-    if (validated.updates.name && validated.updates.name !== currentPart.name) {
-      changeDescription = `renamed part from "${currentPart.name}" to "${validated.updates.name}"`
-    } else if (validated.updates.visualization) {
-      changeDescription = 'updated part visualization'
-    } else if (typeof validated.updates.last_charge_intensity === 'number') {
-      actionType = 'update_part_charge'
-      changeDescription = `updated part charge to ${validated.updates.last_charge_intensity.toFixed(2)}`
-    } else if (typeof validated.updates.confidenceBoost === 'number') {
-      actionType = 'update_part_confidence'
-      const toVal = (updates.confidence ?? currentPart.confidence)
-      const direction = validated.updates.confidenceBoost >= 0 ? 'increased' : 'decreased'
-      changeDescription = `${direction} confidence from ${currentPart.confidence} to ${toVal}`
-    } else if (validated.updates.category && validated.updates.category !== currentPart.category) {
-      actionType = 'update_part_category'
-      changeDescription = `changed category from ${currentPart.category} to ${validated.updates.category}`
-    } else if (validated.evidence) {
-      actionType = 'add_part_evidence'
-      changeDescription = `added evidence: ${validated.evidence.content.substring(0, 50)}...`
-    }
-
-    // Use action logger for UPDATE with rollback capability
-    const { actionLogger } = await import('../database/action-logger')
-    const data = await actionLogger.loggedUpdate<PartRow>(
-      'parts',
-      validated.partId,
-      updates as any,
-      userId,
-      actionType as any,
-      {
-        partName: currentPart.name,
-        changeDescription,
-        confidenceDelta: validated.updates.confidenceBoost,
-        categoryChange: validated.updates.category ? {
-          from: currentPart.category,
-          to: validated.updates.category
-        } : undefined,
-        evidenceAdded: !!validated.evidence,
-        fieldChanged: Object.keys(validated.updates).join(', '),
-        auditNote: validated.auditNote
+      const updates: PartUpdate = {
+        ...baseUpdates,
+        last_active: new Date().toISOString(),
       }
-    )
 
-    return data
+      // If updating visualization, merge with existing
+      if (visUpdate) {
+        const currentVis = currentPart.visualization || {}
+        const nextVis: PartVisualization = { ...currentVis, ...visUpdate }
+        if (typeof nextVis.energyLevel !== 'number') {
+          nextVis.energyLevel = (currentVis as PartVisualization).energyLevel ?? 0.5
+        }
+        updates.visualization = nextVis
+      }
+
+      // Only update identification confidence if explicitly requested
+      if (typeof confidenceBoost === 'number') {
+          updates.confidence = Math.min(1.0, Math.max(0, currentPart.confidence + confidenceBoost))
+      }
+
+      // Add evidence if provided
+      if (validated.evidence) {
+        const currentEvidence = currentPart.recent_evidence || []
+        const newEvidence = [...currentEvidence, validated.evidence].slice(-10) // Keep only last 10
+        updates.recent_evidence = newEvidence
+        updates.evidence_count = currentPart.evidence_count + 1
+      }
+
+      // Update story evolution with audit trail
+      const currentStory = currentPart.story || { origin: null, currentState: null, purpose: null, evolution: [] }
+      const evolutionEntry = {
+        timestamp: new Date().toISOString(),
+        change: validated.auditNote || 'Part updated',
+        trigger: 'Agent tool update'
+      }
+
+      updates.story = {
+        ...currentStory,
+        evolution: [...(currentStory.evolution || []), evolutionEntry]
+      }
+
+      // Handle somatic_markers correctly (database expects snake_case)
+      if (somaticMarkers) {
+        updates.somatic_markers = somaticMarkers
+      }
+
+      // Determine action type and generate change description
+      let actionType: ActionType = 'update_part_attributes'
+      let changeDescription = 'Updated part attributes'
+
+      if (validated.updates.name && validated.updates.name !== currentPart.name) {
+        changeDescription = `renamed part from "${currentPart.name}" to "${validated.updates.name}"`
+      } else if (visUpdate) {
+        changeDescription = 'updated part visualization'
+      } else if (typeof validated.updates.last_charge_intensity === 'number') {
+        actionType = 'update_part_charge'
+        changeDescription = `updated part charge to ${validated.updates.last_charge_intensity.toFixed(2)}`
+      } else if (typeof confidenceBoost === 'number') {
+        actionType = 'update_part_confidence'
+        const toVal = updates.confidence ?? currentPart.confidence
+        const direction = confidenceBoost >= 0 ? 'increased' : 'decreased'
+        changeDescription = `${direction} confidence from ${currentPart.confidence} to ${toVal}`
+      } else if (validated.updates.category && validated.updates.category !== currentPart.category) {
+        actionType = 'update_part_category'
+        changeDescription = `changed category from ${currentPart.category} to ${validated.updates.category}`
+      } else if (validated.evidence) {
+        actionType = 'add_part_evidence'
+        changeDescription = `added evidence: ${validated.evidence.content.substring(0, 50)}...`
+      }
+
+      // Use action logger for UPDATE with rollback capability
+      const { actionLogger } = await import('../database/action-logger')
+      const data = await actionLogger.loggedUpdate<PartRow>(
+        'parts',
+        validated.partId,
+        updates,
+        userId,
+        actionType,
+        {
+          partName: currentPart.name,
+          changeDescription,
+          confidenceDelta: confidenceBoost,
+          categoryChange: validated.updates.category ? {
+            from: currentPart.category,
+            to: validated.updates.category
+          } : undefined,
+          evidenceAdded: !!validated.evidence,
+          fieldChanged: Object.keys(validated.updates).join(', '),
+          auditNote: validated.auditNote
+        }
+      )
+
+    return {
+      success: true,
+      data,
+      confidence: data.confidence
+    }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
-    throw new Error(errMsg)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    }
   }
 }
 
 /**
  * Get part relationships with optional filtering and part details
  */
-export async function getPartRelationships(input: z.infer<typeof getPartRelationshipsSchema>): Promise<Array<any>> {
+export async function getPartRelationships(input: z.infer<typeof getPartRelationshipsSchema>): Promise<ToolResult<Array<any>>> {
   try {
     const validated = getPartRelationshipsSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -576,33 +638,37 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
     const { data: relationships, error } = await query
 
     if (error) {
-      throw new Error(`Database error: ${error.message}`)
+      return {
+        success: false,
+        error: `Database error: ${error.message}`
+      }
     }
 
     if (!relationships || relationships.length === 0) {
-      return []
+      return {
+        success: true,
+        data: [],
+        confidence: 1.0
+      }
     }
 
     // Optional client-side filter by partId
-    let filtered = relationships
-    if (validated.partId) {
-      const pid = validated.partId
-      filtered = (relationships as any[]).filter(rel => {
-        const partIds = Array.isArray((rel as any).parts) ? (rel as any).parts : []
-        return partIds.includes(pid)
-      })
-    }
+      let filtered = relationships
+      if (validated.partId) {
+        const pid = validated.partId
+        filtered = relationships.filter(rel => rel.parts.includes(pid))
+      }
 
     // If part details are requested, fetch them efficiently
     let partsDetails: Record<string, { name: string; status: string }> = {}
-
+    
     if (validated.includePartDetails) {
       // Get all unique part IDs from all relationships
       const allPartIds = filtered.reduce((acc, rel) => {
         const partIds = Array.isArray(rel.parts) ? rel.parts : []
         return [...acc, ...partIds]
       }, [] as string[])
-
+      
       const uniquePartIds = [...new Set(allPartIds)]
 
       if (uniquePartIds.length > 0) {
@@ -613,7 +679,10 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
           .in('id', uniquePartIds)
 
         if (partsError) {
-          throw new Error(`Error fetching part details: ${partsError.message}`)
+          return {
+            success: false,
+            error: `Error fetching part details: ${partsError.message}`
+          }
         }
 
         // Create lookup map
@@ -625,31 +694,31 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
     }
 
     // Optionally enrich each relationship with snapshot sections (Memory V2)
-    let relSectionMaps: Array<any> | undefined
-    if (typeof window === 'undefined' && isMemoryV2Enabled()) {
-      try {
-        const { readRelationshipProfileSections } = await import('@/lib/memory/read')
-        relSectionMaps = await Promise.all(
-          (filtered as any[]).map(async rel => {
-            const tRel = Date.now()
-            try {
-              const m = await readRelationshipProfileSections(userId, (rel as any).id)
-              recordSnapshotUsage('relationship_profile', m ? 'hit' : 'miss', { latencyMs: Date.now() - tRel, userId, relId: (rel as any).id })
-              return m
-            } catch (e) {
-              recordSnapshotUsage('relationship_profile', 'error', { latencyMs: Date.now() - tRel, userId, relId: (rel as any).id, error: e })
-              return null
-            }
-          })
-        )
-      } catch (e) { try { devLog('snapshot read (relationships) error', { e }) } catch {} }
-    }
+      let relSectionMaps: Array<unknown> | undefined
+      if (typeof window === 'undefined' && isMemoryV2Enabled()) {
+        try {
+          const { readRelationshipProfileSections } = await import('@/lib/memory/read')
+          relSectionMaps = await Promise.all(
+            filtered.map(async rel => {
+              const tRel = Date.now()
+              try {
+                const m = await readRelationshipProfileSections(userId, rel.id)
+                recordSnapshotUsage('relationship_profile', m ? 'hit' : 'miss', { latencyMs: Date.now() - tRel, userId, relId: rel.id })
+                return m
+              } catch (e) {
+                recordSnapshotUsage('relationship_profile', 'error', { latencyMs: Date.now() - tRel, userId, relId: rel.id, error: e })
+                return null
+              }
+            })
+          )
+        } catch (e) { try { devLog('snapshot read (relationships) error', { e }) } catch {} }
+      }
 
     // Format response with optional part details and snapshot sections
     const formattedRelationships = filtered.map((rel, idx) => {
       const partIds = Array.isArray(rel.parts) ? rel.parts : []
       const snapshot_sections = relSectionMaps ? relSectionMaps[idx] : undefined
-
+      
       return {
         id: rel.id,
         type: rel.type,
@@ -673,17 +742,23 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
       }
     })
 
-    return formattedRelationships
+    return {
+      success: true,
+      data: formattedRelationships,
+      confidence: 1.0
+    }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
-    throw new Error(errMsg)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    }
   }
 }
 
 /**
  * Create or update a part relationship, optionally appending a dynamic observation
  */
-export async function logRelationship(input: z.infer<typeof logRelationshipSchema>): Promise<PartRelationshipRow> {
+export async function logRelationship(input: z.infer<typeof logRelationshipSchema>): Promise<ToolResult<PartRelationshipRow>> {
   try {
     const validated = logRelationshipSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -705,79 +780,78 @@ export async function logRelationship(input: z.infer<typeof logRelationshipSchem
 
     // Try to find an existing relationship if upsert
     let existing: PartRelationshipRow | null = null
-    if (validated.upsert) {
-      // Fetch recent relationships of same type and filter client-side for exact part pair match
-      const { data: candidates, error: findErr } = await supabase
-        .from('part_relationships')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('type', validated.type)
-        .order('created_at', { ascending: false })
-        .limit(50)
-      if (findErr) {
-        throw new Error(`Database error (find): ${findErr.message}`)
+      if (validated.upsert) {
+        // Fetch recent relationships of same type and filter client-side for exact part pair match
+        const { data: candidates, error: findErr } = await supabase
+          .from('part_relationships')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('type', validated.type)
+          .order('created_at', { ascending: false })
+          .limit(50)
+        if (findErr) {
+          return { success: false, error: `Database error (find): ${findErr.message}` }
+        }
+        existing = (candidates || []).find((r) => {
+          const p = Array.isArray(r.parts) ? r.parts : []
+          if (p.length !== 2) return false
+          const sorted = [...p].sort()
+          return sorted[0] === partIds[0] && sorted[1] === partIds[1]
+        }) || null
       }
-      existing = (candidates || []).find((r: any) => {
-        const p = Array.isArray(r?.parts) ? (r.parts as string[]) : []
-        if (p.length !== 2) return false
-        const sorted = [...p].sort()
-        return sorted[0] === partIds[0] && sorted[1] === partIds[1]
-      }) as any || null
-    }
 
     if (existing) {
       // Update existing relationship
-      const updates: PartRelationshipUpdate = {}
+        const updates: PartRelationshipUpdate = {}
 
       // Append dynamic if provided
       let polarizationDelta: number | undefined
-      if (dyn) {
-        const currentDynamics = (existing.dynamics as any[]) || []
-        updates.dynamics = [...currentDynamics, dyn] as any
-        updates.last_addressed = validated.lastAddressed || dyn.timestamp
-        if (typeof dyn.polarizationChange === 'number') {
-          polarizationDelta = dyn.polarizationChange
+        if (dyn) {
+          const currentDynamics = existing.dynamics || []
+          updates.dynamics = [...currentDynamics, dyn]
+          updates.last_addressed = validated.lastAddressed || dyn.timestamp
+          if (typeof dyn.polarizationChange === 'number') {
+            polarizationDelta = dyn.polarizationChange
+          }
+        } else if (validated.lastAddressed) {
+          updates.last_addressed = validated.lastAddressed
         }
-      } else if (validated.lastAddressed) {
-        updates.last_addressed = validated.lastAddressed
-      }
 
       // Update descriptive fields if provided
-      if (typeof validated.description === 'string') updates.description = validated.description
-      if (typeof validated.issue === 'string') updates.issue = validated.issue
-      if (typeof validated.commonGround === 'string') (updates as any).common_ground = validated.commonGround
-      if (validated.status) updates.status = validated.status
+        if (typeof validated.description === 'string') updates.description = validated.description
+        if (typeof validated.issue === 'string') updates.issue = validated.issue
+        if (typeof validated.commonGround === 'string') updates.common_ground = validated.commonGround
+        if (validated.status) updates.status = validated.status
 
       // Handle polarization level absolute or delta
-      const currentPolRaw: any = (existing as any).polarization_level
-      const currentPol = typeof currentPolRaw === 'number' ? currentPolRaw : parseFloat(String(currentPolRaw ?? 0.5))
+        const currentPol = existing.polarization_level
       const providedAbs = validated.polarizationLevel
       const delta = dyn && typeof dyn.polarizationChange === 'number' ? parseFloat(String(dyn.polarizationChange)) : undefined
       const computedPol = typeof providedAbs === 'number'
         ? parseFloat(String(providedAbs))
         : (typeof delta === 'number' ? Math.min(1, Math.max(0, currentPol + delta)) : currentPol)
-      try { devLog('logRelationship polarization compute', { currentPol, computedPol, delta, types: { current: typeof currentPol, computed: typeof computedPol, deltaType: typeof delta } }) } catch {}
-      if (!dev.disablePolarizationUpdate) {
-        if (computedPol !== currentPol) (updates as any).polarization_level = computedPol
-      }
+        try { devLog('logRelationship polarization compute', { currentPol, computedPol, delta, types: { current: typeof currentPol, computed: typeof computedPol, deltaType: typeof delta } }) } catch {}
+        if (!dev.disablePolarizationUpdate) {
+          if (computedPol !== currentPol) updates.polarization_level = computedPol
+        }
 
       // Always bump updated_at
-      ;(updates as any).updated_at = nowIso
+        updates.updated_at = nowIso
 
       // Dev bypass with service role to avoid RLS, and manual action log
 const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
       if (typeof window === 'undefined' && dev.enabled && serviceRole) {
         try {
           devLog('logRelationship update payload', updates)
-          const { data: updatedDirect, error: updErr } = await supabase
-            .from('part_relationships')
-            .update(updates as any)
-            .eq('id', existing.id)
-            .eq('user_id', userId)
-            .select('*')
-            .single()
+            const { data: updatedDirect, error: updErr } = await supabase
+              .from('part_relationships')
+              .update(updates)
+              .eq('id', existing.id)
+              .eq('user_id', userId)
+              .select('*')
+              .single()
           if (updErr || !updatedDirect) {
-            throw new Error(`Failed to update relationship (service role): ${updErr?.message || 'unknown'}`)
+            return { success: false, error: `Failed to update relationship (service role): ${updErr?.message || 'unknown'}` }
           }
 
           await supabase.from('agent_actions').insert({
@@ -796,35 +870,36 @@ const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
             created_by: 'agent'
           })
 
-          return updatedDirect as any
+            return { success: true, data: updatedDirect as PartRelationshipRow, confidence: 1.0 }
         } catch (e: any) {
-          throw new Error(`UPDATE_BRANCH: ${e?.stack || e?.message || String(e)}`)
+          return { success: false, error: `UPDATE_BRANCH: ${e?.stack || e?.message || String(e)}` }
         }
       }
 
       try {
         const { actionLogger } = await import('../database/action-logger')
-        const updated = await actionLogger.loggedUpdate<PartRelationshipRow>(
-          'part_relationships',
-          existing.id,
-          updates as any,
-          userId,
-          'update_relationship',
-          {
+          const updated = await actionLogger.loggedUpdate<PartRelationshipRow>(
+            'part_relationships',
+            existing.id,
+            updates,
+            userId,
+            'update_relationship',
+            {
             changeDescription: dyn ? `Appended dynamic: ${dyn.observation.substring(0, 60)}...` : 'Updated relationship fields',
             polarizationDelta,
             type: validated.type,
             partIds
           }
         )
-        return updated
+
+        return { success: true, data: updated, confidence: 1.0 }
       } catch (e: any) {
-        throw new Error(`LOGGED_UPDATE_BRANCH: ${e?.stack || e?.message || String(e)}`)
+        return { success: false, error: `LOGGED_UPDATE_BRANCH: ${e?.stack || e?.message || String(e)}` }
       }
     }
 
     // Create new relationship
-    const insert: PartRelationshipInsert = {
+      const insert: PartRelationshipInsert = {
       user_id: userId,
       parts: partIds,
       type: validated.type,
@@ -841,14 +916,14 @@ const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     // Dev bypass with service role to avoid RLS, and manual action log
 const serviceRoleCreate = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (typeof window === 'undefined' && dev.enabled && serviceRoleCreate) {
-      const { data: createdDirect, error: insErr } = await supabase
-        .from('part_relationships')
-        .insert(insert as any)
-        .select('*')
-        .single()
+      if (typeof window === 'undefined' && dev.enabled && serviceRoleCreate) {
+        const { data: createdDirect, error: insErr } = await supabase
+          .from('part_relationships')
+          .insert(insert)
+          .select('*')
+          .single()
       if (insErr || !createdDirect) {
-        throw new Error(`Failed to create relationship (service role): ${insErr?.message || 'unknown'}`)
+        return { success: false, error: `Failed to create relationship (service role): ${insErr?.message || 'unknown'}` }
       }
 
       await supabase.from('agent_actions').insert({
@@ -866,26 +941,28 @@ const serviceRoleCreate = process.env.SUPABASE_SERVICE_ROLE_KEY
         created_by: 'agent'
       })
 
-      return createdDirect as any
+        return { success: true, data: createdDirect as PartRelationshipRow, confidence: 1.0 }
     }
 
     const { actionLogger } = await import('../database/action-logger')
-    const created = await actionLogger.loggedInsert<PartRelationshipRow>(
-      'part_relationships',
-      insert as any,
-      userId,
-      'create_relationship',
-      {
+      const created = await actionLogger.loggedInsert<PartRelationshipRow>(
+        'part_relationships',
+        insert,
+        userId,
+        'create_relationship',
+        {
         changeDescription: `Created ${validated.type} relationship between parts` ,
         type: validated.type,
         partIds
       }
     )
 
-    return created
+    return { success: true, data: created, confidence: 1.0 }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
-    throw new Error(errMsg)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    }
   }
 }
 
