@@ -25,4 +25,5 @@ NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm run snapshots:sca
 Notes
 - No agent write-path changes yet; this establishes storage plumbing and basic content generators.
 - All writes are via server/service-role for Supabase; the browser never accesses the bucket directly.
+- Session-oriented Mastra tools (e.g., insight research and evidence utilities) read recent sessions through this adapter instead of direct Supabase queries.
 

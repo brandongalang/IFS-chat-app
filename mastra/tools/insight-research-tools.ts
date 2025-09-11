@@ -4,6 +4,7 @@ import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { actionLogger } from '../../lib/database/action-logger'
 import { resolveUserId, devLog, dev } from '@/config/dev'
+import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
 import type { Database, SessionRow, PartRow, PartRelationshipRow, InsightRow, ToolResult } from '../../lib/types/database'
 
 // Helper to resolve env with fallbacks
@@ -72,20 +73,30 @@ export async function getRecentSessions(input: z.infer<typeof getRecentSessionsS
   try {
     const validated = getRecentSessionsSchema.parse(input);
     const userId = resolveUserId(validated.userId);
-    const supabase = getSupabaseClient();
+    const storage = await getStorageAdapter();
     const lookbackDate = new Date();
     lookbackDate.setDate(lookbackDate.getDate() - validated.lookbackDays);
 
-    const { data, error } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('start_time', lookbackDate.toISOString())
-      .order('start_time', { ascending: false })
-      .limit(validated.limit);
+    const prefix = `users/${userId}/sessions/`;
+    const paths = await storage.list(prefix);
+    const sessions: SessionRow[] = [];
 
-    if (error) return { success: false, error: `Database error: ${error.message}` };
-    return { success: true, data: data || [], confidence: 1.0 };
+    for (const p of paths) {
+      try {
+        const text = await storage.getText(p);
+        if (!text) continue;
+        const session = JSON.parse(text) as SessionRow;
+        const start = session.start_time;
+        if (start && new Date(start) >= lookbackDate) {
+          sessions.push(session);
+        }
+      } catch {
+        /* ignore parse errors */
+      }
+    }
+
+    sessions.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+    return { success: true, data: sessions.slice(0, validated.limit), confidence: 1.0 };
   } catch (error) {
     const errMsg = error instanceof Error ? (dev.verbose ? (error.stack || error.message) : error.message) : 'Unknown error occurred';
     return { success: false, error: errMsg };

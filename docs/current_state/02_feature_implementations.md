@@ -23,7 +23,11 @@ The main user-facing feature is the chat interface. The agent's capabilities wit
 
 -   **Evidence & Pattern Analysis (`evidence-tools.ts`):**
     -   `logEvidence`: Add a specific piece of evidence (e.g., a direct quote) to an *existing* part's profile.
-    -   `findPatterns`: A utility tool that can scan a user's recent session history for regex patterns that suggest part language (e.g., "part of me feels..."). This is a standalone analysis tool and is not currently integrated into the agent's main conversational loop.
+    -   `findPatterns`: Scans recent session snapshots via the StorageAdapter for regex patterns that suggest part language (e.g., "part of me feels..."). This is a standalone analysis tool and is not currently integrated into the agent's main conversational loop.
+
+-   **Research Helpers (`insight-research-tools.ts`):**
+    -   `getRecentSessions`: Retrieves session snapshots for a user through the StorageAdapter, filtered by lookback window and limit.
+    -   `getActiveParts`, `getPolarizedRelationships`, `getRecentInsights`: Query Supabase for other research data.
 
 -   **Confidence & Workflow Management:**
     -   `recordPartAssessmentTool` (`assessment-tools.ts`): Records a confidence score for a part's identification, creating an entry in the `part_assessments` table and updating the part's `confidence` field.

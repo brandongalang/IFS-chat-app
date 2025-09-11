@@ -20,6 +20,7 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 
 ## How it works
 - Mastra tools implement capabilities (parts, relationships, evidence, assessments, proposals, rollback)
+- Session analysis utilities read recent sessions via StorageAdapter snapshots to keep lookback/limit semantics consistent across environments
 - Agent prompt and configuration live under mastra/agents/
 - Insights generator scaffolding exists in lib/insights/generator.ts
 

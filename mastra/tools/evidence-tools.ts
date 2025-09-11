@@ -4,7 +4,8 @@ import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { actionLogger } from '../../lib/database/action-logger'
 import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/dev'
-import type { Database, PartRow, PartEvidence, PartUpdate, ToolResult } from '../../lib/types/database'
+import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
+import type { Database, PartRow, PartEvidence, PartUpdate, ToolResult, SessionRow } from '../../lib/types/database'
 
 // Input schemas for evidence tool validation
 const evidenceItemSchema = z.object({
@@ -146,21 +147,29 @@ const findPatterns = createTool({
         includeExistingParts 
       })
 
-      // Get recent sessions for the user
-      const { data: sessions, error: sessionsError } = await supabase
-        .from('sessions')
-        .select('id, messages')
-        .eq('user_id', resolvedUserId)
-        .order('created_at', { ascending: false })
-        .limit(sessionLimit)
+      // Get recent sessions for the user via snapshot adapter
+      const storage = await getStorageAdapter()
+      const prefix = `users/${resolvedUserId}/sessions/`
+      const paths = await storage.list(prefix)
+      const allSessions: SessionRow[] = []
 
-      if (sessionsError) {
-        return { success: false, error: `Failed to fetch sessions: ${sessionsError.message}` }
+      for (const p of paths) {
+        try {
+          const text = await storage.getText(p)
+          if (!text) continue
+          const session = JSON.parse(text) as SessionRow
+          allSessions.push(session)
+        } catch {
+          /* ignore parse errors */
+        }
       }
 
-      if (!sessions || sessions.length === 0) {
-        return { 
-          success: true, 
+      allSessions.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
+      const sessions = allSessions.slice(0, sessionLimit)
+
+      if (sessions.length === 0) {
+        return {
+          success: true,
           data: { patterns: [], suggestedParts: [] }
         }
       }
