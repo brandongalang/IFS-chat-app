@@ -16,7 +16,6 @@ export function Toaster() {
       {toasts.map(function (t: ToastItem, index: number) {
         const { id, title, description, action, ...rest } = t
         // Exclude duration from props passed to <Toast />
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { duration: _duration, ...toastProps } = rest
         return (
           <Toast key={id ?? index} {...toastProps}>

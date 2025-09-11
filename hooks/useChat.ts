@@ -227,17 +227,17 @@ export function useChat() {
       const chosenApiPath = '/api/chat'
       let doneReceived = false
 
-      await streamFromMastra({
-        messages: apiMessages,
-        sessionId,
-        userId: userIdRef.current,
-        profile,
-        signal: controller.signal,
-        apiPath: chosenApiPath,
-        onTask: (evt) => {
-          upsertTaskForMessage(assistantId, evt)
-        },
-        onChunk: (chunk, done) => {
+        await streamFromMastra({
+          messages: apiMessages,
+          sessionId,
+          userId: userIdRef.current,
+          profile: profile ?? { name: '', bio: '' },
+          signal: controller.signal,
+          apiPath: chosenApiPath,
+          onTask: (evt) => {
+            upsertTaskForMessage(assistantId, evt)
+          },
+          onChunk: (chunk, done) => {
           // accumulate; flusher reveals a few characters per tick for ethereal smoothness
           if (chunk) buffer += chunk
           startFlusher()

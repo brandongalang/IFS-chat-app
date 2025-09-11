@@ -32,8 +32,7 @@ class MockAIClientImpl implements MockAIClient {
     onToken: (token: string, isComplete: boolean) => void;
   }): { cancel: () => void } {
     const { messages, onToken } = params;
-    const lastMessage = messages[messages.length - 1];
-    
+
     const response = this.generateResponse(messages);
     
     // Split response into chunks for streaming simulation

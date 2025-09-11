@@ -4,7 +4,10 @@ export interface TaskEvent {
   status: 'pending' | 'working' | 'completed' | 'failed' | 'canceled';
   progress?: number;
   details?: string | string[];
-  meta?: any;
+  meta?: {
+    files?: Array<{ name: string }>
+    [key: string]: unknown;
+  };
 }
 
 export interface Message {

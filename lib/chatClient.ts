@@ -163,7 +163,7 @@ function handleUiEvent(obj: unknown, onTask?: (e: TaskEvent) => void): boolean {
       status: (o.status as TaskEvent['status']) ?? 'working',
       progress: typeof o.progress === 'number' ? (o.progress as number) : undefined,
       details: o.details as string | string[] | undefined,
-      meta: o.meta,
+        meta: o.meta as TaskEvent['meta'],
     }
     onTask(ev)
     return true

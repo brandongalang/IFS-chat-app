@@ -5,7 +5,7 @@ import { withSupabaseOrDev } from '@/lib/api/supabaseGuard'
 export async function POST(req: NextRequest) {
   try {
     // Body is ignored for user identity; server derives user on its own
-    await req.json().catch(() => ({} as any))
+    await req.json().catch(() => ({} as Record<string, unknown>))
 
     return withSupabaseOrDev(req, async ctx => {
       if (ctx.type === 'no-supabase') {
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
         const sessionRow = {
           user_id: personaUserId,
           start_time: nowIso,
-          messages: [] as any[],
+          messages: [] as unknown[],
           parts_involved: {} as Record<string, unknown>,
           new_parts: [] as string[],
           breakthroughs: [] as string[],

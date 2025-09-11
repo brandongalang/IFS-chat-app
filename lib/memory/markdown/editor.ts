@@ -1,6 +1,6 @@
 import type { StorageAdapter } from '@/lib/memory/storage/adapter'
 import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
-import { lintMarkdown, listSections, patchSectionByAnchor } from './md'
+import { lintMarkdown, patchSectionByAnchor } from './md'
 
 export async function editMarkdownSection(path: string, anchor: string, change: { replace?: string; append?: string }) {
   const storage: StorageAdapter = await getStorageAdapter()

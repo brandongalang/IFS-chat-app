@@ -31,9 +31,8 @@ export function recordSnapshotUsage(kind: SnapshotKind, status: SnapshotStatus, 
       user_id: extra?.userId,
       part_id: extra?.partId,
       rel_id: extra?.relId,
-      error: extra?.error ? String((extra.error as any)?.message || extra.error) : undefined,
+      error: extra?.error ? String((extra.error as { message?: unknown })?.message ?? extra.error) : undefined,
     }
-    // eslint-disable-next-line no-console
     console.log(JSON.stringify(line))
   } catch {
     // best effort
