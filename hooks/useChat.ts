@@ -11,6 +11,7 @@ import { useToast } from './use-toast';
 export function useChat() {
   const searchParams = useSearchParams()
   const { profile } = useUser()
+  const needsAuth = !profile
   const [state, setState] = useState<ChatState>({
     messages: [],
     isStreaming: false,
@@ -91,6 +92,7 @@ export function useChat() {
   const { toast } = useToast();
 
   const ensureSession = useCallback(async (): Promise<string> => {
+    if (needsAuth) throw new Error('Authentication required')
     if (sessionIdRef.current) return sessionIdRef.current;
     try {
       const res = await fetch('/api/session/start', {
@@ -108,9 +110,10 @@ export function useChat() {
       toast({ title: 'Session failed', description: error.message, variant: 'destructive' });
       throw error;
     }
-  }, [toast]);
+  }, [toast, needsAuth]);
 
   const persistMessage = useCallback(async (sessionId: string, role: 'user' | 'assistant', content: string) => {
+    if (needsAuth) return
     try {
       const res = await fetch('/api/session/message', {
         method: 'POST',
@@ -123,10 +126,11 @@ export function useChat() {
       toast({ title: 'Persist failed', description: error.message, variant: 'destructive' });
       throw error;
     }
-  }, [toast]);
+  }, [toast, needsAuth]);
 
   // Add a non-streaming assistant message (optionally persisted)
   const addAssistantMessage = useCallback(async (content: string, opts?: { persist?: boolean; id?: string; persona?: 'claude' | 'default' }) => {
+    if (needsAuth) return
     const id = (opts && opts.id) || generateId()
     const msg: Message = {
       id,
@@ -144,10 +148,10 @@ export function useChat() {
         await persistMessage(sessionId, 'assistant', content)
       } catch {}
     }
-  }, [ensureSession, persistMessage])
+  }, [ensureSession, persistMessage, needsAuth])
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || state.isStreaming) return;
+    if (needsAuth || !content.trim() || state.isStreaming) return;
 
     // Cancel any ongoing streaming
     if (streamingCancelRef.current) {
@@ -295,7 +299,7 @@ export function useChat() {
       console.error('Stream failed:', error);
       toast({ title: 'Stream failed', description: (error as Error)?.message ?? 'Unknown error', variant: 'destructive' });
     }
-  }, [ensureSession, persistMessage, state.isStreaming, state.messages, updateMessage, toast]);
+  }, [ensureSession, persistMessage, state.isStreaming, state.messages, updateMessage, toast, needsAuth]);
 
   const clearChat = useCallback(() => {
     if (streamingCancelRef.current) {
@@ -306,6 +310,7 @@ export function useChat() {
   }, []);
 
   const endSession = useCallback(async () => {
+    if (needsAuth) return
     const id = sessionIdRef.current
     if (!id) {
       // Nothing to end
@@ -324,13 +329,14 @@ export function useChat() {
       sessionIdRef.current = null
       setState((prev: ChatState) => ({ ...prev, hasActiveSession: false, messages: [], isStreaming: false, currentStreamingId: undefined }))
     }
-  }, [])
+  }, [needsAuth])
 
   const sendFeedback = useCallback(async (
     messageId: string,
     rating: 'thumb_up' | 'thumb_down',
     explanation?: string
   ) => {
+    if (needsAuth) return
     const sessionId = sessionIdRef.current;
     if (!sessionId) {
       toast({
@@ -369,7 +375,7 @@ export function useChat() {
         variant: 'destructive',
       });
     }
-  }, [toast]);
+  }, [toast, needsAuth]);
 
   return {
     messages: state.messages,
@@ -382,5 +388,6 @@ export function useChat() {
     clearChat,
     endSession,
     sendFeedback,
+    needsAuth,
   };
 }

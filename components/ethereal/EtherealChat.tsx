@@ -23,6 +23,7 @@ export function EtherealChat() {
     addAssistantMessage,
     tasksByMessage,
     currentStreamingId,
+    needsAuth,
   } = useChat()
   const router = useRouter()
   const taskListStyles: CSSProperties = {
@@ -37,6 +38,11 @@ export function EtherealChat() {
   const [text, setText] = useState("")
   const [confirmOpen, setConfirmOpen] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // redirect to login if auth required
+  useEffect(() => {
+    if (needsAuth) router.push('/auth/login')
+  }, [needsAuth, router])
 
   // End any active session when this component unmounts
   useEffect(() => {
@@ -69,14 +75,19 @@ export function EtherealChat() {
   // Ensure the hero message is present and persisted on a fresh session
   const seededRef = useRef(false)
   useEffect(() => {
+    if (needsAuth) return
     if (seededRef.current) return
     if ((messages?.length ?? 0) === 0) {
       seededRef.current = true
       addAssistantMessage("what feels unresolved or undefined for you right now?", { persist: true, id: "ethereal-welcome" })
     }
-  }, [messages?.length, addAssistantMessage])
+  }, [messages?.length, addAssistantMessage, needsAuth])
 
   const currentTasks = currentStreamingId ? tasksByMessage?.[currentStreamingId] : undefined
+
+  if (needsAuth) {
+    return null
+  }
 
   return (
     <div className="absolute inset-0 flex flex-col">
