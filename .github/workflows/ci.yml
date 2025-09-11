@@ -22,12 +22,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Gitleaks
+      - name: Scan for secrets
         uses: gitleaks/gitleaks-action@v2
-      - name: Run Gitleaks (with SARIF)
+        with:
+          config-path: .gitleaks.toml
+          report-format: sarif
+          report-path: gitleaks.sarif
+          fail: true
+          args: --no-git --verbose
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gitleaks detect --source=. --no-git --report-format sarif --report-path gitleaks.sarif --verbose
       - name: Upload SARIF to Code Scanning
         uses: github/codeql-action/upload-sarif@v3
         with:
