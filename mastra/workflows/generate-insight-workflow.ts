@@ -1,7 +1,7 @@
 import { createWorkflow } from '@mastra/core';
 import { z } from 'zod';
 import { insightResearchTools, getRecentSessions, getActiveParts, getPolarizedRelationships, getRecentInsights } from '../tools/insight-research-tools';
-import { mastra } from '..';
+import { getMastra } from '..';
 
 const workflowInputSchema = z.object({
   userId: z.string().uuid(),
@@ -48,6 +48,7 @@ export const generateInsightWorkflow = createWorkflow({
           Recent Insights: ${JSON.stringify(researchStepOutput.recentInsights, null, 2)}
         `;
 
+        const mastra = getMastra();
         const insightAgent = mastra.getAgent('insightGeneratorAgent');
         const agentRun = await insightAgent.run({
           input: researchSummary,

@@ -46,9 +46,10 @@ export async function handleAgentStream(
   profile: Record<string, unknown>
 ): Promise<Response> {
   try {
-    // Lazy-load the agent only when credentials are available to avoid dev import side-effects
-    const { createIfsAgent } = await import('../../../mastra/agents/ifs-agent')
-    const ifsAgent = createIfsAgent(profile)
+    // Lazy-load Mastra only when credentials are available to avoid dev import side-effects
+    const { createMastra } = await import('@/mastra')
+    const mastra = createMastra(profile)
+    const ifsAgent = mastra.getAgent('ifsAgent')
 
     // Prefer vNext streaming in AI SDK (UI message) format so we can parse consistently on the client
     const agent = ifsAgent as unknown as Partial<{
