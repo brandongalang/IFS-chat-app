@@ -1,28 +1,15 @@
-import { Message, MockAIClient, ToolCall } from '@/types/chat';
-import { detectTool } from './toolDetection';
+import { Message, MockAIClient } from '@/types/chat';
 
 class MockAIClientImpl implements MockAIClient {
   private generateId(): string {
     return Math.random().toString(36).substr(2, 9);
   }
 
-  private generateResponse(messages: Message[], tool?: ToolCall): string {
+  private generateResponse(messages: Message[]): string {
     const lastMessage = messages[messages.length - 1];
     const userText = lastMessage.content.toLowerCase();
 
-    if (tool) {
-      const toolResponses: Record<string, string> = {
-        lookup_weather: `I called the weather lookup tool to get current conditions for ${tool.inputs?.location || 'the requested location'}. Expand the tool card above to inspect the detailed results.\n\nBased on the data, the area is currently experiencing ${tool.rawJson?.current?.condition?.replace('_', ' ') || 'mild conditions'} with a temperature of ${tool.rawJson?.current?.temp || 'comfortable'}°F and ${tool.rawJson?.current?.humidity || 70}% humidity. The forecast shows stable conditions continuing through the week.`,
-        
-        calculate: `I performed the calculation using the math tool. Expand the tool card above to see the detailed computation.\n\nThe result of ${tool.inputs?.expression} is ${tool.rawJson?.result}. This calculation was processed using safe arithmetic evaluation.`,
-        
-        web_search: `I searched for "${tool.inputs?.query}" and found relevant results. Expand the tool card above to view the search results and additional details.\n\nThe search returned ${tool.rawJson?.total_results || 'several'} results with information related to your query.`,
-        
-        default: `I called the ${tool.name} tool with the provided parameters. Expand the tool card above to inspect the results and raw response data.\n\nThe tool executed successfully and returned the requested information.`
-      };
-
-      return toolResponses[tool.name] || toolResponses.default;
-    }
+    // Tool-specific responses have been removed from the mock client.
 
     // Generate contextual responses based on user input
     if (userText.includes('hello') || userText.includes('hi')) {
@@ -47,9 +34,7 @@ class MockAIClientImpl implements MockAIClient {
     const { messages, onToken } = params;
     const lastMessage = messages[messages.length - 1];
     
-    // Detect tool usage
-    const tool = detectTool(lastMessage.content);
-    const response = this.generateResponse(messages, tool || undefined);
+    const response = this.generateResponse(messages);
     
     // Split response into chunks for streaming simulation
     const words = response.split(' ');
@@ -57,8 +42,7 @@ class MockAIClientImpl implements MockAIClient {
     const timeouts: Array<ReturnType<typeof setTimeout>> = [];
     let cancelled = false;
 
-    // If tool detected, simulate tool execution delay first
-    const initialDelay = tool ? 500 : 0;
+    const initialDelay = 0;
 
     words.forEach((word, index) => {
       const timeout = setTimeout(() => {
@@ -67,12 +51,7 @@ class MockAIClientImpl implements MockAIClient {
         currentChunk += (index > 0 ? ' ' : '') + word;
         const isComplete = index === words.length - 1;
         
-        // Return complete message with tool data on completion
-        if (isComplete && tool) {
-          onToken(currentChunk, true);
-        } else {
-          onToken(currentChunk, isComplete);
-        }
+        onToken(currentChunk, isComplete);
       }, initialDelay + index * (50 + Math.random() * 150)); // Random delay between 50-200ms per word
       
       timeouts.push(timeout);
