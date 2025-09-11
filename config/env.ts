@@ -19,9 +19,35 @@ const EnvSchema = z.object({
   IFS_DEFAULT_USER_ID: z.string().uuid().optional(),
   IFS_VERBOSE: z.string().optional(),
   IFS_DISABLE_POLARIZATION_UPDATE: z.string().optional(),
+  // Dev overrides
+  IFS_DEV_FORCE_NO_SUPABASE: z.string().optional(),
 })
 
-const raw = EnvSchema.parse(process.env)
+// Important: avoid parsing the entire process.env object because in the browser
+// Next.js inlines only referenced variables and the runtime stub may be empty.
+// Explicitly map the keys we care about instead, and keep this module server-only.
+const raw = EnvSchema.parse({
+  NODE_ENV: process.env.NODE_ENV,
+
+  // Providers / Secrets
+  OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+
+  // Supabase
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+
+  // IFS dev toggles
+  IFS_DEV_MODE: process.env.IFS_DEV_MODE,
+  NEXT_PUBLIC_IFS_DEV_MODE: process.env.NEXT_PUBLIC_IFS_DEV_MODE,
+  IFS_TEST_PERSONA: process.env.IFS_TEST_PERSONA as any,
+  NEXT_PUBLIC_IFS_TEST_PERSONA: process.env.NEXT_PUBLIC_IFS_TEST_PERSONA as any,
+  IFS_DEFAULT_USER_ID: process.env.IFS_DEFAULT_USER_ID,
+  IFS_VERBOSE: process.env.IFS_VERBOSE,
+  IFS_DISABLE_POLARIZATION_UPDATE: process.env.IFS_DISABLE_POLARIZATION_UPDATE,
+  // Dev overrides
+  IFS_DEV_FORCE_NO_SUPABASE: process.env.IFS_DEV_FORCE_NO_SUPABASE,
+})
 
 const toBool = (v?: string) => v === 'true'
 
@@ -38,4 +64,5 @@ export const env = {
     toBool(raw.NEXT_PUBLIC_IFS_DEV_MODE),
   ifsVerbose: toBool(raw.IFS_VERBOSE),
   ifsDisablePolarizationUpdate: toBool(raw.IFS_DISABLE_POLARIZATION_UPDATE),
+  ifsForceNoSupabase: toBool(raw.IFS_DEV_FORCE_NO_SUPABASE),
 }
