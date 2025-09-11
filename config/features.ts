@@ -1,3 +1,5 @@
+import { env } from './env'
+
 export type FeatureStatus = 'enabled' | 'coming_soon' | 'disabled'
 export type FeatureKey =
   | 'chat'
@@ -11,9 +13,11 @@ export type FeatureKey =
 
 const isTrue = (v?: string) => v === 'true' || v === '1' || v === 'on'
 
-export const devMode =
-  isTrue(process.env.NEXT_PUBLIC_IFS_DEV_MODE) ||
-  process.env.NODE_ENV === 'development'
+export function isDevMode(): boolean {
+  return env.ifsDevMode
+}
+
+const devMode = isDevMode()
 
 // Whether to show the "Enable Dev Mode" toggle in the UI.
 // Default behavior: show in development, hide in production unless explicitly enabled.

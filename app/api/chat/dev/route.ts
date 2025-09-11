@@ -1,8 +1,12 @@
 import { simulateReadableStream } from 'ai'
+import { isDevMode } from '@/config/features'
 
 export const maxDuration = 60
 
 export async function POST() {
+  if (!isDevMode()) {
+    return new Response('Not Found', { status: 404 })
+  }
   const text =
     'here is a simulated answer for dev mode. it should stream in slowly and fade each letter so you can evaluate the ethereal pacing and typography. '
     + 'this stream is intentionally long to demonstrate the animation and throttled updates across multiple chunks. '
