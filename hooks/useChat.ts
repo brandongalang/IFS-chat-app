@@ -23,18 +23,7 @@ export function useChat() {
 
   const streamingCancelRef = useRef<(() => void) | null>(null);
   const sessionIdRef = useRef<string | null>(null);
-  const DEV_FALLBACK = process.env.NEXT_PUBLIC_DEV_USER_ID ?? 'dev-user-1';
-  const userIdRef = useRef<string>(DEV_FALLBACK);
-
   const generateId = (): string => Math.random().toString(36).substr(2, 9);
-
-  useEffect(() => {
-    if (profile?.id) {
-      userIdRef.current = profile.id;
-    } else if (process.env.NODE_ENV !== 'development') {
-      userIdRef.current = '';
-    }
-  }, [profile]);
 
   useEffect(() => {
     const partId = searchParams.get('partId')
@@ -96,7 +85,6 @@ export function useChat() {
       const res = await fetch('/api/session/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: userIdRef.current }),
       });
       if (!res.ok) throw new Error('Failed to start session');
       const data = await res.json();
@@ -254,7 +242,6 @@ export function useChat() {
       await streamFromMastra({
         messages: apiMessages,
         sessionId,
-        userId: userIdRef.current,
         profile: profile ?? { name: '', bio: '' },
         signal: controller.signal,
         apiPath: chosenApiPath,

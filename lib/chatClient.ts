@@ -7,7 +7,6 @@ import type { TaskEvent } from '@/types/chat'
 export async function streamFromMastra(params: {
   messages: BasicMessage[]
   sessionId: string
-  userId: string
   profile: Profile
   onChunk: (chunk: string, done: boolean) => void
   onTask?: (event: TaskEvent) => void
@@ -18,11 +17,10 @@ export async function streamFromMastra(params: {
   const res = await fetch(apiPath, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    // Include sessionId and userId for future server-side attribution; the route safely ignores extras
+    // Include sessionId for future server-side attribution; the route safely ignores extras
     body: JSON.stringify({
       messages: params.messages,
       sessionId: params.sessionId,
-      userId: params.userId,
       profile: params.profile,
     }),
     signal: params.signal,
