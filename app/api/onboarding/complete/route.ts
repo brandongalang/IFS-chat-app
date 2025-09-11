@@ -13,7 +13,7 @@ import {
  * - Validates all required responses are present (5 + 4 + 4 = 13 total)
  * - Updates user state to completed
  * - Triggers user memory synthesis (placeholder for now)
- * - Returns redirect to /today (not /chat per requirements)
+ * - Returns redirect to / (not /chat per requirements)
  * - Idempotent operation
  */
 export async function POST(request: NextRequest) {
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     if (userState.status === 'completed') {
       const response: CompletionResponse = {
         ok: true,
-        redirect: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/today`,
+        redirect: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/`,
         completed_at: userState.completed_at!
       };
       return NextResponse.json(response);
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
 
     const response: CompletionResponse = {
       ok: true,
-      redirect: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/today`,
+      redirect: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/`,
       completed_at: now
     };
 
