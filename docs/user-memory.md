@@ -16,7 +16,7 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 
 ## API
 - `POST /api/cron/memory-update`
-  - Header: `x-cron-key: <CRON_SECRET>`
+  - Header: `Authorization: Bearer <CRON_SECRET>`
   - Finds users active in last 24h, runs the update pipeline for each
   - Returns per-user result and latest version if saved
 
@@ -37,7 +37,7 @@ Use the GitHub Actions workflow `.github/workflows/memory-update-cron.yml`:
 ## Local testing
 - Apply migrations (see below)
 - Run dev server, then:
-  - `curl -X POST http://localhost:3000/api/cron/memory-update -H "x-cron-key: <CRON_SECRET>"`
+  - `curl -X POST http://localhost:3000/api/cron/memory-update -H "Authorization: Bearer <CRON_SECRET>"`
 
 ## Migration
 - File: `supabase/migrations/006_user_memory.sql`

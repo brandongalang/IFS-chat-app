@@ -5,7 +5,7 @@ This document outlines features and improvements that were part of the initial d
 ## 0. Pending Deployment Configuration
 
 - APP_BASE_URL (for scheduled cron): Set to your deployed app’s base URL (e.g. https://your-app.com)
-- CRON_SECRET: Generate a random string; store as Actions secret and in app env so /api/cron endpoints can validate x-cron-key
+- CRON_SECRET: Generate a random string; store as Actions secret and in app env so /api/cron endpoints can validate the `Authorization` header (Bearer token)
 - Location to add: GitHub > Settings > Secrets and variables > Actions
 - After deployment, update memory-update-cron.yml secrets accordingly.
 

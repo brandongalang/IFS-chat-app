@@ -2,13 +2,13 @@ import { NextResponse } from 'next/server'
 import { listActiveUsersSince, reconstructMemory, loadTodayData, generateMemoryUpdate, saveNewSnapshot } from '@/lib/memory/service'
 
 function requireCronAuth(req: Request): boolean {
-  const configured = process.env.CRON_SECRET
-  if (!configured) {
+  const secret = process.env.CRON_SECRET
+  if (!secret) {
     // In dev, allow if not configured; in prod, CI should set CRON_SECRET
     return process.env.NODE_ENV !== 'production'
   }
-  const header = req.headers.get('x-cron-key') || req.headers.get('x-cron-secret')
-  return header === configured
+  const authHeader = req.headers.get('authorization')
+  return authHeader === `Bearer ${secret}`
 }
 
 async function runDailyMemoryUpdate(): Promise<Response> {
