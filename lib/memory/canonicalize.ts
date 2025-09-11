@@ -13,15 +13,16 @@ export function canonicalizeText(input: string): string {
 
 // Deterministic JSON canonicalization (stable key order, no extra whitespace)
 export function canonicalizeJson(value: unknown): string {
-  const seen = new WeakSet()
-  const sort = (v: any): any => {
+  const seen = new WeakSet<object>()
+  const sort = (v: unknown): unknown => {
     if (v === null || typeof v !== 'object') return v
-    if (seen.has(v)) return null
-    seen.add(v)
-    if (Array.isArray(v)) return v.map(sort)
-    const keys = Object.keys(v).sort()
-    const out: Record<string, any> = {}
-    for (const k of keys) out[k] = sort(v[k])
+    const obj = v as Record<string, unknown>
+    if (seen.has(obj)) return null
+    seen.add(obj)
+    if (Array.isArray(obj)) return obj.map(sort)
+    const keys = Object.keys(obj).sort()
+    const out: Record<string, unknown> = {}
+    for (const k of keys) out[k] = sort(obj[k])
     return out
   }
   const normalized = sort(value)

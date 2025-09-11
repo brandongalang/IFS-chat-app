@@ -12,10 +12,11 @@ const compat = new FlatCompat({
 });
 
 export default [
+    { ignores: ['lib/data/**'] },
     ...compat.extends('next/core-web-vitals', 'next/typescript'),
     {
         rules: {
-            '@typescript-eslint/no-unused-vars': 'warn',
+            '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
             '@typescript-eslint/no-explicit-any': 'warn',
         },
     },

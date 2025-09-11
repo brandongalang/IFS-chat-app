@@ -22,9 +22,9 @@ export function ActiveTaskOverlay({ tasks }: ActiveTaskOverlayProps) {
               ) : (
                 <TaskItem>{t.details}</TaskItem>
               )}
-              {t.meta && Array.isArray((t.meta as any)?.files) && (
+              {t.meta?.files && Array.isArray(t.meta.files) && (
                 <div className="pt-2 flex flex-wrap gap-2">
-                  {(t.meta as any).files.map((f: { name: string }, i: number) => (
+                  {t.meta.files.map((f, i) => (
                     <TaskItemFile key={i}>{f?.name ?? "file"}</TaskItemFile>
                   ))}
                 </div>
