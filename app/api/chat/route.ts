@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { dev } from '@/config/dev'
+import { getSupabaseKey, getSupabaseUrl } from '@/lib/supabase/config'
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,8 +15,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Only attempt to create a Supabase server client if env is configured
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const supabaseUrl = getSupabaseUrl()
+    const supabaseAnon = getSupabaseKey()
     const hasSupabase =
       typeof supabaseUrl === 'string' && /^https?:\/\//.test(supabaseUrl) &&
       typeof supabaseAnon === 'string' && supabaseAnon.length > 20
