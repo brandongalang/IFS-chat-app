@@ -1,20 +1,8 @@
 import { createTool } from '@mastra/core'
 import { z } from 'zod'
 import { resolveUserId } from '@/config/dev'
-import type { Database, ToolResult } from '../../lib/types/database'
-import { createClient as createBrowserClient } from '@supabase/supabase-js'
-
-// Helper function to get Supabase client
-function getSupabaseClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!url || !anonKey) {
-    throw new Error('Supabase URL and anon key are required.')
-  }
-
-  return createBrowserClient<Database>(url, anonKey)
-}
+import type { ToolResult } from '../../lib/types/database'
+import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
 
 const searchConversationsSchema = z.object({
   query: z.string().min(1).describe('The search query for keywords or themes'),
@@ -26,55 +14,42 @@ export async function searchConversations(input: z.infer<typeof searchConversati
   try {
     const validated = searchConversationsSchema.parse(input)
     const userId = resolveUserId(validated.userId)
-    const supabase = getSupabaseClient()
+    const storage = await getStorageAdapter()
 
-    // This is a simplified implementation. A real implementation would use pg_trgm or FTS5 for efficient search.
-    // For now, we will retrieve recent sessions and filter in code.
-
-    let queryBuilder = supabase
-      .from('sessions')
-      .select('id, messages, created_at')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-
-    if (validated.timePeriod !== 'all_time') {
-      const date = new Date()
-      const days = validated.timePeriod === 'last_7_days' ? 7 : 30
-      date.setDate(date.getDate() - days)
-      queryBuilder = queryBuilder.gte('created_at', date.toISOString())
-    }
-
-    const { data: sessions, error } = await queryBuilder
-
-    if (error) {
-      return { success: false, error: `Database error: ${error.message}` }
-    }
-
-    if (!sessions) {
-      return { success: true, data: [], confidence: 1.0 }
-    }
-
+    // List session files for the user and attempt a simple text search.
+    const prefix = `users/${userId}/sessions`
+    const paths = await storage.list(prefix)
     const searchResults: any[] = []
     const lowerCaseQuery = validated.query.toLowerCase()
+    const now = new Date()
 
-    for (const session of sessions) {
-        if (Array.isArray(session.messages)) {
-            for (const message of session.messages) {
-                if (typeof message.content === 'string' && message.content.toLowerCase().includes(lowerCaseQuery)) {
-                    searchResults.push({
-                        ...message,
-                        sessionId: session.id,
-                        sessionCreatedAt: session.created_at
-                    })
-                }
-            }
+    for (const path of paths) {
+      const text = await storage.getText(path)
+      if (!text) continue
+      try {
+        const session = JSON.parse(text) as { id: string; messages: any[]; created_at: string }
+        if (validated.timePeriod !== 'all_time') {
+          const days = validated.timePeriod === 'last_7_days' ? 7 : 30
+          const cutoff = new Date(now)
+          cutoff.setDate(cutoff.getDate() - days)
+          if (new Date(session.created_at) < cutoff) continue
         }
+        for (const message of session.messages || []) {
+          if (typeof message.content === 'string' && message.content.toLowerCase().includes(lowerCaseQuery)) {
+            searchResults.push({
+              ...message,
+              sessionId: session.id,
+              sessionCreatedAt: session.created_at,
+            })
+          }
+        }
+      } catch {}
     }
 
     return {
       success: true,
-      data: searchResults.slice(0, 20), // Limit results for now
-      confidence: 1.0
+      data: searchResults.slice(0, 20),
+      confidence: 1.0,
     }
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
