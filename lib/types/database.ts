@@ -256,6 +256,7 @@ export interface PartRow {
 
 export interface PartInsert {
   id?: string
+  [key: string]: unknown
   user_id: string
   name: string
   status?: PartStatus
@@ -283,6 +284,7 @@ export interface PartInsert {
 
 export interface PartUpdate {
   id?: string
+  [key: string]: unknown
   user_id?: string
   name?: string
   status?: PartStatus
@@ -422,6 +424,7 @@ export interface PartRelationshipRow {
 
 export interface PartRelationshipInsert {
   id?: string
+  [key: string]: unknown
   user_id: string
   parts: string[]
   type: RelationshipType
@@ -438,6 +441,7 @@ export interface PartRelationshipInsert {
 
 export interface PartRelationshipUpdate {
   id?: string
+  [key: string]: unknown
   user_id?: string
   parts?: string[]
   type?: RelationshipType
