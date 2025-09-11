@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { jsonResponse, errorResponse } from '@/lib/api/response'
 
 const hasSupabase =
   typeof process.env.NEXT_PUBLIC_SUPABASE_URL === 'string' &&
@@ -11,17 +12,11 @@ export async function POST(_req: NextRequest, context: { params: Promise<{ id: s
   try {
     const { id } = await context.params
     if (!id) {
-      return new Response(JSON.stringify({ error: 'id is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return errorResponse('id is required', 400)
     }
 
     if (!hasSupabase) {
-      return new Response(JSON.stringify({ ok: true, updated: false }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return jsonResponse({ ok: true, updated: false })
     }
 
     const supabase = await createClient()
@@ -32,17 +27,11 @@ export async function POST(_req: NextRequest, context: { params: Promise<{ id: s
       .eq('id', id)
       .single()
     if (fetchErr) {
-      return new Response(JSON.stringify({ error: 'Not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return errorResponse('Not found', 404)
     }
 
     if (current.status === 'revealed' || current.status === 'actioned') {
-      return new Response(JSON.stringify(current), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return jsonResponse(current)
     }
 
     const { data: updated, error } = await supabase
@@ -54,16 +43,10 @@ export async function POST(_req: NextRequest, context: { params: Promise<{ id: s
 
     if (error) throw error
 
-    return new Response(JSON.stringify(updated), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return jsonResponse(updated)
   } catch (e) {
     console.error('POST /api/insights/[id]/reveal error:', e)
-    return new Response(JSON.stringify({ error: 'Failed to reveal insight' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return errorResponse('Failed to reveal insight', 500)
   }
 }
 

@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
 import { mastra } from '@/mastra';
 import { createClient } from '@/lib/supabase/server';
 import type { Json } from '@/lib/types/database';
+import { jsonResponse, errorResponse } from '@/lib/api/response';
 
 const COOL_DOWN_HOURS = 48;
 
@@ -34,7 +34,7 @@ async function saveInsightsToDb(
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return new Response('Unauthorized', { status: 401 });
+    return errorResponse('Unauthorized', 401);
   }
 
   console.log('[Cron] Starting daily insight generation job.');
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
 
   if (usersError) {
     console.error('[Cron] Error fetching users:', usersError);
-    return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+    return errorResponse('Failed to fetch users', 500);
   }
 
   let totalInsightsGenerated = 0;
@@ -109,5 +109,5 @@ export async function GET(request: Request) {
   };
 
   console.log('[Cron] Job finished.', summary);
-  return NextResponse.json(summary);
+  return jsonResponse(summary);
 }

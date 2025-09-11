@@ -2,16 +2,14 @@ import { NextRequest } from 'next/server'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { dev } from '@/config/dev'
+import { jsonResponse, errorResponse } from '@/lib/api/response'
 
 export async function POST(req: NextRequest) {
   try {
     const { sessionId } = await req.json()
 
     if (!sessionId || typeof sessionId !== 'string') {
-      return new Response(JSON.stringify({ error: 'sessionId is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return errorResponse('sessionId is required', 400)
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -22,10 +20,7 @@ export async function POST(req: NextRequest) {
 
     if (!hasSupabase) {
       // Dev fallback when Supabase env is not configured
-      return new Response(JSON.stringify({ ok: true, ended: false }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return jsonResponse({ ok: true, ended: false })
     }
 
     // Try authenticated path first (RLS-protected)
@@ -36,10 +31,7 @@ export async function POST(req: NextRequest) {
     if (authedUserId) {
       const { chatSessionService } = await import('@/lib/session-service')
       await chatSessionService.endSession(sessionId)
-      return new Response(JSON.stringify({ ok: true, ended: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return jsonResponse({ ok: true, ended: true })
     }
 
     // Dev mode unauthenticated: admin client updates session
@@ -72,22 +64,13 @@ export async function POST(req: NextRequest) {
 
       if (updateError) throw updateError
 
-      return new Response(JSON.stringify({ ok: true, ended: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return jsonResponse({ ok: true, ended: true })
     }
 
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return errorResponse('Unauthorized', 401)
   } catch (error) {
     console.error('Session end API error:', error)
-    return new Response(JSON.stringify({ error: 'Failed to end session' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return errorResponse('Failed to end session', 500)
   }
 }
 

@@ -2,16 +2,14 @@ import { NextRequest } from 'next/server'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { dev } from '@/config/dev'
+import { jsonResponse, errorResponse } from '@/lib/api/response'
 
 export async function POST(req: NextRequest) {
   try {
     const { sessionId, role, content } = await req.json()
 
     if (!sessionId || (role !== 'user' && role !== 'assistant') || typeof content !== 'string') {
-      return new Response(JSON.stringify({ error: 'Invalid payload' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return errorResponse('Invalid payload', 400)
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -22,10 +20,7 @@ export async function POST(req: NextRequest) {
 
     if (!hasSupabase) {
       // Development fallback when Supabase env is not configured
-      return new Response(JSON.stringify({ ok: true, stored: false }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return jsonResponse({ ok: true, stored: false })
     }
 
     // Try authenticated user path first (RLS-protected)
@@ -36,10 +31,7 @@ export async function POST(req: NextRequest) {
     if (authedUserId) {
       const { chatSessionService } = await import('@/lib/session-service')
       await chatSessionService.addMessage(sessionId, { role, content })
-      return new Response(JSON.stringify({ ok: true, stored: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return jsonResponse({ ok: true, stored: true })
     }
 
     // Dev mode: use admin client to bypass RLS and append message for persona-owned session
@@ -66,22 +58,13 @@ export async function POST(req: NextRequest) {
 
       if (updateError) throw updateError
 
-      return new Response(JSON.stringify({ ok: true, stored: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return jsonResponse({ ok: true, stored: true })
     }
 
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return errorResponse('Unauthorized', 401)
   } catch (error) {
     console.error('Session message API error:', error)
-    return new Response(JSON.stringify({ error: 'Failed to store message' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return errorResponse('Failed to store message', 500)
   }
 }
 

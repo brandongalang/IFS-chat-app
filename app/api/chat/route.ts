@@ -1,16 +1,14 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { dev } from '@/config/dev'
+import { jsonResponse, errorResponse } from '@/lib/api/response'
 
 export async function POST(req: NextRequest) {
   try {
     const { messages, profile } = await req.json()
 
     if (!messages || !Array.isArray(messages)) {
-      return new Response(JSON.stringify({ error: 'Messages array is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Messages array is required', 400)
     }
 
     // Only attempt to create a Supabase server client if env is configured
@@ -33,10 +31,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!userId && !dev.enabled) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Unauthorized', 401)
     }
 
     // Add the secure user ID to the profile object
@@ -172,9 +167,6 @@ const { createIfsAgent } = await import('../../../mastra/agents/ifs-agent')
 
   } catch (error) {
     console.error('Chat API error:', error)
-    return new Response(JSON.stringify({ error: 'Something went wrong' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    return errorResponse('Something went wrong', 500)
   }
 }

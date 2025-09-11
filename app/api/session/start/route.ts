@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { dev, resolveUserId } from '@/config/dev'
+import { jsonResponse, errorResponse } from '@/lib/api/response'
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,10 +18,7 @@ export async function POST(req: NextRequest) {
     if (!hasSupabase) {
       // Development fallback when Supabase env is not configured
       const devSessionId = `dev-${Math.random().toString(36).slice(2)}`
-      return new Response(JSON.stringify({ sessionId: devSessionId }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return jsonResponse({ sessionId: devSessionId })
     }
 
     // Try authenticated path first
@@ -31,10 +29,7 @@ export async function POST(req: NextRequest) {
     if (authedUserId) {
       const { chatSessionService } = await import('../../../../lib/session-service')
       const sessionId = await chatSessionService.startSession(authedUserId)
-      return new Response(JSON.stringify({ sessionId }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return jsonResponse({ sessionId })
     }
 
     // Unauthenticated: allow DB persistence in dev mode by using a seeded persona user via admin client
@@ -69,23 +64,14 @@ export async function POST(req: NextRequest) {
 
       if (error) throw error
 
-      return new Response(JSON.stringify({ sessionId: data.id }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return jsonResponse({ sessionId: data.id })
     }
 
     // Production (or dev disabled) and unauthenticated
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return errorResponse('Unauthorized', 401)
   } catch (error) {
     console.error('Session start API error:', error)
-    return new Response(JSON.stringify({ error: 'Failed to start session' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return errorResponse('Failed to start session', 500)
   }
 }
 
