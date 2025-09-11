@@ -1,4 +1,5 @@
 import { env } from './env'
+import { isDevMode } from './features'
 import { TEST_PERSONAS, getPersonaUserId, getCurrentPersona, type TestPersona } from './personas'
 
 // Compute dev flags using centralized environment parsing so behaviour
@@ -6,7 +7,7 @@ import { TEST_PERSONAS, getPersonaUserId, getCurrentPersona, type TestPersona } 
 const currentPersonaEnv = (env.IFS_TEST_PERSONA ?? env.NEXT_PUBLIC_IFS_TEST_PERSONA ?? 'beginner') as TestPersona
 
 export const dev = {
-  enabled: env.ifsDevMode,
+  enabled: isDevMode(),
   defaultUserId: env.IFS_DEFAULT_USER_ID ?? null,
   verbose: env.ifsVerbose,
   disablePolarizationUpdate: env.ifsDisablePolarizationUpdate,

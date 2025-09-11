@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { isDevMode } from '@/config/features';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -14,15 +15,13 @@ import { AlertTriangle, CheckCircle } from 'lucide-react';
 
 // Dev mode guard
 function DevModeGuard({ children }: { children: React.ReactNode }) {
-  const [isDevMode, setIsDevMode] = useState(false);
+    const [devEnabled, setDevEnabled] = useState(false);
 
-  useEffect(() => {
-    const devMode = process.env.NODE_ENV === 'development' || 
-                    process.env.NEXT_PUBLIC_IFS_DEV_MODE === 'true';
-    setIsDevMode(devMode);
-  }, []);
+    useEffect(() => {
+      setDevEnabled(isDevMode());
+    }, []);
 
-  if (!isDevMode) {
+    if (!devEnabled) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="max-w-md">

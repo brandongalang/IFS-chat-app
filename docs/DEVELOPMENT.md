@@ -33,6 +33,8 @@ This guide explains how to configure the IFS Therapy application for development
 - `NEXT_PUBLIC_IFS_DEV_MODE=true` - Enables development mode features across SSR and CSR
 - `IFS_DEFAULT_USER_ID` - UUID to use as default user ID when none provided
 
+In code, prefer using `isDevMode()` from `config/features` to check whether development mode is active.
+
 ### Optional Development Variables
 
 - `NEXT_PUBLIC_IFS_SHOW_DEV_TOGGLE=true` - Shows an in-app "Enable Dev Mode" control on the home header (hidden by default in production). Clicking it sets a localStorage override used on the client.

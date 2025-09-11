@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { isDevMode } from '@/config/features';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,16 +22,14 @@ import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 
 // Dev mode guard
 function DevModeGuard({ children }: { children: React.ReactNode }) {
-  const [isDevMode, setIsDevMode] = useState(false);
+    const [devEnabled, setDevEnabled] = useState(false);
 
-  useEffect(() => {
-    // Check if we're in dev mode
-    const devMode = process.env.NODE_ENV === 'development' || 
-                    process.env.NEXT_PUBLIC_IFS_DEV_MODE === 'true';
-    setIsDevMode(devMode);
-  }, []);
+    useEffect(() => {
+      // Check if we're in dev mode using centralized helper
+      setDevEnabled(isDevMode());
+    }, []);
 
-  if (!isDevMode) {
+    if (!devEnabled) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="max-w-md">
@@ -39,17 +38,17 @@ function DevModeGuard({ children }: { children: React.ReactNode }) {
           </CardHeader>
           <CardContent>
             <p>This development tool is only available in development mode.</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Set <code>NEXT_PUBLIC_IFS_DEV_MODE=true</code> to access.
-            </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Set <code>NEXT_PUBLIC_IFS_DEV_MODE=true</code> to access.
+              </p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  return <>{children}</>;
-}
+    return <>{children}</>;
+  }
 
 type Stage2Results = {
   selection: { ids: string[]; rationale: { top_themes: string[] } & Record<string, unknown> };
