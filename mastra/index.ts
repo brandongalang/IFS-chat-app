@@ -9,11 +9,12 @@ type Profile = Parameters<typeof createIfsAgent>[0]
 let mastraInstance: any = null
 
 export function createMastra(profile: Profile = null) {
-  return (new Mastra({
+  return new Mastra({
     logger: new PinoLogger({
       name: 'IFS-Therapy-App',
       level: 'info',
     }),
+    // Expose agents and workflows to the Mastra runtime
     agents: {
       ifsAgent: createIfsAgent(profile),
       insightGeneratorAgent,
@@ -21,7 +22,9 @@ export function createMastra(profile: Profile = null) {
     workflows: {
       generateInsightWorkflow,
     },
-  })) as any
+    // Optional telemetry config can be added here when needed
+    // telemetry: { /* configure telemetry here if desired */ },
+  }) as any
 }
 
 export function getMastra(profile: Profile = null) {
@@ -30,3 +33,7 @@ export function getMastra(profile: Profile = null) {
   }
   return mastraInstance as any
 }
+
+// Export a default Mastra instance for the Mastra CLI dev entry
+// The CLI expects: export const mastra = new Mastra({ ... })
+export const mastra = getMastra()
