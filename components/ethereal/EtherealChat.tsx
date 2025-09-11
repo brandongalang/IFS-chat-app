@@ -197,7 +197,7 @@ export function EtherealChat() {
               onClick={async () => {
                 await endSession()
                 setConfirmOpen(false)
-                router.push('/today')
+                router.push('/')
               }}
             >
               End session

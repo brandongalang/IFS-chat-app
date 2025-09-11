@@ -23,9 +23,18 @@ export function useChat() {
 
   const streamingCancelRef = useRef<(() => void) | null>(null);
   const sessionIdRef = useRef<string | null>(null);
-  const userIdRef = useRef<string>('dev-user-1'); // TODO: replace with real identity later
+  const DEV_FALLBACK = process.env.NEXT_PUBLIC_DEV_USER_ID ?? 'dev-user-1';
+  const userIdRef = useRef<string>(DEV_FALLBACK);
 
   const generateId = (): string => Math.random().toString(36).substr(2, 9);
+
+  useEffect(() => {
+    if (profile?.id) {
+      userIdRef.current = profile.id;
+    } else if (process.env.NODE_ENV !== 'development') {
+      userIdRef.current = '';
+    }
+  }, [profile]);
 
   useEffect(() => {
     const partId = searchParams.get('partId')
