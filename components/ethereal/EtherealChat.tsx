@@ -38,6 +38,13 @@ export function EtherealChat() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
+  // End any active session when this component unmounts
+  useEffect(() => {
+    return () => {
+      if (hasActiveSession) void endSession()
+    }
+  }, [hasActiveSession, endSession])
+
   // Auto-resize textarea
   useEffect(() => {
     if (!inputRef.current) return
