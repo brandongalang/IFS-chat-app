@@ -177,7 +177,7 @@ export class DatabaseActionLogger {
     const { data, error } = await query
     if (error) throw error
 
-    return (data || []).map((row: any) => ({
+    return (data || []).map((row: { event_id: string; rationale?: string; ts: string }) => ({
       id: row.event_id,
       summary: row.rationale || 'Agent action',
       timestamp: row.ts,

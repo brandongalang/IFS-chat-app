@@ -59,12 +59,12 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
   ])
 
   // Handle case where the part is not found or fails to load
-  if (!partResult.success || !partResult.data) {
+  if (!partResult) {
     return (
       <div className="container mx-auto p-4 text-center">
         <h1 className="text-2xl font-bold">Part Not Found</h1>
         <p className="text-red-500 mt-2">
-          {partResult.error || 'The requested part could not be found.'}
+          The requested part could not be found.
         </p>
         <Button asChild className="mt-4">
           <Link href="/garden">
@@ -76,10 +76,10 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
     )
   }
 
-  const part: PartRow = partResult.data
+  const part: PartRow = partResult
   const visualization = part.visualization as { emoji?: string; color?: string }
   const story = part.story as { origin?: string; currentState?: string; purpose?: string }
-  const relationships = relationshipsResult.success ? relationshipsResult.data : []
+  const relationships = relationshipsResult && Array.isArray(relationshipsResult) ? relationshipsResult : []
 
   return (
     <div className="container mx-auto p-4 md:p-6">

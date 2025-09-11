@@ -134,16 +134,16 @@ export default function GardenPage() {
           getPartRelationships({ includePartDetails: false, limit: 50 }),
         ])
 
-        if (partsResult.success && partsResult.data) {
-          setParts(partsResult.data)
+        if (partsResult && Array.isArray(partsResult)) {
+          setParts(partsResult)
         } else {
-          throw new Error(partsResult.error || 'Failed to load parts.')
+          throw new Error('Failed to load parts.')
         }
 
-        if (relationshipsResult.success && relationshipsResult.data) {
-          setRelationships(relationshipsResult.data)
+        if (relationshipsResult && Array.isArray(relationshipsResult)) {
+          setRelationships(relationshipsResult)
         } else {
-          throw new Error(relationshipsResult.error || 'Failed to load relationships.')
+          throw new Error('Failed to load relationships.')
         }
       } catch (e) {
         if (e instanceof Error) {
@@ -179,7 +179,7 @@ export default function GardenPage() {
     return { nodes, links }
   }, [parts, relationships])
 
-  const handleNodeClick = useCallback((node: GraphNode, _event: MouseEvent) => {
+  const handleNodeClick = useCallback((node: GraphNode) => {
     const id = node.id
     if (id != null) window.location.href = `/garden/${String(id)}`
   }, []);
