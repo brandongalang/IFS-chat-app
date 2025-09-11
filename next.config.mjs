@@ -16,7 +16,7 @@ const nextConfig = {
         destination: '/chat',
         permanent: false,
       },
-    ];
+    ]
   },
 }
 
