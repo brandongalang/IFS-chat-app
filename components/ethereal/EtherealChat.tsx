@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import { useChat } from "@/hooks/useChat"
+import { TaskList } from "@/components/chat/TaskList"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -12,7 +13,7 @@ import { StreamingText } from "./StreamingText"
 
 // Minimal, bubble-less chat presentation for /chat/ethereal
 export function EtherealChat() {
-  const { messages, sendMessage, isStreaming, hasActiveSession, endSession, addAssistantMessage } = useChat()
+  const { messages, sendMessage, isStreaming, hasActiveSession, endSession, addAssistantMessage, currentStreamingId } = useChat()
   const router = useRouter()
 
   // UI state
@@ -94,13 +95,22 @@ export function EtherealChat() {
                 ].join(" ")}
                 style={{
                   letterSpacing: m.role === 'assistant' ? 'var(--eth-letter-spacing-assistant)' : 'var(--eth-letter-spacing-user)',
-                  color: 'rgba(255,255,255,var(--eth-assistant-opacity))',
+                  color: m.role === 'assistant'
+                    ? (m.id === currentStreamingId
+                      ? 'rgba(255,255,255,1)'
+                      : 'rgba(255,255,255,var(--eth-assistant-opacity))')
+                    : 'rgba(255,255,255,var(--eth-assistant-opacity))',
                   opacity: m.role === 'assistant' ? undefined : (Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-user-opacity').trim()) || 0.8),
                 }}
               >
                 {m.id === "ethereal-welcome" && (
                   <p className="mb-2 text-sm text-white/60">dive back in.</p>
                 )}
+                {m.role === "assistant" && m.tasks?.length ? (
+                  <div className="mb-2">
+                    <TaskList tasks={m.tasks} />
+                  </div>
+                ) : null}
                 <StreamingText text={m.content} />
               </div>
             </motion.div>
