@@ -26,3 +26,7 @@ export function relationshipProfilePath(userId: string, relId: string) {
   return `users/${userId}/relationships/${relId}/profile.md`
 }
 
+export function sessionTranscriptPath(userId: string, sessionId: string) {
+  return `users/${userId}/sessions/${sessionId}.json`
+}
+
