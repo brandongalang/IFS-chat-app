@@ -1,20 +1,20 @@
-import { NextResponse } from 'next/server';
-import { getMastra } from '@/mastra';
-import { createClient } from '@/lib/supabase/server';
-import type { Json } from '@/lib/types/database';
+import { getMastra } from '@/mastra'
+import { createClient } from '@/lib/supabase/server'
+import type { Json } from '@/lib/types/database'
+import { jsonResponse, errorResponse } from '@/lib/api/response'
 
-const COOL_DOWN_HOURS = 48;
+const COOL_DOWN_HOURS = 48
 
 async function saveInsightsToDb(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
-  insights: Array<{ type: string; title: string; body: string; sourceSessionIds?: string[] }>
+  insights: Array<{ type: string; title: string; body: string; sourceSessionIds?: string[] }>,
 ): Promise<boolean> {
   if (!insights || insights.length === 0) {
-    return true;
+    return true
   }
-  const now = new Date().toISOString();
-  const payloads = insights.map(insight => ({
+  const now = new Date().toISOString()
+  const payloads = insights.map((insight) => ({
     user_id: userId,
     type: insight.type,
     status: 'pending',
@@ -24,36 +24,36 @@ async function saveInsightsToDb(
     processed_at: null,
     created_at: now,
     updated_at: now,
-  }));
-  const { error } = await supabase.from('insights').insert(payloads);
+  }))
+  const { error } = await supabase.from('insights').insert(payloads)
   if (error) {
-    console.error(`[Cron] Failed to save insights for user ${userId}:`, error);
-    return false;
+    console.error(`[Cron] Failed to save insights for user ${userId}:`, error)
+    return false
   }
-  return true;
+  return true
 }
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization');
+  const authHeader = request.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return new Response('Unauthorized', { status: 401 });
+    return errorResponse('Unauthorized', 401)
   }
 
-  console.log('[Cron] Starting daily insight generation job.');
-  const supabase = await createClient();
+  console.log('[Cron] Starting daily insight generation job.')
+  const supabase = await createClient()
 
-  const { data: users, error: usersError } = await supabase.from('users').select('id');
+  const { data: users, error: usersError } = await supabase.from('users').select('id')
 
   if (usersError) {
-    console.error('[Cron] Error fetching users:', usersError);
-    return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+    console.error('[Cron] Error fetching users:', usersError)
+    return errorResponse('Failed to fetch users', 500)
   }
 
-  let totalInsightsGenerated = 0;
-  const processedUsers = [];
+  let totalInsightsGenerated = 0
+  const processedUsers: string[] = []
 
   for (const user of users) {
-    const userId = user.id;
+    const userId = user.id
 
     const { data: lastInsight } = await supabase
       .from('insights')
@@ -61,56 +61,56 @@ export async function GET(request: Request) {
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .single()
 
     if (lastInsight) {
-      const lastInsightDate = new Date(lastInsight.created_at);
-      const coolDownDate = new Date(lastInsightDate.getTime() + COOL_DOWN_HOURS * 60 * 60 * 1000);
+      const lastInsightDate = new Date(lastInsight.created_at)
+      const coolDownDate = new Date(lastInsightDate.getTime() + COOL_DOWN_HOURS * 60 * 60 * 1000)
       if (new Date() < coolDownDate) {
-        console.log(`[Cron] User ${userId} is in cool-down period. Skipping.`);
-        continue;
+        console.log(`[Cron] User ${userId} is in cool-down period. Skipping.`)
+        continue
       }
     }
 
-    const oneDayAgo = new Date(new Date().getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const { data: recentActivity } = await supabase
       .from('sessions')
       .select('id', { count: 'exact' })
       .eq('user_id', userId)
-      .gte('start_time', oneDayAgo);
+      .gte('start_time', oneDayAgo)
 
     if (!recentActivity || recentActivity.length === 0) {
-      console.log(`[Cron] No recent activity for user ${userId}. Skipping.`);
-      continue;
+      console.log(`[Cron] No recent activity for user ${userId}. Skipping.`)
+      continue
     }
 
-    console.log(`[Cron] Processing user ${userId}.`);
-    const mastra = getMastra();
-    const insightWorkflow = mastra.getWorkflow('generateInsightWorkflow');
+    console.log(`[Cron] Processing user ${userId}.`)
+    const mastra = getMastra()
+    const insightWorkflow = mastra.getWorkflow('generateInsightWorkflow')
     const workflowRun = await insightWorkflow.execute({
       input: { userId },
-    });
+    })
 
-  let generatedInsights: Array<{ type: string; title: string; body: string; sourceSessionIds?: string[] }> = [];
+    let generatedInsights: Array<{ type: string; title: string; body: string; sourceSessionIds?: string[] }> = []
     if (workflowRun.status === 'success') {
-      generatedInsights = workflowRun.output || [];
+      generatedInsights = workflowRun.output || []
     }
 
-    console.log(`[Cron] Agent generated ${generatedInsights.length} insights for user ${userId}.`);
+    console.log(`[Cron] Agent generated ${generatedInsights.length} insights for user ${userId}.`)
 
     if (generatedInsights.length > 0) {
-      await saveInsightsToDb(supabase, userId, generatedInsights);
-      totalInsightsGenerated += generatedInsights.length;
+      await saveInsightsToDb(supabase, userId, generatedInsights)
+      totalInsightsGenerated += generatedInsights.length
     }
-    processedUsers.push(userId);
+    processedUsers.push(userId)
   }
 
   const summary = {
     message: 'Daily insight generation job completed.',
     processedUserCount: processedUsers.length,
     totalInsightsGenerated,
-  };
+  }
 
-  console.log('[Cron] Job finished.', summary);
-  return NextResponse.json(summary);
+  console.log('[Cron] Job finished.', summary)
+  return jsonResponse(summary)
 }

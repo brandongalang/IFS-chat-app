@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { resolveUserId } from '@/config/dev'
 import { withSupabaseOrDev } from '@/lib/api/supabaseGuard'
+import { jsonResponse, errorResponse } from '@/lib/api/response'
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,19 +11,13 @@ export async function POST(req: NextRequest) {
     return withSupabaseOrDev(req, async (ctx) => {
       if (ctx.type === 'no-supabase') {
         const devSessionId = `dev-${Math.random().toString(36).slice(2)}`
-        return new Response(JSON.stringify({ sessionId: devSessionId }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return jsonResponse({ sessionId: devSessionId })
       }
 
       if (ctx.type === 'authed') {
         const { chatSessionService } = await import('../../../../lib/session-service')
         const sessionId = await chatSessionService.startSession(ctx.userId)
-        return new Response(JSON.stringify({ sessionId }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return jsonResponse({ sessionId })
       }
 
       if (ctx.type === 'admin') {
@@ -53,22 +48,13 @@ export async function POST(req: NextRequest) {
 
         if (error) throw error
 
-        return new Response(JSON.stringify({ sessionId: data.id }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return jsonResponse({ sessionId: data.id })
       }
 
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return errorResponse('Unauthorized', 401)
     })
   } catch (error) {
     console.error('Session start API error:', error)
-    return new Response(JSON.stringify({ error: 'Failed to start session' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return errorResponse('Failed to start session', 500)
   }
 }
