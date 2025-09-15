@@ -292,7 +292,13 @@ export function useChat() {
     if (streamingCancelRef.current) {
       streamingCancelRef.current();
     }
-    setState((prev: ChatState) => ({ ...prev, messages: [], isStreaming: false, currentStreamingId: undefined }));
+    setState((prev: ChatState) => ({
+      ...prev,
+      messages: [],
+      isStreaming: false,
+      currentStreamingId: undefined,
+      tasksByMessage: {},
+    }));
     // Intentionally do not reset sessionIdRef here to satisfy: no resume within same page; new session will be created on first send after reload
   }, []);
 
@@ -301,7 +307,14 @@ export function useChat() {
     const id = sessionIdRef.current
     if (!id) {
       // Nothing to end
-      setState((prev: ChatState) => ({ ...prev, hasActiveSession: false, messages: [], isStreaming: false, currentStreamingId: undefined }))
+      setState((prev: ChatState) => ({
+        ...prev,
+        hasActiveSession: false,
+        messages: [],
+        isStreaming: false,
+        currentStreamingId: undefined,
+        tasksByMessage: {},
+      }))
       return
     }
     try {
@@ -314,7 +327,14 @@ export function useChat() {
       // ignore
     } finally {
       sessionIdRef.current = null
-      setState((prev: ChatState) => ({ ...prev, hasActiveSession: false, messages: [], isStreaming: false, currentStreamingId: undefined }))
+      setState((prev: ChatState) => ({
+        ...prev,
+        hasActiveSession: false,
+        messages: [],
+        isStreaming: false,
+        currentStreamingId: undefined,
+        tasksByMessage: {},
+      }))
     }
   }, [needsAuth])
 
