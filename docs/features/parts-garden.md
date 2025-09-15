@@ -2,7 +2,7 @@
 title: Feature: Parts Garden
 owner: @brandongalang
 status: shipped
-last_updated: 2025-08-31
+last_updated: 2025-09-02
 feature_flag: ENABLE_GARDEN
 code_paths:
   - app/garden/page.tsx
@@ -29,7 +29,7 @@ Offers a spatial/visual way to understand internal parts and relationships.
 - parts, part_relationships (read/derived views)
 
 ## Configuration
-- ENABLE_GARDEN feature flag (default off in prod; document your env)
+- Enabled by default via `config/features.ts`. Environments that need to hide the Garden must set `ENABLE_GARDEN` to a falsey value (`false`, `0`, or `off`). The feature flag is read during build, with optional support for mirroring via `NEXT_PUBLIC_ENABLE_GARDEN` when client overrides are required.
 
 ## Testing
 - Unit tests for helper logic; Playwright for navigation (overview → detail)
