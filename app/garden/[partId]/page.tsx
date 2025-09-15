@@ -1,5 +1,5 @@
-import { getPartById, getPartRelationships } from '@/lib/data/parts-server'
-import type { PartRow } from '@/lib/types/database'
+import { getPartById, getPartRelationships, getPartNotes } from '@/lib/data/parts-server'
+import type { PartRow, PartNoteRow } from '@/lib/types/database'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -53,9 +53,10 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
   const { partId } = await params
 
   // Fetch part details and relationships in parallel for efficiency
-  const [partResult, relationshipsResult] = await Promise.all([
+  const [partResult, relationshipsResult, notesResult] = await Promise.all([
     getPartById({ partId }),
     getPartRelationships({ partId, includePartDetails: true, limit: 20 }),
+    getPartNotes({ partId }),
   ])
 
   // Handle case where the part is not found or fails to load
@@ -80,6 +81,7 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
   const visualization = part.visualization as { emoji?: string; color?: string }
   const story = part.story as { origin?: string; currentState?: string; purpose?: string }
   const relationships = relationshipsResult && Array.isArray(relationshipsResult) ? relationshipsResult : []
+  const notes: PartNoteRow[] = notesResult ?? []
 
   return (
     <div className="container mx-auto p-4 md:p-6">
@@ -135,6 +137,29 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
               <InfoList title="Triggers" items={part.triggers} />
               <InfoList title="Emotions" items={part.emotions} />
               <InfoList title="Beliefs" items={part.beliefs} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Clarification Notes</CardTitle>
+              <CardDescription>Short reflections and context you&apos;ve saved for this part.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {notes.length > 0 ? (
+                <ul className="space-y-3">
+                  {notes.map((note) => (
+                    <li key={note.id} className="rounded-lg border p-3">
+                      <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {new Date(note.created_at).toLocaleString()}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">No clarification notes recorded yet.</p>
+              )}
             </CardContent>
           </Card>
         </main>

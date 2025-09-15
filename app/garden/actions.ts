@@ -2,12 +2,18 @@
 
 import { revalidatePath } from 'next/cache'
 import { updatePart } from '@/lib/data/parts-server'
+import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
 const updateDetailsSchema = z.object({
   partId: z.string().uuid(),
   name: z.string().min(1).max(100),
   emoji: z.string().min(1).max(4), // Allow for longer emojis
+})
+
+const addNoteSchema = z.object({
+  partId: z.string().uuid(),
+  content: z.string().trim().min(1).max(2000),
 })
 
 export async function updatePartDetails(formData: FormData) {
@@ -57,5 +63,51 @@ export async function updatePartDetails(formData: FormData) {
     return { success: true, data: updated }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) }
+  }
+}
+
+export async function addPartNote(formData: FormData) {
+  const rawData = {
+    partId: formData.get('partId'),
+    content: formData.get('content'),
+  }
+
+  const validated = addNoteSchema.safeParse(rawData)
+
+  if (!validated.success) {
+    return {
+      success: false,
+      error: validated.error.flatten().fieldErrors,
+    }
+  }
+
+  const { partId, content } = validated.data
+
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'You must be signed in to add a note.' }
+    }
+
+    const { data, error } = await supabase
+      .from('part_notes')
+      .insert({ part_id: partId, content })
+      .select('id, part_id, content, created_at')
+      .single()
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    revalidatePath(`/garden/${partId}`)
+    revalidatePath('/garden')
+
+    return { success: true, data }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to add note.' }
   }
 }

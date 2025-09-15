@@ -87,7 +87,20 @@ export interface Database {
           }
         ]
       }
-      ,
+      part_notes: {
+        Row: PartNoteRow
+        Insert: PartNoteInsert
+        Update: PartNoteUpdate
+        Relationships: [
+          {
+            foreignKeyName: "part_notes_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "parts"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       insights: {
         Row: InsightRow
         Insert: InsightInsert
@@ -306,6 +319,29 @@ export interface PartUpdate {
   last_charge_intensity?: number | null
   created_at?: string
   updated_at?: string
+}
+
+// Part Note Types
+export interface PartNoteRow {
+  id: string;
+  [key: string]: unknown;
+  part_id: string
+  content: string
+  created_at: string
+}
+
+export interface PartNoteInsert {
+  id?: string
+  part_id: string
+  content: string
+  created_at?: string
+}
+
+export interface PartNoteUpdate {
+  id?: string
+  part_id?: string
+  content?: string
+  created_at?: string
 }
 
 // Session Types

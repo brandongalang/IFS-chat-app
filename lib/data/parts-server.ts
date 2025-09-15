@@ -7,6 +7,7 @@ export {
   createEmergingPart,
   updatePart,
   getPartRelationships,
+  getPartNotes,
   logRelationship,
 } from './parts'
 

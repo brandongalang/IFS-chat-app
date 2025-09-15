@@ -4,7 +4,20 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/dev'
-import type { Database, PartRow, PartInsert, PartUpdate, PartEvidence, PartRelationshipRow, PartRelationshipInsert, PartRelationshipUpdate, RelationshipType, RelationshipStatus, RelationshipDynamic } from '../types/database'
+import type {
+  Database,
+  PartRow,
+  PartInsert,
+  PartUpdate,
+  PartEvidence,
+  PartRelationshipRow,
+  PartRelationshipInsert,
+  PartRelationshipUpdate,
+  RelationshipType,
+  RelationshipStatus,
+  RelationshipDynamic,
+  PartNoteRow,
+} from '../types/database'
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isMemoryV2Enabled } from '@/lib/memory/config'
@@ -87,6 +100,11 @@ const getPartRelationshipsSchema = z.object({
   status: z.enum(['active', 'healing', 'resolved']).optional().describe('Optional: Filter by relationship status'),
   includePartDetails: z.boolean().default(false).describe('Include part names and status in response'),
   limit: z.number().min(1).max(50).default(20).describe('Maximum number of relationships to return')
+})
+
+const getPartNotesSchema = z.object({
+  partId: z.string().uuid().describe('The UUID of the part to retrieve notes for'),
+  userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)'),
 })
 
 const logRelationshipSchema = z.object({
@@ -676,6 +694,45 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
     return formattedRelationships
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
+    throw new Error(errMsg)
+  }
+}
+
+/**
+ * Fetch clarification notes for a part ordered from newest to oldest
+ */
+export async function getPartNotes(input: z.infer<typeof getPartNotesSchema>): Promise<PartNoteRow[]> {
+  try {
+    const validated = getPartNotesSchema.parse(input)
+    const userId = resolveUserId(validated.userId)
+    const supabase = getSupabaseClient()
+
+    devLog('getPartNotes called', { userId, partId: validated.partId })
+
+    const { data, error } = await supabase
+      .from('part_notes')
+      .select('id, part_id, content, created_at, parts!inner(user_id)')
+      .eq('part_id', validated.partId)
+      .eq('parts.user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      throw new Error(`Database error: ${error.message}`)
+    }
+
+    const notes = (data || []).map((note: any) => ({
+      id: note.id,
+      part_id: note.part_id,
+      content: note.content,
+      created_at: note.created_at,
+    })) as PartNoteRow[]
+
+    return notes
+  } catch (error) {
+    const errMsg =
+      error instanceof Error
+        ? (dev.verbose ? error.stack || error.message : error.message)
+        : 'Unknown error occurred'
     throw new Error(errMsg)
   }
 }
