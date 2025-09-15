@@ -87,16 +87,16 @@ export interface Database {
           }
         ]
       }
-      check_ins: {
-        Row: CheckInRow
-        Insert: CheckInInsert
-        Update: CheckInUpdate
+      part_notes: {
+        Row: PartNoteRow
+        Insert: PartNoteInsert
+        Update: PartNoteUpdate
         Relationships: [
           {
-            foreignKeyName: "check_ins_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "part_notes_part_id_fkey"
+            columns: ["part_id"]
             isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "parts"
             referencedColumns: ["id"]
           }
         ]
@@ -321,6 +321,29 @@ export interface PartUpdate {
   updated_at?: string
 }
 
+// Part Note Types
+export interface PartNoteRow {
+  id: string;
+  [key: string]: unknown;
+  part_id: string
+  content: string
+  created_at: string
+}
+
+export interface PartNoteInsert {
+  id?: string
+  part_id: string
+  content: string
+  created_at?: string
+}
+
+export interface PartNoteUpdate {
+  id?: string
+  part_id?: string
+  content?: string
+  created_at?: string
+}
+
 // Session Types
 export interface SessionMessage {
   role: 'user' | 'assistant'
@@ -399,64 +422,6 @@ export interface SessionUpdate {
   new_parts?: string[]
   breakthroughs?: string[]
   emotional_arc?: EmotionalArc
-  processed?: boolean
-  processed_at?: string | null
-  created_at?: string
-  updated_at?: string
-}
-
-// Check-in Types
-export type CheckInType = 'morning' | 'evening'
-
-export interface CheckInRow {
-  id: string;
-  [key: string]: unknown;
-  user_id: string
-  type: CheckInType
-  check_in_date: string
-  mood: number | null
-  energy_level: number | null
-  intention: string | null
-  reflection: string | null
-  gratitude: string | null
-  parts_data: Json | null
-  somatic_markers: string[] | null
-  processed: boolean
-  processed_at: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface CheckInInsert {
-  id?: string
-  user_id: string
-  type: CheckInType
-  check_in_date?: string
-  mood?: number | null
-  energy_level?: number | null
-  intention?: string | null
-  reflection?: string | null
-  gratitude?: string | null
-  parts_data?: Json | null
-  somatic_markers?: string[] | null
-  processed?: boolean
-  processed_at?: string | null
-  created_at?: string
-  updated_at?: string
-}
-
-export interface CheckInUpdate {
-  id?: string
-  user_id?: string
-  type?: CheckInType
-  check_in_date?: string
-  mood?: number | null
-  energy_level?: number | null
-  intention?: string | null
-  reflection?: string | null
-  gratitude?: string | null
-  parts_data?: Json | null
-  somatic_markers?: string[] | null
   processed?: boolean
   processed_at?: string | null
   created_at?: string
@@ -643,8 +608,6 @@ export interface InsightRow {
   feedback: string | null
   revealed_at: string | null
   actioned_at: string | null
-  processed: boolean
-  processed_at: string | null
   meta: Json
   created_at: string
   updated_at: string
@@ -660,8 +623,6 @@ export interface InsightInsert {
   feedback?: string | null
   revealed_at?: string | null
   actioned_at?: string | null
-  processed?: boolean
-  processed_at?: string | null
   meta?: Json
   created_at?: string
   updated_at?: string
@@ -677,8 +638,6 @@ export interface InsightUpdate {
   feedback?: string | null
   revealed_at?: string | null
   actioned_at?: string | null
-  processed?: boolean
-  processed_at?: string | null
   meta?: Json
   created_at?: string
   updated_at?: string

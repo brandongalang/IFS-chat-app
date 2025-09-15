@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import type { PartRow } from '@/lib/types/database'
-import { updatePartDetails } from '@/app/garden/actions'
+import { addPartNote, updatePartDetails } from '@/app/garden/actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 
 interface PartActionsProps {
@@ -25,14 +26,16 @@ interface PartActionsProps {
 
 export function PartActions({ part }: PartActionsProps) {
   const { toast } = useToast()
-  const [isPending, startTransition] = useTransition()
+  const [isUpdatePending, startUpdate] = useTransition()
+  const [isNotePending, startAddNote] = useTransition()
   const [isOpen, setIsOpen] = useState(false)
   const [name, setName] = useState(part.name)
   const initialEmoji = (part.visualization as { emoji?: string })?.emoji || '🤗'
   const [emoji, setEmoji] = useState(initialEmoji)
+  const [clarificationNote, setClarificationNote] = useState('')
 
   const handleSave = () => {
-    startTransition(async () => {
+    startUpdate(async () => {
       const formData = new FormData()
       formData.append('partId', part.id)
       formData.append('name', name)
@@ -51,6 +54,46 @@ export function PartActions({ part }: PartActionsProps) {
         const errorMessage = typeof result.error === 'string'
           ? result.error
           : 'Validation failed. Please check your input.'
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          variant: 'destructive',
+        })
+      }
+    })
+  }
+
+  const handleAddNote = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const noteContent = clarificationNote.trim()
+
+    if (!noteContent) {
+      toast({
+        title: 'Note is empty',
+        description: 'Add some details before saving a clarification.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    startAddNote(async () => {
+      const formData = new FormData()
+      formData.append('partId', part.id)
+      formData.append('content', noteContent)
+
+      const result = await addPartNote(formData)
+
+      if (result.success) {
+        toast({
+          title: 'Note added',
+          description: 'Clarification saved for this part.',
+        })
+        setClarificationNote('')
+      } else {
+        const errorMessage = typeof result.error === 'string'
+          ? result.error
+          : 'Could not save your note. Please try again.'
+
         toast({
           title: 'Error',
           description: errorMessage,
@@ -104,8 +147,8 @@ export function PartActions({ part }: PartActionsProps) {
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleSave} disabled={isPending}>
-                  {isPending ? 'Saving...' : 'Save Changes'}
+                <Button onClick={handleSave} disabled={isUpdatePending}>
+                  {isUpdatePending ? 'Saving...' : 'Save Changes'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -114,6 +157,28 @@ export function PartActions({ part }: PartActionsProps) {
           <Button asChild className="w-full">
             <Link href={`/chat?partId=${part.id}`}>Chat about this Part</Link>
           </Button>
+
+          <div className="space-y-3 rounded-lg border p-4">
+            <form onSubmit={handleAddNote} className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="clarification-note">Clarification Note</Label>
+                <Textarea
+                  id="clarification-note"
+                  value={clarificationNote}
+                  onChange={(event) => setClarificationNote(event.target.value)}
+                  placeholder="Capture context, requests, or insights you want to remember about this part."
+                  rows={4}
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isNotePending || clarificationNote.trim().length === 0}
+              >
+                {isNotePending ? 'Saving Note...' : 'Save Clarification'}
+              </Button>
+            </form>
+          </div>
         </CardContent>
       </Card>
     </>
