@@ -1,11 +1,14 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getSupabaseKey, getSupabaseUrl } from '@/lib/supabase/config'
 
+const supabaseUrl = getSupabaseUrl()
+const supabaseAnon = getSupabaseKey()
 const hasSupabase =
-  typeof process.env.NEXT_PUBLIC_SUPABASE_URL === 'string' &&
-  /^https?:\/\//.test(process.env.NEXT_PUBLIC_SUPABASE_URL || '') &&
-  typeof process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === 'string' &&
-  (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').length > 20
+  typeof supabaseUrl === 'string' &&
+  /^https?:\/\//.test(supabaseUrl || '') &&
+  typeof supabaseAnon === 'string' &&
+  (supabaseAnon || '').length > 20
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {

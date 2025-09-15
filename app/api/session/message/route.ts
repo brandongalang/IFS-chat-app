@@ -12,11 +12,11 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    return withSupabaseOrDev(req, async ctx => {
+    return withSupabaseOrDev(req, async (ctx) => {
       if (ctx.type === 'no-supabase') {
         return new Response(JSON.stringify({ ok: true, stored: false }), {
           status: 200,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
         })
       }
 
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
         await chatSessionService.addMessage(sessionId, { role, content })
         return new Response(JSON.stringify({ ok: true, stored: true }), {
           status: 200,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
         })
       }
 
@@ -51,13 +51,13 @@ export async function POST(req: NextRequest) {
 
         return new Response(JSON.stringify({ ok: true, stored: true }), {
           status: 200,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
         })
       }
 
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
       })
     })
   } catch (error) {
