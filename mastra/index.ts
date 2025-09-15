@@ -3,6 +3,7 @@ import { PinoLogger } from '@mastra/loggers'
 import { createIfsAgent } from './agents/ifs-agent'
 import { insightGeneratorAgent } from './agents/insight-generator'
 import { generateInsightWorkflow } from './workflows/generate-insight-workflow'
+import { createUpdateSummarizerAgent } from './agents/update-summarizer'
 
 type Profile = Parameters<typeof createIfsAgent>[0]
 
@@ -18,6 +19,7 @@ export function createMastra(profile: Profile = null) {
     agents: {
       ifsAgent: createIfsAgent(profile),
       insightGeneratorAgent,
+      updateSummarizerAgent: createUpdateSummarizerAgent(),
     },
     workflows: {
       generateInsightWorkflow,

@@ -50,7 +50,7 @@ export async function ensurePartProfileExists(params: { userId: string; partId: 
   return path
 }
 
-export async function appendChangeLogWithEvent(params: { userId: string; entityType: 'part' | 'relationship'; entityId: string; filePath: string; line: string }) {
+export async function appendChangeLogWithEvent(params: { userId: string; entityType: 'user' | 'part' | 'relationship'; entityId: string; filePath: string; line: string }) {
   const ts = isoNow()
   const res = await editMarkdownSection(params.filePath, 'change_log v1', { append: `\n- ${ts}: ${params.line}\n` })
   try {
