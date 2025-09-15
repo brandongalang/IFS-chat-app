@@ -1,12 +1,23 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
+import { defaultEtherealTheme as T } from '@/config/etherealTheme'
 
 export function GlobalBackdrop() {
+  const pathname = usePathname()
+  const variantGradientKey = useMemo(() => {
+    if (!pathname) return null
+    const normalized = pathname !== '/' && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+    if (normalized === '/chat' && T.variants.chat?.gradient) return 'chat'
+    return null
+  }, [pathname])
+
   return (
     <div className="pointer-events-none fixed inset-0 -z-30 overflow-hidden" style={{ opacity: 'var(--eth-enabled, 1)' }}>
       <BackgroundImageLayer />
+      {variantGradientKey ? <VariantGradientLayer variantKey={variantGradientKey} /> : null}
       <GradientBackdrop />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.10)_0%,rgba(0,0,0,0.22)_55%,rgba(0,0,0,0.38)_100%)]" />
     </div>
@@ -27,6 +38,15 @@ function BackgroundImageLayer() {
         draggable={false}
       />
     </>
+  )
+}
+
+function VariantGradientLayer({ variantKey }: { variantKey: string }) {
+  return (
+    <div
+      className="absolute inset-0 z-0"
+      style={{ background: `var(--eth-variant-${variantKey}-gradient, transparent)` }}
+    />
   )
 }
 
