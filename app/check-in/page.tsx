@@ -1,4 +1,3 @@
-import { CheckInForm } from '@/components/check-in/CheckInForm'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { statusForPath } from '@/config/features'
@@ -21,9 +20,5 @@ export default async function CheckInPage() {
     redirect('/auth/login')
   }
 
-  return (
-    <div className="w-full max-w-md mx-auto">
-      <CheckInForm />
-    </div>
-  )
+  redirect('/check-in/morning')
 }
