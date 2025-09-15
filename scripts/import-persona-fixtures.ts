@@ -84,7 +84,12 @@ async function importFixture(supabase: any, fixture: Fixture) {
   // Insert insights
   if (fixture.insights?.length) {
     for (const i of fixture.insights) {
-      const { error } = await supabase.from('insights').insert(i)
+      const payload = {
+        ...i,
+        processed: typeof i.processed === 'boolean' ? i.processed : false,
+        processed_at: 'processed_at' in i ? (i.processed_at ?? null) : null,
+      }
+      const { error } = await supabase.from('insights').insert(payload)
       if (error) throw new Error(`Insight insert failed: ${error.message}`)
     }
   }

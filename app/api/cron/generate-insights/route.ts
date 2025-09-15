@@ -20,6 +20,8 @@ async function saveInsightsToDb(
     status: 'pending',
     content: { title: insight.title, body: insight.body, sourceSessionIds: insight.sourceSessionIds || [] } as Json,
     meta: { generator: 'insight-generator-agent-v1', trigger: 'daily-cron' } as Json,
+    processed: false,
+    processed_at: null,
     created_at: now,
     updated_at: now,
   }));

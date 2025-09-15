@@ -35,6 +35,7 @@ export function MorningCheckInForm({ className, ...props }: Omit<React.Component
         morning_looking_forward_to: lookingForwardTo,
         status: 'morning_completed',
         completed_at: new Date().toISOString(),
+        processed: false,
       })
 
       if (error) throw error

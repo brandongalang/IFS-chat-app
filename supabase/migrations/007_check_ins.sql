@@ -15,6 +15,8 @@ CREATE TABLE check_ins (
     gratitude TEXT,
     parts_data JSONB,
     somatic_markers TEXT[] DEFAULT '{}',
+    processed BOOLEAN NOT NULL DEFAULT false,
+    processed_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id, check_in_date, type)
