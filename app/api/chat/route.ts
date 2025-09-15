@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { dev } from '@/config/dev'
 import { errorResponse } from '@/lib/api/response'
 import { getUserIdFromSupabase, provideDevFallbackStream, handleAgentStream } from './logic'
+import { summarizePendingUpdatesForUser } from '@/lib/memory/update-runner'
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,6 +29,22 @@ export async function POST(req: NextRequest) {
       }
     } catch (e) {
       console.warn('first-run scaffold skipped', e)
+    }
+
+    // Run the update summarizer to keep the change log in sync before chatting
+    if (userId) {
+      try {
+        const outcome = await summarizePendingUpdatesForUser(userId)
+        if (!outcome.skipped && outcome.itemCount > 0) {
+          console.log('[CHAT] Cleared pending memory updates', {
+            userId,
+            processed: outcome.itemCount,
+            digest: outcome.digest,
+          })
+        }
+      } catch (error) {
+        console.warn('[CHAT] update summarizer failed', error)
+      }
     }
 
     // If no OpenRouter credentials, provide a dev fallback text stream so the UI works
