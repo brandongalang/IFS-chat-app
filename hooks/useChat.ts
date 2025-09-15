@@ -1,72 +1,61 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { useUser } from '@/context/UserContext'
+import { useCallback, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Message, ChatState, TaskEvent, TaskEventUpdate } from '@/types/chat';
 import { getPartById } from '@/lib/data/parts-lite'
-import { streamFromMastra } from '@/lib/chatClient';
-import { useToast } from './use-toast';
+import { streamFromMastra } from '@/lib/chatClient'
+import type { Message, TaskEvent, TaskEventUpdate } from '@/types/chat'
+import { useChatState } from './useChatState'
+import { useChatSession } from './useChatSession'
+import { useToast } from './use-toast'
+import { useUser } from '@/context/UserContext'
 
 export function useChat() {
   const searchParams = useSearchParams()
   const { profile } = useUser()
   const needsAuth = !profile
-  const [state, setState] = useState<ChatState>({
-    messages: [],
-    isStreaming: false,
-    currentStreamingId: undefined,
-    // augmenting state shape locally; downstream components only read fields we return
-    // hasActiveSession is maintained for UI checks like confirming before exiting chat
-    hasActiveSession: false,
-    tasksByMessage: {} as Record<string, TaskEvent[]>,
-  });
 
-  const streamingCancelRef = useRef<(() => void) | null>(null);
-  const sessionIdRef = useRef<string | null>(null);
-  const generateId = (): string => Math.random().toString(36).substr(2, 9);
+  const { state, addMessage, updateMessage, mergeState, setTasks, reset } = useChatState()
+  const { ensureSession: ensureSessionRaw, persistMessage: persistMessageRaw, endSession: endSessionRaw, getSessionId } =
+    useChatSession()
+  const { toast } = useToast()
+
+  const streamingCancelRef = useRef<(() => void) | null>(null)
+  const generateId = (): string => Math.random().toString(36).slice(2)
 
   useEffect(() => {
     const partId = searchParams.get('partId')
-    if (partId && state.messages.length === 0) {
-      // This is a new chat session focused on a specific part.
-      // Let's create a custom initial message.
-      const fetchPartAndStart = async () => {
-        try {
-          const part = await getPartById({ partId })
-          if (part) {
-            const partName = part.name
-            const initialMessage: Message = {
-              id: generateId(),
-              role: 'assistant',
-              content: `Let's talk about your "${partName}" part. What's on your mind regarding it?`,
-              timestamp: Date.now(),
-              persona: 'claude',
-              streaming: false,
-              tasks: [],
-            }
-            setState((prev: ChatState) => ({ ...prev, messages: [initialMessage] }))
+    if (!partId || state.messages.length > 0) return
+
+    const fetchPartAndStart = async () => {
+      try {
+        const result = await getPartById({ partId })
+        if (result.success && result.data) {
+          const partName = result.data.name
+          const initialMessage: Message = {
+            id: generateId(),
+            role: 'assistant',
+            content: `Let's talk about your "${partName}" part. What's on your mind regarding it?`,
+            timestamp: Date.now(),
+            persona: 'claude',
+            streaming: false,
+            tasks: [],
           }
-        } catch {
-          // ignore errors fetching part
+          mergeState({ messages: [initialMessage] })
         }
+      } catch {
+        // ignore fetch errors; chat can still start without the tailored prompt
       }
-      fetchPartAndStart()
     }
-  }, [searchParams])
 
-  const updateMessage = useCallback((id: string, updates: Partial<Message>) => {
-    setState((prev: ChatState) => ({
-      ...prev,
-      messages: prev.messages.map((msg) => (msg.id === id ? { ...msg, ...updates } : msg)),
-    }));
-  }, []);
+    void fetchPartAndStart()
+  }, [searchParams, state.messages.length, mergeState])
 
-  const upsertTaskForMessage = useCallback((messageId: string, evt: TaskEventUpdate) => {
-    setState((prev: ChatState) => {
-      const existing: Record<string, TaskEvent[]> = prev.tasksByMessage ?? {}
-      const currentList = existing[messageId] || []
-      const idx = currentList.findIndex((t) => t.id === evt.id)
+  const upsertTaskForMessage = useCallback(
+    (messageId: string, evt: TaskEventUpdate) => {
+      const existing = state.tasksByMessage ?? {}
+      const currentList = existing[messageId] ?? []
+      const idx = currentList.findIndex((task) => task.id === evt.id)
 
       const mergeTask = (current: TaskEvent | undefined, update: TaskEventUpdate): TaskEvent => {
         const base: TaskEvent = current
@@ -88,323 +77,299 @@ export function useChat() {
         return base
       }
 
-      const nextList: TaskEvent[] = idx >= 0
-        ? currentList.map((task, taskIndex) => (taskIndex === idx ? mergeTask(task, evt) : task))
-        : [...currentList, mergeTask(undefined, evt)]
+      const nextList =
+        idx >= 0
+          ? currentList.map((task, taskIndex) => (taskIndex === idx ? mergeTask(task, evt) : task))
+          : [...currentList, mergeTask(undefined, evt)]
 
-      return {
-        ...prev,
-        tasksByMessage: { ...existing, [messageId]: nextList },
-        messages: (prev.messages || []).map((m) => (m.id === messageId ? { ...m, tasks: nextList } : m)),
-      }
-    })
-  }, []);
-
-  const { toast } = useToast();
+      setTasks(messageId, nextList)
+    },
+    [setTasks, state.tasksByMessage],
+  )
 
   const ensureSession = useCallback(async (): Promise<string> => {
-    if (needsAuth) throw new Error('Authentication required')
-    if (sessionIdRef.current) return sessionIdRef.current;
-    try {
-      const res = await fetch('/api/session/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!res.ok) throw new Error('Failed to start session');
-      const data = await res.json();
-      sessionIdRef.current = data.sessionId;
-      setState((prev: ChatState) => ({ ...prev, hasActiveSession: true }));
-      return data.sessionId;
-    } catch (error: any) {
-      console.error('Error starting session:', error);
-      toast({ title: 'Session failed', description: error.message, variant: 'destructive' });
-      throw error;
+    if (needsAuth) {
+      const error = new Error('Authentication required')
+      toast({ title: 'Session failed', description: error.message, variant: 'destructive' })
+      throw error
     }
-  }, [toast, needsAuth]);
 
-  const persistMessage = useCallback(async (sessionId: string, role: 'user' | 'assistant', content: string) => {
-    if (needsAuth) return
     try {
-      const res = await fetch('/api/session/message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, role, content }),
-      });
-      if (!res.ok) throw new Error('Failed to persist message');
-    } catch (error: any) {
-      console.error('Error persisting message:', error);
-      toast({ title: 'Persist failed', description: error.message, variant: 'destructive' });
-      throw error;
+      const sessionId = await ensureSessionRaw()
+      mergeState({ hasActiveSession: true })
+      return sessionId
+    } catch (error: unknown) {
+      console.error('Error starting session:', error)
+      toast({
+        title: 'Session failed',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive',
+      })
+      throw error
     }
-  }, [toast, needsAuth]);
+  }, [ensureSessionRaw, mergeState, needsAuth, toast])
 
-  // Add a non-streaming assistant message (optionally persisted)
-  const addAssistantMessage = useCallback(async (content: string, opts?: { persist?: boolean; id?: string; persona?: 'claude' | 'default' }) => {
-    if (needsAuth) return
-    const id = (opts && opts.id) || generateId()
-    const msg: Message = {
-      id,
-      role: 'assistant',
-      content,
-      timestamp: Date.now(),
-      persona: opts?.persona || 'claude',
-      streaming: false,
-      tasks: [],
-    }
-    setState((prev: ChatState) => ({ ...prev, messages: [...prev.messages, msg] }))
-    if (opts?.persist) {
+  const persistMessage = useCallback(
+    async (sessionId: string, role: 'user' | 'assistant', content: string) => {
+      if (needsAuth) return
       try {
-        const sessionId = await ensureSession()
-        await persistMessage(sessionId, 'assistant', content)
-      } catch {}
-    }
-  }, [ensureSession, persistMessage, needsAuth])
+        await persistMessageRaw(sessionId, role, content)
+      } catch (error: unknown) {
+        console.error('Error persisting message:', error)
+        toast({
+          title: 'Persist failed',
+          description: error instanceof Error ? error.message : 'Unknown error',
+          variant: 'destructive',
+        })
+        throw error
+      }
+    },
+    [needsAuth, persistMessageRaw, toast],
+  )
 
-  const sendMessage = useCallback(async (content: string) => {
-    if (needsAuth || !content.trim() || state.isStreaming) return;
+  const addAssistantMessage = useCallback(
+    async (content: string, opts?: { persist?: boolean; id?: string; persona?: 'claude' | 'default' }) => {
+      if (needsAuth) return
+      const id = opts?.id ?? generateId()
+      const message: Message = {
+        id,
+        role: 'assistant',
+        content,
+        timestamp: Date.now(),
+        persona: opts?.persona ?? 'claude',
+        streaming: false,
+        tasks: [],
+      }
 
-    // Cancel any ongoing streaming
-    if (streamingCancelRef.current) {
-      streamingCancelRef.current();
-    }
+      addMessage(message)
 
-    // Add user message locally
-    const userMessage: Message = {
-      id: generateId(),
-      role: 'user',
-      content: content.trim(),
-      timestamp: Date.now(),
-    };
-
-    setState((prev: ChatState) => ({ ...prev, messages: [...prev.messages, userMessage] }));
-
-    // Create streaming assistant placeholder
-    const assistantId = generateId();
-    const assistantMessage: Message = {
-      id: assistantId,
-      role: 'assistant',
-      content: '',
-      timestamp: Date.now(),
-      persona: 'claude',
-      // tool UI deprecated in favor of Task UI
-      streaming: true,
-      tasks: [],
-    };
-
-    setState((prev: ChatState) => ({
-      ...prev,
-      messages: [...prev.messages, assistantMessage],
-      isStreaming: true,
-      currentStreamingId: assistantId,
-      tasksByMessage: { ...(prev.tasksByMessage ?? {}), [assistantId]: [] },
-    }));
-
-    // Ensure session and persist the user message (fire-and-forget)
-    const sessionId = await ensureSession();
-    persistMessage(sessionId, 'user', userMessage.content).catch(() => {});
-
-    // Prepare AbortController for stream cancellation
-    const controller = new AbortController();
-    streamingCancelRef.current = () => controller.abort();
-
-    // Build plain messages array for the API
-    const apiMessages = [...state.messages, userMessage].map((m) => ({ role: m.role, content: m.content }));
-
-    let accumulated = '';
-    let buffer = '';
-    let flushInterval: any = null
-    let finalizeTimer: any = null
-
-    const finalize = () => {
-      updateMessage(assistantId, { content: accumulated, streaming: false })
-      setState((prev: ChatState) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
-      streamingCancelRef.current = null;
-    }
-
-    const scheduleFinalizeCheck = () => {
-      if (finalizeTimer) return
-      finalizeTimer = setInterval(() => {
-        if (!flushInterval && buffer.length === 0) {
-          clearInterval(finalizeTimer)
-          finalizeTimer = null
-          finalize()
+      if (opts?.persist) {
+        try {
+          const sessionId = await ensureSession()
+          await persistMessage(sessionId, 'assistant', content)
+        } catch {
+          // persistence failures already surfaced via toast; keep chat available
         }
-      }, 60)
-    }
+      }
+    },
+    [addMessage, ensureSession, needsAuth, persistMessage],
+  )
 
-    // Read CSS variables for streaming cadence
-    const stepMs = typeof window !== 'undefined' ? (Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-stream-tick').trim()) || 150) : 150
-    const stepChars = typeof window !== 'undefined' ? (Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-stream-chars').trim()) || 8) : 8
-    const startFlusher = () => {
-      if (flushInterval) return
-      flushInterval = setInterval(() => {
-        if (buffer.length > 0) {
-          const take = Math.min(stepChars, buffer.length)
-          const part = buffer.slice(0, take)
-          buffer = buffer.slice(take)
-          accumulated += part
-          updateMessage(assistantId, { content: accumulated, streaming: true })
-        } else {
-          // no buffer left; flusher can stop
+  const sendMessage = useCallback(
+    async (content: string) => {
+      if (needsAuth || !content.trim() || state.isStreaming) return
+
+      if (streamingCancelRef.current) {
+        streamingCancelRef.current()
+      }
+
+      const userMessage: Message = {
+        id: generateId(),
+        role: 'user',
+        content: content.trim(),
+        timestamp: Date.now(),
+      }
+
+      addMessage(userMessage)
+
+      const assistantId = generateId()
+      const assistantMessage: Message = {
+        id: assistantId,
+        role: 'assistant',
+        content: '',
+        timestamp: Date.now(),
+        persona: 'claude',
+        streaming: true,
+        tasks: [],
+      }
+
+      addMessage(assistantMessage)
+      mergeState({
+        isStreaming: true,
+        currentStreamingId: assistantId,
+        tasksByMessage: { ...(state.tasksByMessage ?? {}), [assistantId]: [] },
+      })
+
+      const sessionId = await ensureSession()
+      persistMessage(sessionId, 'user', userMessage.content).catch(() => {})
+
+      const controller = new AbortController()
+      streamingCancelRef.current = () => controller.abort()
+
+      const apiMessages = [...state.messages, userMessage].map((message) => ({ role: message.role, content: message.content }))
+
+      let accumulated = ''
+      let buffer = ''
+      let flushInterval: ReturnType<typeof setInterval> | null = null
+      let finalizeTimer: ReturnType<typeof setInterval> | null = null
+
+      const finalize = () => {
+        updateMessage(assistantId, { content: accumulated, streaming: false })
+        mergeState({ isStreaming: false, currentStreamingId: undefined })
+        streamingCancelRef.current = null
+      }
+
+      const scheduleFinalizeCheck = () => {
+        if (finalizeTimer) return
+        finalizeTimer = setInterval(() => {
+          if (!flushInterval && buffer.length === 0) {
+            if (finalizeTimer) {
+              clearInterval(finalizeTimer)
+            }
+            finalizeTimer = null
+            finalize()
+          }
+        }, 60)
+      }
+
+      const stepMs =
+        typeof window !== 'undefined'
+          ? Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-stream-tick').trim()) || 150
+          : 150
+      const stepChars =
+        typeof window !== 'undefined'
+          ? Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-stream-chars').trim()) || 8
+          : 8
+
+      const startFlusher = () => {
+        if (flushInterval) return
+        flushInterval = setInterval(() => {
+          if (buffer.length > 0) {
+            const take = Math.min(stepChars, buffer.length)
+            const part = buffer.slice(0, take)
+            buffer = buffer.slice(take)
+            accumulated += part
+            updateMessage(assistantId, { content: accumulated, streaming: true })
+          } else {
+            if (flushInterval) {
+              clearInterval(flushInterval)
+            }
+            flushInterval = null
+            scheduleFinalizeCheck()
+          }
+        }, stepMs)
+      }
+
+      const stopFlusher = () => {
+        if (flushInterval) {
           clearInterval(flushInterval)
           flushInterval = null
-          // If a done signal was received earlier, ensure finalization proceeds
-          scheduleFinalizeCheck()
         }
-      }, stepMs)
-    }
-    const stopFlusher = () => {
-      if (flushInterval) {
-        clearInterval(flushInterval)
-        flushInterval = null
       }
-    }
 
-    try {
-      // Always use main agent for ethereal chat (not the dev stream)
-      const chosenApiPath = '/api/chat'
-      let doneReceived = false
-
-      await streamFromMastra({
-        messages: apiMessages,
-        sessionId,
-        profile: profile ?? { name: '', bio: '' },
-        signal: controller.signal,
-        apiPath: chosenApiPath,
-        onTask: (evt) => {
-          upsertTaskForMessage(assistantId, evt)
-        },
-        onChunk: (chunk, done) => {
-          // accumulate; flusher reveals a few characters per tick for ethereal smoothness
-          if (chunk) buffer += chunk
-          startFlusher()
-          if (done) {
-            doneReceived = true
-            // Begin polling for flusher completion; finalize when buffer empties
-            scheduleFinalizeCheck()
-            // Also persist once finalized; we hook into finalize() by adding a microtask here
-            queueMicrotask(() => {
-              const tryPersist = () => {
-                if (!flushInterval && buffer.length === 0) {
-                  persistMessage(sessionId, 'assistant', accumulated).catch(() => {})
-                } else {
-                  // retry shortly until finalize completes
-                  setTimeout(tryPersist, 120)
+      try {
+        await streamFromMastra({
+          messages: apiMessages,
+          sessionId,
+          profile: profile ?? { name: '', bio: '' },
+          signal: controller.signal,
+          apiPath: '/api/chat',
+          onTask: (evt) => upsertTaskForMessage(assistantId, evt),
+          onChunk: (chunk, done) => {
+            if (chunk) buffer += chunk
+            startFlusher()
+            if (done) {
+              scheduleFinalizeCheck()
+              queueMicrotask(() => {
+                const tryPersist = () => {
+                  if (!flushInterval && buffer.length === 0) {
+                    persistMessage(sessionId, 'assistant', accumulated).catch(() => {})
+                  } else {
+                    setTimeout(tryPersist, 120)
+                  }
                 }
-              }
-              tryPersist()
-            })
-          }
-        },
-      });
-    } catch (error: any) {
-      // Mark stream ended and show basic error if needed
-      stopFlusher()
-      setState((prev: ChatState) => ({ ...prev, isStreaming: false, currentStreamingId: undefined }));
-      streamingCancelRef.current = null;
-      if (accumulated.length === 0) {
-        updateMessage(assistantId, { content: 'Sorry, something went wrong while streaming the response.', streaming: false });
+                tryPersist()
+              })
+            }
+          },
+        })
+      } catch (error: unknown) {
+        stopFlusher()
+        mergeState({ isStreaming: false, currentStreamingId: undefined })
+        streamingCancelRef.current = null
+        if (accumulated.length === 0) {
+          updateMessage(assistantId, {
+            content: 'Sorry, something went wrong while streaming the response.',
+            streaming: false,
+          })
+        }
+        console.error('Stream failed:', error)
+        toast({
+          title: 'Stream failed',
+          description: error instanceof Error ? error.message : 'Unknown error',
+          variant: 'destructive',
+        })
       }
-      console.error('Stream failed:', error);
-      toast({ title: 'Stream failed', description: (error as Error)?.message ?? 'Unknown error', variant: 'destructive' });
-    }
-  }, [ensureSession, persistMessage, state.isStreaming, state.messages, updateMessage, toast, needsAuth]);
+    },
+    [
+      addMessage,
+      ensureSession,
+      mergeState,
+      needsAuth,
+      persistMessage,
+      profile,
+      state.isStreaming,
+      state.messages,
+      state.tasksByMessage,
+      toast,
+      updateMessage,
+      upsertTaskForMessage,
+    ],
+  )
 
   const clearChat = useCallback(() => {
     if (streamingCancelRef.current) {
-      streamingCancelRef.current();
+      streamingCancelRef.current()
     }
-    setState((prev: ChatState) => ({
-      ...prev,
-      messages: [],
-      isStreaming: false,
-      currentStreamingId: undefined,
-      tasksByMessage: {},
-    }));
-    // Intentionally do not reset sessionIdRef here to satisfy: no resume within same page; new session will be created on first send after reload
-  }, []);
+    reset()
+  }, [reset])
 
   const endSession = useCallback(async () => {
-    if (needsAuth) return
-    const id = sessionIdRef.current
-    if (!id) {
-      // Nothing to end
-      setState((prev: ChatState) => ({
-        ...prev,
-        hasActiveSession: false,
-        messages: [],
-        isStreaming: false,
-        currentStreamingId: undefined,
-        tasksByMessage: {},
-      }))
+    if (needsAuth) {
+      reset()
       return
     }
-    try {
-      await fetch('/api/session/end', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: id }),
-      })
-    } catch {
-      // ignore
-    } finally {
-      sessionIdRef.current = null
-      setState((prev: ChatState) => ({
-        ...prev,
-        hasActiveSession: false,
-        messages: [],
-        isStreaming: false,
-        currentStreamingId: undefined,
-        tasksByMessage: {},
-      }))
-    }
-  }, [needsAuth])
 
-  const sendFeedback = useCallback(async (
-    messageId: string,
-    rating: 'thumb_up' | 'thumb_down',
-    explanation?: string
-  ) => {
-    if (needsAuth) return
-    const sessionId = sessionIdRef.current;
-    if (!sessionId) {
-      toast({
-        title: 'Error',
-        description: 'No active session to submit feedback for.',
-        variant: 'destructive',
-      });
-      return;
-    }
+    await endSessionRaw().catch(() => {})
+    reset()
+  }, [endSessionRaw, needsAuth, reset])
 
-    try {
-      const response = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId,
-          messageId,
-          rating,
-          explanation,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to submit feedback');
+  const sendFeedback = useCallback(
+    async (messageId: string, rating: 'thumb_up' | 'thumb_down', explanation?: string) => {
+      if (needsAuth) return
+      const sessionId = getSessionId()
+      if (!sessionId) {
+        toast({
+          title: 'Error',
+          description: 'No active session to submit feedback for.',
+          variant: 'destructive',
+        })
+        return
       }
 
-      toast({
-        title: 'Feedback submitted',
-        description: 'Thank you for your feedback!',
-      });
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-      toast({
-        title: 'Error',
-        description: 'Could not submit feedback. Please try again later.',
-        variant: 'destructive',
-      });
-    }
-  }, [toast, needsAuth]);
+      try {
+        const res = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, messageId, rating, explanation }),
+        })
+
+        if (!res.ok) {
+          throw new Error('Failed to submit feedback')
+        }
+
+        toast({ title: 'Feedback submitted', description: 'Thank you for your feedback!' })
+      } catch (error) {
+        console.error('Error submitting feedback:', error)
+        toast({
+          title: 'Error',
+          description: 'Could not submit feedback. Please try again later.',
+          variant: 'destructive',
+        })
+      }
+    },
+    [getSessionId, needsAuth, toast],
+  )
 
   return {
     messages: state.messages,
@@ -418,5 +383,5 @@ export function useChat() {
     endSession,
     sendFeedback,
     needsAuth,
-  };
+  }
 }
