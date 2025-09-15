@@ -13,6 +13,7 @@ import questionsConfig from '@/config/onboarding-questions.json';
 import { ensureOverviewExists } from '@/lib/memory/snapshots/scaffold';
 import { userOverviewPath } from '@/lib/memory/snapshots/fs-helpers';
 import { editMarkdownSection } from '@/lib/memory/markdown/editor';
+import { track } from '@/lib/analytics';
 
 /**
  * POST /api/onboarding/complete
@@ -117,8 +118,7 @@ export async function POST(request: NextRequest) {
       // Don't fail the completion for memory synthesis issues
     }
 
-    // TODO: Track analytics event
-    // await trackEvent('onboarding_completed', { userId: user.id, duration: ... });
+    track('onboarding_completed', { userId: user.id });
 
     const response: CompletionResponse = {
       ok: true,
