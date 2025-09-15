@@ -281,3 +281,40 @@ export async function loadTodayData(userId: string, isoCutoff: string): Promise<
 
   return { sessions: sessions || [], insights: insights || [], checkIns: checkIns || [] }
 }
+
+export async function listUnprocessedUpdates(userId: string): Promise<TodayData> {
+  const supabase = createAdminClient()
+
+  const { data: sessions, error: sErr } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .order('created_at', { ascending: true })
+
+  if (sErr) throw sErr
+
+  const { data: insights, error: iErr } = await supabase
+    .from('insights')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .order('created_at', { ascending: true })
+
+  if (iErr) throw iErr
+
+  const { data: checkIns, error: cErr } = await supabase
+    .from('check_ins')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .order('created_at', { ascending: true })
+
+  if (cErr) throw cErr
+
+  return {
+    sessions: sessions || [],
+    insights: insights || [],
+    checkIns: checkIns || [],
+  }
+}
