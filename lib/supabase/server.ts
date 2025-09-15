@@ -1,11 +1,22 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+let serverClientOverride: unknown | null = null
+
+export function setServerClientOverrideForTests(client: unknown | null): void {
+  if (process.env.NODE_ENV === 'test') {
+    serverClientOverride = client ?? null
+  }
+}
+
 /**
  * If using Fluid compute: Don't put this client in a global variable. Always create a new client within each
  * function when using it.
  */
 export async function createClient() {
+  if (process.env.NODE_ENV === 'test' && serverClientOverride) {
+    return serverClientOverride as ReturnType<typeof createServerClient>
+  }
   const cookieStore = await cookies()
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
