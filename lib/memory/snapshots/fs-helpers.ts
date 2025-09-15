@@ -27,6 +27,5 @@ export function relationshipProfilePath(userId: string, relId: string) {
 }
 
 export function sessionTranscriptPath(userId: string, sessionId: string) {
-  return `users/${userId}/sessions/${sessionId}.json`
+  return `users/${userId}/sessions/${sessionId}/transcript.json`
 }
-
