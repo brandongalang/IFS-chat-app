@@ -21,6 +21,7 @@ Provides a gentle, repeatable practice to capture mood, intentions, and observat
 
 ## How it works
 - Next.js routes under /check-in/morning and /check-in/evening
+- Visiting /check-in automatically routes to the morning or evening flow depending on the current window and whether today's entries already exist
 - Form components capture responses and persist via Supabase
 - Auth middleware ensures session enforcement for protected routes
 

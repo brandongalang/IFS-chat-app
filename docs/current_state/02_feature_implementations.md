@@ -50,7 +50,7 @@ This section provides a quick, human-readable map of shipped and in-progress fea
 - Parts Garden — Visual exploration UI for Parts. Status: shipped (enabled by default; gate environments with `ENABLE_GARDEN=false`). See docs/features/parts-garden.md
   - Key routes: /garden, /garden/[partId]. Key paths: app/garden/*, components/garden/*
 - Guided Check-ins — Morning and evening structured flows. Status: shipped. See docs/features/check-ins.md
-  - Key routes: /check-in/morning, /check-in/evening. Key paths: app/check-in/*, components/check-in/*
+  - Key routes: /check-in/morning, /check-in/evening (root /check-in auto-selects the appropriate flow). Key paths: app/check-in/*, components/check-in/*
 - Chat — Conversational interface. Status: shipped. See docs/features/chat.md
   - Key route: /chat. Key paths: app/chat/page.tsx, hooks/useChat.ts, lib/database/*
 - Authentication (Google) — OAuth via Google. Status: shipped. See docs/features/authentication-google.md
