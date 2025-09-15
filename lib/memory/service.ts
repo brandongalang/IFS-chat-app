@@ -285,6 +285,43 @@ export async function loadTodayData(userId: string, isoCutoff: string): Promise<
   return { sessions: sessions || [], insights: insights || [], checkIns: checkIns || [] }
 }
 
+export async function listUnprocessedUpdates(userId: string): Promise<TodayData> {
+  const supabase = createAdminClient()
+
+  const { data: sessions, error: sessionError } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .order('created_at', { ascending: true })
+
+  if (sessionError) throw sessionError
+
+  const { data: insights, error: insightError } = await supabase
+    .from('insights')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .order('created_at', { ascending: true })
+
+  if (insightError) throw insightError
+
+  const { data: checkIns, error: checkInError } = await supabase
+    .from('check_ins')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .order('created_at', { ascending: true })
+
+  if (checkInError) throw checkInError
+
+  return {
+    sessions: sessions || [],
+    insights: insights || [],
+    checkIns: checkIns || [],
+  }
+}
+
 function extractIds(rows: Record<string, unknown>[] | undefined): string[] {
   if (!rows || rows.length === 0) return []
   return rows

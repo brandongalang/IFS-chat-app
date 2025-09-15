@@ -6,6 +6,7 @@ import {
   QuestionResponse,
   OnboardingQuestion,
   QuestionOption,
+  OnboardingResponseRecord,
 } from '@/lib/onboarding/types';
 import { computeStage1Scores, getTopThemes } from '@/lib/onboarding/scoring';
 import questionsConfig from '@/config/onboarding-questions.json';
@@ -234,13 +235,17 @@ async function synthesizeOnboardingMemories(userId: string): Promise<{ success: 
     }
 
     const stage1Snapshot: Record<string, QuestionResponse> = {};
-    const stage2: typeof responses = [];
-    const stage3: typeof responses = [];
+    const stage2: OnboardingResponseRecord[] = [];
+    const stage3: OnboardingResponseRecord[] = [];
 
-    for (const r of responses) {
-      if (r.stage === 1) stage1Snapshot[r.question_id] = r.response as QuestionResponse;
-      else if (r.stage === 2) stage2.push(r);
-      else if (r.stage === 3) stage3.push(r);
+    for (const responseRecord of responses) {
+      if (responseRecord.stage === 1) {
+        stage1Snapshot[responseRecord.question_id] = responseRecord.response as QuestionResponse;
+      } else if (responseRecord.stage === 2) {
+        stage2.push(responseRecord);
+      } else if (responseRecord.stage === 3) {
+        stage3.push(responseRecord);
+      }
     }
 
     const scores = computeStage1Scores(stage1Snapshot);
@@ -254,39 +259,41 @@ async function synthesizeOnboardingMemories(userId: string): Promise<{ success: 
     );
 
     const protectionsMd = stage2
-      .map(r => {
-        const q = questionMap.get(r.question_id);
-        if (!q || r.response.type !== 'single_choice') return null;
-        const opt = q.options.find((o: QuestionOption) => o.value === r.response.value);
-        return `- ${q.prompt} ${opt ? opt.label : r.response.value}`;
+      .map((row): string | null => {
+        const question = questionMap.get(row.question_id);
+        if (!question || row.response.type !== 'single_choice') return null;
+        const response = row.response;
+        const option = question.options.find((opt: QuestionOption) => opt.value === response.value);
+        return `- ${question.prompt} ${option ? option.label : response.value}`;
       })
-      .filter(Boolean)
+      .filter((line): line is string => Boolean(line))
       .join('\n');
 
     let somaticMd = '';
-    const somatic = stage3.find(r => r.question_id === 'S3_Q1');
+    const somatic = stage3.find(row => row.question_id === 'S3_Q1');
     if (somatic && somatic.response.type === 'multi_select') {
       const q = questionMap.get('S3_Q1');
       somaticMd = somatic.response.values
-        .map(v => q?.options.find((o: QuestionOption) => o.value === v)?.label || v)
+        .map((value: string) => q?.options.find((opt: QuestionOption) => opt.value === value)?.label || value)
         .join(', ');
     }
 
     let beliefsMd = '';
-    const belief = stage3.find(r => r.question_id === 'S3_Q2');
+    const belief = stage3.find(row => row.question_id === 'S3_Q2');
     if (belief && belief.response.type === 'free_text') beliefsMd = belief.response.text;
 
     let selfCompMd = '';
-    const selfComp = stage3.find(r => r.question_id === 'S3_Q3');
+    const selfComp = stage3.find(row => row.question_id === 'S3_Q3');
     if (selfComp && selfComp.response.type === 'free_text') selfCompMd = selfComp.response.text;
 
     let emotionsMd = '';
-    const emotion = stage3.find(r => r.question_id === 'S3_Q4');
+    const emotion = stage3.find(row => row.question_id === 'S3_Q4');
     if (emotion && emotion.response.type === 'single_choice') {
       const q = questionMap.get('S3_Q4');
+      const response = emotion.response;
       emotionsMd =
-        q?.options.find((o: QuestionOption) => o.value === emotion.response.value)?.label ||
-        emotion.response.value;
+        q?.options.find((o: QuestionOption) => o.value === response.value)?.label ||
+        response.value;
     }
 
     await ensureOverviewExists(userId);

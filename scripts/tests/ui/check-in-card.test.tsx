@@ -18,15 +18,23 @@ function copyProps(src: Window, target: typeof globalThis) {
   })
 }
 
-;(globalThis as any).window = window
-;(globalThis as any).document = window.document
-;(globalThis as any).navigator = window.navigator
-;(globalThis as any).HTMLElement = window.HTMLElement
-;(globalThis as any).customElements = window.customElements
-;(globalThis as any).getComputedStyle = window.getComputedStyle.bind(window)
-;(globalThis as any).localStorage = window.localStorage
-;(globalThis as any).MutationObserver = window.MutationObserver
-;(globalThis as any).React = React
+function assignGlobal(key: string, value: unknown) {
+  Object.defineProperty(globalThis, key, {
+    configurable: true,
+    writable: true,
+    value,
+  })
+}
+
+assignGlobal('window', window)
+assignGlobal('document', window.document)
+assignGlobal('navigator', window.navigator)
+assignGlobal('HTMLElement', window.HTMLElement)
+assignGlobal('customElements', window.customElements)
+assignGlobal('getComputedStyle', window.getComputedStyle.bind(window))
+assignGlobal('localStorage', window.localStorage)
+assignGlobal('MutationObserver', window.MutationObserver)
+assignGlobal('React', React)
 if (!(globalThis as any).matchMedia) {
   ;(globalThis as any).matchMedia = () => ({
     matches: false,
