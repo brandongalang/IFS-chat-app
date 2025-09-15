@@ -28,6 +28,8 @@ async function saveInsightsToDb(
       generator: 'insight-generator-agent-v1',
       trigger: 'on-demand-request',
     } as Json,
+    processed: false,
+    processed_at: null,
     created_at: now,
     updated_at: now,
   }));

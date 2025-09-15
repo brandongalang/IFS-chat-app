@@ -49,7 +49,7 @@ export const generateInsightWorkflow = createWorkflow({
         `;
 
         // Run the insight generator agent directly to avoid circular imports
-        const agentRun = await insightGeneratorAgent.run({
+        const agentRun = await (insightGeneratorAgent as any).run({
           input: researchSummary,
           context: { userId: input.userId }, // Pass original userId through
         });

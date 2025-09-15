@@ -257,6 +257,7 @@ export async function loadTodayData(userId: string, isoCutoff: string): Promise<
     .select('*')
     .eq('user_id', userId)
     .gte('created_at', isoCutoff)
+    .eq('processed', false)
     .order('created_at', { ascending: true })
 
   if (sErr) throw sErr
@@ -266,6 +267,7 @@ export async function loadTodayData(userId: string, isoCutoff: string): Promise<
     .select('*')
     .eq('user_id', userId)
     .or(`created_at.gte.${isoCutoff},updated_at.gte.${isoCutoff}`)
+    .eq('processed', false)
     .order('created_at', { ascending: true })
 
   if (iErr) throw iErr
@@ -275,9 +277,83 @@ export async function loadTodayData(userId: string, isoCutoff: string): Promise<
     .select('*')
     .eq('user_id', userId)
     .gte('created_at', isoCutoff)
+    .eq('processed', false)
     .order('created_at', { ascending: true })
 
   if (cErr) throw cErr
 
   return { sessions: sessions || [], insights: insights || [], checkIns: checkIns || [] }
+}
+
+export async function listUnprocessedUpdates(userId: string): Promise<TodayData> {
+  const supabase = createAdminClient()
+
+  const { data: sessions, error: sessionError } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .order('created_at', { ascending: true })
+
+  if (sessionError) throw sessionError
+
+  const { data: insights, error: insightError } = await supabase
+    .from('insights')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .order('created_at', { ascending: true })
+
+  if (insightError) throw insightError
+
+  const { data: checkIns, error: checkInError } = await supabase
+    .from('check_ins')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .order('created_at', { ascending: true })
+
+  if (checkInError) throw checkInError
+
+  return {
+    sessions: sessions || [],
+    insights: insights || [],
+    checkIns: checkIns || [],
+  }
+}
+
+function extractIds(rows: Record<string, unknown>[] | undefined): string[] {
+  if (!rows || rows.length === 0) return []
+  return rows
+    .map((row) => {
+      const id = row['id']
+      return typeof id === 'string' && id.length > 0 ? id : null
+    })
+    .filter((id): id is string => Boolean(id))
+}
+
+export async function markUpdatesProcessed(userId: string, items: TodayData): Promise<void> {
+  const supabase = createAdminClient()
+  const processedAt = new Date().toISOString()
+
+  const updateTable = async (table: 'sessions' | 'insights' | 'check_ins', ids: string[]) => {
+    if (ids.length === 0) return
+    const { error } = await supabase
+      .from(table)
+      .update({ processed: true, processed_at: processedAt })
+      .in('id', ids)
+      .eq('user_id', userId)
+
+    if (error) throw error
+  }
+
+  const sessionIds = extractIds(items.sessions)
+  const insightIds = extractIds(items.insights)
+  const checkInIds = extractIds(items.checkIns)
+
+  await Promise.all([
+    updateTable('sessions', sessionIds),
+    updateTable('insights', insightIds),
+    updateTable('check_ins', checkInIds),
+  ])
 }

@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto'
 import { createTool } from '@mastra/core'
 import { z } from 'zod'
 import { resolveUserId } from '@/config/dev'
@@ -6,7 +7,7 @@ import type {
   PartRow,
   PartRelationshipRow,
   ToolResult,
-} from '../../lib/types/database'
+} from '@/lib/types/database'
 import {
   searchPartsSchema,
   getPartByIdSchema,
@@ -16,6 +17,57 @@ import {
   getPartRelationshipsSchema,
   logRelationshipSchema,
 } from './part-schemas'
+
+function makeStubPart(userId: string, overrides: Partial<PartRow> = {}): PartRow {
+  const now = new Date().toISOString()
+  return {
+    id: overrides.id ?? randomUUID(),
+    user_id: overrides.user_id ?? userId,
+    name: overrides.name ?? 'Emerging Part',
+    status: overrides.status ?? 'emerging',
+    category: overrides.category ?? 'unknown',
+    age: overrides.age ?? null,
+    role: overrides.role ?? null,
+    triggers: overrides.triggers ?? [],
+    emotions: overrides.emotions ?? [],
+    beliefs: overrides.beliefs ?? [],
+    somatic_markers: overrides.somatic_markers ?? [],
+    confidence: overrides.confidence ?? 0,
+    evidence_count: overrides.evidence_count ?? 0,
+    recent_evidence: overrides.recent_evidence ?? [],
+    story: overrides.story ?? { origin: null, currentState: null, purpose: null, evolution: [] },
+    relationships: overrides.relationships ?? {},
+    visualization:
+      overrides.visualization ?? ({ emoji: '❔', color: '#7f7f7f', energyLevel: 0.1 } as PartRow['visualization']),
+    first_noticed: overrides.first_noticed ?? now,
+    acknowledged_at: overrides.acknowledged_at ?? null,
+    last_active: overrides.last_active ?? now,
+    last_charged_at: overrides.last_charged_at ?? null,
+    last_charge_intensity: overrides.last_charge_intensity ?? null,
+    created_at: overrides.created_at ?? now,
+    updated_at: overrides.updated_at ?? now,
+  }
+}
+
+function makeStubRelationship(userId: string, partIds: string[]): PartRelationshipRow {
+  const now = new Date().toISOString()
+  const ids = partIds.length > 0 ? partIds : [randomUUID(), randomUUID()]
+  return {
+    id: randomUUID(),
+    user_id: userId,
+    parts: ids,
+    type: 'allied',
+    description: null,
+    issue: null,
+    common_ground: null,
+    dynamics: [],
+    status: 'active',
+    polarization_level: 0,
+    last_addressed: null,
+    created_at: now,
+    updated_at: now,
+  }
+}
 
 export async function searchParts(input: z.infer<typeof searchPartsSchema>): Promise<ToolResult<PartRow[]>> {
   try {
@@ -53,9 +105,22 @@ export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>):
 export async function createEmergingPart(input: z.infer<typeof createEmergingPartSchema>): Promise<ToolResult<PartRow>> {
   try {
     const validated = createEmergingPartSchema.parse(input)
-    resolveUserId(validated.userId)
+    const userId = resolveUserId(validated.userId)
     await getStorageAdapter()
-    return { success: true, data: { ...validated, id: validated.partId || '' } as PartRow, confidence: 1.0 }
+    const part = makeStubPart(userId, {
+      name: validated.name,
+      category: validated.category,
+      age: validated.age ?? null,
+      role: validated.role ?? null,
+      triggers: validated.triggers ?? [],
+      emotions: validated.emotions ?? [],
+      beliefs: validated.beliefs ?? [],
+      somatic_markers: validated.somaticMarkers ?? [],
+      recent_evidence: validated.evidence,
+      evidence_count: validated.evidence.length,
+      confidence: 0.1,
+    })
+    return { success: true, data: part, confidence: 0.1 }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
@@ -64,9 +129,43 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
 export async function updatePart(input: z.infer<typeof updatePartSchema>): Promise<ToolResult<PartRow>> {
   try {
     const validated = updatePartSchema.parse(input)
-    resolveUserId(validated.userId)
+    const userId = resolveUserId(validated.userId)
     await getStorageAdapter()
-    return { success: true, data: { ...validated } as PartRow, confidence: 1.0 }
+    const base = makeStubPart(userId, { id: validated.partId })
+    const updates = validated.updates
+    const now = new Date().toISOString()
+
+    const updatedVisualization = updates.visualization
+      ? { ...base.visualization, ...updates.visualization }
+      : base.visualization
+
+    const updatedPart = makeStubPart(userId, {
+      ...base,
+      name: updates.name ?? base.name,
+      status: updates.status ?? base.status,
+      category: updates.category ?? base.category,
+      age: updates.age ?? base.age,
+      role: updates.role ?? base.role,
+      triggers: updates.triggers ?? base.triggers,
+      emotions: updates.emotions ?? base.emotions,
+      beliefs: updates.beliefs ?? base.beliefs,
+      somatic_markers: updates.somaticMarkers ?? base.somatic_markers,
+      visualization: updatedVisualization,
+      last_charged_at: updates.last_charged_at ?? base.last_charged_at,
+      last_charge_intensity: updates.last_charge_intensity ?? base.last_charge_intensity,
+      updated_at: now,
+    })
+
+    if (typeof updates.confidenceBoost === 'number') {
+      updatedPart.confidence = Math.max(0, Math.min(1, base.confidence + updates.confidenceBoost))
+    }
+
+    if (validated.evidence) {
+      updatedPart.recent_evidence = [validated.evidence]
+      updatedPart.evidence_count = 1
+    }
+
+    return { success: true, data: updatedPart, confidence: 0.9 }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
@@ -86,9 +185,10 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
 export async function logRelationship(input: z.infer<typeof logRelationshipSchema>): Promise<ToolResult<PartRelationshipRow>> {
   try {
     const validated = logRelationshipSchema.parse(input)
-    resolveUserId(validated.userId)
+    const userId = resolveUserId(validated.userId)
     await getStorageAdapter()
-    return { success: true, data: validated as any, confidence: 1.0 }
+    const relationship = makeStubRelationship(userId, validated.partIds)
+    return { success: true, data: relationship, confidence: 0.5 }
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
@@ -180,4 +280,3 @@ export const partTools = {
   getPartRelationships: getPartRelationshipsTool,
   logRelationship: logRelationshipTool,
 }
-

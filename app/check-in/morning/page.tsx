@@ -1,10 +1,10 @@
-import { MorningCheckInForm } from '@/components/check-in/morning-form'
+import { DailyCheckInForm } from '@/components/check-in/DailyCheckInForm'
 
 export default function Page() {
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm">
-        <MorningCheckInForm />
+        <DailyCheckInForm variant="morning" />
       </div>
     </div>
   )

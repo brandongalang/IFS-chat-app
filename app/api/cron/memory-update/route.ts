@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { listActiveUsersSince, reconstructMemory, loadTodayData, generateMemoryUpdate, saveNewSnapshot } from '@/lib/memory/service'
+import { listActiveUsersSince, reconstructMemory, loadTodayData, generateMemoryUpdate, saveNewSnapshot, markUpdatesProcessed } from '@/lib/memory/service'
 
 function requireCronAuth(req: Request): boolean {
   const secret = process.env.CRON_SECRET
@@ -28,6 +28,7 @@ async function runDailyMemoryUpdate(): Promise<Response> {
       }
       const next = await generateMemoryUpdate({ userId, oldMemory: previous, todayData: today })
       const saved = await saveNewSnapshot({ userId, previous, next, source: 'cron-daily' })
+      await markUpdatesProcessed(userId, today)
       results.push({ userId, version: saved.version })
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'unknown-error'

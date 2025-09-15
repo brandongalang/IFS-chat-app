@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useUser } from '@/context/UserContext'
 import { useSearchParams } from 'next/navigation'
-import { Message, ChatState, TaskEvent } from '@/types/chat';
+import { Message, ChatState, TaskEvent, TaskEventUpdate } from '@/types/chat';
 import { getPartById } from '@/lib/data/parts-lite'
 import { streamFromMastra } from '@/lib/chatClient';
 import { useToast } from './use-toast';
@@ -62,21 +62,43 @@ export function useChat() {
     }));
   }, []);
 
-  const upsertTaskForMessage = useCallback((messageId: string, evt: TaskEvent) => {
+  const upsertTaskForMessage = useCallback((messageId: string, evt: TaskEventUpdate) => {
     setState((prev: ChatState) => {
       const existing: Record<string, TaskEvent[]> = prev.tasksByMessage ?? {}
       const currentList = existing[messageId] || []
       const idx = currentList.findIndex((t) => t.id === evt.id)
-      const nextList = idx >= 0
-        ? currentList.map((t) => (t.id === evt.id ? { ...t, ...evt } : t))
-        : [...currentList, evt]
+
+      const mergeTask = (current: TaskEvent | undefined, update: TaskEventUpdate): TaskEvent => {
+        const base: TaskEvent = current
+          ? { ...current }
+          : {
+              id: update.id,
+              title: update.title ?? 'Task',
+              status: update.status ?? 'working',
+            }
+
+        if (update.title !== undefined) base.title = update.title
+        if (update.status !== undefined) base.status = update.status
+        if ('progress' in update) base.progress = update.progress
+        if ('details' in update) base.details = update.details
+        if ('meta' in update) {
+          base.meta = update.meta ? { ...(current?.meta ?? {}), ...update.meta } : undefined
+        }
+
+        return base
+      }
+
+      const nextList: TaskEvent[] = idx >= 0
+        ? currentList.map((task, taskIndex) => (taskIndex === idx ? mergeTask(task, evt) : task))
+        : [...currentList, mergeTask(undefined, evt)]
+
       return {
         ...prev,
         tasksByMessage: { ...existing, [messageId]: nextList },
-        messages: (prev.messages || []).map((m) => m.id === messageId ? { ...m, tasks: nextList } : m),
+        messages: (prev.messages || []).map((m) => (m.id === messageId ? { ...m, tasks: nextList } : m)),
       }
     })
-  }, [])
+  }, []);
 
   const { toast } = useToast();
 
@@ -292,7 +314,13 @@ export function useChat() {
     if (streamingCancelRef.current) {
       streamingCancelRef.current();
     }
-    setState((prev: ChatState) => ({ ...prev, messages: [], isStreaming: false, currentStreamingId: undefined }));
+    setState((prev: ChatState) => ({
+      ...prev,
+      messages: [],
+      isStreaming: false,
+      currentStreamingId: undefined,
+      tasksByMessage: {},
+    }));
     // Intentionally do not reset sessionIdRef here to satisfy: no resume within same page; new session will be created on first send after reload
   }, []);
 
@@ -301,7 +329,14 @@ export function useChat() {
     const id = sessionIdRef.current
     if (!id) {
       // Nothing to end
-      setState((prev: ChatState) => ({ ...prev, hasActiveSession: false, messages: [], isStreaming: false, currentStreamingId: undefined }))
+      setState((prev: ChatState) => ({
+        ...prev,
+        hasActiveSession: false,
+        messages: [],
+        isStreaming: false,
+        currentStreamingId: undefined,
+        tasksByMessage: {},
+      }))
       return
     }
     try {
@@ -314,7 +349,14 @@ export function useChat() {
       // ignore
     } finally {
       sessionIdRef.current = null
-      setState((prev: ChatState) => ({ ...prev, hasActiveSession: false, messages: [], isStreaming: false, currentStreamingId: undefined }))
+      setState((prev: ChatState) => ({
+        ...prev,
+        hasActiveSession: false,
+        messages: [],
+        isStreaming: false,
+        currentStreamingId: undefined,
+        tasksByMessage: {},
+      }))
     }
   }, [needsAuth])
 

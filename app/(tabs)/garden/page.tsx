@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, type ChangeEvent } from 'react'
 import dynamic from 'next/dynamic'
 import { searchParts, getPartRelationships } from '@/lib/data/parts-lite'
 import type { PartRow, PartRelationshipRow, PartCategory, RelationshipType } from '@/lib/types/database'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Input } from '@/components/ui/input'
+import { PartCard } from '@/components/garden/PartCard'
+import { isGardenGridViewEnabled } from '@/config/features'
 import type { ForceGraphProps } from 'react-force-graph-2d'
 
 // Dynamically import the ForceGraph2D component to avoid SSR issues
@@ -115,43 +118,102 @@ function drawNode(node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: n
 
 
 export default function GardenPage() {
+  const isGridView = isGardenGridViewEnabled()
   const [parts, setParts] = useState<PartRow[]>([])
   const [relationships, setRelationships] = useState<PartRelationshipRow[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [partsError, setPartsError] = useState<string | null>(null)
+  const [relationshipsError, setRelationshipsError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
   const [time, setTime] = useState(0) // For animation timing
+  const error = partsError ?? relationshipsError
 
   useEffect(() => {
-    // Animation loop
+    if (isGridView) return
+    // Animation loop for graph view
     const frameId = requestAnimationFrame(setTime)
     return () => cancelAnimationFrame(frameId)
-  }, [time])
+  }, [isGridView, time])
 
   useEffect(() => {
-    async function fetchData() {
+    let isActive = true
+
+    async function fetchPartsData() {
       try {
-        const [partsResult, relationshipsResult] = await Promise.all([
-          searchParts({ limit: 50 }),
-          getPartRelationships({ includePartDetails: false, limit: 50 }),
-        ])
+        const partsResult = await searchParts({ limit: 50 })
+        if (!isActive) return
 
         if (partsResult && Array.isArray(partsResult)) {
           setParts(partsResult)
+          setPartsError(null)
         } else {
           throw new Error('Failed to load parts.')
         }
+      } catch (e) {
+        if (!isActive) return
+        const message = e instanceof Error ? e.message : 'Failed to load parts.'
+        setPartsError(message)
+      } finally {
+        if (isActive) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    setIsLoading(true)
+    fetchPartsData()
+
+    return () => {
+      isActive = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isGridView) {
+      setRelationshipsError(null)
+      return
+    }
+
+    let isActive = true
+
+    async function fetchRelationshipsData() {
+      try {
+        const relationshipsResult = await getPartRelationships({ includePartDetails: false, limit: 50 })
+        if (!isActive) return
 
         if (relationshipsResult && Array.isArray(relationshipsResult)) {
           setRelationships(relationshipsResult)
+          setRelationshipsError(null)
         } else {
           throw new Error('Failed to load relationships.')
         }
       } catch (e) {
-        if (e instanceof Error) {
-          setError(e.message)
-        }
+        if (!isActive) return
+        const message = e instanceof Error ? e.message : 'Failed to load relationships.'
+        setRelationshipsError(message)
       }
     }
-    fetchData()
+
+    fetchRelationshipsData()
+
+    return () => {
+      isActive = false
+    }
+  }, [isGridView])
+
+  const filteredParts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return parts
+
+    return parts.filter((part) => {
+      const nameMatch = part.name.toLowerCase().includes(query)
+      const roleMatch = part.role ? part.role.toLowerCase().includes(query) : false
+      return nameMatch || roleMatch
+    })
+  }, [parts, searchQuery])
+
+  const handleSearchChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value)
   }, [])
 
   const graphData = useMemo(() => {
@@ -193,38 +255,85 @@ export default function GardenPage() {
       <header className="mb-8">
         <h1 className="text-4xl font-bold tracking-tight">The Parts Garden</h1>
         <p className="text-muted-foreground mt-2">
-          A visual representation of your inner world. Click a part to see its details.
+          Explore the parts of your inner world and select a card to see its details.
         </p>
       </header>
 
       <main className="flex-grow relative">
-        {error && <div className="text-red-500 text-center p-4"><p>Could not load garden: {error}</p></div>}
+        {error && (
+          <div className="text-red-500 text-center p-4">
+            <p>Could not load garden: {error}</p>
+          </div>
+        )}
 
         {!error && (
-          <Card className="w-full h-[600px] overflow-hidden">
-            <ForceGraph2D
-              graphData={graphData}
-              nodeLabel=""
-              nodeVal={10}
-              onNodeClick={handleNodeClick}
-              linkDirectionalParticles={1}
-              linkDirectionalParticleWidth={1.5}
-              linkDirectionalParticleSpeed={0.008}
-              backgroundColor="hsl(var(--card))"
-              linkColor={(link: object) => {
-                const l = link as GraphLink;
-                switch (l.type) {
-                  case 'protector-exile': return 'rgba(134, 239, 172, 0.7)'; // green-300
-                  case 'polarized': return 'rgba(252, 165, 165, 0.8)'; // red-300
-                  case 'allied': return 'rgba(147, 197, 253, 0.7)'; // blue-300
-                  default: return 'rgba(156, 163, 175, 0.5)'; // gray-400
-                }
-              }}
-              linkWidth={(link: object) => ((link as GraphLink).type === 'protector-exile' ? 3 : 1)}
-              linkLineDash={(link: object) => ((link as GraphLink).type === 'polarized' ? [4, 2] : [])}
-              nodeCanvasObject={(node, ctx, globalScale) => handleDrawNode(node, ctx, globalScale)}
-            />
-          </Card>
+          isGridView ? (
+            <div className="flex flex-col gap-6">
+              <div className="max-w-md">
+                <label htmlFor="garden-search" className="sr-only">
+                  Search parts
+                </label>
+                <Input
+                  id="garden-search"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  placeholder="Search parts by name or role"
+                  autoComplete="off"
+                />
+              </div>
+
+              {isLoading ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <Card key={index} className="aspect-square">
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Skeleton className="h-16 w-16 rounded-full" />
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : filteredParts.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {filteredParts.map((part) => (
+                    <PartCard key={part.id} part={part} />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground">
+                  No parts match your search yet.
+                </p>
+              )}
+            </div>
+          ) : (
+            <Card className="w-full h-[600px] overflow-hidden">
+              <ForceGraph2D
+                graphData={graphData}
+                nodeLabel=""
+                nodeVal={10}
+                onNodeClick={handleNodeClick}
+                linkDirectionalParticles={1}
+                linkDirectionalParticleWidth={1.5}
+                linkDirectionalParticleSpeed={0.008}
+                backgroundColor="hsl(var(--card))"
+                linkColor={(link: object) => {
+                  const l = link as GraphLink
+                  switch (l.type) {
+                    case 'protector-exile':
+                      return 'rgba(134, 239, 172, 0.7)'
+                    case 'polarized':
+                      return 'rgba(252, 165, 165, 0.8)'
+                    case 'allied':
+                      return 'rgba(147, 197, 253, 0.7)'
+                    default:
+                      return 'rgba(156, 163, 175, 0.5)'
+                  }
+                }}
+                linkWidth={(link: object) => ((link as GraphLink).type === 'protector-exile' ? 3 : 1)}
+                linkLineDash={(link: object) => ((link as GraphLink).type === 'polarized' ? [4, 2] : [])}
+                nodeCanvasObject={(node, ctx, globalScale) => handleDrawNode(node, ctx, globalScale)}
+              />
+            </Card>
+          )
         )}
       </main>
     </div>

@@ -2,14 +2,14 @@ export type BasicMessage = { role: 'user' | 'assistant' | 'system'; content: str
 
 export type Profile = { name: string; bio: string }
 
-import type { TaskEvent } from '@/types/chat'
+import type { TaskEvent, TaskEventUpdate } from '@/types/chat'
 
 export async function streamFromMastra(params: {
   messages: BasicMessage[]
   sessionId: string
   profile: Profile
   onChunk: (chunk: string, done: boolean) => void
-  onTask?: (event: TaskEvent) => void
+  onTask?: (event: TaskEventUpdate) => void
   apiPath?: string
   signal?: AbortSignal
 }): Promise<void> {
@@ -109,7 +109,8 @@ function statusFromState(state?: string): TaskEvent['status'] | undefined {
   }
 }
 
-function handleUiEvent(obj: unknown, onTask?: (e: TaskEvent) => void): boolean {
+
+function handleUiEvent(obj: unknown, onTask?: (e: TaskEventUpdate) => void): boolean {
   if (!onTask) return false
   if (!isObject(obj)) return false
   const o = obj as Record<string, unknown>
@@ -138,6 +139,59 @@ function handleUiEvent(obj: unknown, onTask?: (e: TaskEvent) => void): boolean {
     return true
   }
 
+  if (t === 'update-task' || t === 'task-update' || t === 'task-progress') {
+    const ev: TaskEventUpdate = {
+      id: String(o.id ?? o.taskId ?? o.name ?? Math.random().toString(36).slice(2)),
+    }
+
+    const title =
+      typeof o.title === 'string'
+        ? o.title
+        : typeof o.name === 'string'
+        ? o.name
+        : undefined
+    if (title) ev.title = title
+
+    const status =
+      (o.status as TaskEvent['status']) ??
+      statusFromState(o.state as string | undefined)
+    if (status) ev.status = status
+
+    const progress = parseProgressValue(
+      'progress' in o
+        ? o.progress
+        : 'percent' in o
+        ? o.percent
+        : 'percentage' in o
+        ? o.percentage
+        : 'value' in o
+        ? o.value
+        : undefined,
+    )
+    if (progress !== undefined) ev.progress = progress
+
+    const details = parseDetailsValue(
+      'details' in o
+        ? o.details
+        : 'detail' in o
+        ? o.detail
+        : 'message' in o
+        ? o.message
+        : 'text' in o
+        ? o.text
+        : 'delta' in o
+        ? o.delta
+        : undefined,
+    )
+    if (details !== undefined) ev.details = details
+
+    const meta = parseTaskMeta(o.meta, o.files)
+    if (meta !== undefined) ev.meta = meta
+
+    onTask(ev)
+    return true
+  }
+
   // tool-* events from UI stream
   if (t.startsWith('tool-')) {
     const name = t.replace(/^tool-/, '') || 'tool'
@@ -155,19 +209,102 @@ function handleUiEvent(obj: unknown, onTask?: (e: TaskEvent) => void): boolean {
 
   // generic dev-only data-task
   if (t === 'data-task' || t === 'task') {
+    const progress = parseProgressValue(
+      'progress' in o ? o.progress : 'percent' in o ? o.percent : undefined,
+    )
+    const details = parseDetailsValue(
+      'details' in o
+        ? o.details
+        : 'detail' in o
+        ? o.detail
+        : 'message' in o
+        ? o.message
+        : 'delta' in o
+        ? o.delta
+        : undefined,
+    )
+    const meta = parseTaskMeta(o.meta, o.files)
     const ev: TaskEvent = {
       id: String(o.id ?? Math.random().toString(36).slice(2)),
-      title: String(o.title ?? 'Task'),
-      status: (o.status as TaskEvent['status']) ?? 'working',
-      progress: typeof o.progress === 'number' ? (o.progress as number) : undefined,
-      details: o.details as string | string[] | undefined,
-        meta: o.meta as TaskEvent['meta'],
+      title: String(o.title ?? o.name ?? 'Task'),
+      status:
+        (o.status as TaskEvent['status']) ??
+        statusFromState(o.state as string | undefined) ??
+        'working',
+      ...(progress !== undefined ? { progress } : {}),
+      ...(details !== undefined ? { details } : {}),
+      ...(meta ? { meta } : {}),
     }
     onTask(ev)
     return true
   }
 
   return false
+}
+
+function parseProgressValue(value: unknown): number | undefined {
+  const num =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+      ? Number(value)
+      : undefined
+  if (num === undefined || Number.isNaN(num) || !Number.isFinite(num)) return undefined
+  let normalized = num
+  if (normalized > 0 && normalized <= 1) {
+    normalized *= 100
+  }
+  if (normalized < 0) normalized = 0
+  if (normalized > 100) normalized = 100
+  return normalized
+}
+
+function parseDetailsValue(value: unknown): string | string[] | undefined {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  if (Array.isArray(value)) {
+    const normalized = value
+      .map((item) => {
+        if (typeof item === 'string') return item
+        if (typeof item === 'number' || typeof item === 'boolean') return String(item)
+        if (isObject(item) && typeof (item as Record<string, unknown>).text === 'string') {
+          return String((item as Record<string, unknown>).text)
+        }
+        return undefined
+      })
+      .filter((item): item is string => typeof item === 'string' && item.length > 0)
+    return normalized.length ? normalized : undefined
+  }
+  if (isObject(value)) {
+    const record = value as Record<string, unknown>
+    if (typeof record.message === 'string') return record.message
+    if (typeof record.text === 'string') return record.text
+  }
+  return undefined
+}
+
+function parseTaskMeta(metaCandidate: unknown, filesCandidate?: unknown): TaskEvent['meta'] | undefined {
+  let meta: TaskEvent['meta'] | undefined
+  if (isObject(metaCandidate)) {
+    meta = metaCandidate as TaskEvent['meta']
+  }
+  if (Array.isArray(filesCandidate)) {
+    const files = filesCandidate
+      .map((file) => {
+        if (isObject(file) && typeof (file as Record<string, unknown>).name === 'string') {
+          return { name: String((file as Record<string, unknown>).name) }
+        }
+        if (typeof file === 'string' || typeof file === 'number' || typeof file === 'boolean') {
+          return { name: String(file) }
+        }
+        return undefined
+      })
+      .filter((file): file is { name: string } => Boolean(file))
+    if (files.length) {
+      meta = { ...(meta ?? {}), files }
+    }
+  }
+  return meta
 }
 
 function extractText(obj: unknown): string {

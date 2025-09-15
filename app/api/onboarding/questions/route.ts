@@ -155,7 +155,9 @@ export async function GET(request: NextRequest) {
         }
 
         // Return selected questions
-        const selectedQuestions = questionBank.filter(q => selection.ids.includes(q.id));
+        const selectedQuestions = questionBank.filter((question: OnboardingQuestion) =>
+          selection.ids.includes(question.id)
+        );
         
         const response: QuestionsResponse = {
           questions: selectedQuestions as OnboardingQuestion[],

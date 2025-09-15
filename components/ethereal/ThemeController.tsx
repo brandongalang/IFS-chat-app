@@ -23,6 +23,11 @@ export function ThemeController() {
       try {
         r.style.setProperty('--eth-blobs', JSON.stringify(T.blobs))
       } catch {}
+      Object.entries(T.variants).forEach(([key, variant]) => {
+        if (variant.gradient) {
+          r.style.setProperty(`--eth-variant-${key}-gradient`, variant.gradient)
+        }
+      })
     }
     // Allow a dev override from localStorage
     try {

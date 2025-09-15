@@ -7,8 +7,7 @@ feature_flag: null
 code_paths:
   - app/check-in/morning/page.tsx
   - app/check-in/evening/page.tsx
-  - components/check-in/morning-form.tsx
-  - components/check-in/evening-form.tsx
+  - components/check-in/DailyCheckInForm.tsx
   - lib/supabase/middleware.ts
 related_prs:
   - #36

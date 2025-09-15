@@ -38,6 +38,7 @@ export function EtherealChat() {
   const [text, setText] = useState("")
   const [confirmOpen, setConfirmOpen] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // redirect to login if auth required
   useEffect(() => {
@@ -57,6 +58,13 @@ export function EtherealChat() {
     inputRef.current.style.height = "auto"
     inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 132)}px`
   }, [text])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (!isStreaming) {
+      inputRef.current?.focus()
+    }
+  }, [messages, isStreaming])
 
   const onSubmit = () => {
     const value = text.trim()
@@ -152,6 +160,7 @@ export function EtherealChat() {
               </div>
             </motion.div>
           ))}
+          <div ref={messagesEndRef} />
         </div>
       </div>
 

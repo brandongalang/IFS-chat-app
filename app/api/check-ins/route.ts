@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
       gratitude: body.gratitude,
       parts_data: body.parts_data,
       somatic_markers: body.somatic_markers,
+      processed: false,
     }).select()
 
     if (error) {
