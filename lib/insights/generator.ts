@@ -22,6 +22,8 @@ export async function jitTopUpInsights(opts: {
       sourceSessionIds: []
     } as Json,
     meta: { generator: 'jit-v0', jit: true, slotHint: i, created_via: 'api_get_jit' } as Json,
+    processed: false,
+    processed_at: null,
     created_at: now,
     updated_at: now
   }))

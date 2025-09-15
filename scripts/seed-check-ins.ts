@@ -75,6 +75,8 @@ async function seedUser(supabase: ReturnType<typeof createClient>, userId: strin
         gratitude: e.gratitude,
         parts_data: {},
         somatic_markers: e.somatic,
+        processed: false,
+        processed_at: null,
         created_at: new Date(dateOnly + (e.type === 'morning' ? 'T09:00:00Z' : 'T20:00:00Z')).toISOString(),
         updated_at: new Date().toISOString()
       }

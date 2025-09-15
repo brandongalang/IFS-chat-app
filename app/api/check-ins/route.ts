@@ -3,15 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { dev, resolveUserId } from '@/config/dev'
 
-type DailyResponses = Partial<{
-  intention: string
-  worries: string
-  lookingForwardTo: string
-  reflectionOnIntention: string
-  reflectionOnWorries: string
-  reflectionOnLookingForwardTo: string
-}>
-
 export async function POST(req: NextRequest) {
   // In dev mode, if a service role key is available, use admin client and a dev user id
   const useAdmin = dev.enabled && !!process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -46,72 +37,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid check-in type' }, { status: 400 })
     }
 
-    const responses: DailyResponses | null =
-      body.responses && typeof body.responses === 'object' && !Array.isArray(body.responses)
-        ? (body.responses as DailyResponses)
-        : null
-
-    const basePartsData =
-      body.parts_data && typeof body.parts_data === 'object' && !Array.isArray(body.parts_data)
-        ? (body.parts_data as Record<string, unknown>)
-        : null
-
-    const combinedPartsData =
-      basePartsData || responses
-        ? {
-            ...(basePartsData ?? {}),
-            ...(responses ? { daily_responses: { variant: body.type, ...responses } } : {}),
-          }
-        : null
-
-    const insertData: Record<string, unknown> = {
+    const { error, data } = await supabase.from('check_ins').insert({
       user_id: effectiveUserId,
       type: body.type,
-    }
-
-    if (typeof body.mood === 'number') {
-      insertData.mood = body.mood
-    }
-
-    if (typeof body.energy_level === 'number') {
-      insertData.energy_level = body.energy_level
-    }
-
-    const intentionValue =
-      typeof body.intention === 'string'
-        ? body.intention
-        : body.type === 'morning' && responses?.intention
-        ? responses.intention
-        : null
-
-    if (intentionValue !== null && intentionValue !== undefined) {
-      insertData.intention = intentionValue
-    }
-
-    const reflectionValue =
-      typeof body.reflection === 'string'
-        ? body.reflection
-        : body.type === 'evening' && responses?.reflectionOnIntention
-        ? responses.reflectionOnIntention
-        : null
-
-    if (reflectionValue !== null && reflectionValue !== undefined) {
-      insertData.reflection = reflectionValue
-    }
-
-    if (typeof body.gratitude === 'string') {
-      insertData.gratitude = body.gratitude
-    }
-
-    if (combinedPartsData) {
-      insertData.parts_data = combinedPartsData
-    }
-
-    if (Array.isArray(body.somatic_markers)) {
-      insertData.somatic_markers = body.somatic_markers
-    }
-
-    const { error, data } = await supabase.from('check_ins').insert(insertData).select()
+      mood: body.mood,
+      energy_level: body.energy_level,
+      intention: body.intention,
+      reflection: body.reflection,
+      gratitude: body.gratitude,
+      parts_data: body.parts_data,
+      somatic_markers: body.somatic_markers,
+      processed: false,
+    }).select()
 
     if (error) {
       console.error('Error inserting check-in:', error)

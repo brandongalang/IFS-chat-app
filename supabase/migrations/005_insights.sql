@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS insights (
   feedback text NULL,
   revealed_at timestamptz NULL,
   actioned_at timestamptz NULL,
+  processed boolean NOT NULL DEFAULT false,
+  processed_at timestamptz NULL,
   meta jsonb NOT NULL DEFAULT '{}'::jsonb, -- provenance/generator/jit flag/etc.
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
