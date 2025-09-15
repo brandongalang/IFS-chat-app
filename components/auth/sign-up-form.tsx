@@ -17,6 +17,11 @@ import { useRouter } from 'next/navigation'
 import { useState, useRef } from 'react'
 import { useGoogleAuth } from '@/lib/hooks/use-google-auth'
 
+const etherealTextStyle = {
+  letterSpacing: 'var(--eth-letter-spacing-user)',
+  color: 'rgba(255,255,255,var(--eth-user-opacity))',
+} as const
+
 export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -62,15 +67,14 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
-      <Card>
+      <Card variant="ethereal">
         <CardHeader>
-          <CardTitle
-            className="text-2xl"
-            style={{ letterSpacing: 'var(--eth-letter-spacing-assistant)' }}
-          >
+          <CardTitle className="text-2xl" style={etherealTextStyle}>
             Sign up
           </CardTitle>
-          <CardDescription>Create a new account</CardDescription>
+          <CardDescription style={etherealTextStyle}>
+            Create a new account
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-6">
