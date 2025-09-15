@@ -3,7 +3,7 @@
 
 > **Demonstrating systematic product management of complex AI systems using modern agentic development tools**
 
-This project demonstrates how a technical Product Manager can leverage cutting-edge AI development tools to build sophisticated, production-ready applications. The IFS Therapy Companion serves as a case study in managing multi-agent AI systems, coordinating development workflows, and delivering healthcare-grade software through AI-assisted product development.
+This project demonstrates how a technical Product Manager can leverage cutting-edge AI development tools to build sophisticated, production-ready applications. The IFS Therapy Companion serves as a case study in managing multi-agent AI systems, and coordinating development workflows through AI-assisted product development.
 
 **Repository**: https://github.com/brandongalang/IFS-chat-app.git
 
