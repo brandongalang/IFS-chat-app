@@ -1,6 +1,5 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { CheckInTemplate, FormField } from './CheckInTemplate'
@@ -10,40 +9,66 @@ export function MorningCheckInForm({ className, ...props }: Omit<React.Component
   const [worries, setWorries] = useState('')
   const [lookingForwardTo, setLookingForwardTo] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
 
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault()
-    const supabase = createClient()
-    setIsLoading(true)
+    setIsSubmitting(true)
     setError(null)
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const trimmedIntention = intention.trim()
 
-      if (!user) {
-        throw new Error('User not found')
+      if (!trimmedIntention) {
+        setError('Intention is required')
+        setIsSubmitting(false)
+        return
       }
 
-      const { error } = await supabase.from('check_ins').insert({
-        user_id: user.id,
-        morning_intention: intention,
-        morning_worries: worries,
-        morning_looking_forward_to: lookingForwardTo,
-        status: 'morning_completed',
-        completed_at: new Date().toISOString(),
+      const partsData: Record<string, string> = {}
+      if (worries.trim()) {
+        partsData.morning_worries = worries.trim()
+      }
+      if (lookingForwardTo.trim()) {
+        partsData.morning_looking_forward_to = lookingForwardTo.trim()
+      }
+
+      const payload: Record<string, unknown> = {
+        type: 'morning',
+        intention: trimmedIntention,
+      }
+
+      if (Object.keys(partsData).length > 0) {
+        payload.parts_data = partsData
+      }
+
+      const response = await fetch('/api/check-ins', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       })
 
-      if (error) throw error
+      if (!response.ok) {
+        let message = 'Failed to save your check-in'
+        try {
+          const data = await response.json()
+          if (data?.error) {
+            message = data.error
+          }
+        } catch {
+          // ignore JSON parse errors
+        }
+        throw new Error(message)
+      }
 
       router.push('/')
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred')
     } finally {
-      setIsLoading(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -77,7 +102,7 @@ export function MorningCheckInForm({ className, ...props }: Omit<React.Component
       title="Morning Check-in"
       description="What's on your mind this morning?"
       fields={fields}
-      isLoading={isLoading}
+      isLoading={isSubmitting}
       submitText="Complete Check-in"
       error={error}
       className={className}

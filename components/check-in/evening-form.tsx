@@ -18,24 +18,28 @@ export function EveningCheckInForm({ className, ...props }: Omit<React.Component
   const [reflectionOnLookingForwardTo, setReflectionOnLookingForwardTo] = useState('')
   const [gratitude, setGratitude] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [checkInId, setCheckInId] = useState<string | null>(null)
+  const [isFetchingMorning, setIsFetchingMorning] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [hasMorningCheckIn, setHasMorningCheckIn] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
     const fetchMorningData = async () => {
-      setIsLoading(true)
+      setIsFetchingMorning(true)
+      setError(null)
       const supabase = createClient()
       const {
         data: { user },
       } = await supabase.auth.getUser()
 
       if (user) {
+        const today = new Date().toISOString().slice(0, 10)
         const { data: checkIns, error } = await supabase
           .from('check_ins')
-          .select('*')
+          .select('intention, parts_data, check_in_date')
           .eq('user_id', user.id)
-          .eq('status', 'morning_completed')
+          .eq('type', 'morning')
+          .eq('check_in_date', today)
           .order('created_at', { ascending: false })
           .limit(1)
 
@@ -43,15 +47,27 @@ export function EveningCheckInForm({ className, ...props }: Omit<React.Component
           setError('Could not load your morning check-in. Please try again later.')
         } else if (checkIns && checkIns.length > 0) {
           const morningCheckIn = checkIns[0]
-          setCheckInId(morningCheckIn.id)
-          setMorningIntention(morningCheckIn.morning_intention || '')
-          setMorningWorries(morningCheckIn.morning_worries || '')
-          setMorningLookingForwardTo(morningCheckIn.morning_looking_forward_to || '')
+          setHasMorningCheckIn(true)
+          setMorningIntention(morningCheckIn.intention || '')
+
+          const partsData = (morningCheckIn.parts_data || {}) as Record<string, unknown>
+          setMorningWorries(
+            typeof partsData.morning_worries === 'string' ? partsData.morning_worries : ''
+          )
+          setMorningLookingForwardTo(
+            typeof partsData.morning_looking_forward_to === 'string'
+              ? partsData.morning_looking_forward_to
+              : ''
+          )
         } else {
           setError('No morning check-in found for today.')
+          setHasMorningCheckIn(false)
         }
+      } else {
+        setError('You need to be signed in to view your check-ins.')
+        setHasMorningCheckIn(false)
       }
-      setIsLoading(false)
+      setIsFetchingMorning(false)
     }
 
     fetchMorningData()
@@ -59,32 +75,91 @@ export function EveningCheckInForm({ className, ...props }: Omit<React.Component
 
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault()
-    if (!checkInId) return
+    if (!hasMorningCheckIn) {
+      return
+    }
 
-    const supabase = createClient()
-    setIsLoading(true)
+    setIsSubmitting(true)
     setError(null)
 
     try {
-      const { error } = await supabase
-        .from('check_ins')
-        .update({
-          evening_reflection_on_intention: reflectionOnIntention,
-          evening_reflection_on_worries: reflectionOnWorries,
-          evening_reflection_on_looking_forward_to: reflectionOnLookingForwardTo,
-          evening_gratitude: gratitude,
-          status: 'evening_completed',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', checkInId)
+      const trimmedReflectionOnIntention = reflectionOnIntention.trim()
+      const trimmedReflectionOnWorries = reflectionOnWorries.trim()
+      const trimmedReflectionOnLookingForwardTo = reflectionOnLookingForwardTo.trim()
+      const trimmedGratitude = gratitude.trim()
 
-      if (error) throw error
+      const combinedReflection = [
+        trimmedReflectionOnIntention && `Intention: ${trimmedReflectionOnIntention}`,
+        trimmedReflectionOnWorries && `Worries: ${trimmedReflectionOnWorries}`,
+        trimmedReflectionOnLookingForwardTo &&
+          `Looking forward: ${trimmedReflectionOnLookingForwardTo}`,
+      ]
+        .filter(Boolean)
+        .join('\n\n')
+
+      const partsData: Record<string, string> = {}
+
+      if (morningIntention.trim()) {
+        partsData.morning_intention = morningIntention.trim()
+      }
+      if (morningWorries.trim()) {
+        partsData.morning_worries = morningWorries.trim()
+      }
+      if (morningLookingForwardTo.trim()) {
+        partsData.morning_looking_forward_to = morningLookingForwardTo.trim()
+      }
+      if (trimmedReflectionOnIntention) {
+        partsData.reflection_on_intention = trimmedReflectionOnIntention
+      }
+      if (trimmedReflectionOnWorries) {
+        partsData.reflection_on_worries = trimmedReflectionOnWorries
+      }
+      if (trimmedReflectionOnLookingForwardTo) {
+        partsData.reflection_on_looking_forward_to = trimmedReflectionOnLookingForwardTo
+      }
+
+      const payload: Record<string, unknown> = {
+        type: 'evening',
+      }
+
+      if (combinedReflection) {
+        payload.reflection = combinedReflection
+      }
+
+      if (trimmedGratitude) {
+        payload.gratitude = trimmedGratitude
+      }
+
+      if (Object.keys(partsData).length > 0) {
+        payload.parts_data = partsData
+      }
+
+      const response = await fetch('/api/check-ins', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        let message = 'Failed to save your check-in'
+        try {
+          const data = await response.json()
+          if (data?.error) {
+            message = data.error
+          }
+        } catch {
+          // ignore JSON parse errors
+        }
+        throw new Error(message)
+      }
 
       router.push('/')
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred')
     } finally {
-      setIsLoading(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -149,7 +224,7 @@ export function EveningCheckInForm({ className, ...props }: Omit<React.Component
     </>
   )
 
-  if (isLoading) {
+  if (isFetchingMorning) {
     return (
       <Card>
         <CardHeader>
@@ -173,9 +248,9 @@ export function EveningCheckInForm({ className, ...props }: Omit<React.Component
       description="Let's reflect on your day."
       fields={fields}
       preFieldsContent={preFieldsContent}
-      isLoading={isLoading}
+      isLoading={isSubmitting}
       submitText="Complete Review"
-      submitDisabled={!checkInId}
+      submitDisabled={!hasMorningCheckIn}
       error={error}
       className={className}
       {...props}
