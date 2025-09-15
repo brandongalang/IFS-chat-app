@@ -74,11 +74,17 @@ function createRequest(body: Record<string, any>) {
 }
 
 test('creates a morning check-in via the API', async (t) => {
+  const morningResponses = {
+    intention: 'Set a calm tone',
+    worries: 'Feeling anxious about the presentation',
+    lookingForwardTo: 'Catching up with a friend over coffee',
+  }
+
   supabaseInsertImpl = async (payload) => {
     assert.equal(payload.type, 'morning')
-    assert.equal(payload.mood, 4)
-    assert.equal(payload.energy_level, 3)
     assert.equal(payload.user_id, '11111111-1111-1111-1111-111111111111')
+    assert.deepEqual(payload.parts_data?.daily_responses, morningResponses)
+    assert.equal(payload.processed, false)
     return { data: [{ id: 'check-in-1', ...payload }], error: null }
   }
 
@@ -89,9 +95,7 @@ test('creates a morning check-in via the API', async (t) => {
   const res = await POST(
     createRequest({
       type: 'morning',
-      mood: 4,
-      energy_level: 3,
-      intention: 'Set a calm tone',
+      responses: morningResponses,
     })
   )
 
@@ -103,9 +107,17 @@ test('creates a morning check-in via the API', async (t) => {
 })
 
 test('creates an evening check-in via the API', async (t) => {
+  const eveningResponses = {
+    reflectionOnIntention: 'I stayed mostly aligned with it',
+    reflectionOnWorries: 'It turned out better than expected',
+    reflectionOnLookingForwardTo: 'The dinner was relaxing and fun',
+  }
+
   supabaseInsertImpl = async (payload) => {
     assert.equal(payload.type, 'evening')
-    assert.equal(payload.reflection, 'Day went well')
+    assert.equal(payload.gratitude, 'Supportive friends')
+    assert.deepEqual(payload.parts_data?.daily_responses, eveningResponses)
+    assert.equal(payload.processed, false)
     return { data: [{ id: 'check-in-2', ...payload }], error: null }
   }
 
@@ -116,9 +128,8 @@ test('creates an evening check-in via the API', async (t) => {
   const res = await POST(
     createRequest({
       type: 'evening',
-      mood: 2,
-      reflection: 'Day went well',
       gratitude: 'Supportive friends',
+      responses: eveningResponses,
     })
   )
 
@@ -136,7 +147,7 @@ test('rejects submissions without a valid type', async (t) => {
     supabaseInsertImpl = defaultHandler
   })
 
-  const res = await POST(createRequest({ mood: 5 }))
+  const res = await POST(createRequest({ responses: {} }))
   assert.equal(res.status, 400)
   const json = await res.json()
   assert.equal(json.error, 'Invalid check-in type')
@@ -151,7 +162,7 @@ test('surfaces duplicate submission errors from Supabase', async (t) => {
     supabaseInsertImpl = defaultHandler
   })
 
-  const res = await POST(createRequest({ type: 'morning' }))
+  const res = await POST(createRequest({ type: 'morning', responses: {} }))
   assert.equal(res.status, 409)
   const json = await res.json()
   assert.equal(json.error, 'A check-in of this type already exists for this date.')

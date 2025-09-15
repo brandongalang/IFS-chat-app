@@ -37,7 +37,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid check-in type' }, { status: 400 })
     }
 
-    const { error, data } = await supabase.from('check_ins').insert({
+    const insertPartsData: Record<string, unknown> =
+      body.parts_data && typeof body.parts_data === 'object' && body.parts_data !== null
+        ? { ...body.parts_data }
+        : {}
+
+    if (body.responses && typeof body.responses === 'object' && !Array.isArray(body.responses)) {
+      insertPartsData.daily_responses = body.responses
+    }
+
+    const insertPayload = {
       user_id: effectiveUserId,
       type: body.type,
       mood: body.mood,
@@ -45,10 +54,12 @@ export async function POST(req: NextRequest) {
       intention: body.intention,
       reflection: body.reflection,
       gratitude: body.gratitude,
-      parts_data: body.parts_data,
+      parts_data: Object.keys(insertPartsData).length > 0 ? insertPartsData : null,
       somatic_markers: body.somatic_markers,
       processed: false,
-    }).select()
+    }
+
+    const { error, data } = await supabase.from('check_ins').insert(insertPayload).select()
 
     if (error) {
       console.error('Error inserting check-in:', error)
