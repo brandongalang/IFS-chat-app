@@ -38,6 +38,20 @@ export interface Database {
           }
         ]
       }
+      check_ins: {
+        Row: CheckInRow
+        Insert: CheckInInsert
+        Update: CheckInUpdate
+        Relationships: [
+          {
+            foreignKeyName: "check_ins_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       part_relationships: {
         Row: PartRelationshipRow
         Insert: PartRelationshipInsert
@@ -428,6 +442,63 @@ export interface SessionUpdate {
   updated_at?: string
 }
 
+// Check-in Types
+export type CheckInType = 'morning' | 'evening'
+
+export interface CheckInRow {
+  id: string
+  user_id: string
+  type: CheckInType
+  check_in_date: string
+  mood: number | null
+  energy_level: number | null
+  intention: string | null
+  reflection: string | null
+  gratitude: string | null
+  parts_data: Json | null
+  somatic_markers: string[]
+  processed: boolean
+  processed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CheckInInsert {
+  id?: string
+  user_id: string
+  type: CheckInType
+  check_in_date?: string
+  mood?: number | null
+  energy_level?: number | null
+  intention?: string | null
+  reflection?: string | null
+  gratitude?: string | null
+  parts_data?: Json | null
+  somatic_markers?: string[]
+  processed?: boolean
+  processed_at?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface CheckInUpdate {
+  id?: string
+  user_id?: string
+  type?: CheckInType
+  check_in_date?: string
+  mood?: number | null
+  energy_level?: number | null
+  intention?: string | null
+  reflection?: string | null
+  gratitude?: string | null
+  parts_data?: Json | null
+  somatic_markers?: string[]
+  processed?: boolean
+  processed_at?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
 // Part Relationship Types
 export type RelationshipType = 'polarized' | 'protector-exile' | 'allied'
 export type RelationshipStatus = 'active' | 'healing' | 'resolved'
@@ -598,8 +669,7 @@ export interface InsightRating {
 }
 
 export interface InsightRow {
-  id: string;
-  [key: string]: unknown;
+  id: string
   user_id: string
   type: InsightType
   status: InsightStatus
@@ -608,6 +678,8 @@ export interface InsightRow {
   feedback: string | null
   revealed_at: string | null
   actioned_at: string | null
+  processed: boolean
+  processed_at: string | null
   meta: Json
   created_at: string
   updated_at: string
@@ -623,6 +695,8 @@ export interface InsightInsert {
   feedback?: string | null
   revealed_at?: string | null
   actioned_at?: string | null
+  processed?: boolean
+  processed_at?: string | null
   meta?: Json
   created_at?: string
   updated_at?: string
@@ -638,6 +712,8 @@ export interface InsightUpdate {
   feedback?: string | null
   revealed_at?: string | null
   actioned_at?: string | null
+  processed?: boolean
+  processed_at?: string | null
   meta?: Json
   created_at?: string
   updated_at?: string
