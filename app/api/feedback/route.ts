@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { jsonResponse, errorResponse } from '@/lib/api/response'
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,32 +11,17 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser()
 
     if (!user) {
-      return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return errorResponse('Unauthorized', 401)
     }
 
     const { sessionId, messageId, rating, explanation } = await req.json()
 
     if (!sessionId || !messageId || !rating) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Missing required fields' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      )
+      return errorResponse('Missing required fields', 400)
     }
 
     if (rating !== 'thumb_up' && rating !== 'thumb_down') {
-        return new NextResponse(
-            JSON.stringify({ error: 'Invalid rating' }),
-            {
-              status: 400,
-              headers: { 'Content-Type': 'application/json' },
-            }
-          )
+      return errorResponse('Invalid rating', 400)
     }
 
     const { error } = await supabase.from('message_feedback').insert({
@@ -48,27 +34,12 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error('Error inserting feedback:', error)
-      return new NextResponse(
-        JSON.stringify({ error: 'Failed to save feedback' }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      )
+      return errorResponse('Failed to save feedback', 500)
     }
 
-    return new NextResponse(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return jsonResponse({ success: true })
   } catch (error) {
     console.error('Feedback API error:', error)
-    return new NextResponse(
-      JSON.stringify({ error: 'An unexpected error occurred' }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    )
+    return errorResponse('An unexpected error occurred', 500)
   }
 }

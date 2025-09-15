@@ -1,32 +1,24 @@
 import { NextRequest } from 'next/server'
 import { withSupabaseOrDev } from '@/lib/api/supabaseGuard'
+import { jsonResponse, errorResponse } from '@/lib/api/response'
 
 export async function POST(req: NextRequest) {
   try {
     const { sessionId, role, content } = await req.json()
 
     if (!sessionId || (role !== 'user' && role !== 'assistant') || typeof content !== 'string') {
-      return new Response(JSON.stringify({ error: 'Invalid payload' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return errorResponse('Invalid payload', 400)
     }
 
-    return withSupabaseOrDev(req, async ctx => {
+    return withSupabaseOrDev(req, async (ctx) => {
       if (ctx.type === 'no-supabase') {
-        return new Response(JSON.stringify({ ok: true, stored: false }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        })
+        return jsonResponse({ ok: true, stored: false })
       }
 
       if (ctx.type === 'authed') {
         const { chatSessionService } = await import('@/lib/session-service')
         await chatSessionService.addMessage(sessionId, { role, content })
-        return new Response(JSON.stringify({ ok: true, stored: true }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        })
+        return jsonResponse({ ok: true, stored: true })
       }
 
       if (ctx.type === 'admin') {
@@ -49,22 +41,13 @@ export async function POST(req: NextRequest) {
 
         if (updateError) throw updateError
 
-        return new Response(JSON.stringify({ ok: true, stored: true }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        })
+        return jsonResponse({ ok: true, stored: true })
       }
 
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return errorResponse('Unauthorized', 401)
     })
   } catch (error) {
     console.error('Session message API error:', error)
-    return new Response(JSON.stringify({ error: 'Failed to store message' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return errorResponse('Failed to store message', 500)
   }
 }

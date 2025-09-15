@@ -18,20 +18,17 @@ export async function POST(req: NextRequest) {
       return errorResponse('Unauthorized', 401)
     }
 
-    // Add the secure user ID to the profile object
     const secureProfile = { ...profile, userId }
 
-    // Memory v2 first-run scaffolding: ensure overview exists for this user
     try {
       const { isMemoryV2Enabled } = await import('@/lib/memory/config')
       if (userId && isMemoryV2Enabled()) {
         await import('@/lib/memory/snapshots/scaffold').then(({ ensureOverviewExists }) => ensureOverviewExists(userId))
       }
-    } catch (e) {
-      console.warn('first-run scaffold skipped', e)
+    } catch (error) {
+      console.warn('first-run scaffold skipped', error)
     }
 
-    // Run the update summarizer to keep the change log in sync before chatting
     if (userId) {
       try {
         const outcome = await summarizePendingUpdatesForUser(userId)
@@ -47,7 +44,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // If no OpenRouter credentials, provide a dev fallback text stream so the UI works
     const baseURL = process.env.OPENROUTER_BASE_URL
     const hasOpenrouter = typeof process.env.OPENROUTER_API_KEY === 'string' && process.env.OPENROUTER_API_KEY.length > 10
     console.log('[CHAT] OpenRouter env', { hasOpenrouter, baseURL })
@@ -58,7 +54,6 @@ export async function POST(req: NextRequest) {
     }
 
     return handleAgentStream(messages, secureProfile)
-
   } catch (error) {
     console.error('Chat API error:', error)
     return errorResponse('Something went wrong', 500)

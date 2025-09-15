@@ -7,4 +7,3 @@ export function jsonResponse(data: unknown, status = 200, init: ResponseInit = {
 export function errorResponse(message: string, status = 500, init?: ResponseInit) {
   return jsonResponse({ error: message }, status, init)
 }
-

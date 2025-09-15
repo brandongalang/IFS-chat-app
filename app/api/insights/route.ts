@@ -1,24 +1,28 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { jitTopUpInsights } from '@/lib/insights/generator'
+import { getSupabaseKey, getSupabaseUrl } from '@/lib/supabase/config'
+import { jsonResponse, errorResponse } from '@/lib/api/response'
 
+const supabaseUrl = getSupabaseUrl()
+const supabaseAnon = getSupabaseKey()
 const hasSupabase =
-  typeof process.env.NEXT_PUBLIC_SUPABASE_URL === 'string' &&
-  /^https?:\/\//.test(process.env.NEXT_PUBLIC_SUPABASE_URL || '') &&
-  typeof process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === 'string' &&
-  (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').length > 20
+  typeof supabaseUrl === 'string' &&
+  /^https?:\/\//.test(supabaseUrl || '') &&
+  typeof supabaseAnon === 'string' &&
+  (supabaseAnon || '').length > 20
 
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url)
     const limitRaw = parseInt(url.searchParams.get('limit') || '3', 10)
-    const limit = Math.max(1, Math.min(3, isNaN(limitRaw) ? 3 : limitRaw))
+    const limit = Math.max(1, Math.min(3, Number.isNaN(limitRaw) ? 3 : limitRaw))
     const includeStatusParam = url.searchParams.get('includeStatus') || 'pending,revealed'
     const statuses = includeStatusParam
       .split(',')
-      .map(s => s.trim())
-      .filter(s => ['pending','revealed','actioned'].includes(s))
-      .filter(s => s === 'pending' || s === 'revealed')
+      .map((status) => status.trim())
+      .filter((status) => ['pending', 'revealed', 'actioned'].includes(status))
+      .filter((status) => status === 'pending' || status === 'revealed')
     const jit = (url.searchParams.get('jit') || '').toLowerCase() === 'true'
 
     if (!hasSupabase) {
@@ -36,32 +40,27 @@ export async function GET(req: NextRequest) {
           created_at: new Date().toISOString(),
         },
       ]
-      return new Response(JSON.stringify(sample.slice(0, limit)), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return jsonResponse(sample.slice(0, limit))
     }
 
     const supabase = await createClient()
 
     let userId: string | null = null
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       userId = user?.id || null
     } catch {
       userId = null
     }
 
-if (!userId) {
-      // In dev persona mode, fall back to default user ID for API access when not authenticated
+    if (!userId) {
       const { dev } = await import('@/config/dev')
       if (dev.enabled && dev.defaultUserId) {
         userId = dev.defaultUserId
       } else {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        return errorResponse('Unauthorized', 401)
       }
     }
 
@@ -70,7 +69,7 @@ if (!userId) {
         .from('insights')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
-        .in('status', ['pending','revealed'])
+        .in('status', ['pending', 'revealed'])
       const activeCount = typeof count === 'number' ? count : 0
       const needed = Math.max(0, limit - activeCount)
       if (needed > 0) {
@@ -82,7 +81,7 @@ if (!userId) {
       .from('insights')
       .select('id,type,status,content,rating,feedback,revealed_at,actioned_at,created_at,meta')
       .eq('user_id', userId)
-      .in('status', statuses.length ? statuses : ['pending','revealed'])
+      .in('status', statuses.length ? statuses : ['pending', 'revealed'])
       .order('created_at', { ascending: true })
     if (error) throw error
 
@@ -95,16 +94,9 @@ if (!userId) {
       })
       .slice(0, limit)
 
-    return new Response(JSON.stringify(sorted), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  } catch (e) {
-    console.error('GET /api/insights error:', e)
-    return new Response(JSON.stringify({ error: 'Failed to fetch insights' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return jsonResponse(sorted)
+  } catch (error) {
+    console.error('GET /api/insights error:', error)
+    return errorResponse('Failed to fetch insights', 500)
   }
 }
-

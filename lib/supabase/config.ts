@@ -9,4 +9,3 @@ export function getSupabaseKey() {
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
   )
 }
-
