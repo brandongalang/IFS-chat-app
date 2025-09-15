@@ -7,12 +7,12 @@ export async function POST(req: NextRequest) {
     // Body is ignored for user identity; server derives user on its own
     await req.json().catch(() => ({} as Record<string, unknown>))
 
-    return withSupabaseOrDev(req, async ctx => {
+    return withSupabaseOrDev(req, async (ctx) => {
       if (ctx.type === 'no-supabase') {
         const devSessionId = `dev-${Math.random().toString(36).slice(2)}`
         return new Response(JSON.stringify({ sessionId: devSessionId }), {
           status: 200,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
         })
       }
 
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
         const sessionId = await chatSessionService.startSession(ctx.userId)
         return new Response(JSON.stringify({ sessionId }), {
           status: 200,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
         })
       }
 
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
           emotional_arc: {
             start: { valence: 0, arousal: 0 },
             peak: { valence: 0, arousal: 0 },
-            end: { valence: 0, arousal: 0 }
+            end: { valence: 0, arousal: 0 },
           },
           processed: false,
           created_at: nowIso,
@@ -55,13 +55,13 @@ export async function POST(req: NextRequest) {
 
         return new Response(JSON.stringify({ sessionId: data.id }), {
           status: 200,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
         })
       }
 
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
       })
     })
   } catch (error) {
