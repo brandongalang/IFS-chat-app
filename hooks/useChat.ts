@@ -29,9 +29,9 @@ export function useChat() {
 
     const fetchPartAndStart = async () => {
       try {
-        const result = await getPartById({ partId })
-        if (result.success && result.data) {
-          const partName = result.data.name
+        const part = await getPartById({ partId })
+        if (part) {
+          const partName = part.name ?? 'part'
           const initialMessage: Message = {
             id: generateId(),
             role: 'assistant',
