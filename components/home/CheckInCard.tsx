@@ -18,21 +18,30 @@ export function CheckInCard() {
 
   if (timeOfDay === 'none') {
     return (
-        <div className="col-span-2 rounded-xl border border-border bg-muted p-4">
-            <div className="text-base font-medium">Come back later</div>
-            <div className="text-xs text-muted-foreground mt-1">Check-ins are available in the morning and evening.</div>
-        </div>
+      <div className="col-span-2 rounded-xl border border-border bg-muted p-4">
+        <div className="text-base font-medium">Come back later</div>
+        <div className="mt-1 text-xs text-muted-foreground">Check-ins are available in the morning and evening.</div>
+      </div>
     )
   }
 
   const isMorning = timeOfDay === 'morning'
+  const palette = isMorning
+    ? {
+        card: 'border-primary/40 bg-primary/30 text-primary-foreground',
+        label: 'text-primary-foreground/80',
+      }
+    : {
+        card: 'border-primary/40 bg-accent/30 text-accent-foreground',
+        label: 'text-accent-foreground/80',
+      }
 
   return (
-    <div className={`col-span-2 rounded-xl border border-border p-4 ${isMorning ? 'bg-green-600 text-white' : 'bg-indigo-600 text-white'}`}>
-      <div className="text-xs opacity-90">{isMorning ? 'Morning' : 'Evening'}</div>
+    <div className={`col-span-2 rounded-xl border p-4 ${palette.card}`}>
+      <div className={`text-xs opacity-90 ${palette.label}`}>{isMorning ? 'Morning' : 'Evening'}</div>
       <div className="text-lg font-semibold">{isMorning ? 'Fresh start!' : 'Daily review'}</div>
       <GuardedLink href="/check-in">
-        <Button className="mt-4 bg-white text-black hover:bg-white/90">
+        <Button className="mt-4 bg-card/60 text-foreground hover:bg-card/80 backdrop-blur">
           Begin
         </Button>
       </GuardedLink>
