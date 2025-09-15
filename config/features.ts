@@ -19,6 +19,10 @@ export function isDevMode(): boolean {
 
 const devMode = isDevMode()
 
+const gardenFlag = process.env.ENABLE_GARDEN ?? process.env.NEXT_PUBLIC_ENABLE_GARDEN
+const gardenStatus: FeatureStatus =
+  gardenFlag === undefined ? 'enabled' : isTrue(gardenFlag) ? 'enabled' : 'disabled'
+
 // Whether to show the "Enable Dev Mode" toggle in the UI.
 // Default behavior: show in development, hide in production unless explicitly enabled.
 export const showDevToggle =
@@ -41,7 +45,7 @@ export const features: Record<FeatureKey, FeatureStatus> = {
   chat: 'enabled',
   home: 'enabled',
   insights: 'coming_soon',
-  garden: 'coming_soon',
+  garden: gardenStatus,
   journey: 'coming_soon',
   settings: 'coming_soon',
   profile: 'enabled',
