@@ -18,6 +18,8 @@ export function isDevMode(): boolean {
 }
 
 const devMode = isDevMode()
+const gardenGridEnvOverride =
+  process.env.NEXT_PUBLIC_IFS_GARDEN_GRID_VIEW ?? process.env.IFS_GARDEN_GRID_VIEW
 
 // Whether to show the "Enable Dev Mode" toggle in the UI.
 // Default behavior: show in development, hide in production unless explicitly enabled.
@@ -79,4 +81,11 @@ export function statusForPath(pathname: string): { key: FeatureKey; status: Feat
   const enabled = devMode || (typeof window !== 'undefined' && clientDevOverride())
   const effective: FeatureStatus = enabled && status !== 'disabled' ? 'enabled' : status
   return { key, status: effective }
+}
+
+export function isGardenGridViewEnabled(): boolean {
+  if (devMode || (typeof window !== 'undefined' && clientDevOverride())) {
+    return true
+  }
+  return isTrue(gardenGridEnvOverride)
 }
