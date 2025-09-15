@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { dev, resolveUserId } from '@/config/dev'
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
 export async function POST(req: NextRequest) {
   // In dev mode, if a service role key is available, use admin client and a dev user id
   const useAdmin = dev.enabled && !!process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -37,15 +40,42 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid check-in type' }, { status: 400 })
     }
 
+    const rawResponses: unknown = body.responses
+    const responses = isRecord(rawResponses) ? { ...rawResponses } : {}
+
+    const getString = (value: unknown) => (typeof value === 'string' ? value : null)
+    const getResponseString = (key: string) => getString(responses[key])
+
+    const intentionFromBody = getString(body.intention)
+    const reflectionFromBody = getString(body.reflection)
+    const gratitudeFromBody = getString(body.gratitude)
+
+    const intentionValue = intentionFromBody ?? getResponseString('intention')
+
+    const reflectionValue =
+      reflectionFromBody ?? (body.type === 'evening' ? getResponseString('reflectionOnIntention') : null)
+
+    const gratitudeValue = gratitudeFromBody ?? getResponseString('gratitude')
+
+    const rawPartsData: unknown = body.parts_data
+    const basePartsData = isRecord(rawPartsData) ? rawPartsData : {}
+    const partsData = {
+      ...basePartsData,
+      daily_responses: {
+        variant: body.type,
+        ...responses,
+      },
+    }
+
     const { error, data } = await supabase.from('check_ins').insert({
       user_id: effectiveUserId,
       type: body.type,
       mood: body.mood,
       energy_level: body.energy_level,
-      intention: body.intention,
-      reflection: body.reflection,
-      gratitude: body.gratitude,
-      parts_data: body.parts_data,
+      intention: intentionValue ?? null,
+      reflection: reflectionValue ?? null,
+      gratitude: gratitudeValue ?? null,
+      parts_data: partsData,
       somatic_markers: body.somatic_markers,
       processed: false,
     }).select()

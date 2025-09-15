@@ -266,25 +266,88 @@ export function DailyCheckInForm({ variant, className, ...divProps }: DailyCheck
     setIsSubmitting(true)
 
     try {
-      const payload =
-        variant === 'morning'
-          ? {
-              type: 'morning' as const,
-              responses: {
-                intention: morningState.intention.trim(),
-                worries: morningState.worries.trim(),
-                lookingForwardTo: morningState.lookingForwardTo.trim(),
-              },
+      let payload:
+        | {
+            type: 'morning'
+            intention: string
+            reflection: null
+            responses: {
+              intention: string
+              worries: string
+              lookingForwardTo: string
             }
-          : {
-              type: 'evening' as const,
-              gratitude: eveningState.gratitude.trim(),
-              responses: {
-                reflectionOnIntention: eveningState.reflectionOnIntention.trim(),
-                reflectionOnWorries: eveningState.reflectionOnWorries.trim(),
-                reflectionOnLookingForwardTo: eveningState.reflectionOnLookingForwardTo.trim(),
-              },
+            parts_data: {
+              daily_responses: {
+                variant: 'morning'
+                intention: string
+                worries: string
+                lookingForwardTo: string
+              }
             }
+          }
+        | {
+            type: 'evening'
+            intention: string
+            reflection: string
+            gratitude: string
+            responses: {
+              reflectionOnIntention: string
+              reflectionOnWorries: string
+              reflectionOnLookingForwardTo: string
+              gratitude: string
+            }
+            parts_data: {
+              daily_responses: {
+                variant: 'evening'
+                reflectionOnIntention: string
+                reflectionOnWorries: string
+                reflectionOnLookingForwardTo: string
+                gratitude: string
+              }
+            }
+          }
+
+      if (variant === 'morning') {
+        const morningResponses = {
+          intention: morningState.intention.trim(),
+          worries: morningState.worries.trim(),
+          lookingForwardTo: morningState.lookingForwardTo.trim(),
+        }
+
+        payload = {
+          type: 'morning',
+          intention: morningResponses.intention,
+          reflection: null,
+          responses: morningResponses,
+          parts_data: {
+            daily_responses: {
+              variant: 'morning',
+              ...morningResponses,
+            },
+          },
+        }
+      } else {
+        const eveningResponses = {
+          reflectionOnIntention: eveningState.reflectionOnIntention.trim(),
+          reflectionOnWorries: eveningState.reflectionOnWorries.trim(),
+          reflectionOnLookingForwardTo: eveningState.reflectionOnLookingForwardTo.trim(),
+          gratitude: eveningState.gratitude.trim(),
+        }
+
+        payload = {
+          type: 'evening',
+          intention: morningContext?.intention ?? '',
+          reflection: eveningResponses.reflectionOnIntention,
+          gratitude: eveningResponses.gratitude,
+          responses: eveningResponses,
+          parts_data: {
+            daily_responses: {
+              variant: 'evening',
+              ...eveningResponses,
+            },
+          },
+        }
+      }
 
       const response = await fetch('/api/check-ins', {
         method: 'POST',
