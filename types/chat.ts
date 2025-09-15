@@ -10,6 +10,8 @@ export interface TaskEvent {
   };
 }
 
+export type TaskEventUpdate = Partial<TaskEvent> & { id: string };
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
