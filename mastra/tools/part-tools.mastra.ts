@@ -7,7 +7,7 @@ import {
   updatePart,
   getPartRelationships,
   logRelationship,
-} from '@/lib/data/parts-server'
+} from '@/lib/data/parts.server'
 import {
   searchPartsSchema,
   getPartByIdSchema,

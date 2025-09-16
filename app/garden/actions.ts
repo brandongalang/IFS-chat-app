@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { updatePart } from '@/lib/data/parts-server'
+import { updatePart } from '@/lib/data/parts.server'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 

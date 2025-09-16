@@ -1,4 +1,4 @@
-import { getPartById, getPartRelationships, getPartNotes } from '@/lib/data/parts-server'
+import { getPartById, getPartRelationships, getPartNotes } from '@/lib/data/parts.server'
 import type { PartRow, PartNoteRow } from '@/lib/types/database'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'

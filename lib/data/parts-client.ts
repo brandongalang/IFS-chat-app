@@ -3,7 +3,7 @@ import type { Database, PartRow, PartRelationshipRow } from '@/lib/types/databas
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
 
 function getSupabaseClient() {
-  // Always use browser client in lite (client-safe) module
+  // Always use browser client in this client-safe module
   return createBrowserSupabase()
 }
 

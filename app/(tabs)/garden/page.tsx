@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, type ChangeEvent } from 'react'
 import dynamic from 'next/dynamic'
-import { searchParts, getPartRelationships } from '@/lib/data/parts-lite'
+import { searchParts, getPartRelationships } from '@/lib/data/parts-client'
 import type { PartRow, PartRelationshipRow, PartCategory, RelationshipType } from '@/lib/types/database'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'

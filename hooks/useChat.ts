@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { getPartById } from '@/lib/data/parts-lite'
+import { getPartById } from '@/lib/data/parts-client'
 import { streamFromMastra } from '@/lib/chatClient'
 import type { Message, TaskEvent, TaskEventUpdate } from '@/types/chat'
 import { useChatState } from './useChatState'

@@ -121,37 +121,41 @@ await createEmergingPart({
 To avoid bundling Node-only APIs (e.g., fs/promises, node:crypto) into the browser, the data layer is split into explicit entrypoints:
 
 - Client-safe (browser):
-  - import from `@/lib/data/parts-lite`
+  - import from `@/lib/data/parts-client`
   - Read-only queries that use the browser Supabase client
   - No Node APIs, no secrets, safe for "use client" components/hooks
 
 - Server-only:
-  - import from `@/lib/data/parts-server` (guarded with `import 'server-only'`)
+  - import from `@/lib/data/parts.server` (guarded with `import 'server-only'`)
   - Full-featured functions that may use Node APIs, environment secrets, action logging, and snapshot reads/writes
   - Use in server components, route handlers, and server actions only
 
 - Under the hood:
-  - `@/lib/data/parts.ts` is marked server-only, and exposes richer logic (logging, snapshots). It should not be imported from client code directly; use `parts-server` instead.
+  - `@/lib/data/parts.ts` is marked server-only, exposes richer logic (logging, snapshots), and should only be imported by the entrypoints below.
   - Snapshot logic lazily imports storage adapters on the server and throws if called on the client.
+- Naming conventions:
+  - Client-facing entrypoints use the `-client.ts` suffix (e.g., `parts-client.ts`).
+  - Server entrypoints use the `.server.ts` suffix (e.g., `parts.server.ts`) so Next.js can enforce server-only execution.
+  - Keep shared implementations like `parts.ts` internal—import the appropriate client or server wrapper instead.
 
 Examples:
 
 - Client (hook or "use client" component):
 
 ```ts
-import { getPartById } from '@/lib/data/parts-lite'
+import { getPartById } from '@/lib/data/parts-client'
 ```
 
 - Server (server action, route, server component):
 
 ```ts
-import { updatePart, getPartDetail } from '@/lib/data/parts-server'
+import { updatePart, getPartDetail } from '@/lib/data/parts.server'
 ```
 
 Migration tips:
-- If a client file previously imported from `@/lib/data/parts`, switch to `@/lib/data/parts-lite`.
-- If a server file needs snapshots or writes/action logging, import from `@/lib/data/parts-server`.
-- When in doubt: client → parts-lite; server → parts-server.
+- If a client file previously imported from `@/lib/data/parts`, switch to `@/lib/data/parts-client`.
+- If a server file needs snapshots or writes/action logging, import from `@/lib/data/parts.server`.
+- When in doubt: client → `parts-client`; server → `parts.server`.
 
 ## Troubleshooting
 
