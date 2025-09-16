@@ -293,7 +293,7 @@ export class ChatSessionService {
 
   private resolveUserId(userId?: string): string {
     if (userId) return userId
-    if (this.defaultUserId) return this.defaultUserId
+    if (this.userId) return this.userId
     throw new Error('User ID is required to perform session operations')
   }
 }

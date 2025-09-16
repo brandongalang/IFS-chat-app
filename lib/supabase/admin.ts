@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createNoopSupabaseClient, isSupabaseConfigured } from './noop-client'
 
 let adminClientOverride: unknown | null = null
 
@@ -12,10 +13,13 @@ export function createAdminClient() {
   if (process.env.NODE_ENV === 'test' && adminClientOverride) {
     return adminClientOverride as ReturnType<typeof createSupabaseClient>
   }
+  if (!isSupabaseConfigured()) {
+    return createNoopSupabaseClient()
+  }
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !serviceKey) {
-    throw new Error('Supabase admin client requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY')
+    return createNoopSupabaseClient()
   }
   return createSupabaseClient(url, serviceKey)
 }

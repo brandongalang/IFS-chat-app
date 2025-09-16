@@ -15,12 +15,18 @@ export const HTTP_STATUS = {
   SERVICE_UNAVAILABLE: 503,
 } as const
 
-export function jsonResponse(data: unknown, status = HTTP_STATUS.OK, init: ResponseInit = {}) {
+type HttpStatusCode = (typeof HTTP_STATUS)[keyof typeof HTTP_STATUS]
+
+export function jsonResponse(data: unknown, status: HttpStatusCode = HTTP_STATUS.OK, init: ResponseInit = {}) {
   const headers = new Headers(init.headers)
   headers.set('Content-Type', 'application/json')
   return new NextResponse(JSON.stringify(data), { ...init, status, headers })
 }
 
-export function errorResponse(message: string, status = HTTP_STATUS.INTERNAL_SERVER_ERROR, init?: ResponseInit) {
+export function errorResponse(
+  message: string,
+  status: HttpStatusCode = HTTP_STATUS.INTERNAL_SERVER_ERROR,
+  init?: ResponseInit
+) {
   return jsonResponse({ error: message }, status, init)
 }
