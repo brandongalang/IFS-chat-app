@@ -22,6 +22,7 @@ import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isMemoryV2Enabled } from '@/lib/memory/config'
 import { recordSnapshotUsage } from '@/lib/memory/observability'
+import { buildPartsQuery, type PartQueryFilters } from './parts-query'
 
 // Input schemas for tool validation
 const searchPartsSchema = z.object({
@@ -173,33 +174,20 @@ export async function searchParts(input: z.infer<typeof searchPartsSchema>): Pro
 
     devLog('searchParts called', { userId, query: validated.query })
 
-    let query = supabase
-      .from('parts')
-      .select('*')
-      .eq('user_id', userId)
-      .order('last_active', { ascending: false })
-      .limit(validated.limit)
-
-    // Apply filters
-    if (validated.query) {
-      query = query.or(`name.ilike.%${validated.query}%,role.ilike.%${validated.query}%`)
+    const filters: PartQueryFilters = {
+      name: validated.query,
+      status: validated.status,
+      category: validated.category,
+      limit: validated.limit,
     }
 
-    if (validated.status) {
-      query = query.eq('status', validated.status)
-    }
-
-    if (validated.category) {
-      query = query.eq('category', validated.category)
-    }
-
-    const { data, error } = await query
+    const { data, error } = await buildPartsQuery(supabase, filters).eq('user_id', userId)
 
     if (error) {
       throw new Error(`Database error: ${error.message}`)
     }
 
-    return data || []
+    return (data as PartRow[] | null | undefined) ?? []
   } catch (error) {
     const errMsg = error instanceof Error ? (dev.verbose ? (error.stack || error.message) : error.message) : 'Unknown error occurred'
     throw new Error(errMsg)
