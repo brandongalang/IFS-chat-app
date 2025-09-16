@@ -1,9 +1,10 @@
-import { NextResponse } from 'next/server'
+import { DAY_MS } from '@/config/time'
 import { requireCronAuth } from '@/lib/api/cron-auth'
 import { listActiveUsersSince, reconstructMemory, loadTodayData, generateMemoryUpdate, saveNewSnapshot, markUpdatesProcessed } from '@/lib/memory/service'
+import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 
 async function runDailyMemoryUpdate(): Promise<Response> {
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const cutoff = new Date(Date.now() - DAY_MS).toISOString()
   const users = await listActiveUsersSince(cutoff)
 
   const results: Array<{ userId: string; version?: number; error?: string }> = []
@@ -27,26 +28,25 @@ async function runDailyMemoryUpdate(): Promise<Response> {
     }
   }
 
-  return NextResponse.json({ cutoff, processed: users.length, results })
+  return jsonResponse({ cutoff, processed: users.length, results })
 }
 
 export async function GET(req: Request) {
-  if (!requireCronAuth(req)) return new NextResponse('Unauthorized', { status: 401 })
+  if (!requireCronAuth(req)) return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
   try {
     return await runDailyMemoryUpdate()
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Internal Error'
-    return new NextResponse(message, { status: 500 })
+    return errorResponse(message, HTTP_STATUS.INTERNAL_SERVER_ERROR)
   }
 }
 
 export async function POST(req: Request) {
-  if (!requireCronAuth(req)) return new NextResponse('Unauthorized', { status: 401 })
+  if (!requireCronAuth(req)) return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
   try {
     return await runDailyMemoryUpdate()
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Internal Error'
-    return new NextResponse(message, { status: 500 })
+    return errorResponse(message, HTTP_STATUS.INTERNAL_SERVER_ERROR)
   }
 }
-
