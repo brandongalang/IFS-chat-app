@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { withSupabaseOrDev } from '@/lib/api/supabaseGuard'
 import { jsonResponse, errorResponse } from '@/lib/api/response'
+import { resolveUserId } from '@/config/dev'
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,32 +16,21 @@ export async function POST(req: NextRequest) {
         return jsonResponse({ ok: true, stored: false })
       }
 
+      const { createChatSessionService } = await import('@/lib/session-service')
+
       if (ctx.type === 'authed') {
-        const { chatSessionService } = await import('@/lib/session-service')
-        await chatSessionService.addMessage(sessionId, { role, content })
+        const sessionService = createChatSessionService({ supabaseClient: ctx.supabase })
+        await sessionService.addMessage(sessionId, { role, content })
         return jsonResponse({ ok: true, stored: true })
       }
 
       if (ctx.type === 'admin') {
-        const { data: row, error: fetchError } = await ctx.admin
-          .from('sessions')
-          .select('messages')
-          .eq('id', sessionId)
-          .single()
-
-        if (fetchError) throw fetchError
-
-        const messages = Array.isArray(row?.messages) ? row.messages : []
-        const newMessage = { role, content, timestamp: new Date().toISOString() }
-        const updatedMessages = [...messages, newMessage]
-
-        const { error: updateError } = await ctx.admin
-          .from('sessions')
-          .update({ messages: updatedMessages, updated_at: new Date().toISOString() })
-          .eq('id', sessionId)
-
-        if (updateError) throw updateError
-
+        const personaUserId = resolveUserId()
+        const sessionService = createChatSessionService({
+          supabaseClient: ctx.admin,
+          defaultUserId: personaUserId,
+        })
+        await sessionService.addMessage(sessionId, { role, content })
         return jsonResponse({ ok: true, stored: true })
       }
 

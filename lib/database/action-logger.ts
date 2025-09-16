@@ -1,5 +1,7 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '../supabase/client'
 import { logEvent } from '@/lib/memory/events-logger'
+import type { Database } from '@/lib/types/database'
 
 export type ActionType = 
   | 'create_emerging_part'
@@ -62,7 +64,11 @@ export interface ActionSummary {
 }
 
 export class DatabaseActionLogger {
-  private supabase = createClient()
+  private supabase: SupabaseClient<Database>
+
+  constructor(supabase?: SupabaseClient<Database>) {
+    this.supabase = supabase ?? createClient()
+  }
 
   /**
    * Log and execute an INSERT operation with rollback capability
@@ -335,7 +341,7 @@ const hasSupabase =
   typeof process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === 'string' &&
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.length > 20
 
-class NoopActionLogger {
+export class NoopActionLogger {
   async loggedInsert<T extends DataObject>(_table: string, data: Partial<T>): Promise<T> {
     // Return the data as-is to simulate insert result
     return { ...data, id: 'noop' } as T
@@ -357,6 +363,13 @@ class NoopActionLogger {
   }
 }
 
-export const actionLogger: DatabaseActionLogger | NoopActionLogger = hasSupabase
-  ? new DatabaseActionLogger()
-  : new NoopActionLogger()
+export type ActionLogger = DatabaseActionLogger | NoopActionLogger
+
+export function createActionLogger(supabase?: SupabaseClient<Database>): ActionLogger {
+  if (!hasSupabase) {
+    return new NoopActionLogger()
+  }
+  return new DatabaseActionLogger(supabase)
+}
+
+export const actionLogger: ActionLogger = createActionLogger()

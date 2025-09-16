@@ -1,17 +1,37 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from './supabase/client'
-import { actionLogger } from './database/action-logger'
-import type { SessionMessage, SessionRow, SessionInsert, SessionUpdate } from './types/database'
+import {
+  actionLogger as defaultActionLogger,
+  createActionLogger,
+  type ActionLogger,
+} from './database/action-logger'
+import type { SessionMessage, SessionRow, SessionInsert, SessionUpdate, Database } from './types/database'
 import { getStorageAdapter, sessionTranscriptPath } from './memory/snapshots/fs-helpers'
 
+export interface ChatSessionServiceOptions {
+  supabaseClient?: SupabaseClient<Database>
+  actionLogger?: ActionLogger
+  defaultUserId?: string
+}
+
 export class ChatSessionService {
-  private supabase = createClient()
+  private supabase: SupabaseClient<Database>
+  private actionLogger: ActionLogger
+  private defaultUserId?: string
+
+  constructor(options: ChatSessionServiceOptions = {}) {
+    this.supabase = options.supabaseClient ?? createClient()
+    this.actionLogger = options.actionLogger ?? defaultActionLogger
+    this.defaultUserId = options.defaultUserId
+  }
 
   /**
    * Start a new chat session
    */
-  async startSession(userId: string): Promise<string> {
+  async startSession(userId?: string): Promise<string> {
+    const resolvedUserId = this.resolveUserId(userId)
     const session: SessionInsert = {
-      user_id: userId,
+      user_id: resolvedUserId,
       start_time: new Date().toISOString(),
       messages: [],
       parts_involved: {},
@@ -26,10 +46,10 @@ export class ChatSessionService {
     }
 
     // Use action logger for session creation
-    const data = await actionLogger.loggedInsert<{ id: string }>(
+    const data = await this.actionLogger.loggedInsert<{ id: string }>(
       'sessions',
       session,
-      userId,
+      resolvedUserId,
       'create_session',
       {
         changeDescription: 'Started new chat session',
@@ -37,10 +57,10 @@ export class ChatSessionService {
       }
     )
     const storage = await getStorageAdapter()
-    const transcriptPath = sessionTranscriptPath(userId, data.id)
+    const transcriptPath = sessionTranscriptPath(resolvedUserId, data.id)
     const transcript = {
       id: data.id,
-      user_id: userId,
+      user_id: resolvedUserId,
       start_time: session.start_time,
       end_time: null as string | null,
       duration: null as number | null,
@@ -258,7 +278,23 @@ export class ChatSessionService {
       throw new Error(`Failed to update session metadata: ${error.message}`)
     }
   }
+
+  private resolveUserId(userId?: string): string {
+    if (userId) return userId
+    if (this.defaultUserId) return this.defaultUserId
+    throw new Error('User ID is required to perform session operations')
+  }
 }
 
 // Export singleton instance
 export const chatSessionService = new ChatSessionService()
+
+export function createChatSessionService(options: ChatSessionServiceOptions = {}): ChatSessionService {
+  const { supabaseClient, actionLogger, defaultUserId } = options
+  const logger = actionLogger ?? (supabaseClient ? createActionLogger(supabaseClient) : undefined)
+  return new ChatSessionService({
+    supabaseClient,
+    actionLogger: logger,
+    defaultUserId,
+  })
+}
