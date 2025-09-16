@@ -1,9 +1,8 @@
+import { DAY_MS, HOUR_MS, INSIGHT_COOLDOWN_HOURS } from '@/config/time'
 import { getMastra } from '@/mastra'
 import { createClient } from '@/lib/supabase/server'
 import type { Json } from '@/lib/types/database'
 import { jsonResponse, errorResponse } from '@/lib/api/response'
-
-const COOL_DOWN_HOURS = 48
 
 async function saveInsightsToDb(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -65,14 +64,14 @@ export async function GET(request: Request) {
 
     if (lastInsight) {
       const lastInsightDate = new Date(lastInsight.created_at)
-      const coolDownDate = new Date(lastInsightDate.getTime() + COOL_DOWN_HOURS * 60 * 60 * 1000)
+      const coolDownDate = new Date(lastInsightDate.getTime() + INSIGHT_COOLDOWN_HOURS * HOUR_MS)
       if (new Date() < coolDownDate) {
         console.log(`[Cron] User ${userId} is in cool-down period. Skipping.`)
         continue
       }
     }
 
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const oneDayAgo = new Date(Date.now() - DAY_MS).toISOString()
     const { data: recentActivity } = await supabase
       .from('sessions')
       .select('id', { count: 'exact' })
