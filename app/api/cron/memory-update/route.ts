@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
+import { DAY_MS } from '@/config/time'
 import { requireCronAuth } from '@/lib/api/cron-auth'
 import { listActiveUsersSince, reconstructMemory, loadTodayData, generateMemoryUpdate, saveNewSnapshot, markUpdatesProcessed } from '@/lib/memory/service'
 
 async function runDailyMemoryUpdate(): Promise<Response> {
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const cutoff = new Date(Date.now() - DAY_MS).toISOString()
   const users = await listActiveUsersSince(cutoff)
 
   const results: Array<{ userId: string; version?: number; error?: string }> = []
@@ -49,4 +50,3 @@ export async function POST(req: Request) {
     return new NextResponse(message, { status: 500 })
   }
 }
-
