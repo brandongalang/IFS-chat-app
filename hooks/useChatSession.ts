@@ -1,40 +1,25 @@
 'use client'
 
 import { useCallback, useRef } from 'react'
+import { useSessionApi } from './useSessionApi'
 
 export function useChatSession() {
   const sessionIdRef = useRef<string | null>(null)
+  const { startSession, persistMessage: persistSessionMessage, endSession: endSessionApi } = useSessionApi()
 
   const ensureSession = useCallback(async (): Promise<string> => {
     if (sessionIdRef.current) return sessionIdRef.current
 
-    const res = await fetch('/api/session/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    })
-
-    if (!res.ok) {
-      throw new Error('Failed to start session')
-    }
-
-    const data = await res.json()
-    sessionIdRef.current = data.sessionId
-    return data.sessionId
-  }, [])
+    const sessionId = await startSession()
+    sessionIdRef.current = sessionId
+    return sessionId
+  }, [startSession])
 
   const persistMessage = useCallback(
     async (sessionId: string, role: 'user' | 'assistant', content: string) => {
-      const res = await fetch('/api/session/message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, role, content }),
-      })
-
-      if (!res.ok) {
-        throw new Error('Failed to persist message')
-      }
+      await persistSessionMessage({ sessionId, role, content })
     },
-    [],
+    [persistSessionMessage],
   )
 
   const endSession = useCallback(async () => {
@@ -42,15 +27,11 @@ export function useChatSession() {
     if (!id) return
 
     try {
-      await fetch('/api/session/end', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: id }),
-      })
+      await endSessionApi({ sessionId: id })
     } finally {
       sessionIdRef.current = null
     }
-  }, [])
+  }, [endSessionApi])
 
   const clearSession = useCallback(() => {
     sessionIdRef.current = null

@@ -8,6 +8,7 @@ import type { Message, TaskEvent, TaskEventUpdate } from '@/types/chat'
 import { useChatState } from './useChatState'
 import { useChatSession } from './useChatSession'
 import { useToast } from './use-toast'
+import { useFeedback } from './useFeedback'
 import { useUser } from '@/context/UserContext'
 
 export function useChat() {
@@ -19,6 +20,7 @@ export function useChat() {
   const { ensureSession: ensureSessionRaw, persistMessage: persistMessageRaw, endSession: endSessionRaw, getSessionId } =
     useChatSession()
   const { toast } = useToast()
+  const { submitFeedback } = useFeedback()
 
   const streamingCancelRef = useRef<(() => void) | null>(null)
   const generateId = (): string => Math.random().toString(36).slice(2)
@@ -347,28 +349,9 @@ export function useChat() {
         return
       }
 
-      try {
-        const res = await fetch('/api/feedback', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId, messageId, rating, explanation }),
-        })
-
-        if (!res.ok) {
-          throw new Error('Failed to submit feedback')
-        }
-
-        toast({ title: 'Feedback submitted', description: 'Thank you for your feedback!' })
-      } catch (error) {
-        console.error('Error submitting feedback:', error)
-        toast({
-          title: 'Error',
-          description: 'Could not submit feedback. Please try again later.',
-          variant: 'destructive',
-        })
-      }
+      await submitFeedback({ sessionId, messageId, rating, explanation })
     },
-    [getSessionId, needsAuth, toast],
+    [getSessionId, needsAuth, submitFeedback, toast],
   )
 
   return {
