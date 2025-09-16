@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { z } from 'zod'
 import { createServerClient } from '@supabase/ssr'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/dev'
@@ -350,7 +351,6 @@ export async function createEmergingPart(input: CreateEmergingPartInput): Promis
   }
 }
 
-type UpdatePartInput = z.infer<typeof updatePartSchema>
 type UpdateFields = UpdatePartInput['updates']
 type UpdatePatch = Partial<PartUpdate> & Record<string, unknown>
 
