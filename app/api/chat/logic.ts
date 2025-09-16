@@ -40,6 +40,8 @@ export function provideDevFallbackStream(text: string): Response {
   })
 }
 
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' } as const
+
 export async function handleAgentStream(
   messages: unknown,
   profile: Record<string, unknown>,
@@ -55,67 +57,25 @@ export async function handleAgentStream(
     }>
     let stream: unknown = null
     if (typeof agent.streamVNext === 'function') {
-      const vNext = (await agent.streamVNext(messages, { format: 'aisdk' })) as unknown
-      stream = vNext
-      if (
-        vNext &&
-        typeof (vNext as { toUIMessageStreamResponse?: unknown }).toUIMessageStreamResponse === 'function'
-      ) {
-        return (vNext as {
-          toUIMessageStreamResponse: (opts: { sendReasoning: boolean }) => Response
-        }).toUIMessageStreamResponse({ sendReasoning: false })
-      }
+      stream = (await agent.streamVNext(messages, { format: 'aisdk' })) as unknown
+      const response = resolveStreamResponse(stream)
+      if (response) return response
     }
 
     if (!stream && typeof agent.stream === 'function') {
-      const v2 = (await agent.stream(messages)) as unknown
-      if (v2 && typeof (v2 as { toDataStreamResponse?: unknown }).toDataStreamResponse === 'function') {
-        return (v2 as { toDataStreamResponse: () => Response }).toDataStreamResponse()
-      }
-      if (v2 && typeof (v2 as { toReadableStream?: unknown }).toReadableStream === 'function') {
-        return new Response((v2 as { toReadableStream: () => ReadableStream<Uint8Array> }).toReadableStream(), {
-          headers: { 'Cache-Control': 'no-store' },
-        })
-      }
-      stream = v2
+      stream = (await agent.stream(messages)) as unknown
+      const response = resolveStreamResponse(stream)
+      if (response) return response
     }
 
-    const candidate = stream as Record<string, unknown> | undefined
-    if (candidate && typeof (candidate as { toDataStreamResponse?: unknown }).toDataStreamResponse === 'function') {
-      return (candidate as { toDataStreamResponse: () => Response }).toDataStreamResponse()
-    }
-    if (candidate && typeof (candidate as { toReadableStream?: unknown }).toReadableStream === 'function') {
-      return new Response((candidate as { toReadableStream: () => ReadableStream<Uint8Array> }).toReadableStream(), {
-        headers: { 'Cache-Control': 'no-store' },
-      })
-    }
-    if (candidate && typeof (candidate as { toResponse?: unknown }).toResponse === 'function') {
-      return (candidate as { toResponse: () => Response }).toResponse()
-    }
-    if (candidate && typeof (candidate as { toStreamResponse?: unknown }).toStreamResponse === 'function') {
-      return (candidate as { toStreamResponse: () => Response }).toStreamResponse()
-    }
-    if (candidate && typeof candidate === 'object' && 'body' in candidate && 'headers' in candidate) {
-      return candidate as unknown as Response
-    }
-    if (candidate && Symbol.asyncIterator in candidate) {
-      const encoder = new TextEncoder()
-      const asyncIter = candidate as AsyncIterable<unknown>
-      const rs = new ReadableStream<Uint8Array>({
-        async start(controller) {
-          for await (const chunk of asyncIter) {
-            const text = typeof chunk === 'string' ? chunk : JSON.stringify(chunk)
-            controller.enqueue(encoder.encode(text))
-          }
-          controller.close()
-        },
-      })
-      return new Response(rs, { headers: { 'Cache-Control': 'no-store' } })
-    }
+    const response = resolveStreamResponse(stream)
+    if (response) return response
 
     console.error(
       'Unsupported stream type from agent. Keys:',
-      typeof candidate === 'object' ? Object.keys(candidate as Record<string, unknown>) : typeof candidate,
+      typeof stream === 'object' && stream !== null
+        ? Object.keys(stream as Record<string, unknown>)
+        : typeof stream,
     )
     return provideDevFallbackStream('Hello! (fallback)\nAgent returned unsupported stream shape.')
   } catch (error) {
@@ -124,4 +84,94 @@ export async function handleAgentStream(
       'Hello! (dev fallback stream)\nAgent streaming is unavailable (check OPENROUTER_API_KEY/model).',
     )
   }
+}
+
+type StreamResolver = (candidate: unknown) => Response | undefined
+
+const STREAM_RESOLVERS: StreamResolver[] = [
+  responseFromUIMessageStream,
+  responseFromDataStreamResponse,
+  responseFromReadableStream,
+  responseFromToResponse,
+  responseFromToStreamResponse,
+  responseFromResponseLike,
+  responseFromAsyncIterable,
+]
+
+export function resolveStreamResponse(candidate: unknown): Response | undefined {
+  for (const resolver of STREAM_RESOLVERS) {
+    const response = resolver(candidate)
+    if (response) return response
+  }
+  return undefined
+}
+
+export function responseFromUIMessageStream(candidate: unknown): Response | undefined {
+  if (!candidate || typeof candidate !== 'object') return undefined
+  const method = (candidate as { toUIMessageStreamResponse?: unknown }).toUIMessageStreamResponse
+  if (typeof method !== 'function') return undefined
+  return method.call(candidate, { sendReasoning: false })
+}
+
+export function responseFromDataStreamResponse(candidate: unknown): Response | undefined {
+  if (!candidate || typeof candidate !== 'object') return undefined
+  const method = (candidate as { toDataStreamResponse?: unknown }).toDataStreamResponse
+  if (typeof method !== 'function') return undefined
+  return method.call(candidate)
+}
+
+export function responseFromReadableStream(candidate: unknown): Response | undefined {
+  if (!candidate || typeof candidate !== 'object') return undefined
+  const method = (candidate as { toReadableStream?: unknown }).toReadableStream
+  if (typeof method !== 'function') return undefined
+  const readable = method.call(candidate) as ReadableStream<Uint8Array>
+  return new Response(readable, { headers: NO_STORE_HEADERS })
+}
+
+export function responseFromToResponse(candidate: unknown): Response | undefined {
+  if (!candidate || typeof candidate !== 'object') return undefined
+  const method = (candidate as { toResponse?: unknown }).toResponse
+  if (typeof method !== 'function') return undefined
+  return method.call(candidate)
+}
+
+export function responseFromToStreamResponse(candidate: unknown): Response | undefined {
+  if (!candidate || typeof candidate !== 'object') return undefined
+  const method = (candidate as { toStreamResponse?: unknown }).toStreamResponse
+  if (typeof method !== 'function') return undefined
+  return method.call(candidate)
+}
+
+export function responseFromResponseLike(candidate: unknown): Response | undefined {
+  if (!candidate || (typeof candidate !== 'object' && typeof candidate !== 'function')) {
+    return undefined
+  }
+  if (candidate instanceof Response) {
+    return candidate
+  }
+  if ('body' in candidate && 'headers' in candidate) {
+    return candidate as Response
+  }
+  return undefined
+}
+
+export function responseFromAsyncIterable(candidate: unknown): Response | undefined {
+  if (!candidate || (typeof candidate !== 'object' && typeof candidate !== 'function')) {
+    return undefined
+  }
+  if (!(Symbol.asyncIterator in (candidate as Record<PropertyKey, unknown>))) {
+    return undefined
+  }
+  const encoder = new TextEncoder()
+  const asyncIterable = candidate as AsyncIterable<unknown>
+  const readable = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      for await (const chunk of asyncIterable) {
+        const text = typeof chunk === 'string' ? chunk : JSON.stringify(chunk)
+        controller.enqueue(encoder.encode(text))
+      }
+      controller.close()
+    },
+  })
+  return new Response(readable, { headers: NO_STORE_HEADERS })
 }
