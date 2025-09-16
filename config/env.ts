@@ -7,8 +7,8 @@ const EnvSchema = z.object({
   OPENROUTER_API_KEY: z.string().optional(),
 
   // Supabase
-  NEXT_PUBLIC_SUPABASE_URL: z.string().min(1),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
 
   // IFS dev toggles
@@ -53,6 +53,8 @@ const toBool = (v?: string) => v === 'true'
 
 export const env = {
   ...raw,
+  NEXT_PUBLIC_SUPABASE_URL: raw.NEXT_PUBLIC_SUPABASE_URL ?? '',
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: raw.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
   isProd: raw.NODE_ENV === 'production',
   isDev: raw.NODE_ENV !== 'production',
   isTest: raw.NODE_ENV === 'test',
@@ -64,5 +66,8 @@ export const env = {
     toBool(raw.NEXT_PUBLIC_IFS_DEV_MODE),
   ifsVerbose: toBool(raw.IFS_VERBOSE),
   ifsDisablePolarizationUpdate: toBool(raw.IFS_DISABLE_POLARIZATION_UPDATE),
-  ifsForceNoSupabase: toBool(raw.IFS_DEV_FORCE_NO_SUPABASE),
+  ifsForceNoSupabase:
+    toBool(raw.IFS_DEV_FORCE_NO_SUPABASE) ||
+    !raw.NEXT_PUBLIC_SUPABASE_URL ||
+    !raw.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 }

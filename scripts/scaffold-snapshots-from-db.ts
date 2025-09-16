@@ -24,7 +24,7 @@ async function main() {
   }
 
   const sb = createClient(url, service)
-  const storage = getStorageAdapter()
+  const storage = await getStorageAdapter()
 
   // Overview
   const overview = buildUserOverviewMarkdown(userId)

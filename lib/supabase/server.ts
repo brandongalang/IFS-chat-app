@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { getSupabaseKey, getSupabaseUrl } from './config'
+import { createNoopSupabaseClient, isSupabaseConfigured } from './noop-client'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../types/database'
 
@@ -20,10 +21,19 @@ export async function createClient() {
   if (process.env.NODE_ENV === 'test' && serverClientOverride) {
     return serverClientOverride as ReturnType<typeof createServerClient>
   }
+
+  if (!isSupabaseConfigured()) {
+    return createNoopSupabaseClient()
+  }
+
   const cookieStore = await cookies()
 
-  const url = getSupabaseUrl()!
-  const key = getSupabaseKey()!
+  const url = getSupabaseUrl()
+  const key = getSupabaseKey()
+
+  if (!url || !key) {
+    return createNoopSupabaseClient()
+  }
 
   return createServerClient(
     url,
@@ -53,8 +63,8 @@ export function createClientWithAccessToken(accessToken: string): SupabaseClient
   const url = getSupabaseUrl()
   const key = getSupabaseKey()
 
-  if (!url || !key) {
-    throw new Error('Supabase URL and key must be configured to create a server client')
+  if (!url || !key || !isSupabaseConfigured()) {
+    return createNoopSupabaseClient()
   }
 
   return createServerClient<Database>(url, key, {

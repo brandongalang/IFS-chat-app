@@ -4,13 +4,27 @@ import { useCallback, useEffect, useState } from 'react'
 import { QuestionCard } from './QuestionCard'
 import { WizardFooter } from './WizardFooter'
 import { track } from '@/lib/analytics'
-import type { OnboardingQuestion, OnboardingStage, ProgressUpdateRequest, ProgressUpdateResponse, QuestionResponse } from '@/lib/onboarding/types'
+import {
+  OnboardingQuestion as OnboardingQuestionSchema,
+  type OnboardingQuestion,
+  type OnboardingStage,
+  type ProgressUpdateRequest,
+  type ProgressUpdateResponse,
+  type QuestionResponse,
+} from '@/lib/onboarding/types'
 
 interface StateSummary {
   stage: OnboardingStage
   status: 'in_progress' | 'completed'
   version: number
   needs_onboarding: boolean
+}
+
+const onboardingQuestionArray = OnboardingQuestionSchema.array()
+
+async function loadOnboardingQuestions() {
+  const configModule = await import('../../config/onboarding-questions.json')
+  return onboardingQuestionArray.parse(configModule.default.questions)
 }
 
 export function OnboardingWizard() {
@@ -47,8 +61,8 @@ export function OnboardingWizard() {
           setStage('stage1')
         }
 
-        const all = (await import('../../config/onboarding-questions.json')).default as { questions: OnboardingQuestion[] }
-        const s1 = all.questions.filter(q => q.stage === 1 && q.active).sort((a,b)=>a.order_hint-b.order_hint)
+        const allQuestions = await loadOnboardingQuestions()
+        const s1 = allQuestions.filter(q => q.stage === 1 && q.active).sort((a,b)=>a.order_hint-b.order_hint)
         if (!cancelled) setStage1Questions(s1)
 
       } catch (e: unknown) {
@@ -84,8 +98,8 @@ export function OnboardingWizard() {
 
   async function saveAllForStage(target: OnboardingStage) {
     // Get questions for the target stage from local JSON or cached state
-    const all = (await import('../../config/onboarding-questions.json')).default as { questions: OnboardingQuestion[] }
-    const bank = all.questions.filter(q => (q.stage === 1 && target==='stage1') || (q.stage===2 && target==='stage2') || (q.stage===3 && target==='stage3'))
+    const allQuestions = await loadOnboardingQuestions()
+    const bank = allQuestions.filter(q => (q.stage === 1 && target==='stage1') || (q.stage===2 && target==='stage2') || (q.stage===3 && target==='stage3'))
     // sequential saves with 409 retry
     const doPost = async (v: number, payload: ProgressUpdateRequest) => fetch('/api/onboarding/progress', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
     let currentVersion = version
@@ -120,8 +134,8 @@ export function OnboardingWizard() {
         await saveAllForStage('stage1')
         // Compute Stage 1 scores and select Stage 2 questions from local JSON
         try {
-          const all = (await import('../../config/onboarding-questions.json')).default as { questions: OnboardingQuestion[] }
-          const stage2Bank = all.questions.filter(q => q.stage === 2 && q.active)
+          const allQuestions = await loadOnboardingQuestions()
+          const stage2Bank = allQuestions.filter(q => q.stage === 2 && q.active)
           const scoringMod = await import('@/lib/onboarding/scoring')
           const selectorMod = await import('@/lib/onboarding/selector')
           const stage1Scores = scoringMod.computeStage1Scores(answers)
@@ -148,8 +162,8 @@ export function OnboardingWizard() {
           setCurrentQuestionIndex(0)
         } catch {
           // Fallback: just move to stage2 with first four questions if selection failed
-          const all = (await import('../../config/onboarding-questions.json')).default as { questions: OnboardingQuestion[] }
-          const stage2Bank = all.questions.filter(q => q.stage === 2 && q.active).slice(0,4)
+          const allQuestions = await loadOnboardingQuestions()
+          const stage2Bank = allQuestions.filter(q => q.stage === 2 && q.active).slice(0,4)
           setStage2Questions(stage2Bank)
           setStage('stage2')
           setCurrentQuestionIndex(0)
@@ -157,8 +171,8 @@ export function OnboardingWizard() {
       } else if (stage === 'stage2') {
         await saveAllForStage('stage2')
         // Load Stage 3 locally
-        const all = (await import('../../config/onboarding-questions.json')).default as { questions: OnboardingQuestion[] }
-        const s3 = all.questions.filter(q => q.stage===3 && q.active).sort((a,b)=>a.order_hint-b.order_hint)
+        const allQuestions = await loadOnboardingQuestions()
+        const s3 = allQuestions.filter(q => q.stage===3 && q.active).sort((a,b)=>a.order_hint-b.order_hint)
         setStage3Questions(s3)
         setStage('stage3')
         setCurrentQuestionIndex(0)
