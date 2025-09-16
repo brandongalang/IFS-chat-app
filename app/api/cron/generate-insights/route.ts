@@ -1,7 +1,8 @@
 import { getMastra } from '@/mastra'
+import { requireCronAuth } from '@/lib/api/cron-auth'
+import { jsonResponse, errorResponse } from '@/lib/api/response'
 import { createClient } from '@/lib/supabase/server'
 import type { Json } from '@/lib/types/database'
-import { jsonResponse, errorResponse } from '@/lib/api/response'
 
 const COOL_DOWN_HOURS = 48
 
@@ -34,8 +35,7 @@ async function saveInsightsToDb(
 }
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!requireCronAuth(request)) {
     return errorResponse('Unauthorized', 401)
   }
 
