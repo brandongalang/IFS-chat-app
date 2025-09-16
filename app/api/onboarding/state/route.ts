@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response';
 
 /**
  * GET /api/onboarding/state
@@ -17,7 +17,7 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED);
     }
 
     // Get user's onboarding state
@@ -43,13 +43,13 @@ export async function GET() {
 
       if (createError) {
         console.error('Error creating initial onboarding state:', createError);
-        return NextResponse.json({ error: 'Failed to initialize onboarding' }, { status: 500 });
+        return errorResponse('Failed to initialize onboarding', HTTP_STATUS.INTERNAL_SERVER_ERROR);
       }
 
       userState = newState;
     } else if (stateError) {
       console.error('Error fetching onboarding state:', stateError);
-      return NextResponse.json({ error: 'Failed to fetch onboarding state' }, { status: 500 });
+      return errorResponse('Failed to fetch onboarding state', HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     // Return minimal state for privacy and performance
@@ -63,10 +63,10 @@ export async function GET() {
       needs_onboarding: userState!.status !== 'completed'
     };
 
-    return NextResponse.json(response);
+    return jsonResponse(response);
 
   } catch (error) {
     console.error('Unexpected error in state route:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return errorResponse('Internal server error', HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }

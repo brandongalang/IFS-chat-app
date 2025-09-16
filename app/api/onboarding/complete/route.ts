@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response';
 import {
   CompletionRequest,
   CompletionResponse,
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED);
     }
 
     // Parse and validate request
@@ -39,10 +40,10 @@ export async function POST(request: NextRequest) {
     const validation = CompletionRequest.safeParse(body);
     
     if (!validation.success) {
-      return NextResponse.json({ 
-        error: 'Invalid request', 
-        details: validation.error.issues 
-      }, { status: 400 });
+      return jsonResponse({
+        error: 'Invalid request',
+        details: validation.error.issues
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const { version } = validation.data;
@@ -56,9 +57,7 @@ export async function POST(request: NextRequest) {
 
     if (stateError) {
       console.error('Error fetching user onboarding state:', stateError);
-      return NextResponse.json({ 
-        error: 'Onboarding state not found' 
-      }, { status: 400 });
+      return errorResponse('Onboarding state not found', HTTP_STATUS.BAD_REQUEST);
     }
 
     // Check if already completed
@@ -68,24 +67,24 @@ export async function POST(request: NextRequest) {
         redirect: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/`,
         completed_at: userState.completed_at!
       };
-      return NextResponse.json(response);
+      return jsonResponse(response);
     }
 
     // Version conflict check
     if (userState.version !== version) {
-      return NextResponse.json({ 
-        error: 'Version conflict - state has been updated', 
-        current_version: userState.version 
-      }, { status: 409 });
+      return jsonResponse({
+        error: 'Version conflict - state has been updated',
+        current_version: userState.version
+      }, HTTP_STATUS.CONFLICT);
     }
 
     // Validate completion requirements
     const validationResult = await validateOnboardingCompletion(supabase, user.id);
     if (!validationResult.valid) {
-      return NextResponse.json({ 
-        error: 'Onboarding not complete', 
-        missing: validationResult.missing 
-      }, { status: 400 });
+      return jsonResponse({
+        error: 'Onboarding not complete',
+        missing: validationResult.missing
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     // Mark as completed
@@ -104,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       console.error('Error completing onboarding:', updateError);
-      return NextResponse.json({ error: 'Failed to complete onboarding' }, { status: 500 });
+      return errorResponse('Failed to complete onboarding', HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     // Trigger user memory synthesis
@@ -127,7 +126,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Also set a lightweight cookie hint so middleware/UX can skip the DB check
-    const res = NextResponse.json(response)
+    const res = jsonResponse(response)
     try {
       res.cookies.set('ifs_onb', '0', {
         path: '/',
@@ -141,7 +140,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Unexpected error in completion route:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return errorResponse('Internal server error', HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
 

@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
 import { listActiveUsersSince, reconstructMemory, loadTodayData, generateMemoryUpdate, saveNewSnapshot, markUpdatesProcessed } from '@/lib/memory/service'
+import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 
 function requireCronAuth(req: Request): boolean {
   const secret = process.env.CRON_SECRET
@@ -36,26 +36,26 @@ async function runDailyMemoryUpdate(): Promise<Response> {
     }
   }
 
-  return NextResponse.json({ cutoff, processed: users.length, results })
+  return jsonResponse({ cutoff, processed: users.length, results })
 }
 
 export async function GET(req: Request) {
-  if (!requireCronAuth(req)) return new NextResponse('Unauthorized', { status: 401 })
+  if (!requireCronAuth(req)) return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
   try {
     return await runDailyMemoryUpdate()
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Internal Error'
-    return new NextResponse(message, { status: 500 })
+    return errorResponse(message, HTTP_STATUS.INTERNAL_SERVER_ERROR)
   }
 }
 
 export async function POST(req: Request) {
-  if (!requireCronAuth(req)) return new NextResponse('Unauthorized', { status: 401 })
+  if (!requireCronAuth(req)) return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
   try {
     return await runDailyMemoryUpdate()
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Internal Error'
-    return new NextResponse(message, { status: 500 })
+    return errorResponse(message, HTTP_STATUS.INTERNAL_SERVER_ERROR)
   }
 }
 

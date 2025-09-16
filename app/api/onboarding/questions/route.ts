@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { 
-  QuestionsResponse, 
+import {
+  QuestionsResponse,
   OnboardingQuestion
 } from '@/lib/onboarding/types';
 import { computeStage1Scores } from '@/lib/onboarding/scoring';
 import { selectStage2Questions } from '@/lib/onboarding/selector';
+import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response';
 
 /**
  * GET /api/onboarding/questions?stage=1|2|3
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED);
     }
 
     // Parse stage parameter
@@ -31,9 +32,9 @@ export async function GET(request: NextRequest) {
     const stageParam = url.searchParams.get('stage');
     
     if (!stageParam || !['1', '2', '3'].includes(stageParam)) {
-      return NextResponse.json({ 
-        error: 'Invalid stage parameter. Must be 1, 2, or 3' 
-      }, { status: 400 });
+      return jsonResponse({
+        error: 'Invalid stage parameter. Must be 1, 2, or 3'
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const stage = parseInt(stageParam, 10);
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error(`Error fetching Stage ${stage} questions:`, error);
-        return NextResponse.json({ error: 'Failed to fetch questions' }, { status: 500 });
+        return errorResponse('Failed to fetch questions', HTTP_STATUS.INTERNAL_SERVER_ERROR);
       }
 
       const response: QuestionsResponse = {
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
         selected_for_user: false
       };
 
-      return NextResponse.json(response);
+      return jsonResponse(response);
     }
 
     // Stage 2: Personalized question selection
@@ -72,9 +73,9 @@ export async function GET(request: NextRequest) {
 
       if (stateError) {
         console.error('Error fetching user onboarding state:', stateError);
-        return NextResponse.json({ 
-          error: 'User onboarding state not found. Complete Stage 1 first.' 
-        }, { status: 400 });
+        return jsonResponse({
+          error: 'User onboarding state not found. Complete Stage 1 first.'
+        }, HTTP_STATUS.BAD_REQUEST);
       }
 
       // If we already have selected Stage 2 questions, return them
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
 
         if (questionsError) {
           console.error('Error fetching selected Stage 2 questions:', questionsError);
-          return NextResponse.json({ error: 'Failed to fetch selected questions' }, { status: 500 });
+          return errorResponse('Failed to fetch selected questions', HTTP_STATUS.INTERNAL_SERVER_ERROR);
         }
 
         const response: QuestionsResponse = {
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
           selected_for_user: true
         };
 
-        return NextResponse.json(response);
+        return jsonResponse(response);
       }
 
       // No Stage 2 questions selected yet - need to compute selection
@@ -106,9 +107,9 @@ export async function GET(request: NextRequest) {
         const stage1Scores = computeStage1Scores(userState.answers_snapshot || {});
         
         if (Object.keys(stage1Scores).length === 0) {
-          return NextResponse.json({ 
-            error: 'Stage 1 not complete. Cannot select Stage 2 questions.' 
-          }, { status: 400 });
+          return jsonResponse({
+            error: 'Stage 1 not complete. Cannot select Stage 2 questions.'
+          }, HTTP_STATUS.BAD_REQUEST);
         }
 
         // Update scores in database for future use
@@ -130,13 +131,13 @@ export async function GET(request: NextRequest) {
 
       if (bankError) {
         console.error('Error fetching Stage 2 question bank:', bankError);
-        return NextResponse.json({ error: 'Failed to fetch question bank' }, { status: 500 });
+        return errorResponse('Failed to fetch question bank', HTTP_STATUS.INTERNAL_SERVER_ERROR);
       }
 
       if (!questionBank || questionBank.length < 4) {
-        return NextResponse.json({ 
-          error: 'Insufficient questions in Stage 2 bank' 
-        }, { status: 500 });
+        return jsonResponse({
+          error: 'Insufficient questions in Stage 2 bank'
+        }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
       }
 
       // Perform Stage 2 selection
@@ -165,20 +166,18 @@ export async function GET(request: NextRequest) {
           selected_for_user: true
         };
 
-        return NextResponse.json(response);
+        return jsonResponse(response);
 
       } catch (selectionError) {
         console.error('Error in Stage 2 question selection:', selectionError);
-        return NextResponse.json({ 
-          error: 'Failed to select personalized questions' 
-        }, { status: 500 });
+        return errorResponse('Failed to select personalized questions', HTTP_STATUS.INTERNAL_SERVER_ERROR);
       }
     }
 
-    return NextResponse.json({ error: 'Invalid stage' }, { status: 400 });
+    return errorResponse('Invalid stage', HTTP_STATUS.BAD_REQUEST);
 
   } catch (error) {
     console.error('Unexpected error in questions route:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return errorResponse('Internal server error', HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
