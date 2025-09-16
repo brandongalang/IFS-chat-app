@@ -20,7 +20,12 @@ async function isReachable(url?: string, timeoutMs = 800): Promise<boolean> {
 
 export type SupabaseGuardContext =
   | { type: 'no-supabase' }
-  | { type: 'authed'; supabase: Awaited<ReturnType<typeof createServerSupabase>>; userId: string }
+  | {
+      type: 'authed'
+      supabase: Awaited<ReturnType<typeof createServerSupabase>>
+      userId: string
+      accessToken: string
+    }
   | { type: 'admin'; admin: ReturnType<typeof createAdminClient> }
 
 export async function withSupabaseOrDev(
@@ -53,8 +58,9 @@ export async function withSupabaseOrDev(
         data: { session },
       } = await supabase.auth.getSession()
       const authedUserId = session?.user?.id
-      if (authedUserId) {
-        return handler({ type: 'authed', supabase, userId: authedUserId })
+      const accessToken = session?.access_token
+      if (authedUserId && typeof accessToken === 'string' && accessToken.length > 0) {
+        return handler({ type: 'authed', supabase, userId: authedUserId, accessToken })
       }
     } catch (error) {
       console.error('Supabase guard: auth session check failed', error)

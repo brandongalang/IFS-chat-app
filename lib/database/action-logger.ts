@@ -67,7 +67,7 @@ export class DatabaseActionLogger {
   private supabase: SupabaseClient<Database>
 
   constructor(supabase?: SupabaseClient<Database>) {
-    this.supabase = supabase ?? createClient()
+    this.supabase = supabase ?? (createClient() as SupabaseClient<Database>)
   }
 
   /**

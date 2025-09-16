@@ -19,7 +19,10 @@ export async function POST(req: NextRequest) {
       const { createChatSessionService } = await import('@/lib/session-service')
 
       if (ctx.type === 'authed') {
-        const sessionService = createChatSessionService({ supabaseClient: ctx.supabase })
+        const sessionService = createChatSessionService({
+          accessToken: ctx.accessToken,
+          userId: ctx.userId,
+        })
         await sessionService.endSession(sessionId)
         return jsonResponse({ ok: true, ended: true })
       }
@@ -27,8 +30,8 @@ export async function POST(req: NextRequest) {
       if (ctx.type === 'admin') {
         const personaUserId = resolveUserId()
         const sessionService = createChatSessionService({
-          supabaseClient: ctx.admin,
-          defaultUserId: personaUserId,
+          supabase: ctx.admin,
+          userId: personaUserId,
         })
         await sessionService.endSession(sessionId)
         return jsonResponse({ ok: true, ended: true })
