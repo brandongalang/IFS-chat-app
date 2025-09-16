@@ -1,3 +1,5 @@
+import { animationDefaults } from './animation'
+
 export type EtherealThemeVariant = {
   gradient?: string
 }
@@ -40,8 +42,8 @@ export const defaultEtherealTheme: EtherealTheme = {
     letterSpacingUser: '0',
   },
   animation: {
-    wordDurationMs: 2000,
-    charDurationMs: 1000,
+    wordDurationMs: animationDefaults.wordDurationMs,
+    charDurationMs: animationDefaults.charDurationMs,
     streamTickMs: 150,
     streamCharsPerTick: 8,
   },

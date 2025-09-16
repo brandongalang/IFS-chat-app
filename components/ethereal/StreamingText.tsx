@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { motion } from 'framer-motion'
 
+import { animationDefaults } from '@/config/animation'
+
 // Streams text with gentle, per-word glow, color shift, upward motion, and per-char fade for newly arrived content
 export function StreamingText({ text, onAnimationComplete }: { text: string, onAnimationComplete?: () => void }) {
   const prevCharLen = useRef(0)
@@ -20,12 +22,15 @@ export function StreamingText({ text, onAnimationComplete }: { text: string, onA
   let charSeen = 0
 
   // Read CSS variables for durations (ms)
+  const defaultWordDurationMs = animationDefaults.wordDurationMs
+  const defaultCharDurationMs = animationDefaults.charDurationMs
+
   const wordMs = typeof window !== 'undefined'
-    ? Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-word-duration').trim() || 0) || 2000
-    : 2000
+    ? Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-word-duration').trim() || 0) || defaultWordDurationMs
+    : defaultWordDurationMs
   const charMs = typeof window !== 'undefined'
-    ? Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-char-duration').trim() || 0) || 1000
-    : 1000
+    ? Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-char-duration').trim() || 0) || defaultCharDurationMs
+    : defaultCharDurationMs
 
   return (
     <span aria-live="polite">
