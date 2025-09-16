@@ -232,8 +232,9 @@ A new API endpoint has been created at `/api/feedback`.
 
 #### Frontend Implementation
 
--   **UI Components:** The feedback UI is located in `components/chat/Message.tsx`. It uses the `Actions` component from `ai-elements` and the `Popover` component from `shadcn/ui`.
--   **State Management:** The `useChat` hook in `hooks/useChat.ts` has a `sendFeedback` function that sends the feedback to the API endpoint. The `Message.tsx` component calls this function directly.
+-   **UI Components:** The original feedback UI has been removed along with the `components/ai-elements/*` helpers. The active chat surface lives in `components/ethereal/EtherealChat.tsx`; reintroducing feedback controls will require new UI there (or in whichever chat experience is in use).
+-   **State Management:** The `useChat` hook in `hooks/useChat.ts` exposes `sendFeedback`, which posts the user's selection to `/api/feedback`.
+-   **Integration point:** No component currently invokes `sendFeedback`. When feedback UI is rebuilt, call `useChat().sendFeedback(...)` from the relevant handler.
 
 #### Build System Note
 
