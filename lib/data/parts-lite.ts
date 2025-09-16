@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { Database, PartRow, PartRelationshipRow } from '@/lib/types/database'
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
+import { buildPartsQuery, type PartQueryFilters } from './parts-query'
 
 function getSupabaseClient() {
   // Always use browser client in lite (client-safe) module
@@ -33,26 +34,17 @@ export async function searchParts(input: z.infer<typeof searchPartsSchema>): Pro
     const validated = searchPartsSchema.parse(input)
     const supabase = getSupabaseClient()
 
-    let query = supabase
-      .from('parts')
-      .select('*')
-      .order('last_active', { ascending: false })
-      .limit(validated.limit)
-
-    if (validated.query) {
-      query = query.or(`name.ilike.%${validated.query}%,role.ilike.%${validated.query}%`)
-    }
-    if (validated.status) {
-      query = query.eq('status', validated.status)
-    }
-    if (validated.category) {
-      query = query.eq('category', validated.category)
+    const filters: PartQueryFilters = {
+      name: validated.query,
+      status: validated.status,
+      category: validated.category,
+      limit: validated.limit,
     }
 
-    const { data, error } = await query
+    const { data, error } = await buildPartsQuery(supabase, filters)
     if (error) throw new Error(`Database error: ${error.message}`)
 
-    return (data as any) || []
+    return (data as PartRow[] | null | undefined) ?? []
   } catch (error) {
     throw error instanceof Error ? error : new Error('Unknown error occurred')
   }
