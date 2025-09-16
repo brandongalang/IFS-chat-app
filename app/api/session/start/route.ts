@@ -14,41 +14,22 @@ export async function POST(req: NextRequest) {
         return jsonResponse({ sessionId: devSessionId })
       }
 
+      const { createChatSessionService } = await import('../../../../lib/session-service')
+
       if (ctx.type === 'authed') {
-        const { chatSessionService } = await import('../../../../lib/session-service')
-        const sessionId = await chatSessionService.startSession(ctx.userId)
+        const sessionService = createChatSessionService({ supabaseClient: ctx.supabase })
+        const sessionId = await sessionService.startSession(ctx.userId)
         return jsonResponse({ sessionId })
       }
 
       if (ctx.type === 'admin') {
         const personaUserId = resolveUserId()
-        const nowIso = new Date().toISOString()
-        const sessionRow = {
-          user_id: personaUserId,
-          start_time: nowIso,
-          messages: [] as unknown[],
-          parts_involved: {} as Record<string, unknown>,
-          new_parts: [] as string[],
-          breakthroughs: [] as string[],
-          emotional_arc: {
-            start: { valence: 0, arousal: 0 },
-            peak: { valence: 0, arousal: 0 },
-            end: { valence: 0, arousal: 0 },
-          },
-          processed: false,
-          created_at: nowIso,
-          updated_at: nowIso,
-        }
-
-        const { data, error } = await ctx.admin
-          .from('sessions')
-          .insert(sessionRow)
-          .select('id')
-          .single()
-
-        if (error) throw error
-
-        return jsonResponse({ sessionId: data.id })
+        const sessionService = createChatSessionService({
+          supabaseClient: ctx.admin,
+          defaultUserId: personaUserId,
+        })
+        const sessionId = await sessionService.startSession()
+        return jsonResponse({ sessionId })
       }
 
       return errorResponse('Unauthorized', 401)
