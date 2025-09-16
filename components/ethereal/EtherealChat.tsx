@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { motion } from "framer-motion"
+import { useRouter } from "next/navigation"
+
 import { useChat } from "@/hooks/useChat"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import type { Message as ChatMessage } from "@/types/chat"
-import { useRouter } from "next/navigation"
-import { StreamingText } from "./StreamingText"
-import { TaskList } from "@/components/chat/TaskList"
+import type { Message as ChatMessageType } from "@/types/chat"
+
+import { ChatMessage } from "./ChatMessage"
 import { ActiveTaskOverlay } from "./ActiveTaskOverlay"
 
 // Minimal, bubble-less chat presentation
@@ -123,42 +124,14 @@ export function EtherealChat() {
       {/* Messages area */}
       <div className="relative z-10 flex-1 overflow-y-auto px-4 pb-[120px] pt-[calc(env(safe-area-inset-top)+16px)]">
         <div className="mx-auto flex max-w-[820px] flex-col gap-6">
-          {(messages as ChatMessage[]).map((m) => (
-            <motion.div
-              key={m.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={[
-                  "max-w-[84%] whitespace-pre-wrap leading-7",
-                  m.role === "assistant"
-                    ? "text-3xl sm:text-4xl leading-snug lowercase font-thin italic drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]"
-                    : "text-[15px] sm:text-[16px] font-thin lowercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]",
-                ].join(" ")}
-                style={{
-                  letterSpacing: m.role === 'assistant' ? 'var(--eth-letter-spacing-assistant)' : 'var(--eth-letter-spacing-user)',
-                  color: m.role === 'assistant'
-                    ? (m.id === currentStreamingId
-                      ? 'rgba(255,255,255,1)'
-                      : 'rgba(255,255,255,var(--eth-assistant-opacity))')
-                    : 'rgba(255,255,255,var(--eth-assistant-opacity))',
-                  opacity: m.role === 'assistant' ? undefined : (Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-user-opacity').trim()) || 0.8),
-                }}
-              >
-                {m.id === "ethereal-welcome" && (
-                  <p className="mb-2 text-sm text-white/60">dive back in.</p>
-                )}
-                {m.role === 'assistant' && (
-                  <div className="mb-2 text-base" style={taskListStyles}>
-                    <TaskList tasks={tasksByMessage?.[m.id]} />
-                  </div>
-                )}
-                <StreamingText text={m.content} />
-              </div>
-            </motion.div>
+          {(messages as ChatMessageType[]).map((message) => (
+            <ChatMessage
+              key={message.id}
+              message={message}
+              isActive={message.id === currentStreamingId}
+              tasks={tasksByMessage?.[message.id]}
+              taskListStyles={taskListStyles}
+            />
           ))}
           <div ref={messagesEndRef} />
         </div>

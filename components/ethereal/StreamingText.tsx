@@ -1,72 +1,59 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 
 import { animationDefaults } from '@/config/animation'
+import { useStreamingBuffer } from '@/hooks/useStreamingBuffer'
 
 // Streams text with gentle, per-word glow, color shift, upward motion, and per-char fade for newly arrived content
 export function StreamingText({ text, onAnimationComplete }: { text: string, onAnimationComplete?: () => void }) {
-  const prevCharLen = useRef(0)
-  const prevWordCount = useRef(0)
+  const tokens = useStreamingBuffer(text)
 
-  const tokens = useMemo(() => (text ?? '').split(/(\s+)/), [text])
-  const wordsOnly = useMemo(() => tokens.filter(t => !/^\s+$/.test(t)), [tokens])
-
-  useEffect(() => {
-    prevCharLen.current = Math.max(prevCharLen.current, (text ?? '').length)
-    prevWordCount.current = Math.max(prevWordCount.current, wordsOnly.length)
-  }, [text, wordsOnly.length])
-
-  let wordIndex = 0
-  let charSeen = 0
-
-  // Read CSS variables for durations (ms)
   const defaultWordDurationMs = animationDefaults.wordDurationMs
   const defaultCharDurationMs = animationDefaults.charDurationMs
 
-  const wordMs = typeof window !== 'undefined'
-    ? Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-word-duration').trim() || 0) || defaultWordDurationMs
-    : defaultWordDurationMs
-  const charMs = typeof window !== 'undefined'
-    ? Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-char-duration').trim() || 0) || defaultCharDurationMs
-    : defaultCharDurationMs
+  const { wordMs, charMs } = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return { wordMs: defaultWordDurationMs, charMs: defaultCharDurationMs }
+    }
+
+    const styles = getComputedStyle(document.documentElement)
+    const wordVar = Number(styles.getPropertyValue('--eth-word-duration').trim() || 0)
+    const charVar = Number(styles.getPropertyValue('--eth-char-duration').trim() || 0)
+
+    return {
+      wordMs: wordVar || defaultWordDurationMs,
+      charMs: charVar || defaultCharDurationMs,
+    }
+  }, [defaultWordDurationMs, defaultCharDurationMs])
 
   return (
     <span aria-live="polite">
-      {tokens.map((tok, i) => {
-        if (/^\s+$/.test(tok)) {
-          charSeen += tok.length
-          return <span key={`s-${i}`}>{tok}</span>
+      {tokens.map((token, tokenIndex) => {
+        if (token.isWhitespace) {
+          return <span key={`s-${tokenIndex}`}>{token.value}</span>
         }
-        const isNewWord = wordIndex >= prevWordCount.current
-        const startCharIndex = charSeen
-        const chars = Array.from(tok)
-        wordIndex += 1
-        charSeen += tok.length
+
         return (
           <motion.span
-            key={`w-${i}`}
-            initial={isNewWord ? { opacity: 0, y: 8, color: 'rgba(128, 200, 200, 0.95)' } : {}}
+            key={`w-${tokenIndex}`}
+            initial={token.isNewWord ? { opacity: 0, y: 8, color: 'rgba(128, 200, 200, 0.95)' } : {}}
             animate={{ opacity: 1, y: 0, color: 'rgba(255,255,255,1)' }}
             transition={{ duration: wordMs / 1000, ease: [0.25, 0.1, 0, 1] }}
             className="inline-block"
             onAnimationComplete={onAnimationComplete}
           >
-            {chars.map((ch, ci) => {
-              const globalIndex = startCharIndex + ci
-              const isNewChar = globalIndex >= prevCharLen.current
-              return (
-                <motion.span
-                  key={ci}
-                  initial={isNewChar ? { opacity: 0 } : {}}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: charMs / 1000, ease: [0.25, 0.1, 0, 1] }}
-                >
-                  {ch}
-                </motion.span>
-              )
-            })}
+            {token.chars.map((char, charIndex) => (
+              <motion.span
+                key={charIndex}
+                initial={char.isNew ? { opacity: 0 } : {}}
+                animate={{ opacity: 1 }}
+                transition={{ duration: charMs / 1000, ease: [0.25, 0.1, 0, 1] }}
+              >
+                {char.char}
+              </motion.span>
+            ))}
           </motion.span>
         )
       })}
