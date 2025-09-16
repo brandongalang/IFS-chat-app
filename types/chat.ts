@@ -31,9 +31,3 @@ export interface ChatState {
   tasksByMessage?: Record<string, TaskEvent[]>;
 }
 
-export interface MockAIClient {
-  streamMessage: (params: {
-    messages: Message[];
-    onToken: (token: string, isComplete: boolean) => void;
-  }) => { cancel: () => void };
-}
