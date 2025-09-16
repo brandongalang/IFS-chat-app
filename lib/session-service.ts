@@ -1,17 +1,46 @@
-import { createClient } from './supabase/client'
-import { actionLogger } from './database/action-logger'
-import type { SessionMessage, SessionRow, SessionInsert, SessionUpdate } from './types/database'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { createClientWithAccessToken } from './supabase/server'
+import { DatabaseActionLogger } from './database/action-logger'
+import type {
+  Database,
+  SessionInsert,
+  SessionMessage,
+  SessionRow,
+  SessionUpdate,
+} from './types/database'
 import { getStorageAdapter, sessionTranscriptPath } from './memory/snapshots/fs-helpers'
 
+export interface ChatSessionServiceOptions {
+  accessToken?: string
+  supabase?: SupabaseClient<Database>
+  userId: string
+}
+
 export class ChatSessionService {
-  private supabase = createClient()
+  private readonly supabase: SupabaseClient<Database>
+  private readonly actionLogger: DatabaseActionLogger
+  private readonly userId: string
+
+  constructor(options: ChatSessionServiceOptions) {
+    this.userId = options.userId
+
+    if (options.supabase) {
+      this.supabase = options.supabase
+    } else if (options.accessToken) {
+      this.supabase = createClientWithAccessToken(options.accessToken)
+    } else {
+      throw new Error('Supabase client or access token is required to use ChatSessionService')
+    }
+
+    this.actionLogger = new DatabaseActionLogger(this.supabase)
+  }
 
   /**
-   * Start a new chat session
+   * Start a new chat session for the current user
    */
-  async startSession(userId: string): Promise<string> {
+  async startSession(): Promise<string> {
     const session: SessionInsert = {
-      user_id: userId,
+      user_id: this.userId,
       start_time: new Date().toISOString(),
       messages: [],
       parts_involved: {},
@@ -20,34 +49,34 @@ export class ChatSessionService {
       emotional_arc: {
         start: { valence: 0, arousal: 0 },
         peak: { valence: 0, arousal: 0 },
-        end: { valence: 0, arousal: 0 }
+        end: { valence: 0, arousal: 0 },
       },
-      processed: false
+      processed: false,
     }
 
-    // Use action logger for session creation
-    const data = await actionLogger.loggedInsert<{ id: string }>(
+    const data = await this.actionLogger.loggedInsert<{ id: string }>(
       'sessions',
       session,
-      userId,
+      this.userId,
       'create_session',
       {
         changeDescription: 'Started new chat session',
-        sessionId: undefined // Will be set after creation
-      }
+        sessionId: undefined,
+      },
     )
+
     const storage = await getStorageAdapter()
-    const transcriptPath = sessionTranscriptPath(userId, data.id)
+    const transcriptPath = sessionTranscriptPath(this.userId, data.id)
     const transcript = {
       id: data.id,
-      user_id: userId,
+      user_id: this.userId,
       start_time: session.start_time,
       end_time: null as string | null,
       duration: null as number | null,
-      messages: [] as SessionMessage[]
+      messages: [] as SessionMessage[],
     }
     await storage.putText(transcriptPath, JSON.stringify(transcript), {
-      contentType: 'application/json'
+      contentType: 'application/json',
     })
 
     return data.id
@@ -58,9 +87,8 @@ export class ChatSessionService {
    */
   async addMessage(
     sessionId: string,
-    message: Omit<SessionMessage, 'timestamp'>
+    message: Omit<SessionMessage, 'timestamp'>,
   ): Promise<void> {
-    // First get the current session
     const { data: session, error: fetchError } = await this.supabase
       .from('sessions')
       .select('messages, user_id, start_time, end_time, duration')
@@ -71,20 +99,17 @@ export class ChatSessionService {
       throw new Error(`Failed to fetch session: ${fetchError.message}`)
     }
 
-    // Add the new message with timestamp
     const newMessage: SessionMessage = {
       ...message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }
-
     const updatedMessages = [...(session.messages || []), newMessage]
 
-    // Update the session with new messages
     const { error: updateError } = await this.supabase
       .from('sessions')
-      .update({ 
+      .update({
         messages: updatedMessages,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', sessionId)
 
@@ -93,31 +118,35 @@ export class ChatSessionService {
     }
 
     const storage = await getStorageAdapter()
-    const transcriptPath = sessionTranscriptPath(session.user_id, sessionId)
+    const transcriptUserId = session.user_id || this.userId
+    const transcriptPath = sessionTranscriptPath(transcriptUserId, sessionId)
     let transcript
     try {
       const existing = await storage.getText(transcriptPath)
-      transcript = existing ? JSON.parse(existing) : {
-        id: sessionId,
-        user_id: session.user_id,
-        start_time: session.start_time,
-        end_time: session.end_time,
-        duration: session.duration,
-        messages: [] as SessionMessage[]
-      }
+      transcript = existing
+        ? JSON.parse(existing)
+        : {
+            id: sessionId,
+            user_id: transcriptUserId,
+            start_time: session.start_time,
+            end_time: session.end_time,
+            duration: session.duration,
+            messages: [] as SessionMessage[],
+          }
     } catch {
       transcript = {
         id: sessionId,
-        user_id: session.user_id,
+        user_id: transcriptUserId,
         start_time: session.start_time,
         end_time: session.end_time,
         duration: session.duration,
-        messages: [] as SessionMessage[]
+        messages: [] as SessionMessage[],
       }
     }
+
     transcript.messages = updatedMessages
     await storage.putText(transcriptPath, JSON.stringify(transcript), {
-      contentType: 'application/json'
+      contentType: 'application/json',
     })
   }
 
@@ -126,8 +155,7 @@ export class ChatSessionService {
    */
   async endSession(sessionId: string): Promise<void> {
     const endTime = new Date().toISOString()
-    
-    // Get session start time to calculate duration
+
     const { data: session, error: fetchError } = await this.supabase
       .from('sessions')
       .select('start_time, user_id, end_time, duration, messages')
@@ -145,8 +173,8 @@ export class ChatSessionService {
       .from('sessions')
       .update({
         end_time: endTime,
-        duration: duration,
-        updated_at: endTime
+        duration,
+        updated_at: endTime,
       })
       .eq('id', sessionId)
 
@@ -155,32 +183,36 @@ export class ChatSessionService {
     }
 
     const storage = await getStorageAdapter()
-    const transcriptPath = sessionTranscriptPath(session.user_id, sessionId)
+    const transcriptUserId = session.user_id || this.userId
+    const transcriptPath = sessionTranscriptPath(transcriptUserId, sessionId)
     let transcript
     try {
       const existing = await storage.getText(transcriptPath)
-      transcript = existing ? JSON.parse(existing) : {
-        id: sessionId,
-        user_id: session.user_id,
-        start_time: session.start_time,
-        end_time: null as string | null,
-        duration: null as number | null,
-        messages: session.messages || []
-      }
+      transcript = existing
+        ? JSON.parse(existing)
+        : {
+            id: sessionId,
+            user_id: transcriptUserId,
+            start_time: session.start_time,
+            end_time: null as string | null,
+            duration: null as number | null,
+            messages: session.messages || [],
+          }
     } catch {
       transcript = {
         id: sessionId,
-        user_id: session.user_id,
+        user_id: transcriptUserId,
         start_time: session.start_time,
         end_time: null as string | null,
         duration: null as number | null,
-        messages: session.messages || []
+        messages: session.messages || [],
       }
     }
+
     transcript.end_time = endTime
     transcript.duration = duration
     await storage.putText(transcriptPath, JSON.stringify(transcript), {
-      contentType: 'application/json'
+      contentType: 'application/json',
     })
   }
 
@@ -195,8 +227,8 @@ export class ChatSessionService {
       .single()
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null // Session not found
+      if ((error as { code?: string }).code === 'PGRST116') {
+        return null
       }
       throw new Error(`Failed to get session: ${error.message}`)
     }
@@ -205,13 +237,13 @@ export class ChatSessionService {
   }
 
   /**
-   * Get recent sessions for a user
+   * Get recent sessions for the current user
    */
-  async getUserSessions(userId: string, limit: number = 10): Promise<SessionRow[]> {
+  async getUserSessions(limit: number = 10): Promise<SessionRow[]> {
     const { data, error } = await this.supabase
       .from('sessions')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', this.userId)
       .order('start_time', { ascending: false })
       .limit(limit)
 
@@ -233,8 +265,8 @@ export class ChatSessionService {
       .single()
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return [] // Session not found
+      if ((error as { code?: string }).code === 'PGRST116') {
+        return []
       }
       throw new Error(`Failed to get session messages: ${error.message}`)
     }
@@ -250,7 +282,7 @@ export class ChatSessionService {
       .from('sessions')
       .update({
         ...updates,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', sessionId)
 
@@ -260,5 +292,6 @@ export class ChatSessionService {
   }
 }
 
-// Export singleton instance
-export const chatSessionService = new ChatSessionService()
+export function createChatSessionService(options: ChatSessionServiceOptions): ChatSessionService {
+  return new ChatSessionService(options)
+}

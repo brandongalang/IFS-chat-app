@@ -16,8 +16,12 @@ export async function POST(req: NextRequest) {
       }
 
       if (ctx.type === 'authed') {
-        const { chatSessionService } = await import('@/lib/session-service')
-        await chatSessionService.endSession(sessionId)
+        const { createChatSessionService } = await import('@/lib/session-service')
+        const sessionService = createChatSessionService({
+          accessToken: ctx.accessToken,
+          userId: ctx.userId,
+        })
+        await sessionService.endSession(sessionId)
         return jsonResponse({ ok: true, ended: true })
       }
 

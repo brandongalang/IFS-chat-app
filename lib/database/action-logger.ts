@@ -1,3 +1,5 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../types/database'
 import { createClient } from '../supabase/client'
 import { logEvent } from '@/lib/memory/events-logger'
 
@@ -62,7 +64,11 @@ export interface ActionSummary {
 }
 
 export class DatabaseActionLogger {
-  private supabase = createClient()
+  private supabase: SupabaseClient<Database>
+
+  constructor(supabase?: SupabaseClient<Database>) {
+    this.supabase = supabase ?? (createClient() as SupabaseClient<Database>)
+  }
 
   /**
    * Log and execute an INSERT operation with rollback capability
