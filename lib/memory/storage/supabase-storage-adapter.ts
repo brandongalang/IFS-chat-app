@@ -1,10 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import type { StorageAdapter } from './adapter'
 import { MEMORY_SNAPSHOTS_BUCKET } from '../config'
+import { getSupabaseServiceRoleKey, getSupabaseUrl } from '@/lib/supabase/config'
 
 function getSb() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const service = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const url = getSupabaseUrl()
+  const service = getSupabaseServiceRoleKey()
   if (!url || !service) throw new Error('Supabase Storage adapter requires URL and service role key')
   return createClient(url, service)
 }

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../types/database'
+import { getSupabaseKey, getSupabaseUrl } from './config'
 
 const missingConfigMessage =
   'Supabase environment variables are not configured. Falling back to a no-op client. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable Supabase features.'
@@ -15,7 +16,7 @@ function warnOnce() {
   }
 }
 
-function createNoopQueryBuilder(): any {
+function createNoopQueryBuilder(): unknown {
   const handler: ProxyHandler<Record<string, unknown>> = {
     get(_target, prop) {
       if (prop === 'then') {
@@ -132,11 +133,8 @@ export function createNoopSupabaseClient(): SupabaseClient<Database> {
 }
 
 export function isSupabaseConfigured(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+  const url = getSupabaseUrl()
+  const anonKey = getSupabaseKey()
   return typeof url === 'string' && url.length > 0 && typeof anonKey === 'string' && anonKey.length > 0
 }
 

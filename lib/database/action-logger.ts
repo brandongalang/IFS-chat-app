@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '../supabase/client'
+import { getSupabaseKey, getSupabaseUrl } from '../supabase/config'
 import { logEvent } from '@/lib/memory/events-logger'
 import type { Database } from '@/lib/types/database'
 
@@ -335,11 +336,13 @@ case 'add_part_evidence':
 }
 
 // Export singleton instance
+const supabaseUrl = getSupabaseUrl()
+const supabaseKey = getSupabaseKey()
 const hasSupabase =
-  typeof process.env.NEXT_PUBLIC_SUPABASE_URL === 'string' &&
-  /^https?:\/\//.test(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
-  typeof process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY === 'string' &&
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.length > 20
+  typeof supabaseUrl === 'string' &&
+  /^https?:\/\//.test(supabaseUrl) &&
+  typeof supabaseKey === 'string' &&
+  supabaseKey.length > 20
 
 export class NoopActionLogger {
   async loggedInsert<T extends DataObject>(_table: string, data: Partial<T>): Promise<T> {
