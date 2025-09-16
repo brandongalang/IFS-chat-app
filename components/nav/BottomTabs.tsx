@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Plus, CalendarDays, Lightbulb, Sprout, Map } from 'lucide-react'
+import { CalendarDays, MessageCircle, Map } from 'lucide-react'
 import { GuardedLink } from '@/components/common/GuardedLink'
 import * as React from 'react'
 
@@ -24,7 +24,7 @@ export function BottomTabs() {
       aria-label="Primary tabs"
     >
       <div className="mx-auto max-w-md">
-        <div className="grid grid-cols-4 text-center text-muted-foreground">
+        <div className="grid grid-cols-3 text-center text-muted-foreground">
           {/* Today */}
           <Link
             href="/"
@@ -39,41 +39,27 @@ export function BottomTabs() {
             <span>Today</span>
           </Link>
 
-          {/* Insights */}
-          <GuardedLink
-            href="/insights"
+          {/* Chat */}
+          <Link
+            href="/chat"
             className={
-              baseItem + ' ' + (isActive('/insights') ? 'text-foreground' : 'text-muted-foreground')
+              baseItem + ' ' + (isActive('/chat') ? 'text-foreground' : 'text-muted-foreground')
             }
-            aria-current={isActive('/insights') ? 'page' : undefined}
-            aria-label="Insights"
-            data-testid="nav-insights"
+            aria-current={isActive('/chat') ? 'page' : undefined}
+            aria-label="Chat"
+            data-testid="nav-chat"
           >
-            <Lightbulb className="w-5 h-5" />
-            <span>Insights</span>
-          </GuardedLink>
+            <MessageCircle className="w-5 h-5" />
+            <span>Chat</span>
+          </Link>
 
-          {/* Garden */}
+          {/* Journey */}
           <GuardedLink
             href="/garden"
             className={
               baseItem + ' ' + (isActive('/garden') ? 'text-foreground' : 'text-muted-foreground')
             }
             aria-current={isActive('/garden') ? 'page' : undefined}
-            aria-label="Garden"
-            data-testid="nav-garden"
-          >
-            <Sprout className="w-5 h-5" />
-            <span>Garden</span>
-          </GuardedLink>
-
-          {/* Journey */}
-          <GuardedLink
-            href="/journey"
-            className={
-              baseItem + ' ' + (isActive('/journey') ? 'text-foreground' : 'text-muted-foreground')
-            }
-            aria-current={isActive('/journey') ? 'page' : undefined}
             aria-label="Journey"
             data-testid="nav-journey"
           >
@@ -81,15 +67,6 @@ export function BottomTabs() {
             <span>Journey</span>
           </GuardedLink>
         </div>
-      </div>
-
-      {/* Floating + button */}
-      <div className="absolute inset-x-0 -top-6 flex justify-center pointer-events-none">
-        <Link href="/chat" aria-label="Start a new chat" className="pointer-events-auto">
-          <div className="size-14 rounded-full bg-primary text-primary-foreground shadow-xl grid place-items-center">
-            <Plus className="w-7 h-7" />
-          </div>
-        </Link>
       </div>
     </nav>
   )
