@@ -8,6 +8,7 @@ import type { Message, TaskEvent, TaskEventUpdate } from '@/types/chat'
 import { useChatState } from './useChatState'
 import { useChatSession } from './useChatSession'
 import { useToast } from './use-toast'
+import { useStreamBuffer } from './useStreamBuffer'
 import { useUser } from '@/context/UserContext'
 
 export function useChat() {
@@ -19,6 +20,7 @@ export function useChat() {
   const { ensureSession: ensureSessionRaw, persistMessage: persistMessageRaw, endSession: endSessionRaw, getSessionId } =
     useChatSession()
   const { toast } = useToast()
+  const createStreamBuffer = useStreamBuffer()
 
   const streamingCancelRef = useRef<(() => void) | null>(null)
   const generateId = (): string => Math.random().toString(36).slice(2)
@@ -198,64 +200,14 @@ export function useChat() {
 
       const apiMessages = [...state.messages, userMessage].map((message) => ({ role: message.role, content: message.content }))
 
-      let accumulated = ''
-      let buffer = ''
-      let flushInterval: ReturnType<typeof setInterval> | null = null
-      let finalizeTimer: ReturnType<typeof setInterval> | null = null
+      const streamBuffer = createStreamBuffer({
+        onUpdate: (messageContent, streaming) => {
+          updateMessage(assistantId, { content: messageContent, streaming })
+        },
+      })
 
-      const finalize = () => {
-        updateMessage(assistantId, { content: accumulated, streaming: false })
-        mergeState({ isStreaming: false, currentStreamingId: undefined })
-        streamingCancelRef.current = null
-      }
-
-      const scheduleFinalizeCheck = () => {
-        if (finalizeTimer) return
-        finalizeTimer = setInterval(() => {
-          if (!flushInterval && buffer.length === 0) {
-            if (finalizeTimer) {
-              clearInterval(finalizeTimer)
-            }
-            finalizeTimer = null
-            finalize()
-          }
-        }, 60)
-      }
-
-      const stepMs =
-        typeof window !== 'undefined'
-          ? Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-stream-tick').trim()) || 150
-          : 150
-      const stepChars =
-        typeof window !== 'undefined'
-          ? Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-stream-chars').trim()) || 8
-          : 8
-
-      const startFlusher = () => {
-        if (flushInterval) return
-        flushInterval = setInterval(() => {
-          if (buffer.length > 0) {
-            const take = Math.min(stepChars, buffer.length)
-            const part = buffer.slice(0, take)
-            buffer = buffer.slice(take)
-            accumulated += part
-            updateMessage(assistantId, { content: accumulated, streaming: true })
-          } else {
-            if (flushInterval) {
-              clearInterval(flushInterval)
-            }
-            flushInterval = null
-            scheduleFinalizeCheck()
-          }
-        }, stepMs)
-      }
-
-      const stopFlusher = () => {
-        if (flushInterval) {
-          clearInterval(flushInterval)
-          flushInterval = null
-        }
-      }
+      let shouldPersistAssistant = false
+      let streamError: unknown = null
 
       try {
         await streamFromMastra({
@@ -266,43 +218,46 @@ export function useChat() {
           apiPath: '/api/chat',
           onTask: (evt) => upsertTaskForMessage(assistantId, evt),
           onChunk: (chunk, done) => {
-            if (chunk) buffer += chunk
-            startFlusher()
+            if (chunk) {
+              streamBuffer.appendTokens(chunk)
+            }
             if (done) {
-              scheduleFinalizeCheck()
-              queueMicrotask(() => {
-                const tryPersist = () => {
-                  if (!flushInterval && buffer.length === 0) {
-                    persistMessage(sessionId, 'assistant', accumulated).catch(() => {})
-                  } else {
-                    setTimeout(tryPersist, 120)
-                  }
-                }
-                tryPersist()
-              })
+              shouldPersistAssistant = true
             }
           },
         })
       } catch (error: unknown) {
-        stopFlusher()
-        mergeState({ isStreaming: false, currentStreamingId: undefined })
-        streamingCancelRef.current = null
-        if (accumulated.length === 0) {
+        streamError = error
+      }
+
+      const finalContent = await streamBuffer.finalize()
+
+      mergeState({ isStreaming: false, currentStreamingId: undefined })
+      streamingCancelRef.current = null
+
+      if (streamError) {
+        if (finalContent.length === 0) {
           updateMessage(assistantId, {
             content: 'Sorry, something went wrong while streaming the response.',
             streaming: false,
           })
         }
-        console.error('Stream failed:', error)
+        console.error('Stream failed:', streamError)
         toast({
           title: 'Stream failed',
-          description: error instanceof Error ? error.message : 'Unknown error',
+          description: streamError instanceof Error ? streamError.message : 'Unknown error',
           variant: 'destructive',
         })
+        return
+      }
+
+      if (shouldPersistAssistant) {
+        persistMessage(sessionId, 'assistant', finalContent).catch(() => {})
       }
     },
     [
       addMessage,
+      createStreamBuffer,
       ensureSession,
       mergeState,
       needsAuth,
