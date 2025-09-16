@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
 import { getMastra } from '@/mastra';
 import { createClient } from '@/lib/supabase/server';
 import { resolveUserId } from '@/config/dev';
 import type { Json } from '@/lib/types/database';
+import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response';
 
 async function saveInsightsToDb(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -69,11 +69,11 @@ export async function POST(req: Request) {
     if (generatedInsights.length > 0) {
       const saved = await saveInsightsToDb(supabase, userId, generatedInsights);
       if (!saved) {
-        return NextResponse.json({ error: 'Failed to save generated insights.' }, { status: 500 });
+        return errorResponse('Failed to save generated insights.', HTTP_STATUS.INTERNAL_SERVER_ERROR);
       }
     }
 
-    return NextResponse.json({
+    return jsonResponse({
       message: 'Insight generation process completed.',
       insightsGenerated: generatedInsights.length,
     });
@@ -81,6 +81,6 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('Error in insight request route:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return errorResponse(errorMessage, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }

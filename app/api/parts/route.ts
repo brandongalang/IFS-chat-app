@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 
 export async function GET() {
   const supabase = await createClient()
@@ -8,7 +8,7 @@ export async function GET() {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
   }
 
   try {
@@ -20,12 +20,12 @@ export async function GET() {
 
     if (error) {
       console.error('Error fetching parts:', error)
-      return NextResponse.json({ error: 'Failed to fetch parts' }, { status: 500 })
+      return errorResponse('Failed to fetch parts', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
 
-    return NextResponse.json(parts, { status: 200 })
+    return jsonResponse(parts)
   } catch (error) {
     console.error('Parts API error:', error)
-    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 })
+    return errorResponse('An unexpected error occurred', HTTP_STATUS.INTERNAL_SERVER_ERROR)
   }
 }

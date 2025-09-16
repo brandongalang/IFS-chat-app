@@ -1,9 +1,26 @@
-export function jsonResponse(data: unknown, status = 200, init: ResponseInit = {}) {
+import { NextResponse } from 'next/server'
+
+export const HTTP_STATUS = {
+  OK: 200,
+  CREATED: 201,
+  NO_CONTENT: 204,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  CONFLICT: 409,
+  UNPROCESSABLE_ENTITY: 422,
+  TOO_MANY_REQUESTS: 429,
+  INTERNAL_SERVER_ERROR: 500,
+  SERVICE_UNAVAILABLE: 503,
+} as const
+
+export function jsonResponse(data: unknown, status = HTTP_STATUS.OK, init: ResponseInit = {}) {
   const headers = new Headers(init.headers)
   headers.set('Content-Type', 'application/json')
-  return new Response(JSON.stringify(data), { ...init, status, headers })
+  return new NextResponse(JSON.stringify(data), { ...init, status, headers })
 }
 
-export function errorResponse(message: string, status = 500, init?: ResponseInit) {
+export function errorResponse(message: string, status = HTTP_STATUS.INTERNAL_SERVER_ERROR, init?: ResponseInit) {
   return jsonResponse({ error: message }, status, init)
 }

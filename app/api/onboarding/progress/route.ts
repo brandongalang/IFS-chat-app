@@ -1,13 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { 
-  ProgressUpdateRequest, 
-  ProgressUpdateResponse, 
+import {
+  ProgressUpdateRequest,
+  ProgressUpdateResponse,
   UserOnboardingState,
-  OnboardingQuestion 
+  OnboardingQuestion
 } from '@/lib/onboarding/types';
 import { computeStage1Scores, hasCompleteStage1 } from '@/lib/onboarding/scoring';
 import { selectStage2Questions } from '@/lib/onboarding/selector';
+import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response';
 
 /**
  * POST /api/onboarding/progress
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED);
     }
 
     // Parse and validate request
@@ -33,10 +34,10 @@ export async function POST(request: NextRequest) {
     const validation = ProgressUpdateRequest.safeParse(body);
     
     if (!validation.success) {
-      return NextResponse.json({ 
-        error: 'Invalid request', 
-        details: validation.error.issues 
-      }, { status: 400 });
+      return jsonResponse({
+        error: 'Invalid request',
+        details: validation.error.issues
+      }, HTTP_STATUS.BAD_REQUEST);
     }
 
     const { stage, questionId, response, version } = validation.data;
@@ -64,21 +65,21 @@ export async function POST(request: NextRequest) {
 
       if (createError) {
         console.error('Error creating user onboarding state:', createError);
-        return NextResponse.json({ error: 'Failed to initialize onboarding' }, { status: 500 });
+        return errorResponse('Failed to initialize onboarding', HTTP_STATUS.INTERNAL_SERVER_ERROR);
       }
 
       userState = newState;
     } else if (fetchError) {
       console.error('Error fetching user onboarding state:', fetchError);
-      return NextResponse.json({ error: 'Failed to load onboarding state' }, { status: 500 });
+      return errorResponse('Failed to load onboarding state', HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     // Version conflict check for optimistic concurrency
     if (userState!.version !== version) {
-      return NextResponse.json({ 
-        error: 'Version conflict - state has been updated', 
-        current_version: userState!.version 
-      }, { status: 409 });
+      return jsonResponse({
+        error: 'Version conflict - state has been updated',
+        current_version: userState!.version
+      }, HTTP_STATUS.CONFLICT);
     }
 
     // Upsert the individual response
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     if (responseError) {
       console.error('Error upserting response:', responseError);
-      return NextResponse.json({ error: 'Failed to save response' }, { status: 500 });
+      return errorResponse('Failed to save response', HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     // Update answers snapshot
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       console.error('Error updating user onboarding state:', updateError);
-      return NextResponse.json({ error: 'Failed to update progress' }, { status: 500 });
+      return errorResponse('Failed to update progress', HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
     // Prepare response
@@ -174,10 +175,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(responseData);
+    return jsonResponse(responseData);
 
   } catch (error) {
     console.error('Unexpected error in progress route:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return errorResponse('Internal server error', HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }

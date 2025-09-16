@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 
 /**
  * POST /api/onboarding/selection
@@ -11,12 +12,12 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
 
     const body = await request.json()
     const { version, ids } = body as { version: number; ids: string[] }
     if (!Array.isArray(ids) || typeof version !== 'number') {
-      return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+      return errorResponse('Invalid request', HTTP_STATUS.BAD_REQUEST)
     }
 
     // Fetch current state to decide whether to bump stage
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('selection update error:', error)
-      return NextResponse.json({ error: 'Failed to save selection' }, { status: 500 })
+      return errorResponse('Failed to save selection', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
 
     if (!rows || rows.length === 0) {
@@ -47,12 +48,12 @@ export async function POST(request: NextRequest) {
         .select('version')
         .eq('user_id', user.id)
         .single()
-      return NextResponse.json({ error: 'Version conflict', current_version: latest.data?.version }, { status: 409 })
+      return jsonResponse({ error: 'Version conflict', current_version: latest.data?.version }, HTTP_STATUS.CONFLICT)
     }
 
-    return NextResponse.json({ ok: true, state: rows[0] })
+    return jsonResponse({ ok: true, state: rows[0] })
   } catch (e) {
     console.error('selection route error:', e)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return errorResponse('Internal server error', HTTP_STATUS.INTERNAL_SERVER_ERROR)
   }
 }
