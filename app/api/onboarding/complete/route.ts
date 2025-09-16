@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BASE_URL } from '@/config/app';
-import { createClient } from '@/lib/supabase/server';
-import {
-  CompletionRequest,
-  CompletionResponse,
-  QuestionResponse,
-  OnboardingQuestion,
-  QuestionOption,
-  OnboardingResponseRecord,
-} from '@/lib/onboarding/types';
-import { computeStage1Scores, getTopThemes } from '@/lib/onboarding/scoring';
 import questionsConfig from '@/config/onboarding-questions.json';
-import { ensureOverviewExists } from '@/lib/memory/snapshots/scaffold';
-import { userOverviewPath } from '@/lib/memory/snapshots/fs-helpers';
-import { editMarkdownSection } from '@/lib/memory/markdown/editor';
+import { createClient } from '@/lib/supabase/server';
+import { validateCompletionRequest } from '@/lib/onboarding/validate-completion-request';
+import { completeOnboardingState } from '@/lib/onboarding/complete-state';
+import { synthesizeOnboardingMemories } from '@/lib/onboarding/synthesize-memories';
+import { buildCompletionResponse } from '@/lib/onboarding/build-completion-response';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/lib/types/database';
 
 const onboardingRequirements: Record<string, string[]> =
   (questionsConfig as { requirements?: Record<string, string[]> }).requirements ?? {};
@@ -42,16 +35,16 @@ export async function POST(request: NextRequest) {
 
     // Parse and validate request
     const body = await request.json();
-    const validation = CompletionRequest.safeParse(body);
-    
-    if (!validation.success) {
-      return NextResponse.json({ 
-        error: 'Invalid request', 
-        details: validation.error.issues 
+    const validationResult = validateCompletionRequest(body);
+
+    if (!validationResult.success) {
+      return NextResponse.json({
+        error: 'Invalid request',
+        details: validationResult.issues,
       }, { status: 400 });
     }
 
-    const { version } = validation.data;
+    const { version } = validationResult.data;
 
     // Get user's onboarding state
     const { data: userState, error: stateError } = await supabase
@@ -69,12 +62,8 @@ export async function POST(request: NextRequest) {
 
     // Check if already completed
     if (userState.status === 'completed') {
-      const response: CompletionResponse = {
-        ok: true,
-        redirect: `${BASE_URL}/`,
-        completed_at: userState.completed_at!
-      };
-      return NextResponse.json(response);
+      const completedAt = userState.completed_at ?? new Date().toISOString();
+      return buildCompletionResponse(completedAt, { setCompletionCookie: false });
     }
 
     // Version conflict check
@@ -86,36 +75,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate completion requirements
-    const validationResult = await validateOnboardingCompletion(supabase, user.id);
-    if (!validationResult.valid) {
-      return NextResponse.json({ 
-        error: 'Onboarding not complete', 
-        missing: validationResult.missing 
+    const completionValidation = await validateOnboardingCompletion(supabase, user.id);
+    if (!completionValidation.valid) {
+      return NextResponse.json({
+        error: 'Onboarding not complete',
+        missing: completionValidation.missing
       }, { status: 400 });
     }
 
     // Mark as completed
-    const now = new Date().toISOString();
-    const { error: updateError } = await supabase
-      .from('user_onboarding')
-      .update({
-        status: 'completed',
-        stage: 'complete',
-        completed_at: now
-      })
-      .eq('user_id', user.id)
-      .eq('version', version)
-      .select()
-      .single();
+    const completionResult = await completeOnboardingState(supabase, user.id, version);
 
-    if (updateError) {
-      console.error('Error completing onboarding:', updateError);
+    if (!completionResult.success) {
+      console.error('Error completing onboarding:', completionResult.error);
       return NextResponse.json({ error: 'Failed to complete onboarding' }, { status: 500 });
     }
 
     // Trigger user memory synthesis
     try {
-      const { success: _memSuccess, didEdit: _memDidEdit } = await synthesizeOnboardingMemories(user.id);
+      const { success: _memSuccess, didEdit: _memDidEdit } = await synthesizeOnboardingMemories(supabase, user.id);
       void _memSuccess;
       void _memDidEdit;
     } catch (memoryError) {
@@ -126,24 +104,7 @@ export async function POST(request: NextRequest) {
     // TODO: Track analytics event
     // await trackEvent('onboarding_completed', { userId: user.id, duration: ... });
 
-    const response: CompletionResponse = {
-      ok: true,
-      redirect: `${BASE_URL}/`,
-      completed_at: now
-    };
-
-    // Also set a lightweight cookie hint so middleware/UX can skip the DB check
-    const res = NextResponse.json(response)
-    try {
-      res.cookies.set('ifs_onb', '0', {
-        path: '/',
-        httpOnly: false,
-        sameSite: 'lax',
-        secure: true,
-      })
-    } catch {}
-
-    return res;
+    return buildCompletionResponse(completionResult.completedAt);
 
   } catch (error) {
     console.error('Unexpected error in completion route:', error);
@@ -154,9 +115,6 @@ export async function POST(request: NextRequest) {
 /**
  * Validates that all required onboarding responses are present
  */
-import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/lib/types/database'
-
 async function validateOnboardingCompletion(
   supabase: SupabaseClient<Database>, 
   userId: string
@@ -231,114 +189,4 @@ async function validateOnboardingCompletion(
     valid: missing.length === 0,
     missing
   };
-}
-
-/**
- * Synthesizes onboarding responses into user memory entries
- */
-async function synthesizeOnboardingMemories(userId: string): Promise<{ success: boolean; didEdit: boolean }> {
-  try {
-    const supabase = await createClient();
-    const { data: responses, error } = await supabase
-      .from('onboarding_responses')
-      .select('question_id, stage, response')
-      .eq('user_id', userId)
-      .in('stage', [1, 2, 3]);
-
-    if (error || !responses) {
-      console.warn('Failed to fetch onboarding responses:', error);
-      return { success: false, didEdit: false };
-    }
-
-    const stage1Snapshot: Record<string, QuestionResponse> = {};
-    const stage2: OnboardingResponseRecord[] = [];
-    const stage3: OnboardingResponseRecord[] = [];
-
-    for (const responseRecord of responses) {
-      if (responseRecord.stage === 1) {
-        stage1Snapshot[responseRecord.question_id] = responseRecord.response as QuestionResponse;
-      } else if (responseRecord.stage === 2) {
-        stage2.push(responseRecord);
-      } else if (responseRecord.stage === 3) {
-        stage3.push(responseRecord);
-      }
-    }
-
-    const scores = computeStage1Scores(stage1Snapshot);
-    const topThemes = getTopThemes(scores);
-    const themesMd = topThemes
-      .map(theme => `- ${theme}: ${(scores[theme] * 100).toFixed(0)}%`)
-      .join('\n');
-
-    const questionMap = new Map<string, OnboardingQuestion>(
-      (questionsConfig.questions as OnboardingQuestion[]).map((q: OnboardingQuestion) => [q.id, q])
-    );
-
-    const protectionsMd = stage2
-      .map((row): string | null => {
-        const question = questionMap.get(row.question_id);
-        if (!question || row.response.type !== 'single_choice') return null;
-        const response = row.response;
-        const option = question.options.find((opt: QuestionOption) => opt.value === response.value);
-        return `- ${question.prompt} ${option ? option.label : response.value}`;
-      })
-      .filter((line): line is string => Boolean(line))
-      .join('\n');
-
-    let somaticMd = '';
-    const somatic = stage3.find(row => row.question_id === 'S3_Q1');
-    if (somatic && somatic.response.type === 'multi_select') {
-      const q = questionMap.get('S3_Q1');
-      somaticMd = somatic.response.values
-        .map((value: string) => q?.options.find((opt: QuestionOption) => opt.value === value)?.label || value)
-        .join(', ');
-    }
-
-    let beliefsMd = '';
-    const belief = stage3.find(row => row.question_id === 'S3_Q2');
-    if (belief && belief.response.type === 'free_text') beliefsMd = belief.response.text;
-
-    let selfCompMd = '';
-    const selfComp = stage3.find(row => row.question_id === 'S3_Q3');
-    if (selfComp && selfComp.response.type === 'free_text') selfCompMd = selfComp.response.text;
-
-    let emotionsMd = '';
-    const emotion = stage3.find(row => row.question_id === 'S3_Q4');
-    if (emotion && emotion.response.type === 'single_choice') {
-      const q = questionMap.get('S3_Q4');
-      const response = emotion.response;
-      emotionsMd =
-        q?.options.find((o: QuestionOption) => o.value === response.value)?.label ||
-        response.value;
-    }
-
-    await ensureOverviewExists(userId);
-    const path = userOverviewPath(userId);
-
-    let didEdit = false;
-    let success = true;
-    const sections = [
-      { anchor: 'onboarding:v1:themes', text: themesMd },
-      { anchor: 'onboarding:v1:somatic', text: somaticMd },
-      { anchor: 'onboarding:v1:protections', text: protectionsMd },
-      { anchor: 'onboarding:v1:beliefs', text: beliefsMd },
-      { anchor: 'onboarding:v1:self_compassion', text: selfCompMd },
-      { anchor: 'onboarding:v1:emotions', text: emotionsMd },
-    ];
-
-    for (const { anchor, text } of sections) {
-      try {
-        const result = await editMarkdownSection(path, anchor, { replace: text });
-        if (result.beforeHash !== result.afterHash) didEdit = true;
-      } catch (err) {
-        success = false;
-        console.warn('Failed to edit markdown section', anchor, err);
-      }
-    }
-
-    return { success, didEdit };
-  } catch (err) {
-    console.error('synthesizeOnboardingMemories error', err);
-    return { success: false, didEdit: false };
-  }
 }
