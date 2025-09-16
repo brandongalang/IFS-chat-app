@@ -14,9 +14,14 @@ import { ensureOverviewExists } from '@/lib/memory/snapshots/scaffold';
 import { userOverviewPath } from '@/lib/memory/snapshots/fs-helpers';
 import { editMarkdownSection } from '@/lib/memory/markdown/editor';
 
+const onboardingRequirements: Record<string, string[]> =
+  (questionsConfig as { requirements?: Record<string, string[]> }).requirements ?? {};
+
+const getRequiredQuestionIds = (stage: number): string[] => onboardingRequirements[String(stage)] ?? [];
+
 /**
  * POST /api/onboarding/complete
- * 
+ *
  * Completes the onboarding process with comprehensive validation.
  * Features:
  * - Validates all required responses are present (5 + 4 + 4 = 13 total)
@@ -158,7 +163,7 @@ async function validateOnboardingCompletion(
   const missing: string[] = [];
 
   try {
-    // Check Stage 1 responses (5 required)
+    // Check Stage 1 responses (config-defined requirements)
     const { data: stage1Responses, error: s1Error } = await supabase
       .from('onboarding_responses')
       .select('question_id')
@@ -169,13 +174,13 @@ async function validateOnboardingCompletion(
       console.error('Error checking Stage 1 responses:', s1Error);
       missing.push('stage1_responses_check_failed');
     } else {
-      const requiredS1 = ['S1_Q1', 'S1_Q2', 'S1_Q3', 'S1_Q4', 'S1_Q5'];
-      const existingS1 = stage1Responses.map((r: { question_id: string }) => r.question_id);
+      const requiredS1 = getRequiredQuestionIds(1);
+      const existingS1 = (stage1Responses ?? []).map((r: { question_id: string }) => r.question_id);
       const missingS1 = requiredS1.filter(qId => !existingS1.includes(qId));
       missing.push(...missingS1);
     }
 
-    // Check Stage 2 responses (4 required, but personalized)
+    // Check Stage 2 responses (config-defined or minimum requirement)
     const { data: stage2Responses, error: s2Error } = await supabase
       .from('onboarding_responses')
       .select('question_id')
@@ -185,11 +190,21 @@ async function validateOnboardingCompletion(
     if (s2Error) {
       console.error('Error checking Stage 2 responses:', s2Error);
       missing.push('stage2_responses_check_failed');
-    } else if (stage2Responses.length < 4) {
-      missing.push(`stage2_incomplete_${stage2Responses.length}_of_4`);
+    } else {
+      const requiredS2 = getRequiredQuestionIds(2);
+      if (requiredS2.length > 0) {
+        const existingS2 = (stage2Responses ?? []).map((r: { question_id: string }) => r.question_id);
+        const missingS2 = requiredS2.filter(qId => !existingS2.includes(qId));
+        missing.push(...missingS2);
+      } else {
+        const responseCount = stage2Responses?.length ?? 0;
+        if (responseCount < 4) {
+          missing.push(`stage2_incomplete_${responseCount}_of_4`);
+        }
+      }
     }
 
-    // Check Stage 3 responses (4 required)
+    // Check Stage 3 responses (config-defined requirements)
     const { data: stage3Responses, error: s3Error } = await supabase
       .from('onboarding_responses')
       .select('question_id')
@@ -200,8 +215,8 @@ async function validateOnboardingCompletion(
       console.error('Error checking Stage 3 responses:', s3Error);
       missing.push('stage3_responses_check_failed');
     } else {
-      const requiredS3 = ['S3_Q1', 'S3_Q2', 'S3_Q3', 'S3_Q4'];
-      const existingS3 = stage3Responses.map((r: { question_id: string }) => r.question_id);
+      const requiredS3 = getRequiredQuestionIds(3);
+      const existingS3 = (stage3Responses ?? []).map((r: { question_id: string }) => r.question_id);
       const missingS3 = requiredS3.filter(qId => !existingS3.includes(qId));
       missing.push(...missingS3);
     }
