@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { Message as ChatMessage } from "@/types/chat"
 import { useRouter } from "next/navigation"
 import { StreamingText } from "./StreamingText"
-import { TaskList } from "@/components/chat/TaskList"
+import { TaskList } from "@/components/tasks/TaskList"
 import { ActiveTaskOverlay } from "./ActiveTaskOverlay"
 
 // Minimal, bubble-less chat presentation
@@ -153,7 +153,7 @@ export function EtherealChat() {
                 )}
                 {m.role === 'assistant' && (
                   <div className="mb-2 text-base" style={taskListStyles}>
-                    <TaskList tasks={tasksByMessage?.[m.id]} />
+                    <TaskList tasks={tasksByMessage?.[m.id]} data-testid="task-list" />
                   </div>
                 )}
                 <StreamingText text={m.content} />
