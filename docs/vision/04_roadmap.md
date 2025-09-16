@@ -75,6 +75,7 @@ Our development is guided by a series of hypotheses, ordered by risk. We test th
 **Core Bet:** Narrative-driven insights will increase D30 retention by 2x.
 -   **Rationale:** Once the core value is proven, the next step is to make the experience a delightful and regular habit. This phase is about building the features that encourage daily use.
 -   **Implementation:** Insight Cards, part "story arcs," voice input, predictive nudges.
+    -   **Dev note (2025-03-02):** The placeholder `useSpeechRecognition` hook has been removed because no UI consumed it. When we build real voice input, reintroduce a hook alongside the actual component workflow (e.g., wire it directly into the chat composer or future microphone controls) so the implementation is exercised end-to-end from day one.
 
 ### Phase 2: Intelligence Amplification (Months 4-8)
 
