@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { dev } from '@/config/dev'
+import { getSupabaseKey, getSupabaseUrl } from './config'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -9,11 +10,8 @@ export async function updateSession(request: NextRequest) {
 
   // With Fluid compute, don't put this client in a global environment
   // variable. Always create a new one on each request.
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+  const url = getSupabaseUrl()
+  const key = getSupabaseKey()
 
   // Dev fallback: if Supabase env is not configured, allow request to pass through
   if (!url || !key) {

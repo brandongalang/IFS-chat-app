@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
+import { getSupabaseKey, getSupabaseUrl } from '@/lib/supabase/config'
 
 export async function getUserIdFromSupabase(): Promise<string | undefined> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabaseUrl = getSupabaseUrl()
+  const supabaseAnon = getSupabaseKey()
   const hasSupabase =
     typeof supabaseUrl === 'string' && /^https?:\/\//.test(supabaseUrl) &&
     typeof supabaseAnon === 'string' && supabaseAnon.length > 20

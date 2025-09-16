@@ -17,6 +17,7 @@ import type {
 } from '../types/database'
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getSupabaseKey, getSupabaseServiceRoleKey, getSupabaseUrl } from '@/lib/supabase/config'
 import { isMemoryV2Enabled } from '@/lib/memory/config'
 import { recordSnapshotUsage } from '@/lib/memory/observability'
 import { buildPartsQuery, type PartQueryFilters } from './parts-query'
@@ -55,11 +56,8 @@ function getSupabaseClient() {
   }
 
   // Server: read from Node env and optionally use service role in dev
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+  const url = getSupabaseUrl()
+  const anonKey = getSupabaseKey()
 
   if (!url || !anonKey) {
     throw new Error(
@@ -69,7 +67,7 @@ function getSupabaseClient() {
     )
   }
 
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const serviceRole = getSupabaseServiceRoleKey()
   if (dev.enabled && serviceRole) {
     // Dev-only bypass with service role on server
     return createAdminClient()
@@ -799,7 +797,7 @@ export async function logRelationship(input: LogRelationshipInput): Promise<LogR
       ;(updates as any).updated_at = nowIso
 
       // Dev bypass with service role to avoid RLS, and manual action log
-const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
+      const serviceRole = getSupabaseServiceRoleKey()
       if (typeof window === 'undefined' && dev.enabled && serviceRole) {
         try {
           devLog('logRelationship update payload', updates)
@@ -874,7 +872,7 @@ const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
     }
 
     // Dev bypass with service role to avoid RLS, and manual action log
-const serviceRoleCreate = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const serviceRoleCreate = getSupabaseServiceRoleKey()
     if (typeof window === 'undefined' && dev.enabled && serviceRoleCreate) {
       const { data: createdDirect, error: insErr } = await supabase
         .from('part_relationships')
