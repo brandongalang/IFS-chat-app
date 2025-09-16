@@ -45,6 +45,11 @@ In code, prefer using `isDevMode()` from `config/features` to check whether deve
 
 - `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
 - `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key for Storage adapter
+- `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` - OAuth client ID configured in the Google Cloud Console for Supabase Auth
+- `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET` - OAuth client secret paired with the above client ID
+- `SUPABASE_AUTH_EXTERNAL_GOOGLE_REDIRECT_URI` - Redirect URI registered with Google for Supabase (e.g. `https://<PROJECT_REF>.supabase.co/auth/v1/callback` in production or `http://127.0.0.1:54321/auth/v1/callback` when running the Supabase CLI locally)
+
+Ensure the redirect URIs listed above are also added to the allowed redirect list in your Supabase project (`[auth] site_url` and `additional_redirect_urls`) so the Google flow can complete successfully.
 
 ### Agent API Keys
 
