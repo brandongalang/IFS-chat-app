@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 declare global {
   interface Window {
@@ -14,6 +14,7 @@ declare global {
             callback: (response: { credential: string }) => void;
             auto_select?: boolean;
             cancel_on_tap_outside?: boolean;
+            nonce?: string;
           }) => void;
           prompt: (
             cb: (notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => void
@@ -40,6 +41,39 @@ export function useGoogleAuth() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+  const nonceRef = useRef<{ raw: string; hashed: string } | null>(null)
+
+  const base64UrlEncode = (buffer: ArrayBuffer) => {
+    const bytes = new Uint8Array(buffer)
+    let binary = ''
+    bytes.forEach((byte) => {
+      binary += String.fromCharCode(byte)
+    })
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  }
+
+  const generateNonce = async () => {
+    const cryptoObj = globalThis.crypto
+    if (!cryptoObj?.randomUUID || !cryptoObj.subtle) {
+      throw new Error('Secure nonce generation not supported in this environment')
+    }
+
+    const rawNonce = cryptoObj.randomUUID()
+    const encoder = new TextEncoder()
+    const hashBuffer = await cryptoObj.subtle.digest('SHA-256', encoder.encode(rawNonce))
+    const hashedNonce = base64UrlEncode(hashBuffer)
+
+    nonceRef.current = { raw: rawNonce, hashed: hashedNonce }
+
+    return { rawNonce, hashedNonce }
+  }
+
+  const clearStoredNonce = (rawNonce?: string | null) => {
+    if (!rawNonce) return
+    if (nonceRef.current?.raw === rawNonce) {
+      nonceRef.current = null
+    }
+  }
 
   const initializeGoogleSignIn = () => {
     return new Promise((resolve, reject) => {
@@ -114,27 +148,38 @@ export function useGoogleAuth() {
   // Initialize and render the standard Google button into a container
   const initGoogleButton = async (containerId: string = 'google-btn-container', redirectPath = '/') => {
     setError(null)
+    let activeRawNonce: string | null = null
     try {
       await initializeGoogleSignIn()
       const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
       if (!clientId) throw new Error('Google Client ID not configured')
       if (!window.google) throw new Error('Google Identity not initialized')
 
+      const { rawNonce, hashedNonce } = await generateNonce()
+      activeRawNonce = rawNonce
+
       window.google.accounts.id.initialize({
         client_id: clientId,
         callback: async (response: { credential: string }) => {
           try {
             const { credential } = response
-            const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: credential })
+            const { error } = await supabase.auth.signInWithIdToken({
+              provider: 'google',
+              token: credential,
+              nonce: hashedNonce,
+            })
             if (error) throw error
             await redirectAfterSignIn(redirectPath)
           } catch (authError) {
             setError(authError instanceof Error ? authError.message : 'Authentication failed')
             setIsLoading(false)
+          } finally {
+            clearStoredNonce(rawNonce)
           }
         },
         auto_select: false,
         cancel_on_tap_outside: true,
+        nonce: rawNonce,
       })
 
       const container = document.getElementById(containerId)
@@ -151,12 +196,14 @@ export function useGoogleAuth() {
       }
     } catch (authError) {
       setError(authError instanceof Error ? authError.message : 'Failed to initialize Google Sign-In')
+      clearStoredNonce(activeRawNonce)
     }
   }
 
   const signInWithGoogle = async (redirectPath = '/') => {
     setIsLoading(true)
     setError(null)
+    let activeRawNonce: string | null = null
 
     try {
       await initializeGoogleSignIn()
@@ -170,16 +217,21 @@ export function useGoogleAuth() {
       if (!window.google) {
         throw new Error('Google Identity not initialized')
       }
+
+      const { rawNonce, hashedNonce } = await generateNonce()
+      activeRawNonce = rawNonce
+
       window.google.accounts.id.initialize({
         client_id: clientId,
         callback: async (response: { credential: string }) => {
           try {
             const { credential } = response
-            
+
             // Use Supabase's signInWithIdToken method
             const { error } = await supabase.auth.signInWithIdToken({
               provider: 'google',
               token: credential,
+              nonce: hashedNonce,
             })
 
             if (error) {
@@ -191,10 +243,13 @@ export function useGoogleAuth() {
           } catch (authError) {
             setError(authError instanceof Error ? authError.message : 'Authentication failed')
             setIsLoading(false)
+          } finally {
+            clearStoredNonce(rawNonce)
           }
         },
         auto_select: false,
         cancel_on_tap_outside: true,
+        nonce: rawNonce,
       })
 
       // Prompt the user to sign in
@@ -220,6 +275,7 @@ export function useGoogleAuth() {
     } catch (authError) {
       setError(authError instanceof Error ? authError.message : 'Failed to initialize Google Sign-In')
       setIsLoading(false)
+      clearStoredNonce(activeRawNonce)
     }
   }
 
