@@ -433,6 +433,88 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
   }
 }
 
+type UpdatePartInput = z.infer<typeof updatePartSchema>
+type UpdateFields = UpdatePartInput['updates']
+type UpdatePatch = Partial<PartUpdate> & Record<string, unknown>
+
+function mergeVisualization(currentPart: PartRow, visualization?: UpdateFields['visualization']): UpdatePatch {
+  if (!visualization) {
+    return {}
+  }
+
+  const baseVisualization = (currentPart.visualization as PartRow['visualization'] | null) ?? null
+  const merged = {
+    ...(baseVisualization ?? {}),
+    ...visualization,
+  } as PartRow['visualization']
+
+  if (typeof merged.energyLevel !== 'number') {
+    merged.energyLevel = baseVisualization?.energyLevel ?? 0.5
+  }
+
+  return { visualization: merged }
+}
+
+function adjustConfidence(currentPart: PartRow, confidenceBoost?: number): UpdatePatch {
+  if (typeof confidenceBoost !== 'number') {
+    return {}
+  }
+
+  return {
+    confidence: Math.min(1.0, Math.max(0, currentPart.confidence + confidenceBoost))
+  }
+}
+
+function applyEvidence(currentPart: PartRow, newEvidence?: UpdatePartInput['evidence']): UpdatePatch {
+  if (!newEvidence) {
+    return {}
+  }
+
+  const currentEvidence = Array.isArray(currentPart.recent_evidence) ? currentPart.recent_evidence : []
+  const updatedEvidence = [...currentEvidence, newEvidence].slice(-10)
+
+  return {
+    recent_evidence: updatedEvidence,
+    evidence_count: currentPart.evidence_count + 1,
+  }
+}
+
+function appendStoryEntry(currentStory: PartRow['story'] | null | undefined, auditNote: string | undefined, timestamp: string): UpdatePatch {
+  const fallbackStory = {
+    origin: null,
+    currentState: null,
+    purpose: null,
+    evolution: [] as Array<{ timestamp: string; change: string; trigger?: string }>,
+  }
+
+  const baseStory = (currentStory ?? fallbackStory) as PartRow['story']
+  const currentEvolution = Array.isArray(baseStory.evolution) ? baseStory.evolution : []
+  const evolutionEntry = {
+    timestamp,
+    change: auditNote || 'Part updated',
+    trigger: 'Agent tool update',
+  }
+
+  return {
+    story: {
+      ...baseStory,
+      evolution: [...currentEvolution, evolutionEntry],
+    },
+  }
+}
+
+function normalizeSomaticMarkers(somaticMarkers?: string[]): UpdatePatch {
+  if (!somaticMarkers) {
+    return {}
+  }
+
+  return { somatic_markers: somaticMarkers }
+}
+
+function combineUpdatePatches(patches: UpdatePatch[]): UpdatePatch {
+  return patches.reduce<UpdatePatch>((acc, patch) => ({ ...acc, ...patch }), {} as UpdatePatch)
+}
+
 /**
  * Update a part with confidence increment and audit trail
  */
@@ -460,54 +542,28 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
       throw new Error('Part not found or access denied')
     }
 
-    // Prepare update object
-    const updates: any = {
-      ...validated.updates,
-      last_active: new Date().toISOString()
+    const {
+      visualization,
+      confidenceBoost,
+      somaticMarkers,
+      ...attributeUpdates
+    } = validated.updates
+
+    const nowIso = new Date().toISOString()
+
+    const baseUpdates: UpdatePatch = {
+      ...attributeUpdates,
+      last_active: nowIso,
     }
 
-    // If updating visualization, merge with existing
-    if (validated.updates.visualization) {
-      const currentVis = (currentPart.visualization as any) || {}
-      const nextVis = { ...currentVis, ...validated.updates.visualization }
-      if (typeof (nextVis as any).energyLevel !== 'number') {
-        (nextVis as any).energyLevel = currentVis.energyLevel ?? 0.5
-      }
-      updates.visualization = nextVis as any
-    }
-
-    // Only update identification confidence if explicitly requested
-    if (typeof validated.updates.confidenceBoost === 'number') {
-      updates.confidence = Math.min(1.0, Math.max(0, currentPart.confidence + validated.updates.confidenceBoost))
-    }
-
-    // Add evidence if provided
-    if (validated.evidence) {
-      const currentEvidence = currentPart.recent_evidence || []
-      const newEvidence = [...currentEvidence, validated.evidence].slice(-10) // Keep only last 10
-      updates.recent_evidence = newEvidence
-      updates.evidence_count = currentPart.evidence_count + 1
-    }
-
-    // Update story evolution with audit trail
-    const currentStory = currentPart.story || { origin: null, currentState: null, purpose: null, evolution: [] }
-    const evolutionEntry = {
-      timestamp: new Date().toISOString(),
-      change: validated.auditNote || 'Part updated',
-      trigger: 'Agent tool update'
-    }
-    
-    updates.story = {
-      ...currentStory,
-      evolution: [...(currentStory.evolution || []), evolutionEntry]
-    }
-
-    // Handle somatic_markers correctly (database expects snake_case)
-    if (validated.updates.somaticMarkers) {
-      const somaticMarkersValue = validated.updates.somaticMarkers
-      delete (updates as any).somaticMarkers
-      updates.somatic_markers = somaticMarkersValue
-    }
+    const updates = combineUpdatePatches([
+      baseUpdates,
+      mergeVisualization(currentPart, visualization),
+      adjustConfidence(currentPart, confidenceBoost),
+      applyEvidence(currentPart, validated.evidence),
+      appendStoryEntry(currentPart.story, validated.auditNote, nowIso),
+      normalizeSomaticMarkers(somaticMarkers),
+    ])
 
     // Determine action type and generate change description
     let actionType: 'update_part_confidence' | 'update_part_category' | 'update_part_attributes' | 'add_part_evidence' | 'update_part_charge' = 'update_part_attributes'
@@ -520,10 +576,10 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
     } else if (typeof validated.updates.last_charge_intensity === 'number') {
       actionType = 'update_part_charge'
       changeDescription = `updated part charge to ${validated.updates.last_charge_intensity.toFixed(2)}`
-    } else if (typeof validated.updates.confidenceBoost === 'number') {
+    } else if (typeof confidenceBoost === 'number') {
       actionType = 'update_part_confidence'
       const toVal = (updates.confidence ?? currentPart.confidence)
-      const direction = validated.updates.confidenceBoost >= 0 ? 'increased' : 'decreased'
+      const direction = confidenceBoost >= 0 ? 'increased' : 'decreased'
       changeDescription = `${direction} confidence from ${currentPart.confidence} to ${toVal}`
     } else if (validated.updates.category && validated.updates.category !== currentPart.category) {
       actionType = 'update_part_category'
@@ -544,7 +600,7 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
       {
         partName: currentPart.name,
         changeDescription,
-        confidenceDelta: validated.updates.confidenceBoost,
+        confidenceDelta: confidenceBoost,
         categoryChange: validated.updates.category ? {
           from: currentPart.category,
           to: validated.updates.category
