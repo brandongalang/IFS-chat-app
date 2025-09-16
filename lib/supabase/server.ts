@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { getSupabaseKey, getSupabaseUrl } from './config'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../types/database'
 
 let serverClientOverride: unknown | null = null
 
@@ -45,4 +47,29 @@ export async function createClient() {
       },
     }
   )
+}
+
+export function createClientWithAccessToken(accessToken: string): SupabaseClient<Database> {
+  const url = getSupabaseUrl()
+  const key = getSupabaseKey()
+
+  if (!url || !key) {
+    throw new Error('Supabase URL and key must be configured to create a server client')
+  }
+
+  return createServerClient<Database>(url, key, {
+    cookies: {
+      getAll() {
+        return []
+      },
+      setAll() {
+        /* no-op: JWT auth handles session */
+      },
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  })
 }

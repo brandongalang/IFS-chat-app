@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, useCallback, type ChangeEvent } from 'react'
 import dynamic from 'next/dynamic'
 import { searchParts, getPartRelationships } from '@/lib/data/parts-lite'
-import type { PartRow, PartRelationshipRow, PartCategory, RelationshipType } from '@/lib/types/database'
+import type { PartRow, PartCategory, RelationshipType } from '@/lib/types/database'
+import type { PartRelationshipWithDetails } from '@/lib/data/parts.schema'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
@@ -120,7 +121,7 @@ function drawNode(node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: n
 export default function GardenPage() {
   const isGridView = isGardenGridViewEnabled()
   const [parts, setParts] = useState<PartRow[]>([])
-  const [relationships, setRelationships] = useState<PartRelationshipRow[]>([])
+  const [relationships, setRelationships] = useState<PartRelationshipWithDetails[]>([])
   const [partsError, setPartsError] = useState<string | null>(null)
   const [relationshipsError, setRelationshipsError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -230,9 +231,12 @@ export default function GardenPage() {
 
     const links: GraphLink[] = relationships
       .map((rel) => {
-        const partIds = rel.parts
-        if (partIds && partIds.length === 2) {
-          return { source: partIds[0], target: partIds[1], type: rel.type }
+        const partIds = Array.isArray(rel.parts) ? rel.parts : []
+        if (partIds.length === 2) {
+          const [first, second] = partIds
+          if (first?.id && second?.id) {
+            return { source: first.id, target: second.id, type: rel.type }
+          }
         }
         return null
       })

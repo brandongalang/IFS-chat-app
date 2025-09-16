@@ -17,16 +17,19 @@ export async function POST(req: NextRequest) {
       const { createChatSessionService } = await import('../../../../lib/session-service')
 
       if (ctx.type === 'authed') {
-        const sessionService = createChatSessionService({ supabaseClient: ctx.supabase })
-        const sessionId = await sessionService.startSession(ctx.userId)
+        const sessionService = createChatSessionService({
+          accessToken: ctx.accessToken,
+          userId: ctx.userId,
+        })
+        const sessionId = await sessionService.startSession()
         return jsonResponse({ sessionId })
       }
 
       if (ctx.type === 'admin') {
         const personaUserId = resolveUserId()
         const sessionService = createChatSessionService({
-          supabaseClient: ctx.admin,
-          defaultUserId: personaUserId,
+          supabase: ctx.admin,
+          userId: personaUserId,
         })
         const sessionId = await sessionService.startSession()
         return jsonResponse({ sessionId })
