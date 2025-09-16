@@ -23,6 +23,11 @@
     {"id":"S3_Q2","stage":3,"type":"free_text","prompt":"Complete this sentence: \"I absolutely must...\"","helper":"What feels non-negotiable to you? A few words are enough.","options":[],"active":true,"locale":"en","order_hint":2,"theme_weights":{}},
     {"id":"S3_Q3","stage":3,"type":"free_text","prompt":"What is your first thought when you realize you've made a mistake?","helper":"The very first thing that goes through your mind.","options":[],"active":true,"locale":"en","order_hint":3,"theme_weights":{}},
     {"id":"S3_Q4","stage":3,"type":"single_choice","prompt":"Which feeling do you trust the least?","helper":"Which one feels most unreliable or dangerous?","options":[{"value":"anger","label":"Anger"},{"value":"sadness","label":"Sadness"},{"value":"joy","label":"Joy"},{"value":"fear","label":"Fear"},{"value":"contentment","label":"Contentment"}],"active":true,"locale":"en","order_hint":4,"theme_weights":{}}
-  ]
+  ],
+  "requirements": {
+    "1": ["S1_Q1", "S1_Q2", "S1_Q3", "S1_Q4", "S1_Q5"],
+    "2": [],
+    "3": ["S3_Q1", "S3_Q2", "S3_Q3", "S3_Q4"]
+  }
 }
 
