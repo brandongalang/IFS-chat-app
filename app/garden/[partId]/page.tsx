@@ -1,5 +1,6 @@
 import { getPartById, getPartRelationships, getPartNotes } from '@/lib/data/parts-server'
 import type { PartRow, PartNoteRow } from '@/lib/types/database'
+import type { PartRelationshipWithDetails } from '@/lib/data/parts.schema'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -80,7 +81,10 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
   const part: PartRow = partResult
   const visualization = part.visualization as { emoji?: string; color?: string }
   const story = part.story as { origin?: string; currentState?: string; purpose?: string }
-  const relationships = relationshipsResult && Array.isArray(relationshipsResult) ? relationshipsResult : []
+  const relationships: PartRelationshipWithDetails[] =
+    relationshipsResult && Array.isArray(relationshipsResult)
+      ? (relationshipsResult as PartRelationshipWithDetails[])
+      : []
   const notes: PartNoteRow[] = notesResult ?? []
 
   return (
@@ -174,7 +178,7 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
             <CardContent>
               {relationships && relationships.length > 0 ? (
                 <ul className="space-y-4">
-                  {relationships.map((rel: { id: string; type: string; parts: { id: string; name: string }[] }) => (
+                  {relationships.map((rel) => (
                     <li key={rel.id} className="text-sm flex items-baseline">
                       <span className="font-semibold capitalize w-24">{rel.type}:</span>
                       <div className="flex flex-wrap gap-1 ml-2">
@@ -182,7 +186,7 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
                           .filter((p) => p.id !== part.id)
                           .map((p) => (
                             <Button asChild variant="link" size="sm" className="p-0 h-auto" key={p.id}>
-                               <Link href={`/garden/${p.id}`}>{p.name}</Link>
+                              <Link href={`/garden/${p.id}`}>{p.name ?? 'View part'}</Link>
                             </Button>
                           ))}
                       </div>
