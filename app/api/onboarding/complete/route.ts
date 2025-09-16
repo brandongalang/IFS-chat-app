@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { BASE_URL } from '@/config/app';
 import { createClient } from '@/lib/supabase/server';
 import {
   CompletionRequest,
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
     if (userState.status === 'completed') {
       const response: CompletionResponse = {
         ok: true,
-        redirect: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/`,
+        redirect: `${BASE_URL}/`,
         completed_at: userState.completed_at!
       };
       return NextResponse.json(response);
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
 
     const response: CompletionResponse = {
       ok: true,
-      redirect: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/`,
+      redirect: `${BASE_URL}/`,
       completed_at: now
     };
 
