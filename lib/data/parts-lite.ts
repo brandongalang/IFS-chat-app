@@ -1,34 +1,23 @@
-import { z } from 'zod'
-import type { Database, PartRow, PartRelationshipRow } from '@/lib/types/database'
+import type { PartRow, PartRelationshipRow } from '@/lib/types/database'
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
+import {
+  searchPartsSchema,
+  getPartByIdSchema,
+  getPartRelationshipsSchema,
+  type SearchPartsInput,
+  type SearchPartsResult,
+  type GetPartByIdInput,
+  type GetPartByIdResult,
+  type GetPartRelationshipsInput,
+  type GetPartRelationshipsResult,
+} from './parts.schema'
 
 function getSupabaseClient() {
   // Always use browser client in lite (client-safe) module
   return createBrowserSupabase()
 }
 
-// Lightweight schemas (for basic validation only where needed)
-const searchPartsSchema = z.object({
-  query: z.string().optional(),
-  status: z.enum(['emerging', 'acknowledged', 'active', 'integrated']).optional(),
-  category: z.enum(['manager', 'firefighter', 'exile', 'unknown']).optional(),
-  limit: z.number().min(1).max(50).default(20),
-})
-
-const getPartByIdSchema = z.object({
-  partId: z.string().uuid(),
-})
-
-const getPartRelationshipsSchema = z.object({
-  userId: z.string().uuid().optional(),
-  partId: z.string().uuid().optional(),
-  relationshipType: z.enum(['polarized', 'protector-exile', 'allied']).optional(),
-  status: z.enum(['active', 'healing', 'resolved']).optional(),
-  includePartDetails: z.boolean().default(false),
-  limit: z.number().min(1).max(50).default(20),
-})
-
-export async function searchParts(input: z.infer<typeof searchPartsSchema>): Promise<PartRow[]> {
+export async function searchParts(input: SearchPartsInput): Promise<SearchPartsResult> {
   try {
     const validated = searchPartsSchema.parse(input)
     const supabase = getSupabaseClient()
@@ -52,13 +41,13 @@ export async function searchParts(input: z.infer<typeof searchPartsSchema>): Pro
     const { data, error } = await query
     if (error) throw new Error(`Database error: ${error.message}`)
 
-    return (data as any) || []
+    return (data || []) as SearchPartsResult
   } catch (error) {
     throw error instanceof Error ? error : new Error('Unknown error occurred')
   }
 }
 
-export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Promise<PartRow | null> {
+export async function getPartById(input: GetPartByIdInput): Promise<GetPartByIdResult> {
   try {
     const validated = getPartByIdSchema.parse(input)
     const supabase = getSupabaseClient()
@@ -76,13 +65,15 @@ export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Pro
       throw new Error(`Database error: ${error.message}`)
     }
 
-    return data as any
+    return (data as PartRow | null) as GetPartByIdResult
   } catch (error) {
     throw error instanceof Error ? error : new Error('Unknown error occurred')
   }
 }
 
-export async function getPartRelationships(input: z.infer<typeof getPartRelationshipsSchema>): Promise<Array<any>> {
+export async function getPartRelationships(
+  input: GetPartRelationshipsInput,
+): Promise<GetPartRelationshipsResult> {
   try {
     const validated = getPartRelationshipsSchema.parse(input)
     const supabase = getSupabaseClient()
@@ -103,17 +94,19 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
     const { data, error } = await query
     if (error) throw new Error(`Database error: ${error.message}`)
 
-    let relationships = (data || []) as any[]
+    const relationships = (data || []) as PartRelationshipRow[]
+
+    let filtered = relationships
 
     if (validated.partId) {
       const pid = validated.partId
-      relationships = relationships.filter((rel: any) => Array.isArray(rel.parts) && rel.parts.includes(pid))
+      filtered = relationships.filter(rel => Array.isArray(rel.parts) && rel.parts.includes(pid))
     }
 
     // Optionally fetch basic part details
     let partsDetails: Record<string, { name: string; status: string }> = {}
     if (validated.includePartDetails) {
-      const allPartIds = relationships.reduce((acc, rel) => {
+      const allPartIds = filtered.reduce((acc, rel) => {
         const partIds = Array.isArray(rel.parts) ? rel.parts : []
         return [...acc, ...partIds]
       }, [] as string[])
@@ -132,7 +125,7 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
       }
     }
 
-    const formatted = relationships.map(rel => {
+    const formatted: GetPartRelationshipsResult = filtered.map(rel => {
       const partIds = Array.isArray(rel.parts) ? rel.parts : []
       return {
         id: rel.id,

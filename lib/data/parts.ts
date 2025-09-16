@@ -2,19 +2,15 @@ import 'server-only'
 
 import { createServerClient } from '@supabase/ssr'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
-import { z } from 'zod'
 import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/dev'
 import type {
   Database,
   PartRow,
   PartInsert,
   PartUpdate,
-  PartEvidence,
   PartRelationshipRow,
   PartRelationshipInsert,
   PartRelationshipUpdate,
-  RelationshipType,
-  RelationshipStatus,
   RelationshipDynamic,
   PartNoteRow,
 } from '../types/database'
@@ -22,109 +18,32 @@ import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isMemoryV2Enabled } from '@/lib/memory/config'
 import { recordSnapshotUsage } from '@/lib/memory/observability'
-
-// Input schemas for tool validation
-const searchPartsSchema = z.object({
-  query: z.string().optional().describe('Search query for part names or roles'),
-  status: z.enum(['emerging', 'acknowledged', 'active', 'integrated']).optional().describe('Filter by part status'),
-  category: z.enum(['manager', 'firefighter', 'exile', 'unknown']).optional().describe('Filter by part category'),
-  limit: z.number().min(1).max(50).default(20).describe('Maximum number of results to return'),
-  userId: z.string().uuid().optional().describe('User ID for the search (optional in development mode)')
-})
-
-const getPartByIdSchema = z.object({
-  partId: z.string().uuid().describe('The UUID of the part to retrieve'),
-  userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)')
-})
-
-const getPartDetailSchema = z.object({
-  partId: z.string().uuid().describe('The UUID of the part to retrieve details for'),
-  userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)')
-})
-
-const createEmergingPartSchema = z.object({
-  name: z.string().min(1).max(100).describe('Name of the emerging part'),
-  evidence: z.array(z.object({
-    type: z.enum(['direct_mention', 'pattern', 'behavior', 'emotion']),
-    content: z.string(),
-    confidence: z.number().min(0).max(1),
-    sessionId: z.string().uuid(),
-    timestamp: z.string().datetime()
-  })).min(3).describe('Evidence supporting the part (minimum 3 required)'),
-  category: z.enum(['manager', 'firefighter', 'exile', 'unknown']).optional().default('unknown'),
-  age: z.number().min(0).max(100).optional().describe('Perceived age of the part'),
-  role: z.string().optional().describe('Role or function of the part'),
-  triggers: z.array(z.string()).optional().default([]).describe('Known triggers for this part'),
-  emotions: z.array(z.string()).optional().default([]).describe('Emotions associated with this part'),
-  beliefs: z.array(z.string()).optional().default([]).describe('Beliefs held by this part'),
-  somaticMarkers: z.array(z.string()).optional().default([]).describe('Physical sensations associated with this part'),
-  userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)'),
-  userConfirmed: z.boolean().describe('Whether the user has confirmed this part exists through chat interaction')
-})
-
-const updatePartSchema = z.object({
-  partId: z.string().uuid().describe('The UUID of the part to update'),
-  userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)'),
-  updates: z.object({
-    name: z.string().min(1).max(100).optional(),
-    status: z.enum(['emerging', 'acknowledged', 'active', 'integrated']).optional(),
-    category: z.enum(['manager', 'firefighter', 'exile', 'unknown']).optional(),
-    age: z.number().min(0).max(100).optional(),
-    role: z.string().optional(),
-    triggers: z.array(z.string()).optional(),
-    emotions: z.array(z.string()).optional(),
-    beliefs: z.array(z.string()).optional(),
-    somaticMarkers: z.array(z.string()).optional(),
-    visualization: z.object({
-      emoji: z.string(),
-      color: z.string(),
-    }).optional(),
-    confidenceBoost: z.number().min(0).max(1).optional().describe('Amount to adjust identification confidence by (explicit only)'),
-    last_charged_at: z.string().datetime().optional().describe("Timestamp for when the part's charge was last updated"),
-    last_charge_intensity: z.number().min(0).max(1).optional().describe("Intensity of the part's last charge (0 to 1)")
-  }).describe('Fields to update'),
-  evidence: z.object({
-    type: z.enum(['direct_mention', 'pattern', 'behavior', 'emotion']),
-    content: z.string(),
-    confidence: z.number().min(0).max(1),
-    sessionId: z.string().uuid(),
-    timestamp: z.string().datetime()
-  }).optional().describe('New evidence to add for this update'),
-  auditNote: z.string().optional().describe('Note about why this update was made')
-})
-
-const getPartRelationshipsSchema = z.object({
-  userId: z.string().uuid().optional().describe('User ID to get relationships for (optional in development mode)'),
-  partId: z.string().uuid().optional().describe('Optional: Get relationships for specific part'),
-  relationshipType: z.enum(['polarized', 'protector-exile', 'allied']).optional().describe('Optional: Filter by relationship type'),
-  status: z.enum(['active', 'healing', 'resolved']).optional().describe('Optional: Filter by relationship status'),
-  includePartDetails: z.boolean().default(false).describe('Include part names and status in response'),
-  limit: z.number().min(1).max(50).default(20).describe('Maximum number of relationships to return')
-})
-
-const getPartNotesSchema = z.object({
-  partId: z.string().uuid().describe('The UUID of the part to retrieve notes for'),
-  userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)'),
-})
-
-const logRelationshipSchema = z.object({
-  userId: z.string().uuid().optional().describe('User ID who owns the relationship (optional in development mode)'),
-  partIds: z.array(z.string().uuid()).min(2).max(2).describe('Exactly two part IDs involved in the relationship'),
-  type: z.enum(['polarized', 'protector-exile', 'allied']).describe('Relationship type'),
-  description: z.string().optional().describe('Short description of the relationship'),
-  issue: z.string().optional().describe('Primary point of conflict or issue'),
-  commonGround: z.string().optional().describe('Areas of agreement or shared goals'),
-  status: z.enum(['active', 'healing', 'resolved']).optional().describe('Relationship status'),
-  polarizationLevel: z.number().min(0).max(1).optional().describe('Absolute polarization level to set (0..1)'),
-  dynamic: z.object({
-    observation: z.string().min(1).describe('What was noticed about the interaction'),
-    context: z.string().min(1).describe('Context where this dynamic occurred'),
-    polarizationChange: z.number().min(-1).max(1).optional().describe('Relative change in polarization (-1..1)'),
-    timestamp: z.string().datetime().optional().describe('When this dynamic occurred (defaults to now)')
-  }).optional(),
-  lastAddressed: z.string().datetime().optional().describe('When this relationship was last addressed'),
-  upsert: z.boolean().default(true).describe('Update existing relationship if it exists; otherwise create')
-})
+import {
+  searchPartsSchema,
+  getPartByIdSchema,
+  getPartDetailSchema,
+  createEmergingPartSchema,
+  updatePartSchema,
+  getPartRelationshipsSchema,
+  getPartNotesSchema,
+  logRelationshipSchema,
+  type SearchPartsInput,
+  type SearchPartsResult,
+  type GetPartByIdInput,
+  type GetPartByIdResult,
+  type GetPartDetailInput,
+  type GetPartDetailResult,
+  type CreateEmergingPartInput,
+  type CreateEmergingPartResult,
+  type UpdatePartInput,
+  type UpdatePartResult,
+  type GetPartRelationshipsInput,
+  type GetPartRelationshipsResult,
+  type GetPartNotesInput,
+  type GetPartNotesResult,
+  type LogRelationshipInput,
+  type LogRelationshipResult,
+} from './parts.schema'
 
 // Helper to resolve env with fallbacks (supports Vite and Next-style vars)
 function getSupabaseClient() {
@@ -165,7 +84,7 @@ function getSupabaseClient() {
 /**
  * Search for parts based on various criteria
  */
-export async function searchParts(input: z.infer<typeof searchPartsSchema>): Promise<PartRow[]> {
+export async function searchParts(input: SearchPartsInput): Promise<SearchPartsResult> {
   try {
     const validated = searchPartsSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -199,7 +118,7 @@ export async function searchParts(input: z.infer<typeof searchPartsSchema>): Pro
       throw new Error(`Database error: ${error.message}`)
     }
 
-    return data || []
+    return (data || []) as SearchPartsResult
   } catch (error) {
     const errMsg = error instanceof Error ? (dev.verbose ? (error.stack || error.message) : error.message) : 'Unknown error occurred'
     throw new Error(errMsg)
@@ -209,7 +128,7 @@ export async function searchParts(input: z.infer<typeof searchPartsSchema>): Pro
 /**
  * Get a specific part by ID
  */
-export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Promise<any | null> {
+export async function getPartById(input: GetPartByIdInput): Promise<GetPartByIdResult> {
   try {
     const validated = getPartByIdSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -245,7 +164,13 @@ export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Pro
       }
     }
 
-    return snapshot_sections ? { ...data, snapshot_sections } : data
+    if (!data) {
+      return null
+    }
+
+    const typedData = data as PartRow
+    const result = snapshot_sections ? { ...typedData, snapshot_sections } : typedData
+    return result as GetPartByIdResult
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
     throw new Error(errMsg)
@@ -255,7 +180,7 @@ export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Pro
 /**
  * Get a specific part by ID along with its relationships
  */
-export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>): Promise<any> {
+export async function getPartDetail(input: GetPartDetailInput): Promise<GetPartDetailResult> {
   try {
     const validated = getPartDetailSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -326,12 +251,16 @@ export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>):
       } catch (e) { try { devLog('snapshot read (detail) error', { e }) } catch {} }
     }
 
+    const partData = part as PartRow
+    const relationshipData = (relationships || []) as PartRelationshipRow[]
+    const snapshots = overview_sections || part_profile_sections || relationship_profiles
+      ? { overview_sections, part_profile_sections, relationship_profiles }
+      : undefined
+
     return {
-      ...part,
-      relationships: relationships || [],
-      ...(overview_sections || part_profile_sections || relationship_profiles
-        ? { snapshots: { overview_sections, part_profile_sections, relationship_profiles } }
-        : {})
+      ...partData,
+      relationships: relationshipData,
+      ...(snapshots ? { snapshots } : {}),
     }
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
@@ -342,7 +271,7 @@ export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>):
 /**
  * Create an emerging part with 3+ evidence rule enforcement
  */
-export async function createEmergingPart(input: z.infer<typeof createEmergingPartSchema>): Promise<PartRow> {
+export async function createEmergingPart(input: CreateEmergingPartInput): Promise<CreateEmergingPartResult> {
   try {
     const validated = createEmergingPartSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -436,7 +365,7 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
 /**
  * Update a part with confidence increment and audit trail
  */
-export async function updatePart(input: z.infer<typeof updatePartSchema>): Promise<PartRow> {
+export async function updatePart(input: UpdatePartInput): Promise<UpdatePartResult> {
   try {
     const validated = updatePartSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -565,7 +494,9 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
 /**
  * Get part relationships with optional filtering and part details
  */
-export async function getPartRelationships(input: z.infer<typeof getPartRelationshipsSchema>): Promise<Array<any>> {
+export async function getPartRelationships(
+  input: GetPartRelationshipsInput,
+): Promise<GetPartRelationshipsResult> {
   try {
     const validated = getPartRelationshipsSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -597,16 +528,18 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
       throw new Error(`Database error: ${error.message}`)
     }
 
-    if (!relationships || relationships.length === 0) {
+    const relationshipRows = (relationships || []) as PartRelationshipRow[]
+
+    if (relationshipRows.length === 0) {
       return []
     }
 
     // Optional client-side filter by partId
-    let filtered = relationships
+    let filtered: PartRelationshipRow[] = relationshipRows
     if (validated.partId) {
       const pid = validated.partId
-      filtered = (relationships as any[]).filter(rel => {
-        const partIds = Array.isArray((rel as any).parts) ? (rel as any).parts : []
+      filtered = relationshipRows.filter(rel => {
+        const partIds = Array.isArray(rel.parts) ? rel.parts : []
         return partIds.includes(pid)
       })
     }
@@ -648,14 +581,14 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
       try {
         const { readRelationshipProfileSections } = await import('@/lib/memory/read')
         relSectionMaps = await Promise.all(
-          (filtered as any[]).map(async rel => {
+          filtered.map(async rel => {
             const tRel = Date.now()
             try {
-              const m = await readRelationshipProfileSections(userId, (rel as any).id)
-              recordSnapshotUsage('relationship_profile', m ? 'hit' : 'miss', { latencyMs: Date.now() - tRel, userId, relId: (rel as any).id })
+              const m = await readRelationshipProfileSections(userId, rel.id)
+              recordSnapshotUsage('relationship_profile', m ? 'hit' : 'miss', { latencyMs: Date.now() - tRel, userId, relId: rel.id })
               return m
             } catch (e) {
-              recordSnapshotUsage('relationship_profile', 'error', { latencyMs: Date.now() - tRel, userId, relId: (rel as any).id, error: e })
+              recordSnapshotUsage('relationship_profile', 'error', { latencyMs: Date.now() - tRel, userId, relId: rel.id, error: e })
               return null
             }
           })
@@ -664,7 +597,7 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
     }
 
     // Format response with optional part details and snapshot sections
-    const formattedRelationships = filtered.map((rel, idx) => {
+    const formattedRelationships: GetPartRelationshipsResult = filtered.map((rel, idx) => {
       const partIds = Array.isArray(rel.parts) ? rel.parts : []
       const snapshot_sections = relSectionMaps ? relSectionMaps[idx] : undefined
 
@@ -676,7 +609,7 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
         issue: rel.issue,
         common_ground: rel.common_ground,
         polarization_level: rel.polarization_level,
-        dynamics: rel.dynamics || [],
+        dynamics: (rel.dynamics as RelationshipDynamic[]) || [],
         parts: partIds.map((partId: string) => ({
           id: partId,
           ...(validated.includePartDetails && partsDetails[partId] ? {
@@ -701,7 +634,7 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
 /**
  * Fetch clarification notes for a part ordered from newest to oldest
  */
-export async function getPartNotes(input: z.infer<typeof getPartNotesSchema>): Promise<PartNoteRow[]> {
+export async function getPartNotes(input: GetPartNotesInput): Promise<GetPartNotesResult> {
   try {
     const validated = getPartNotesSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -725,7 +658,7 @@ export async function getPartNotes(input: z.infer<typeof getPartNotesSchema>): P
       part_id: note.part_id,
       content: note.content,
       created_at: note.created_at,
-    })) as PartNoteRow[]
+    })) as GetPartNotesResult
 
     return notes
   } catch (error) {
@@ -740,7 +673,7 @@ export async function getPartNotes(input: z.infer<typeof getPartNotesSchema>): P
 /**
  * Create or update a part relationship, optionally appending a dynamic observation
  */
-export async function logRelationship(input: z.infer<typeof logRelationshipSchema>): Promise<PartRelationshipRow> {
+export async function logRelationship(input: LogRelationshipInput): Promise<LogRelationshipResult> {
   try {
     const validated = logRelationshipSchema.parse(input)
     const userId = resolveUserId(validated.userId)
@@ -853,7 +786,7 @@ const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
             created_by: 'agent'
           })
 
-          return updatedDirect as any
+          return updatedDirect as LogRelationshipResult
         } catch (e: any) {
           throw new Error(`UPDATE_BRANCH: ${e?.stack || e?.message || String(e)}`)
         }
@@ -923,7 +856,7 @@ const serviceRoleCreate = process.env.SUPABASE_SERVICE_ROLE_KEY
         created_by: 'agent'
       })
 
-      return createdDirect as any
+      return createdDirect as LogRelationshipResult
     }
 
     const { actionLogger } = await import('../database/action-logger')
