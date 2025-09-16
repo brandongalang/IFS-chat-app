@@ -20,7 +20,7 @@ Visual exploration interface for browsing and drilling into Parts.
 Offers a spatial/visual way to understand internal parts and relationships.
 
 ## How it works
-- Grid overview at app/garden/page.tsx (client) uses `@/lib/data/parts-lite`
+- Grid overview at app/garden/page.tsx (client) uses `@/lib/data/parts-lite` fetchers backed by `/api/parts`
 - Detail at app/garden/[partId]/page.tsx (server) uses `@/lib/data/parts-server`
 - PartActions server actions import from `@/lib/data/parts-server`
 - Mastra tools provide part querying and updates

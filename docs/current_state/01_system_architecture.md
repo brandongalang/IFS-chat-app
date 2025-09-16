@@ -32,7 +32,7 @@ Understanding the flow of data from user input to AI response is key to understa
 - **Backend:** Implemented as server-side logic within the Next.js framework, primarily using **API Routes** and server components/actions.
 - **Database:** [PostgreSQL](https://www.postgresql.org/) hosted on [Supabase](https://supabase.com/).
 - **Authentication:** Handled entirely by Supabase Auth, using the `@supabase/ssr` library to manage user sessions seamlessly across client and server components.
-- **Data modules split:** To prevent Node-only modules from leaking into the browser bundle, client code imports from `@/lib/data/parts-lite` (browser-safe), while server code imports from `@/lib/data/parts-server` (guarded via `server-only`). Richer logic (snapshots, action logging) lives behind the server entrypoint.
+- **Data modules split:** Client code calls `/api/parts` endpoints via the thin wrappers in `@/lib/data/parts-lite`, keeping Supabase credentials off the browser bundle. Server code imports from `@/lib/data/parts-server` (guarded via `server-only`) for direct Supabase access plus richer logic (snapshots, action logging).
 - **Security:** The database schema makes extensive use of PostgreSQL's **Row Level Security (RLS)** to ensure users can only access their own data. Policies are defined for all major tables.
 
 ## AI / Agentic Layer

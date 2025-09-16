@@ -116,23 +116,25 @@ await createEmergingPart({
 - Use randomly generated UUIDs for `IFS_DEFAULT_USER_ID`
 - Development mode is automatically disabled when `NODE_ENV=production` (unless explicitly enabled via `NEXT_PUBLIC_IFS_DEV_MODE`)
 
-## Data layer: client-safe vs server-only
+## Data layer: API routes vs direct Supabase
 
-To avoid bundling Node-only APIs (e.g., fs/promises, node:crypto) into the browser, the data layer is split into explicit entrypoints:
+The application now standardizes on server endpoints for parts data. Client code talks to `/api/parts` routes, while server code can still call Supabase directly when richer capabilities are required.
 
 - Client-safe (browser):
   - import from `@/lib/data/parts-lite`
-  - Read-only queries that use the browser Supabase client
-  - No Node APIs, no secrets, safe for "use client" components/hooks
+  - Thin fetch wrappers over `/api/parts`, `/api/parts/[partId]`, and `/api/parts/relationships`
+  - Use in `use client` components/hooks to keep Supabase keys out of the bundle and share auth logic with the API
 
 - Server-only:
   - import from `@/lib/data/parts-server` (guarded with `import 'server-only'`)
-  - Full-featured functions that may use Node APIs, environment secrets, action logging, and snapshot reads/writes
-  - Use in server components, route handlers, and server actions only
+  - Direct Supabase queries plus extras (snapshots, action logging, writes)
+  - Use in server components, route handlers, background jobs, and Mastra tools
 
-- Under the hood:
-  - `@/lib/data/parts.ts` is marked server-only, and exposes richer logic (logging, snapshots). It should not be imported from client code directly; use `parts-server` instead.
-  - Snapshot logic lazily imports storage adapters on the server and throws if called on the client.
+### When to use API routes vs direct Supabase
+
+- **Client React (hooks, interactive components):** Always call the relevant `/api/parts` endpoint through `parts-lite`. This guarantees RLS enforcement and avoids shipping Supabase credentials to the browser.
+- **API routes & server actions:** Reuse `parts-server` helpers. API routes expose a safe surface for clients; server actions can still query Supabase directly because they execute on the server.
+- **Agent/tool code and background jobs:** Use `parts-server` for operations that need audit logging, mutations, or snapshot reads.
 
 Examples:
 
