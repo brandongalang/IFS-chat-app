@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
+import { BASE_URL } from '../config/app';
 import type { Database } from '../lib/types/database';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const CRON_SECRET = process.env.CRON_SECRET;
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000';
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !CRON_SECRET) {
   console.error('Missing required environment variables.');
@@ -30,7 +30,7 @@ async function testOnDemand() {
   const initialCount = await getInsightCount(TEST_USER_ID);
   console.log(`Initial insight count: ${initialCount}`);
 
-  const response = await fetch(`${API_BASE_URL}/api/insights/request`, {
+  const response = await fetch(`${BASE_URL}/api/insights/request`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId: TEST_USER_ID }),
@@ -61,7 +61,7 @@ async function testCronJob() {
   // For a real test suite, you'd want to seed the DB with a known state first.
 
   console.log('Simulating cron job trigger...');
-  const response = await fetch(`${API_BASE_URL}/api/cron/generate-insights`, {
+  const response = await fetch(`${BASE_URL}/api/cron/generate-insights`, {
     method: 'GET',
     headers: { Authorization: `Bearer ${CRON_SECRET}` },
   });
