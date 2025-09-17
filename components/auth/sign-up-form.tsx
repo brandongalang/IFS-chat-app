@@ -31,7 +31,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   const router = useRouter()
   const supabase = createClient()
   const { initGoogleButton, isLoading: googleLoading, error: googleError } = useGoogleAuth()
-  const googleButtonRef = useRef<HTMLButtonElement>(null)
+  const googleButtonRef = useRef<HTMLDivElement>(null)
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,7 +59,6 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     } finally {
       setIsLoading(false)
     }
-  }
   }
 
   // Initialize the Google button on mount
