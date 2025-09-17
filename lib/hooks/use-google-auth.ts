@@ -41,15 +41,27 @@ type GoogleIdentity = NonNullable<Window['google']>
 const textEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null
 
 const DEBUG_PREFIX = '[useGoogleAuth]'
-const shouldLogDebug = process.env.NODE_ENV !== 'production'
+
+function isDebugEnabled() {
+  if (process.env.NODE_ENV !== 'production') return true
+  if (typeof window === 'undefined') return false
+  try {
+    if (window.localStorage.getItem('IFS_GOOGLE_AUTH_DEBUG') === 'true') return true
+  } catch {}
+  try {
+    const params = new URLSearchParams(window.location.search)
+    if (params.has('debugGoogleAuth')) return true
+  } catch {}
+  return false
+}
 
 function debugLog(...args: unknown[]) {
-  if (!shouldLogDebug) return
+  if (!isDebugEnabled()) return
   console.info(DEBUG_PREFIX, ...args)
 }
 
 function debugWarn(...args: unknown[]) {
-  if (!shouldLogDebug) return
+  if (!isDebugEnabled()) return
   console.warn(DEBUG_PREFIX, ...args)
 }
 
@@ -117,7 +129,7 @@ export function useGoogleAuth() {
   const redirectPathRef = useRef('/')
   const envReportedRef = useRef(false)
 
-  if (shouldLogDebug && !envReportedRef.current) {
+  if (isDebugEnabled() && !envReportedRef.current) {
     envReportedRef.current = true
     debugLog('Environment diagnostics', {
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: redact(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID),
