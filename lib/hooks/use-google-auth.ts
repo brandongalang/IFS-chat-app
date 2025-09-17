@@ -41,36 +41,21 @@ export function useGoogleAuth() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
-  const nonceRef = useRef<{ raw: string; hashed: string } | null>(null)
-
-  const base64UrlEncode = (buffer: ArrayBuffer) => {
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    bytes.forEach((byte) => {
-      binary += String.fromCharCode(byte)
-    })
-    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-  }
+  const nonceRef = useRef<string | null>(null)
 
   const generateNonce = async () => {
     const cryptoObj = globalThis.crypto
-    if (!cryptoObj?.randomUUID || !cryptoObj.subtle) {
+    if (!cryptoObj?.randomUUID) {
       throw new Error('Secure nonce generation not supported in this environment')
     }
-
     const rawNonce = cryptoObj.randomUUID()
-    const encoder = new TextEncoder()
-    const hashBuffer = await cryptoObj.subtle.digest('SHA-256', encoder.encode(rawNonce))
-    const hashedNonce = base64UrlEncode(hashBuffer)
-
-    nonceRef.current = { raw: rawNonce, hashed: hashedNonce }
-
-    return { rawNonce, hashedNonce }
+    nonceRef.current = rawNonce
+    return rawNonce
   }
 
   const clearStoredNonce = (rawNonce?: string | null) => {
     if (!rawNonce) return
-    if (nonceRef.current?.raw === rawNonce) {
+    if (nonceRef.current === rawNonce) {
       nonceRef.current = null
     }
   }
@@ -155,7 +140,7 @@ export function useGoogleAuth() {
       if (!clientId) throw new Error('Google Client ID not configured')
       if (!window.google) throw new Error('Google Identity not initialized')
 
-      const { rawNonce, hashedNonce } = await generateNonce()
+      const rawNonce = await generateNonce()
       activeRawNonce = rawNonce
 
       window.google.accounts.id.initialize({
@@ -166,7 +151,7 @@ export function useGoogleAuth() {
             const { error } = await supabase.auth.signInWithIdToken({
               provider: 'google',
               token: credential,
-              nonce: hashedNonce,
+              nonce: rawNonce,
             })
             if (error) throw error
             await redirectAfterSignIn(redirectPath)
@@ -218,7 +203,7 @@ export function useGoogleAuth() {
         throw new Error('Google Identity not initialized')
       }
 
-      const { rawNonce, hashedNonce } = await generateNonce()
+      const rawNonce = await generateNonce()
       activeRawNonce = rawNonce
 
       window.google.accounts.id.initialize({
@@ -231,7 +216,7 @@ export function useGoogleAuth() {
             const { error } = await supabase.auth.signInWithIdToken({
               provider: 'google',
               token: credential,
-              nonce: hashedNonce,
+              nonce: rawNonce,
             })
 
             if (error) {
