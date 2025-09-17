@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 declare global {
   interface Window {
@@ -35,14 +35,44 @@ declare global {
   }
 }
 
+const textEncoder = new TextEncoder()
+
+type GoogleIdentity = NonNullable<Window['google']>
+
+function toBase64Url(bytes: Uint8Array) {
+  let binary = ''
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte)
+  })
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+async function generateNoncePair() {
+  if (typeof window === 'undefined') {
+    throw new Error('Window object not available')
+  }
+  const cryptoObj = window.crypto
+  if (!cryptoObj?.getRandomValues || !cryptoObj?.subtle) {
+    throw new Error('Secure random generator unavailable')
+  }
+  const randomBytes = new Uint8Array(32)
+  cryptoObj.getRandomValues(randomBytes)
+  const raw = toBase64Url(randomBytes)
+  const digest = await cryptoObj.subtle.digest('SHA-256', textEncoder.encode(raw))
+  const hashed = toBase64Url(new Uint8Array(digest))
+  return { raw, hashed }
+}
+
 export function useGoogleAuth() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+  const nonceRef = useRef<{ raw: string; hashed: string } | null>(null)
+  const redirectPathRef = useRef('/')
 
   const initializeGoogleSignIn = () => {
-    return new Promise((resolve, reject) => {
+    return new Promise<GoogleIdentity>((resolve, reject) => {
       if (typeof window === 'undefined') {
         reject(new Error('Window object not available'))
         return
@@ -55,7 +85,11 @@ export function useGoogleAuth() {
         script.async = true
         script.defer = true
         script.onload = () => {
-          resolve(window.google)
+          if (window.google) {
+            resolve(window.google)
+          } else {
+            reject(new Error('Google Identity failed to initialize'))
+          }
         }
         script.onerror = () => {
           reject(new Error('Failed to load Google Identity Services'))
@@ -65,6 +99,62 @@ export function useGoogleAuth() {
         resolve(window.google)
       }
     })
+  }
+
+  const ensureNoncePair = async () => {
+    if (nonceRef.current) {
+      return nonceRef.current
+    }
+    if (typeof window === 'undefined') {
+      throw new Error('Window object not available')
+    }
+    const pair = await generateNoncePair()
+    nonceRef.current = pair
+    return pair
+  }
+
+  const configureGoogleClient = async (redirectPath: string) => {
+    const google = await initializeGoogleSignIn()
+
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    if (!clientId) throw new Error('Google Client ID not configured')
+
+    const pair = await ensureNoncePair()
+    redirectPathRef.current = redirectPath
+
+    google.accounts.id.initialize({
+      client_id: clientId,
+      nonce: pair.hashed,
+      callback: async (response: { credential: string }) => {
+        try {
+          setIsLoading(true)
+          setError(null)
+
+          const activeNonce = nonceRef.current?.raw ?? pair.raw
+          if (!activeNonce) {
+            throw new Error('Missing nonce for Google sign-in')
+          }
+
+          const { error: authError } = await supabase.auth.signInWithIdToken({
+            provider: 'google',
+            token: response.credential,
+            nonce: activeNonce,
+          })
+          if (authError) throw authError
+
+          nonceRef.current = null
+          await redirectAfterSignIn(redirectPathRef.current)
+        } catch (authError) {
+          nonceRef.current = null
+          setError(authError instanceof Error ? authError.message : 'Authentication failed')
+          setIsLoading(false)
+        }
+      },
+      auto_select: false,
+      cancel_on_tap_outside: true,
+    })
+
+    return google
   }
 
   const redirectAfterSignIn = async (fallbackPath: string) => {
@@ -115,32 +205,11 @@ export function useGoogleAuth() {
   const initGoogleButton = async (containerId: string = 'google-btn-container', redirectPath = '/') => {
     setError(null)
     try {
-      await initializeGoogleSignIn()
-      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-      if (!clientId) throw new Error('Google Client ID not configured')
-      if (!window.google) throw new Error('Google Identity not initialized')
-
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: async (response: { credential: string }) => {
-          try {
-            const { credential } = response
-            const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: credential })
-            if (error) throw error
-            await redirectAfterSignIn(redirectPath)
-          } catch (authError) {
-            setError(authError instanceof Error ? authError.message : 'Authentication failed')
-            setIsLoading(false)
-          }
-        },
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      })
-
+      const google = await configureGoogleClient(redirectPath)
       const container = document.getElementById(containerId)
       if (container) {
         container.innerHTML = ''
-        window.google.accounts.id.renderButton(container, {
+        google.accounts.id.renderButton(container, {
           theme: 'outline',
           size: 'large',
           width: '100%',
@@ -159,52 +228,13 @@ export function useGoogleAuth() {
     setError(null)
 
     try {
-      await initializeGoogleSignIn()
-
-      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-      if (!clientId) {
-        throw new Error('Google Client ID not configured')
-      }
-
-      // Initialize Google Identity Services
-      if (!window.google) {
-        throw new Error('Google Identity not initialized')
-      }
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: async (response: { credential: string }) => {
-          try {
-            const { credential } = response
-            
-            // Use Supabase's signInWithIdToken method
-            const { error } = await supabase.auth.signInWithIdToken({
-              provider: 'google',
-              token: credential,
-            })
-
-            if (error) {
-              throw error
-            }
-
-            // Successful authentication: immediately decide where to go
-            await redirectAfterSignIn(redirectPath)
-          } catch (authError) {
-            setError(authError instanceof Error ? authError.message : 'Authentication failed')
-            setIsLoading(false)
-          }
-        },
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      })
+      const google = await configureGoogleClient(redirectPath)
 
       // Prompt the user to sign in
-      if (!window.google) {
-        throw new Error('Google Identity not initialized')
-      }
-      window.google.accounts.id.prompt((notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => {
+      google.accounts.id.prompt((notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
           // Fallback to popup if prompt is not displayed
-          window.google!.accounts.id.renderButton(
+          google.accounts.id.renderButton(
             document.getElementById('google-btn-container'),
             {
               theme: 'outline',
@@ -215,6 +245,7 @@ export function useGoogleAuth() {
               logo_alignment: 'left',
             }
           )
+          setIsLoading(false)
         }
       })
     } catch (authError) {
