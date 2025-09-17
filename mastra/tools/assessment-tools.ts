@@ -17,12 +17,12 @@ function getEnvVar(keys: string[]): string | undefined {
 }
 
 function getSupabaseClient() {
-  const url = getEnvVar(['NEXT_PUBLIC_SUPABASE_URL', 'VITE_SUPABASE_URL'])
-  const anonKey = getEnvVar(['NEXT_PUBLIC_SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY'])
+  const url = getEnvVar(['NEXT_PUBLIC_SUPABASE_URL'])
+  const anonKey = getEnvVar(['NEXT_PUBLIC_SUPABASE_ANON_KEY'])
   if (!url || !anonKey) {
     throw new Error(
       "Your project's URL and Key are required to create a Supabase client!\n\n" +
-      'Missing NEXT_PUBLIC_SUPABASE_URL/VITE_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_ANON_KEY/VITE_SUPABASE_ANON_KEY.'
+      'Missing NEXT_PUBLIC_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_ANON_KEY.'
     )
   }
   return createServerClient<Database>(url, anonKey, {

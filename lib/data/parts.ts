@@ -48,7 +48,7 @@ import {
   type LogRelationshipResult,
 } from './parts.schema'
 
-// Helper to resolve env with fallbacks (supports Vite and Next-style vars)
+// Helper to resolve env using the standard Next.js public variables
 function getSupabaseClient() {
   // Browser: use the preconfigured Next.js helper so env is inlined at build time
   if (typeof window !== 'undefined') {
@@ -62,7 +62,7 @@ function getSupabaseClient() {
   if (!url || !anonKey) {
     throw new Error(
       "Your project's URL and Key are required to create a Supabase client!\n\n" +
-      'Missing NEXT_PUBLIC_SUPABASE_URL/VITE_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_ANON_KEY/VITE_SUPABASE_ANON_KEY.\n' +
+      'Missing NEXT_PUBLIC_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_ANON_KEY.\n' +
       'Check your .env and ensure the Mastra dev server is loading it (npm run dev:mastra -- --env .env).'
     )
   }
