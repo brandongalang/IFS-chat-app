@@ -243,12 +243,31 @@ export function useGoogleAuth() {
             nonceRaw: formatNonce(activeNonce.raw),
           })
 
-          const { error: authError } = await supabase.auth.signInWithIdToken({
-            provider: 'google',
-            token: response.credential,
-            nonce: activeNonce.raw,
-          })
-          if (authError) throw authError
+          // Prefer hashed nonce first; fallback to raw on nonce-related failure
+          let finalError: unknown | null = null
+          try {
+            const { error } = await supabase.auth.signInWithIdToken({
+              provider: 'google',
+              token: response.credential,
+              nonce: computedHash || activeNonce.hashed,
+            })
+            if (error) throw error
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err)
+            if (/nonce/i.test(msg)) {
+              debugWarn('Hashed nonce failed, retrying with raw nonce...')
+              const { error } = await supabase.auth.signInWithIdToken({
+                provider: 'google',
+                token: response.credential,
+                nonce: activeNonce.raw,
+              })
+              if (error) finalError = error
+            } else {
+              finalError = err
+            }
+          }
+
+          if (finalError) throw finalError
 
           debugLog('Supabase sign-in succeeded')
           nonceRef.current = null
@@ -326,7 +345,7 @@ export function useGoogleAuth() {
         google.accounts.id.renderButton(container, {
           theme: 'outline',
           size: 'large',
-          width: '100%',
+          // width removed: let CSS control container width or set a numeric value if needed
           text: 'signin_with',
           shape: 'rectangular',
           logo_alignment: 'left',
@@ -353,7 +372,7 @@ export function useGoogleAuth() {
             {
               theme: 'outline',
               size: 'large',
-              width: '100%',
+              // width removed: let CSS control container width or set a numeric value if needed
               text: 'signin_with',
               shape: 'rectangular',
               logo_alignment: 'left',
