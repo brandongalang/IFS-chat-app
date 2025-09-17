@@ -243,25 +243,40 @@ export function useGoogleAuth() {
             nonceRaw: formatNonce(activeNonce.raw),
           })
 
-          // Prefer hashed nonce first; fallback to raw on nonce-related failure
+          // Try without passing nonce first (Google typically does not require it)
           let finalError: unknown | null = null
           try {
             const { error } = await supabase.auth.signInWithIdToken({
               provider: 'google',
               token: response.credential,
-              nonce: computedHash || activeNonce.hashed,
             })
             if (error) throw error
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err)
             if (/nonce/i.test(msg)) {
-              debugWarn('Hashed nonce failed, retrying with raw nonce...')
-              const { error } = await supabase.auth.signInWithIdToken({
-                provider: 'google',
-                token: response.credential,
-                nonce: activeNonce.raw,
-              })
-              if (error) finalError = error
+              // If Supabase explicitly complains about nonce, try hashed then raw
+              debugWarn('No-nonce attempt failed with nonce error, retrying with hashed nonce...')
+              try {
+                const { error } = await supabase.auth.signInWithIdToken({
+                  provider: 'google',
+                  token: response.credential,
+                  nonce: computedHash || activeNonce.hashed,
+                })
+                if (error) throw error
+              } catch (err2) {
+                const msg2 = err2 instanceof Error ? err2.message : String(err2)
+                if (/nonce/i.test(msg2)) {
+                  debugWarn('Hashed nonce failed, retrying with raw nonce...')
+                  const { error } = await supabase.auth.signInWithIdToken({
+                    provider: 'google',
+                    token: response.credential,
+                    nonce: activeNonce.raw,
+                  })
+                  if (error) finalError = error
+                } else {
+                  finalError = err2
+                }
+              }
             } else {
               finalError = err
             }
