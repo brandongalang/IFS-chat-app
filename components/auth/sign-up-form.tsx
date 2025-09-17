@@ -30,13 +30,8 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
-  const {
-    initGoogleButton,
-    signInWithGoogle,
-    isLoading: googleLoading,
-    error: googleError,
-  } = useGoogleAuth()
-  const googleContainerRef = useRef<HTMLDivElement>(null)
+  const { initGoogleButton, isLoading: googleLoading, error: googleError } = useGoogleAuth()
+  const googleButtonRef = useRef<HTMLDivElement>(null)
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,14 +61,12 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     }
   }
 
+  // Initialize the Google button on mount
   useEffect(() => {
+    // Render Google Identity Services button for sign-up
     initGoogleButton('google-btn-container-signup', '/')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const handleGoogleSignUp = async () => {
-    await signInWithGoogle('/')
-  }
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
@@ -139,20 +132,13 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                 <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
               </div>
             </div>
+            {/* Google Identity Services button container */}
             <div
-              ref={googleContainerRef}
+              ref={googleButtonRef}
               id="google-btn-container-signup"
               aria-label="Sign up with Google"
               className="w-full flex justify-center"
             />
-            <Button
-              variant="outline"
-              className="w-full mt-2"
-              onClick={handleGoogleSignUp}
-              disabled={isLoading || googleLoading}
-            >
-              {googleLoading ? 'Connecting...' : 'Continue with Google'}
-            </Button>
             <div className="text-center text-sm">
               Already have an account?{' '}
               <Link href="/auth/login" className="underline underline-offset-4">
