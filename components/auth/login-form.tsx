@@ -30,7 +30,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
-  const { initGoogleButton, signInWithGoogle, isLoading: googleLoading, error: googleError } = useGoogleAuth()
+  const { initGoogleButton, isLoading: googleLoading, error: googleError } = useGoogleAuth()
   const googleContainerRef = useRef<HTMLDivElement>(null)
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -60,10 +60,6 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleGoogleLogin = async () => {
-    // Fallback: programmatic prompt if GIS button fails to render
-    await signInWithGoogle('/')
-  }
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
@@ -130,15 +126,6 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
               aria-label="Sign in with Google"
               className="w-full flex justify-center"
             />
-            {/* Fallback button if GIS fails to load */}
-            <Button
-              variant="outline"
-              className="w-full mt-2"
-              onClick={handleGoogleLogin}
-              disabled={isLoading || googleLoading}
-            >
-              {googleLoading ? 'Connecting...' : 'Sign in with Google'}
-            </Button>
             <div className="text-center text-sm">
               Don&apos;t have an account?{' '}
               <Link href="/auth/sign-up" className="underline underline-offset-4">

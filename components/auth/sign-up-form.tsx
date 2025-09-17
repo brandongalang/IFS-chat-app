@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useGoogleAuth } from '@/lib/hooks/use-google-auth'
 
 const etherealTextStyle = {
@@ -30,7 +30,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
-  const { signInWithGoogle, isLoading: googleLoading, error: googleError } = useGoogleAuth()
+  const { initGoogleButton, isLoading: googleLoading, error: googleError } = useGoogleAuth()
   const googleButtonRef = useRef<HTMLButtonElement>(null)
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -60,10 +60,14 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       setIsLoading(false)
     }
   }
-
-  const handleGoogleSignUp = async () => {
-    await signInWithGoogle('/')
   }
+
+  // Initialize the Google button on mount
+  useEffect(() => {
+    // Render Google Identity Services button for sign-up
+    initGoogleButton('google-btn-container-signup', '/')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
@@ -129,16 +133,13 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                 <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
               </div>
             </div>
-            <Button
+            {/* Google Identity Services button container */}
+            <div
               ref={googleButtonRef}
-              variant="outline"
-              className="w-full"
-              onClick={handleGoogleSignUp}
-              disabled={isLoading || googleLoading}
-              id="google-signin-button"
-            >
-              {googleLoading ? 'Connecting...' : 'Continue with Google'}
-            </Button>
+              id="google-btn-container-signup"
+              aria-label="Sign up with Google"
+              className="w-full flex justify-center"
+            />
             <div className="text-center text-sm">
               Already have an account?{' '}
               <Link href="/auth/login" className="underline underline-offset-4">
