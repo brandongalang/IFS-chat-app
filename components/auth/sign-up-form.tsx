@@ -27,6 +27,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   const [repeatPassword, setRepeatPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -127,22 +128,47 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
               type="button"
               variant="outline"
               className="w-full"
+              disabled={isGoogleLoading || isLoading}
               onClick={async () => {
+                setIsGoogleLoading(true)
+                setError(null)
+                
                 try {
                   const { error } = await supabase.auth.signInWithOAuth({
                     provider: 'google',
                     options: {
-                      redirectTo: window.location.origin,
+                      redirectTo: `${window.location.origin}/auth/callback`,
+                      queryParams: {
+                        access_type: 'offline',
+                        prompt: 'consent',
+                      },
                     },
                   })
-                  if (error) throw error
+                  if (error) {
+                    console.error('Google OAuth error:', error)
+                    throw error
+                  }
+                  // The redirect will happen automatically, so we don't need to do anything else
                 } catch (err) {
-                  setError(err instanceof Error ? err.message : 'Google sign-in failed')
+                  console.error('Google sign-up error:', err)
+                  setError(
+                    err instanceof Error 
+                      ? `Google sign-up failed: ${err.message}` 
+                      : 'Google sign-up failed. Please try again.'
+                  )
+                  setIsGoogleLoading(false)
                 }
               }}
               aria-label="Sign up with Google"
             >
-              Continue with Google
+              {isGoogleLoading ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                  Connecting to Google...
+                </>
+              ) : (
+                'Continue with Google'
+              )}
             </Button>
             <div className="text-center text-sm">
               Already have an account?{' '}

@@ -22,11 +22,11 @@ const etherealTextStyle = {
 } as const
 
 export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
-  // Added test comment to trigger AI docs workflow validation
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -114,22 +114,47 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
               type="button"
               variant="outline"
               className="w-full"
+              disabled={isGoogleLoading || isLoading}
               onClick={async () => {
+                setIsGoogleLoading(true)
+                setError(null)
+                
                 try {
                   const { error } = await supabase.auth.signInWithOAuth({
                     provider: 'google',
                     options: {
-                      redirectTo: window.location.origin,
+                      redirectTo: `${window.location.origin}/auth/callback`,
+                      queryParams: {
+                        access_type: 'offline',
+                        prompt: 'consent',
+                      },
                     },
                   })
-                  if (error) throw error
+                  if (error) {
+                    console.error('Google OAuth error:', error)
+                    throw error
+                  }
+                  // The redirect will happen automatically, so we don't need to do anything else
                 } catch (err) {
-                  setError(err instanceof Error ? err.message : 'Google sign-in failed')
+                  console.error('Google sign-in error:', err)
+                  setError(
+                    err instanceof Error 
+                      ? `Google sign-in failed: ${err.message}` 
+                      : 'Google sign-in failed. Please try again.'
+                  )
+                  setIsGoogleLoading(false)
                 }
               }}
               aria-label="Sign in with Google"
             >
-              Continue with Google
+              {isGoogleLoading ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                  Connecting to Google...
+                </>
+              ) : (
+                'Continue with Google'
+              )}
             </Button>
             <div className="text-center text-sm">
               Don&apos;t have an account?{' '}
