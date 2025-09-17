@@ -14,8 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useRef, useEffect } from 'react'
-import { useGoogleAuth } from '@/lib/hooks/use-google-auth'
+import { useState } from 'react'
 
 const etherealTextStyle = {
   letterSpacing: 'var(--eth-letter-spacing-user)',
@@ -30,8 +29,6 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
-  const { initGoogleButton, isLoading: googleLoading, error: googleError } = useGoogleAuth()
-  const googleContainerRef = useRef<HTMLDivElement>(null)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -53,12 +50,6 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
     }
   }
 
-  // Initialize the standard Google button on mount
-  useEffect(() => {
-    // Render into the container; GIS handles click + callback
-    initGoogleButton('google-btn-container', '/')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
 
   return (
@@ -104,8 +95,8 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
-              {(error || googleError) && (
-                <p className="text-sm text-red-500">{error || googleError}</p>
+              {error && (
+                <p className="text-sm text-red-500">{error}</p>
               )}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Logging in...' : 'Login'}
@@ -119,13 +110,27 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
                 <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
               </div>
             </div>
-            {/* Standard Google Identity Services button container */}
-            <div
-              ref={googleContainerRef}
-              id="google-btn-container"
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={async () => {
+                try {
+                  const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                      redirectTo: window.location.origin,
+                    },
+                  })
+                  if (error) throw error
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Google sign-in failed')
+                }
+              }}
               aria-label="Sign in with Google"
-              className="w-full flex justify-center"
-            />
+            >
+              Continue with Google
+            </Button>
             <div className="text-center text-sm">
               Don&apos;t have an account?{' '}
               <Link href="/auth/sign-up" className="underline underline-offset-4">
