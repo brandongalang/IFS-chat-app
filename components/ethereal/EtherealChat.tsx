@@ -183,7 +183,7 @@ export function EtherealChat() {
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder="type your thought…"
-              className="min-h-[44px] max-h-[132px] w-full resize-none border-0 bg-transparent p-3 text-[16px] text-white/90 placeholder:text-white/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 focus:border-0 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.15)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.1)] transition-shadow duration-200"
+              className="min-h-[44px] max-h-[132px] w-full resize-none border-0 bg-transparent p-3 text-[16px] text-white/90 placeholder:text-white/50 focus-visible:ring-0"
               data-testid="ethereal-input"
               aria-label="Message"
               disabled={isStreaming}

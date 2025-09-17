@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useGoogleAuth } from '@/lib/hooks/use-google-auth'
 
 const etherealTextStyle = {
   letterSpacing: 'var(--eth-letter-spacing-user)',
@@ -22,13 +23,15 @@ const etherealTextStyle = {
 } as const
 
 export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
+  // Added test comment to trigger AI docs workflow validation
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+  const { initGoogleButton, isLoading: googleLoading, error: googleError } = useGoogleAuth()
+  const googleContainerRef = useRef<HTMLDivElement>(null)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,6 +53,12 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
     }
   }
 
+  // Initialize the standard Google button on mount
+  useEffect(() => {
+    // Render into the container; GIS handles click + callback
+    initGoogleButton('google-btn-container', '/')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
 
   return (
@@ -95,8 +104,8 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
-              {error && (
-                <p className="text-sm text-red-500">{error}</p>
+              {(error || googleError) && (
+                <p className="text-sm text-red-500">{error || googleError}</p>
               )}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Logging in...' : 'Login'}
@@ -110,52 +119,13 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
                 <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
               </div>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              disabled={isGoogleLoading || isLoading}
-              onClick={async () => {
-                setIsGoogleLoading(true)
-                setError(null)
-                
-                try {
-                  const { error } = await supabase.auth.signInWithOAuth({
-                    provider: 'google',
-                    options: {
-                      redirectTo: `${window.location.origin}/auth/callback`,
-                      queryParams: {
-                        access_type: 'offline',
-                        prompt: 'consent',
-                      },
-                    },
-                  })
-                  if (error) {
-                    console.error('Google OAuth error:', error)
-                    throw error
-                  }
-                  // The redirect will happen automatically, so we don't need to do anything else
-                } catch (err) {
-                  console.error('Google sign-in error:', err)
-                  setError(
-                    err instanceof Error 
-                      ? `Google sign-in failed: ${err.message}` 
-                      : 'Google sign-in failed. Please try again.'
-                  )
-                  setIsGoogleLoading(false)
-                }
-              }}
+            {/* Standard Google Identity Services button container */}
+            <div
+              ref={googleContainerRef}
+              id="google-btn-container"
               aria-label="Sign in with Google"
-            >
-              {isGoogleLoading ? (
-                <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
-                  Connecting to Google...
-                </>
-              ) : (
-                'Continue with Google'
-              )}
-            </Button>
+              className="w-full flex justify-center"
+            />
             <div className="text-center text-sm">
               Don&apos;t have an account?{' '}
               <Link href="/auth/sign-up" className="underline underline-offset-4">

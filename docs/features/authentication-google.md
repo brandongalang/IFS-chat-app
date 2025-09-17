@@ -39,9 +39,3 @@ Lower-friction sign-in and account creation with secure provider flows.
 
 ## Operational notes
 - Verify redirect URIs and provider credentials across environments
-
-## Debugging tips
-- Use the built-in console logs from `useGoogleAuth`. In production builds, enable them by running `localStorage.setItem('IFS_GOOGLE_AUTH_DEBUG', 'true')` (or append `?debugGoogleAuth=1` to the URL) and refresh. You should then see whether a nonce is generated, reused, and the redacted value supplied to Supabase. A nonce mismatch will surface as `Supabase sign-in failed` with `AuthApiError` details containing `Nonce not valid`.
-- Check the environment diagnostics log on first render; it redacts `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Missing or unexpected values typically mean the wrong `.env` file is loaded or build-time envs differ from runtime.
-- If you suspect Supabase configuration, temporarily set `skip_nonce_check = true` under `[auth.external.google]` in `supabase/config.toml`, restart Supabase, and retry sign-in. If sign-in succeeds with the skip in place, the issue is almost certainly nonce-related. Remember to revert this flag after testing.
-- Supabase credential issues (bad client ID/secret) usually return HTTP 400 with `invalid_client` or `unauthorized_client` errors. Capture the full `authError` object from the console log to distinguish these from nonce problems.

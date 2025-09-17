@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useGoogleAuth } from '@/lib/hooks/use-google-auth'
 
 const etherealTextStyle = {
   letterSpacing: 'var(--eth-letter-spacing-user)',
@@ -27,9 +28,10 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   const [repeatPassword, setRepeatPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+  const { initGoogleButton, isLoading: googleLoading, error: googleError } = useGoogleAuth()
+  const googleButtonRef = useRef<HTMLButtonElement>(null)
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,7 +60,14 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       setIsLoading(false)
     }
   }
+  }
 
+  // Initialize the Google button on mount
+  useEffect(() => {
+    // Render Google Identity Services button for sign-up
+    initGoogleButton('google-btn-container-signup', '/')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
@@ -109,8 +118,8 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                   onChange={(e) => setRepeatPassword(e.target.value)}
                 />
               </div>
-              {error && (
-                <p className="text-sm text-red-500">{error}</p>
+              {(error || googleError) && (
+                <p className="text-sm text-red-500">{error || googleError}</p>
               )}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Creating an account...' : 'Sign up'}
@@ -124,52 +133,13 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                 <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
               </div>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              disabled={isGoogleLoading || isLoading}
-              onClick={async () => {
-                setIsGoogleLoading(true)
-                setError(null)
-                
-                try {
-                  const { error } = await supabase.auth.signInWithOAuth({
-                    provider: 'google',
-                    options: {
-                      redirectTo: `${window.location.origin}/auth/callback`,
-                      queryParams: {
-                        access_type: 'offline',
-                        prompt: 'consent',
-                      },
-                    },
-                  })
-                  if (error) {
-                    console.error('Google OAuth error:', error)
-                    throw error
-                  }
-                  // The redirect will happen automatically, so we don't need to do anything else
-                } catch (err) {
-                  console.error('Google sign-up error:', err)
-                  setError(
-                    err instanceof Error 
-                      ? `Google sign-up failed: ${err.message}` 
-                      : 'Google sign-up failed. Please try again.'
-                  )
-                  setIsGoogleLoading(false)
-                }
-              }}
+            {/* Google Identity Services button container */}
+            <div
+              ref={googleButtonRef}
+              id="google-btn-container-signup"
               aria-label="Sign up with Google"
-            >
-              {isGoogleLoading ? (
-                <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
-                  Connecting to Google...
-                </>
-              ) : (
-                'Continue with Google'
-              )}
-            </Button>
+              className="w-full flex justify-center"
+            />
             <div className="text-center text-sm">
               Already have an account?{' '}
               <Link href="/auth/login" className="underline underline-offset-4">
