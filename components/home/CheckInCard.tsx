@@ -9,13 +9,22 @@ import { Skeleton } from '@/components/ui/skeleton'
 type TimeOfDay = 'morning' | 'evening' | 'none'
 type TodayCheckInRow = { type: 'morning' | 'evening' }
 
-export function CheckInCard() {
+interface CheckInCardProps {
+  selectedDate?: Date
+}
+
+export function CheckInCard({ selectedDate = new Date() }: CheckInCardProps) {
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('none')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hasMorning, setHasMorning] = useState(false)
   const [hasEvening, setHasEvening] = useState(false)
   const isMountedRef = useRef(true)
+  
+  // Date calculations
+  const targetDate = new Date(selectedDate)
+  const targetDateString = targetDate.toISOString().slice(0, 10)
+  const isViewingToday = targetDateString === new Date().toISOString().slice(0, 10)
 
   useEffect(() => {
     const hour = new Date().getHours()
@@ -34,7 +43,7 @@ export function CheckInCard() {
     }
   }, [])
 
-  const fetchTodayCheckIns = useCallback(async () => {
+  const fetchSelectedDateCheckIns = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     const supabase = createClient()
@@ -48,14 +57,12 @@ export function CheckInCard() {
       if (userError) throw userError
 
       if (user) {
-        const today = new Date()
-        const todayString = today.toISOString().slice(0, 10)
 
         const { data, error } = await supabase
           .from('check_ins')
           .select('type')
           .eq('user_id', user.id)
-          .eq('check_in_date', todayString)
+          .eq('check_in_date', targetDateString)
 
         if (error) throw error
 
@@ -77,14 +84,15 @@ export function CheckInCard() {
       if (!isMountedRef.current) return
       setIsLoading(false)
     }
-  }, [])
+  }, [selectedDate, targetDateString])
 
   useEffect(() => {
-    fetchTodayCheckIns()
-  }, [fetchTodayCheckIns])
+    fetchSelectedDateCheckIns()
+  }, [fetchSelectedDateCheckIns])
 
-  const isMorningWindow = timeOfDay === 'morning'
-  const isEveningWindow = timeOfDay === 'evening'
+  // Only show time-based windows if we're looking at today
+  const isMorningWindow = timeOfDay === 'morning' && isViewingToday
+  const isEveningWindow = timeOfDay === 'evening' && isViewingToday
 
   if (isLoading) {
     return (
@@ -104,7 +112,7 @@ export function CheckInCard() {
         <Button
           variant="outline"
           className="mt-4 border-destructive/40 text-destructive hover:bg-destructive/10"
-          onClick={fetchTodayCheckIns}
+          onClick={fetchSelectedDateCheckIns}
           disabled={isLoading}
         >
           Try again
@@ -116,10 +124,17 @@ export function CheckInCard() {
   if (hasMorning && hasEvening) {
     return (
       <div className="col-span-2 rounded-xl border border-border bg-emerald-600 p-4 text-white">
-        <div className="text-xs uppercase tracking-wide opacity-90">Check-in complete</div>
-        <div className="text-lg font-semibold">Great work today</div>
+        <div className="text-xs uppercase tracking-wide opacity-90">
+          {isViewingToday ? 'Check-in complete' : 'Completed'}
+        </div>
+        <div className="text-lg font-semibold">
+          {isViewingToday ? 'Great work today' : 'Full check-in'}
+        </div>
         <p className="mt-2 text-sm text-emerald-100/90">
-          You’ve completed both your morning and evening reflections. See you tomorrow!
+          {isViewingToday 
+            ? "You've completed both your morning and evening reflections. See you tomorrow!"
+            : "Both morning and evening check-ins were completed on this day."
+          }
         </p>
       </div>
     )
@@ -171,6 +186,22 @@ export function CheckInCard() {
         <GuardedLink href="/check-in">
           <Button className="mt-4 bg-white text-black hover:bg-white/90">Begin</Button>
         </GuardedLink>
+      </div>
+    )
+  }
+
+  // Default case - no check-ins for this day
+  if (!isViewingToday) {
+    return (
+      <div className="col-span-2 rounded-xl border border-border bg-muted p-4">
+        <div className="text-base font-medium">No check-ins</div>
+        <div className="mt-1 text-xs text-muted-foreground">
+          No check-ins were completed on {targetDate.toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'short', 
+            day: 'numeric'
+          })}.
+        </div>
       </div>
     )
   }
