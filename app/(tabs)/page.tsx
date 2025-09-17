@@ -14,11 +14,6 @@ export default function HomePage() {
   const now = new Date()
   const hour = now.getHours()
   const greeting = hour < 12 ? 'good morning.' : hour < 17 ? 'good afternoon.' : 'good evening.'
-  const timeString = now.toLocaleTimeString('en-US', { 
-    hour12: false, 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  })
 
   return (
     <div
@@ -34,7 +29,6 @@ export default function HomePage() {
           className="flex items-center justify-between text-sm"
           style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.75))' }}
         >
-          <span>{timeString}</span>
           <span className="font-medium" style={{ color: 'rgba(255,255,255,var(--eth-user-opacity))' }}>{greeting}</span>
           <GuardedLink
             href="/profile"
