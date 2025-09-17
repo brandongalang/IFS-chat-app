@@ -221,7 +221,7 @@ export function useGoogleAuth() {
     }
   }
 
-  const signInWithGoogle = async (redirectPath = '/') => {
+  const signInWithGoogle = async (redirectPath = '/', containerId = 'google-btn-container') => {
     setIsLoading(true)
     setError(null)
 
@@ -232,7 +232,7 @@ export function useGoogleAuth() {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
           // Fallback to popup if prompt is not displayed
           google.accounts.id.renderButton(
-            document.getElementById('google-btn-container'),
+            document.getElementById(containerId),
             {
               theme: 'outline',
               size: 'large',
