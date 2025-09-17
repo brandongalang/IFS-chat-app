@@ -4,17 +4,42 @@ import { createClient } from '@/lib/supabase/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const error_code = searchParams.get('error')
+  const error_description = searchParams.get('error_description')
   // if "next" is in param, use it as the redirect URL
   const next = searchParams.get('next') ?? '/'
 
+  // Check for OAuth errors first
+  if (error_code) {
+    console.error('OAuth callback error:', {
+      error_code,
+      error_description,
+      searchParams: Object.fromEntries(searchParams.entries())
+    })
+    return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent(error_description || 'OAuth authentication failed')}`)
+  }
+
   if (code) {
-    const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+    try {
+      const supabase = await createClient()
+      const { error, data } = await supabase.auth.exchangeCodeForSession(code)
+      
+      if (!error && data?.session) {
+        console.log('OAuth callback successful for user:', data.user?.email)
+        return NextResponse.redirect(`${origin}${next}`)
+      }
+      
+      if (error) {
+        console.error('Code exchange error:', error)
+        return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent(error.message)}`)
+      }
+    } catch (err) {
+      console.error('Unexpected callback error:', err)
+      return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent('Authentication failed')}`)
     }
   }
 
-  // return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/auth/error`)
+  // No code provided
+  console.warn('OAuth callback without code or error')
+  return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent('Invalid authentication callback')}`)
 }
