@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useGoogleAuth } from '@/lib/hooks/use-google-auth'
 
 const etherealTextStyle = {
@@ -30,8 +30,13 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
-  const { signInWithGoogle, isLoading: googleLoading, error: googleError } = useGoogleAuth()
-  const googleButtonRef = useRef<HTMLButtonElement>(null)
+  const {
+    initGoogleButton,
+    signInWithGoogle,
+    isLoading: googleLoading,
+    error: googleError,
+  } = useGoogleAuth()
+  const googleContainerRef = useRef<HTMLDivElement>(null)
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,6 +65,11 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    initGoogleButton('google-btn-container-signup', '/')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleGoogleSignUp = async () => {
     await signInWithGoogle('/')
@@ -129,13 +139,17 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                 <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
               </div>
             </div>
+            <div
+              ref={googleContainerRef}
+              id="google-btn-container-signup"
+              aria-label="Sign up with Google"
+              className="w-full flex justify-center"
+            />
             <Button
-              ref={googleButtonRef}
               variant="outline"
-              className="w-full"
+              className="w-full mt-2"
               onClick={handleGoogleSignUp}
               disabled={isLoading || googleLoading}
-              id="google-signin-button"
             >
               {googleLoading ? 'Connecting...' : 'Continue with Google'}
             </Button>
