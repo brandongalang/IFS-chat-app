@@ -36,9 +36,39 @@ declare global {
   }
 }
 
-const textEncoder = new TextEncoder()
-
 type GoogleIdentity = NonNullable<Window['google']>
+
+const textEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null
+
+const DEBUG_PREFIX = '[useGoogleAuth]'
+const shouldLogDebug = process.env.NODE_ENV !== 'production'
+
+function debugLog(...args: unknown[]) {
+  if (!shouldLogDebug) return
+  console.info(DEBUG_PREFIX, ...args)
+}
+
+function debugWarn(...args: unknown[]) {
+  if (!shouldLogDebug) return
+  console.warn(DEBUG_PREFIX, ...args)
+}
+
+function redact(value: string | undefined | null, options: { prefix?: number; suffix?: number } = {}) {
+  if (!value) return 'unset'
+  const prefixLength = options.prefix ?? 4
+  const suffixLength = options.suffix ?? 4
+  if (value.length <= prefixLength + suffixLength + 3) {
+    return `${value} (len ${value.length})`
+  }
+  const start = value.slice(0, prefixLength)
+  const end = value.slice(-suffixLength)
+  return `${start}…${end} (len ${value.length})`
+}
+
+function formatNonce(nonce: string | null | undefined) {
+  if (!nonce) return 'none'
+  return redact(nonce, { prefix: 6, suffix: 4 })
+}
 
 function toBase64Url(bytes: Uint8Array) {
   let binary = ''
@@ -48,20 +78,34 @@ function toBase64Url(bytes: Uint8Array) {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-async function generateNoncePair() {
+function generateNonce() {
   if (typeof window === 'undefined') {
     throw new Error('Window object not available')
   }
   const cryptoObj = window.crypto
-  if (!cryptoObj?.getRandomValues || !cryptoObj?.subtle) {
+  if (!cryptoObj?.getRandomValues) {
     throw new Error('Secure random generator unavailable')
   }
   const randomBytes = new Uint8Array(32)
   cryptoObj.getRandomValues(randomBytes)
-  const raw = toBase64Url(randomBytes)
+  return toBase64Url(randomBytes)
+}
+
+async function hashNonce(raw: string) {
+  if (typeof window === 'undefined') {
+    throw new Error('Window object not available')
+  }
+  const cryptoObj = window.crypto
+  if (!cryptoObj?.subtle || !textEncoder) {
+    throw new Error('Secure hashing unavailable')
+  }
   const digest = await cryptoObj.subtle.digest('SHA-256', textEncoder.encode(raw))
-  const hashed = toBase64Url(new Uint8Array(digest))
-  return { raw, hashed }
+  return toBase64Url(new Uint8Array(digest))
+}
+
+type NonceState = {
+  raw: string
+  hashed: string
 }
 
 export function useGoogleAuth() {
@@ -69,8 +113,24 @@ export function useGoogleAuth() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
-  const nonceRef = useRef<{ raw: string; hashed: string } | null>(null)
+  const nonceRef = useRef<NonceState | null>(null)
   const redirectPathRef = useRef('/')
+  const envReportedRef = useRef(false)
+
+  if (shouldLogDebug && !envReportedRef.current) {
+    envReportedRef.current = true
+    debugLog('Environment diagnostics', {
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: redact(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID),
+      NEXT_PUBLIC_SUPABASE_URL: redact(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL, {
+        prefix: 12,
+        suffix: 0,
+      }),
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: redact(
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY,
+        { prefix: 6, suffix: 4 }
+      ),
+    })
+  }
 
   const initializeGoogleSignIn = () => {
     return new Promise<GoogleIdentity>((resolve, reject) => {
@@ -102,13 +162,23 @@ export function useGoogleAuth() {
     })
   }
 
-  const ensureNoncePair = async () => {
+  const ensureNonce = async () => {
     if (nonceRef.current) {
+      debugLog('Reusing cached nonce', {
+        raw: formatNonce(nonceRef.current.raw),
+        hashed: formatNonce(nonceRef.current.hashed),
+      })
       return nonceRef.current
     }
-    const pair = await generateNoncePair()
-    nonceRef.current = pair
-    return pair
+    const nonce = generateNonce()
+    const hashed = await hashNonce(nonce)
+    const state: NonceState = { raw: nonce, hashed }
+    nonceRef.current = state
+    debugLog('Generated new nonce', {
+      raw: formatNonce(state.raw),
+      hashed: formatNonce(state.hashed),
+    })
+    return state
   }
 
   const configureGoogleClient = async (redirectPath: string) => {
@@ -117,34 +187,68 @@ export function useGoogleAuth() {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) throw new Error('Google Client ID not configured')
 
-    const pair = await ensureNoncePair()
+    const nonceState = await ensureNonce()
     redirectPathRef.current = redirectPath
+    debugLog('Configuring Google Identity client', {
+      redirectPath,
+      clientId: redact(clientId, { prefix: 8, suffix: 4 }),
+      nonceRaw: formatNonce(nonceState.raw),
+      nonceHashed: formatNonce(nonceState.hashed),
+    })
 
     google.accounts.id.initialize({
       client_id: clientId,
-      nonce: pair.hashed,
+      nonce: nonceState.raw,
       callback: async (response: { credential: string }) => {
         try {
           setIsLoading(true)
           setError(null)
 
-          const activeNonce = nonceRef.current?.raw ?? pair.raw
+          const activeNonce = nonceRef.current ?? nonceState
           if (!activeNonce) {
             throw new Error('Missing nonce for Google sign-in')
           }
 
+          const idTokenPayload = decodeIdToken(response.credential)
+          let computedHash: string | null = null
+          try {
+            computedHash = await hashNonce(activeNonce.raw)
+          } catch (hashError) {
+            debugWarn('Failed to hash nonce for comparison', hashError)
+          }
+
+          debugLog('Nonce comparison before Supabase sign-in', {
+            raw: formatNonce(activeNonce.raw),
+            cachedHashed: formatNonce(activeNonce.hashed),
+            recomputedHashed: computedHash ? formatNonce(computedHash) : 'none',
+            tokenNonce: idTokenPayload?.nonce ? formatNonce(idTokenPayload.nonce) : 'none',
+            tokenAud: idTokenPayload?.aud ? redact(idTokenPayload.aud) : 'unset',
+            tokenIss: idTokenPayload?.iss ?? 'unset',
+          })
+
+          debugLog('Attempting Supabase sign-in with ID token', {
+            redirectPath: redirectPathRef.current,
+            nonceRaw: formatNonce(activeNonce.raw),
+          })
+
           const { error: authError } = await supabase.auth.signInWithIdToken({
             provider: 'google',
             token: response.credential,
-            nonce: activeNonce,
+            nonce: activeNonce.raw,
           })
           if (authError) throw authError
 
+          debugLog('Supabase sign-in succeeded')
           nonceRef.current = null
           await redirectAfterSignIn(redirectPathRef.current)
         } catch (authError) {
           nonceRef.current = null
-          setError(authError instanceof Error ? authError.message : 'Authentication failed')
+          const message = authError instanceof Error ? authError.message : 'Authentication failed'
+          debugWarn('Supabase sign-in failed', {
+            message,
+            details: authError,
+          })
+          setError(message)
           setIsLoading(false)
         }
       },
@@ -217,6 +321,7 @@ export function useGoogleAuth() {
         })
       }
     } catch (authError) {
+      debugWarn('Failed to initialize Google button', authError)
       setError(authError instanceof Error ? authError.message : 'Failed to initialize Google Sign-In')
     }
   }
@@ -243,9 +348,11 @@ export function useGoogleAuth() {
             }
           )
           setIsLoading(false)
+          debugWarn('Google prompt not displayed; rendered fallback button')
         }
       })
     } catch (authError) {
+      debugWarn('Google prompt initialization failed', authError)
       setError(authError instanceof Error ? authError.message : 'Failed to initialize Google Sign-In')
       setIsLoading(false)
     }
@@ -256,5 +363,19 @@ export function useGoogleAuth() {
     signInWithGoogle,
     isLoading,
     error,
+  }
+}
+
+function decodeIdToken(token: string): { [key: string]: any } | null {
+  try {
+    const parts = token.split('.')
+    if (parts.length < 2) return null
+    const base64 = parts[1]
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')
+    const normalized = padded.replace(/-/g, '+').replace(/_/g, '/')
+    const decoded = typeof window !== 'undefined' ? window.atob(normalized) : atob(normalized)
+    return JSON.parse(decoded)
+  } catch {
+    return null
   }
 }
