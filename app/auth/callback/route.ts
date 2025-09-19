@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import type { Session } from '@supabase/supabase-js'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -42,4 +43,31 @@ export async function GET(request: Request) {
   // No code provided
   console.warn('OAuth callback without code or error')
   return NextResponse.redirect(`${origin}/auth/error?message=${encodeURIComponent('Invalid authentication callback')}`)
+}
+
+type AuthCallbackPayload = {
+  event?: string
+  session?: Session | null
+}
+
+export async function POST(request: Request) {
+  try {
+    const { event, session } = (await request.json()) as AuthCallbackPayload
+    const supabase = await createClient()
+
+    if (event === 'SIGNED_OUT') {
+      await supabase.auth.signOut()
+    } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      if (session) {
+        await supabase.auth.setSession(session)
+      } else {
+        console.warn('Auth callback POST missing session for event:', event)
+      }
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error handling auth callback POST request:', error)
+    return NextResponse.json({ success: false }, { status: 500 })
+  }
 }

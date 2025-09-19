@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { ComingSoonProvider } from '@/components/common/ComingSoonProvider'
 import { GlobalBackdrop } from '@/components/ethereal/GlobalBackdrop'
 import { ThemeController } from '@/components/ethereal/ThemeController'
+import { SupabaseSessionListener } from '@/components/auth/supabase-session-listener'
 import { UserProvider } from '@/context/UserContext'
 
 export const metadata: Metadata = {
@@ -29,6 +30,7 @@ export default function RootLayout({
             </UserProvider>
           </ComingSoonProvider>
         </ThemeProvider>
+        <SupabaseSessionListener />
       </body>
     </html>
   )
