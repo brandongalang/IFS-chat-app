@@ -9,30 +9,93 @@ process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANO
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key'
 process.env.IFS_TEST_PERSONA = 'beginner'
 
-interface SupabaseInsertResult {
-  data: any
+interface SupabaseResult<T = any> {
+  data: T
   error: { code?: string; message?: string } | null
 }
 
-type SupabaseInsertHandler = (payload: Record<string, any>) => Promise<SupabaseInsertResult>
+type SupabaseInsertHandler = (
+  table: string,
+  payload: Record<string, any>,
+) => Promise<SupabaseResult>
+type SupabaseSelectHandler = (
+  params: {
+    table: string
+    columns?: string
+    filters: Array<{ column: string; value: unknown }>
+    order?: { column: string; ascending: boolean }
+    limit?: number
+  },
+) => Promise<SupabaseResult>
+type SupabaseUpdateHandler = (
+  params: {
+    table: string
+    payload: Record<string, any>
+    filters: Array<{ column: string; value: unknown }>
+  },
+) => Promise<SupabaseResult>
 
-const defaultHandler: SupabaseInsertHandler = async () => {
+const defaultInsertHandler: SupabaseInsertHandler = async () => {
   throw new Error('supabase insert handler not set for test')
 }
 
-let supabaseInsertImpl: SupabaseInsertHandler = defaultHandler
+const defaultSelectHandler: SupabaseSelectHandler = async () => ({ data: [], error: null })
+
+const defaultUpdateHandler: SupabaseUpdateHandler = async () => ({ data: null, error: null })
+
+let supabaseInsertImpl: SupabaseInsertHandler = defaultInsertHandler
+let supabaseSelectImpl: SupabaseSelectHandler = defaultSelectHandler
+let supabaseUpdateImpl: SupabaseUpdateHandler = defaultUpdateHandler
+
+function createQueryBuilder(table: string) {
+  return {
+    insert(payload: Record<string, any>) {
+      return {
+        async select() {
+          return supabaseInsertImpl(table, payload)
+        },
+      }
+    },
+    select(columns?: string) {
+      const filters: Array<{ column: string; value: unknown }> = []
+      const builder = {
+        eq(column: string, value: unknown) {
+          filters.push({ column, value })
+          return builder
+        },
+        order(column: string, options?: { ascending?: boolean }) {
+          builder._order = { column, ascending: options?.ascending ?? true }
+          return builder
+        },
+        limit(limit: number) {
+          return supabaseSelectImpl({
+            table,
+            columns,
+            filters,
+            order: builder._order,
+            limit,
+          })
+        },
+        _order: undefined as { column: string; ascending: boolean } | undefined,
+      }
+
+      return builder
+    },
+    update(payload: Record<string, any>) {
+      const filters: Array<{ column: string; value: unknown }> = []
+      return {
+        eq(column: string, value: unknown) {
+          filters.push({ column, value })
+          return supabaseUpdateImpl({ table, payload, filters })
+        },
+      }
+    },
+  }
+}
 
 const adminClient = {
-  from() {
-    return {
-      insert(payload: Record<string, any>) {
-        return {
-          async select() {
-            return supabaseInsertImpl(payload)
-          },
-        }
-      },
-    }
+  from(table: string) {
+    return createQueryBuilder(table)
   },
 }
 
@@ -42,16 +105,8 @@ const serverClient = {
       return { data: { user: { id: 'user-auth-id' } } }
     },
   },
-  from() {
-    return {
-      insert(payload: Record<string, any>) {
-        return {
-          async select() {
-            return supabaseInsertImpl(payload)
-          },
-        }
-      },
-    }
+  from(table: string) {
+    return createQueryBuilder(table)
   },
 }
 
@@ -74,25 +129,34 @@ function createRequest(body: Record<string, any>) {
 }
 
 test('creates a morning check-in via the API', async (t) => {
-  supabaseInsertImpl = async (payload) => {
+  supabaseInsertImpl = async (_table, payload) => {
     assert.equal(payload.type, 'morning')
-    assert.equal(payload.mood, 4)
+    assert.equal(payload.mood, 3)
     assert.equal(payload.energy_level, 3)
     assert.equal(payload.user_id, '11111111-1111-1111-1111-111111111111')
+    assert.equal(payload.intention, 'Set a calm tone')
+    const daily = (payload.parts_data?.daily_responses ?? {}) as Record<string, any>
+    assert.equal(daily.variant, 'morning')
+    assert.equal(daily.intention, 'Set a calm tone')
+    assert.equal(daily.generatedEveningPrompt.text, 'What stood out for you today?')
     return { data: [{ id: 'check-in-1', ...payload }], error: null }
   }
 
   t.after(() => {
-    supabaseInsertImpl = defaultHandler
+    supabaseInsertImpl = defaultInsertHandler
+    supabaseSelectImpl = defaultSelectHandler
   })
 
   const res = await POST(
     createRequest({
       type: 'morning',
-      mood: 4,
-      energy_level: 3,
+      mood: 'steady',
+      energy: 'steady',
+      intentionFocus: 'aimed',
+      mindForToday: 'Team sync later',
       intention: 'Set a calm tone',
-    })
+      parts: ['part-1'],
+    }),
   )
 
   assert.equal(res.status, 201)
@@ -103,23 +167,52 @@ test('creates a morning check-in via the API', async (t) => {
 })
 
 test('creates an evening check-in via the API', async (t) => {
-  supabaseInsertImpl = async (payload) => {
+  supabaseSelectImpl = async () => ({
+    data: [
+      {
+        id: 'morning-id',
+        parts_data: {
+          daily_responses: {
+            variant: 'morning',
+            generatedEveningPrompt: { text: 'What stood out for you today?' },
+          },
+        },
+      },
+    ],
+    error: null,
+  })
+
+  supabaseInsertImpl = async (_table, payload) => {
     assert.equal(payload.type, 'evening')
     assert.equal(payload.reflection, 'Day went well')
+    assert.equal(payload.gratitude, 'Supportive friends')
+    const daily = (payload.parts_data?.daily_responses ?? {}) as Record<string, any>
+    assert.equal(daily.variant, 'evening')
+    assert.equal(daily.reflection, 'Day went well')
+    assert.equal(daily.reflectionPrompt.text, 'What stood out for you today?')
     return { data: [{ id: 'check-in-2', ...payload }], error: null }
   }
 
+  supabaseUpdateImpl = async () => ({ data: null, error: null })
+
   t.after(() => {
-    supabaseInsertImpl = defaultHandler
+    supabaseInsertImpl = defaultInsertHandler
+    supabaseSelectImpl = defaultSelectHandler
+    supabaseUpdateImpl = defaultUpdateHandler
   })
 
   const res = await POST(
     createRequest({
       type: 'evening',
-      mood: 2,
+      mood: 'bright',
+      energy: 'spark',
+      intentionFocus: 'committed',
+      reflectionPrompt: 'What stood out for you today?',
       reflection: 'Day went well',
       gratitude: 'Supportive friends',
-    })
+      moreNotes: 'Follow up with Caretaker part tomorrow.',
+      parts: ['part-1'],
+    }),
   )
 
   assert.equal(res.status, 201)
@@ -133,7 +226,7 @@ test('rejects submissions without a valid type', async (t) => {
   }
 
   t.after(() => {
-    supabaseInsertImpl = defaultHandler
+    supabaseInsertImpl = defaultInsertHandler
   })
 
   const res = await POST(createRequest({ mood: 5 }))
@@ -144,14 +237,19 @@ test('rejects submissions without a valid type', async (t) => {
 
 test('surfaces duplicate submission errors from Supabase', async (t) => {
   supabaseInsertImpl = async () => {
-    return { data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint' } }
+    return {
+      data: null,
+      error: { code: '23505', message: 'duplicate key value violates unique constraint' },
+    }
   }
 
   t.after(() => {
-    supabaseInsertImpl = defaultHandler
+    supabaseInsertImpl = defaultInsertHandler
   })
 
-  const res = await POST(createRequest({ type: 'morning' }))
+  const res = await POST(
+    createRequest({ type: 'morning', mood: 'steady', energy: 'steady', intentionFocus: 'aimed', intention: 'Stay calm' }),
+  )
   assert.equal(res.status, 409)
   const json = await res.json()
   assert.equal(json.error, 'A check-in of this type already exists for this date.')

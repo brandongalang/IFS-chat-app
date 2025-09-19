@@ -41,16 +41,67 @@ function asISODate(d: Date) { return d.toISOString().slice(0, 10) }
 
 function pick<T>(arr: T[], idx: number) { return arr[idx % arr.length] }
 
+type EmojiOption = {
+  id: string
+  emoji: string
+  label: string
+  score: number
+}
+
+const MOOD_OPTIONS: EmojiOption[] = [
+  { id: 'depleted', emoji: '😔', label: 'Running on empty', score: 1 },
+  { id: 'soft', emoji: '😕', label: 'Tender but okay', score: 2 },
+  { id: 'steady', emoji: '🙂', label: 'Steady and present', score: 3 },
+  { id: 'bright', emoji: '😄', label: 'Bright and open', score: 4 },
+  { id: 'glowing', emoji: '🤩', label: 'Glowing with joy', score: 5 },
+]
+
+const ENERGY_OPTIONS: EmojiOption[] = [
+  { id: 'drained', emoji: '😴', label: 'Running on fumes', score: 1 },
+  { id: 'low', emoji: '😌', label: 'Soft but tired', score: 2 },
+  { id: 'steady', emoji: '🙂', label: 'Steady and grounded', score: 3 },
+  { id: 'spark', emoji: '⚡️', label: 'Spark of momentum', score: 4 },
+  { id: 'soaring', emoji: '🚀', label: 'Soaring with energy', score: 5 },
+]
+
+const INTENTION_FOCUS_OPTIONS: EmojiOption[] = [
+  { id: 'scattered', emoji: '😵‍💫', label: 'Still finding focus', score: 1 },
+  { id: 'curious', emoji: '🤔', label: 'Curious and exploring', score: 2 },
+  { id: 'aimed', emoji: '🎯', label: 'Clear on my aim', score: 3 },
+  { id: 'committed', emoji: '💪', label: 'Committed to follow-through', score: 4 },
+  { id: 'grounded', emoji: '🧘', label: 'Grounded and embodied', score: 5 },
+]
+
+const DEFAULT_PROMPT = 'What stood out for you today?'
+
 const AM_NOTES = [
   'Set an intention to stay curious with parts.',
   'Notice sensations before diving into tasks.',
   'Invite a gentle pace and self-trust.'
+]
+const AM_CONTEXTS = [
+  'Preparing for a collaborative sync with the team.',
+  'Holding space for a vulnerable conversation later today.',
+  'Creating focus for deep work without rushing.',
 ]
 const PM_NOTES = [
   'Reflected on protector showing up after feedback.',
   'Grateful for small moments of ease.',
   'Saw a pattern and noted it without judgment.'
 ]
+
+function optionByScore(options: EmojiOption[], score: number): EmojiOption {
+  const index = Math.min(options.length - 1, Math.max(0, score - 1))
+  return options[index]
+}
+
+function buildEmojiSnapshot(params: { mood: number; energy: number; intentionFocus: number }) {
+  return {
+    mood: optionByScore(MOOD_OPTIONS, params.mood),
+    energy: optionByScore(ENERGY_OPTIONS, params.energy),
+    intentionFocus: optionByScore(INTENTION_FOCUS_OPTIONS, params.intentionFocus),
+  }
+}
 
 async function seedUser(supabase: ReturnType<typeof createClient>, userId: string, persona: TestPersona, days: number) {
   const today = toDateUTC(new Date())
@@ -59,21 +110,73 @@ async function seedUser(supabase: ReturnType<typeof createClient>, userId: strin
     const dateOnly = asISODate(day)
 
     const entries = [
-      { type: 'morning', mood: 3 + (i % 2), energy: 3 + ((i+1) % 2), intention: pick(AM_NOTES, i), reflection: null, gratitude: 'A warm conversation', somatic: ['soft chest'] },
-      { type: 'evening', mood: 2 + (i % 3), energy: 2 + ((i+2) % 3), intention: null, reflection: pick(PM_NOTES, i), gratitude: 'Learning about my system', somatic: ['loose shoulders'] }
+      {
+        type: 'morning',
+        mood: 3 + (i % 2),
+        energy: 3 + ((i + 1) % 2),
+        intentionFocus: 3 + ((i + 2) % 2),
+        intention: pick(AM_NOTES, i),
+        mindForToday: pick(AM_CONTEXTS, i),
+        gratitude: 'A warm conversation',
+        somatic: ['soft chest'],
+      },
+      {
+        type: 'evening',
+        mood: 2 + (i % 3),
+        energy: 2 + ((i + 2) % 3),
+        intentionFocus: 3 + ((i + 1) % 2),
+        reflection: pick(PM_NOTES, i),
+        gratitude: 'Learning about my system',
+        moreNotes: 'Seeded entry for development data.',
+        somatic: ['loose shoulders'],
+      }
     ] as const
 
     for (const e of entries) {
+      const emojiSnapshot = buildEmojiSnapshot({
+        mood: e.mood,
+        energy: e.energy,
+        intentionFocus: e.intentionFocus,
+      })
+
+      const dailyResponses =
+        e.type === 'morning'
+          ? {
+              variant: 'morning' as const,
+              emoji: emojiSnapshot,
+              mindForToday: e.mindForToday,
+              intention: e.intention,
+              selectedPartIds: [],
+              generatedEveningPrompt: {
+                text: DEFAULT_PROMPT,
+                created_at: new Date(dateOnly + 'T08:00:00Z').toISOString(),
+              },
+            }
+          : {
+              variant: 'evening' as const,
+              emoji: emojiSnapshot,
+              reflectionPrompt: { text: DEFAULT_PROMPT },
+              reflection: e.reflection,
+              gratitude: e.gratitude,
+              moreNotes: e.moreNotes,
+              selectedPartIds: [],
+            }
+
+      const partsData = {
+        selected_part_ids: [] as string[],
+        daily_responses: dailyResponses,
+      }
+
       const row = {
         user_id: userId,
         type: e.type,
         check_in_date: dateOnly,
         mood: e.mood,
         energy_level: e.energy,
-        intention: e.intention,
-        reflection: e.reflection,
+        intention: e.type === 'morning' ? e.intention : null,
+        reflection: e.type === 'evening' ? e.reflection : null,
         gratitude: e.gratitude,
-        parts_data: {},
+        parts_data: partsData,
         somatic_markers: e.somatic,
         processed: false,
         processed_at: null,
@@ -110,4 +213,3 @@ main().catch((e) => {
   console.error('❌ Seeding failed:', e?.message || e)
   process.exit(1)
 })
-
