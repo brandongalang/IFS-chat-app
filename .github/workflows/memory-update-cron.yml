@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   call-cron-endpoint:
+    if: ${{ secrets.APP_BASE_URL != '' && secrets.CRON_SECRET != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Call /api/cron/memory-update
@@ -31,4 +32,3 @@ jobs:
           if [ "$CODE" -lt 200 ] || [ "$CODE" -ge 300 ]; then
             exit 1
           fi
-
