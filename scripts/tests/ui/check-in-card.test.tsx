@@ -204,7 +204,7 @@ test('renders the morning check-in entry point with navigation link', async (t) 
   const title = await screen.findByText('Fresh start!')
   assert.ok(title)
   const link = await screen.findByRole('link', { name: /begin/i })
-  assert.equal(link.getAttribute('href'), '/check-in')
+  assert.equal(link.getAttribute('href'), '/check-in/morning')
 })
 
 test('renders the evening variant during evening hours', async (t) => {
@@ -223,6 +223,8 @@ test('renders the evening variant during evening hours', async (t) => {
   const label = await screen.findByText('Daily review')
   assert.ok(label)
   await screen.findByText('Evening')
+  const link = await screen.findByRole('link', { name: /begin/i })
+  assert.equal(link.getAttribute('href'), '/check-in/evening')
 })
 
 test('hides the call-to-action outside check-in windows', async (t) => {

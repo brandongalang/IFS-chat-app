@@ -217,7 +217,6 @@ export async function POST(req: NextRequest) {
           somatic_markers: null,
           gratitude: null,
           reflection: null,
-          processed: false,
         })
         .select()
 
@@ -286,7 +285,6 @@ export async function POST(req: NextRequest) {
         intention: null,
         parts_data: partsData,
         somatic_markers: null,
-        processed: false,
       })
       .select()
 
