@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import type { CompletionResponse } from './types';
+import type { CompletionResponse, CompletionSummary } from './types';
 
 interface BuildCompletionResponseOptions {
   setCompletionCookie?: boolean;
+  summary?: CompletionSummary;
 }
 
 export function buildCompletionResponse(
@@ -16,6 +17,10 @@ export function buildCompletionResponse(
     redirect: `${redirectBase}/`,
     completed_at: completedAt,
   };
+
+  if (options.summary) {
+    response.summary = options.summary;
+  }
 
   const res = NextResponse.json(response);
 

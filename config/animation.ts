@@ -1,6 +1,6 @@
 export const animationDefaults = {
-  wordDurationMs: 2000,
-  charDurationMs: 1000,
+  wordDurationMs: 650,
+  charDurationMs: 220,
 } as const
 
 export type AnimationDefaults = typeof animationDefaults

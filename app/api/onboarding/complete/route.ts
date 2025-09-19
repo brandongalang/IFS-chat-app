@@ -6,6 +6,7 @@ import { validateCompletionRequest } from '@/lib/onboarding/validate-completion-
 import { completeOnboardingState } from '@/lib/onboarding/complete-state';
 import { synthesizeOnboardingMemories } from '@/lib/onboarding/synthesize-memories';
 import { buildCompletionResponse } from '@/lib/onboarding/build-completion-response';
+import { buildOnboardingSummary } from '@/lib/onboarding/summary';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/types/database';
 
@@ -62,7 +63,8 @@ export async function POST(request: NextRequest) {
     // Check if already completed
     if (userState.status === 'completed') {
       const completedAt = userState.completed_at ?? new Date().toISOString();
-      return buildCompletionResponse(completedAt, { setCompletionCookie: false });
+      const summary = await buildOnboardingSummary(supabase, user.id);
+      return buildCompletionResponse(completedAt, { setCompletionCookie: false, summary });
     }
 
     // Version conflict check
@@ -103,7 +105,9 @@ export async function POST(request: NextRequest) {
     // TODO: Track analytics event
     // await trackEvent('onboarding_completed', { userId: user.id, duration: ... });
 
-    return buildCompletionResponse(completionResult.completedAt);
+    const summary = await buildOnboardingSummary(supabase, user.id);
+
+    return buildCompletionResponse(completionResult.completedAt, { summary });
 
   } catch (error) {
     console.error('Unexpected error in completion route:', error);
