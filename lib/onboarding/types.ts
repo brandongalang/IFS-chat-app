@@ -144,10 +144,39 @@ export const CompletionRequest = z.object({
 });
 export type CompletionRequest = z.infer<typeof CompletionRequest>;
 
+export const PartTone = z.enum(['manager', 'firefighter']);
+export type PartTone = z.infer<typeof PartTone>;
+
+export const CompletionPartInsight = z.object({
+  id: z.string(),
+  name: z.string(),
+  tone: PartTone,
+  focus: z.string(),
+  intention: z.string(),
+  evidence: z.string(),
+});
+export type CompletionPartInsight = z.infer<typeof CompletionPartInsight>;
+
+export const CompletionSummary = z.object({
+  sentences: z.array(z.string()).min(1),
+  themes: z.array(z.object({
+    id: z.string(),
+    label: z.string(),
+    score: z.number().min(0).max(100),
+  })),
+  parts: z.array(CompletionPartInsight),
+  somatic: z.array(z.string()),
+  core_belief: z.string().nullable(),
+  mistake_reflex: z.string().nullable(),
+  least_trusted_feeling: z.string().nullable(),
+});
+export type CompletionSummary = z.infer<typeof CompletionSummary>;
+
 export const CompletionResponse = z.object({
   ok: z.boolean(),
   redirect: z.string().url(),
   completed_at: z.string().datetime(),
+  summary: CompletionSummary.optional(),
 });
 export type CompletionResponse = z.infer<typeof CompletionResponse>;
 

@@ -132,6 +132,20 @@ export async function POST(request: NextRequest) {
         if (questionBank && questionBank.length >= 4) {
           const selection = selectStage2Questions(stage1Scores, questionBank as OnboardingQuestion[]);
           updateData.stage2_selected_questions = selection.ids;
+
+          if (userState!.stage === 'stage1') {
+            updateData.stage = 'stage2';
+          }
+        }
+      }
+    }
+
+    if (stage === 'stage2' && userState!.stage !== 'complete') {
+      const selectedQuestions = userState!.stage2_selected_questions || [];
+      if (selectedQuestions.length > 0 && (userState!.stage === 'stage2' || userState!.stage === 'stage1')) {
+        const allAnswered = selectedQuestions.every((id: string) => Boolean(updatedAnswers[id]));
+        if (allAnswered) {
+          updateData.stage = 'stage3';
         }
       }
     }

@@ -32,7 +32,7 @@ export function QuestionCard({
   const baseId = useId()
   const labelId = `${baseId}-label`
   const helpId = `${baseId}-help`
-  const [promptStreamed, setPromptStreamed] = useState(false)
+  const [promptStreamed, setPromptStreamed] = useState(true)
 
   return (
     <div className="rounded-md border p-4">

@@ -1,11 +1,15 @@
 "use client"
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+
+import { OnboardingCompletionSummary } from './OnboardingCompletionSummary'
 import { QuestionCard } from './QuestionCard'
 import { WizardFooter } from './WizardFooter'
 import { track } from '@/lib/analytics'
 import {
   OnboardingQuestion as OnboardingQuestionSchema,
+  type CompletionResponse,
+  type CompletionSummary,
   type OnboardingQuestion,
   type OnboardingStage,
   type ProgressUpdateRequest,
@@ -27,22 +31,67 @@ async function loadOnboardingQuestions() {
   return onboardingQuestionArray.parse(configModule.default.questions)
 }
 
+const DEFAULT_STAGE_LENGTHS = {
+  stage1: 5,
+  stage2: 4,
+  stage3: 4,
+} as const
+
+const STAGE_TITLES: Record<OnboardingStage, string> = {
+  stage1: 'Stage 1 — 5 quick probes',
+  stage2: 'Stage 2 — A few context questions',
+  stage3: 'Stage 3 — Somatic & Belief Mapping',
+  complete: 'Onboarding Complete',
+}
+
+function stageToIndex(stage: OnboardingStage): number {
+  switch (stage) {
+    case 'stage1':
+      return 0
+    case 'stage2':
+      return 1
+    case 'stage3':
+      return 2
+    default:
+      return 3
+  }
+}
+
+function ProcessingState() {
+  return (
+    <div className="space-y-4 rounded-md border border-border/40 bg-background/80 p-6 text-center">
+      <div className="mx-auto h-12 w-12 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary" />
+      <h2 className="text-lg font-medium">Letting it land…</h2>
+      <p className="text-sm text-muted-foreground">
+        We&apos;re gently weaving your responses together. This takes just a moment.
+      </p>
+    </div>
+  )
+}
+
 export function OnboardingWizard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [inlineError, setInlineError] = useState<string | null>(null)
 
   const [version, setVersion] = useState<number>(0)
   const [stage, setStage] = useState<OnboardingStage>('stage1')
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
 
+  const [saving, setSaving] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+
   const [stage1Questions, setStage1Questions] = useState<OnboardingQuestion[]>([])
   const [stage2Questions, setStage2Questions] = useState<OnboardingQuestion[]>([])
   const [stage3Questions, setStage3Questions] = useState<OnboardingQuestion[]>([])
+  const [stage2Bank, setStage2Bank] = useState<OnboardingQuestion[]>([])
 
   const [answers, setAnswers] = useState<Record<string, QuestionResponse>>({})
 
+  const [completionSummary, setCompletionSummary] = useState<CompletionSummary | null>(null)
+  const [completionRedirect, setCompletionRedirect] = useState<string>('/')
 
-  // Initial load of state and Stage 1 questions (from local JSON)
+  // Initial load
   useEffect(() => {
     let cancelled = false
     async function init() {
@@ -50,152 +99,326 @@ export function OnboardingWizard() {
         setLoading(true)
         setError(null)
 
+        let nextStage: OnboardingStage = 'stage1'
+
         const stateRes = await fetch('/api/onboarding/state', { cache: 'no-store' })
         if (stateRes.ok) {
           const stateData: StateSummary = await stateRes.json()
-          setVersion(stateData.version)
-          setStage(stateData.stage)
+          nextStage = stateData.stage
+          if (!cancelled) {
+            setStage(stateData.stage)
+            setVersion(stateData.version)
+          }
+
+          if (stateData.stage === 'complete') {
+            try {
+              const summaryRes = await fetch('/api/onboarding/complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ version: stateData.version }),
+              })
+              if (summaryRes.ok) {
+                const completion = (await summaryRes.json()) as CompletionResponse
+                if (!cancelled) {
+                  setCompletionSummary(completion.summary ?? null)
+                  setCompletionRedirect(completion.redirect)
+                }
+              }
+            } catch (summaryError) {
+              console.warn('Failed to load existing onboarding summary', summaryError)
+            }
+          }
         } else {
-          // Allow dev persona or unauthenticated to proceed
-          setVersion(0)
-          setStage('stage1')
+          if (!cancelled) {
+            setStage('stage1')
+            setVersion(0)
+          }
         }
 
         const allQuestions = await loadOnboardingQuestions()
-        const s1 = allQuestions.filter(q => q.stage === 1 && q.active).sort((a,b)=>a.order_hint-b.order_hint)
-        if (!cancelled) setStage1Questions(s1)
+        if (cancelled) return
 
+        const s1 = allQuestions
+          .filter(q => q.stage === 1 && q.active)
+          .sort((a, b) => a.order_hint - b.order_hint)
+        const s2 = allQuestions
+          .filter(q => q.stage === 2 && q.active)
+          .sort((a, b) => a.order_hint - b.order_hint)
+        const s3 = allQuestions
+          .filter(q => q.stage === 3 && q.active)
+          .sort((a, b) => a.order_hint - b.order_hint)
+
+        setStage1Questions(s1)
+        setStage2Bank(s2)
+        setStage3Questions(s3)
+
+        // If we land mid-flow on Stage 2, hydrate from API selection
+        if (nextStage === 'stage2') {
+          await hydrateStage2FromServer(s2)
+        }
+
+        // Stage 3 uses static bank; no extra fetch needed here
       } catch (e: unknown) {
         if (!cancelled) {
-          const msg = e instanceof Error ? e.message : 'Something went wrong'
+          const msg = e instanceof Error ? e.message : 'Something went wrong while loading onboarding.'
           setError(msg)
         }
       } finally {
         if (!cancelled) setLoading(false)
       }
     }
-    init()
-    return () => { cancelled = true }
+
+    async function hydrateStage2FromServer(fallbackBank: OnboardingQuestion[]) {
+      if (cancelled) return
+      try {
+        const res = await fetch('/api/onboarding/questions?stage=2', { cache: 'no-store' })
+        if (!res.ok) throw new Error('Failed to hydrate Stage 2 questions')
+        const data = await res.json()
+        if (!cancelled && Array.isArray(data.questions)) {
+          const prepared = (data.questions as OnboardingQuestion[])
+            .filter(q => q.active)
+            .sort((a, b) => a.order_hint - b.order_hint)
+          setStage2Questions(prepared)
+        }
+      } catch (err) {
+        console.warn('Unable to hydrate Stage 2 questions from server, using fallback.', err)
+        if (!cancelled && fallbackBank.length >= 4) {
+          setStage2Questions(fallbackBank.slice(0, 4))
+        }
+      }
+    }
+
+    void init()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  // Track stage view when stage changes
+  // Ensure Stage 2 questions exist when we enter Stage 2 (e.g., after selection completes)
+  useEffect(() => {
+    if (stage !== 'stage2' || stage2Questions.length > 0) return
+
+    let cancelled = false
+    async function fetchStage2() {
+      try {
+        const res = await fetch('/api/onboarding/questions?stage=2', { cache: 'no-store' })
+        if (!res.ok) throw new Error('Failed to fetch Stage 2 questions')
+        const data = await res.json()
+        if (!cancelled && Array.isArray(data.questions)) {
+          const prepared = (data.questions as OnboardingQuestion[])
+            .filter(q => q.active)
+            .sort((a, b) => a.order_hint - b.order_hint)
+          setStage2Questions(prepared)
+        }
+      } catch (err) {
+        console.warn('fallback Stage 2 selection used due to fetch error', err)
+        if (!cancelled && stage2Bank.length >= 4) {
+          setStage2Questions(stage2Bank.slice(0, 4))
+        }
+      }
+    }
+    void fetchStage2()
+    return () => {
+      cancelled = true
+    }
+  }, [stage, stage2Bank, stage2Questions.length])
+
+  // Track stage view when stage changes (only for in-progress stages)
   useEffect(() => {
     track('onboarding_stage_viewed', { stage })
   }, [stage])
 
-
-
-  // Local answer update + schedule save
-  const handleAnswerChange = useCallback((q: OnboardingQuestion, response: QuestionResponse) => {
-    setAnswers(prev => ({ ...prev, [q.id]: response }))
-    track('onboarding_question_answered', { stage, questionId: q.id, type: response.type })
+  const handleAnswerChange = useCallback((question: OnboardingQuestion, response: QuestionResponse) => {
+    setAnswers(prev => ({ ...prev, [question.id]: response }))
+    setInlineError(null)
+    track('onboarding_question_answered', { stage, questionId: question.id, type: response.type })
   }, [stage])
 
-  // Stage 2 questions will be computed client-side on transition from Stage 1
+  const questions = useMemo(() => {
+    if (stage === 'stage1') return stage1Questions
+    if (stage === 'stage2') return stage2Questions
+    if (stage === 'stage3') return stage3Questions
+    return []
+  }, [stage, stage1Questions, stage2Questions, stage3Questions])
 
-  const questions = stage === 'stage1' ? stage1Questions : stage === 'stage2' ? stage2Questions : stage3Questions
   const currentQuestion = questions[currentQuestionIndex]
 
-  async function saveAllForStage(target: OnboardingStage) {
-    // Get questions for the target stage from local JSON or cached state
-    const allQuestions = await loadOnboardingQuestions()
-    const bank = allQuestions.filter(q => (q.stage === 1 && target==='stage1') || (q.stage===2 && target==='stage2') || (q.stage===3 && target==='stage3'))
-    // sequential saves with 409 retry
-    const doPost = async (v: number, payload: ProgressUpdateRequest) => fetch('/api/onboarding/progress', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
-    let currentVersion = version
-    for (const q of bank) {
-      const resp = answers[q.id]
-      if (!resp) continue
-      const payload = { stage: target, questionId: q.id, response: resp, version: currentVersion }
-      let res = await doPost(currentVersion, payload)
+  const stageLengths = useMemo(() => ({
+    stage1: stage1Questions.length || DEFAULT_STAGE_LENGTHS.stage1,
+    stage2: stage2Questions.length || DEFAULT_STAGE_LENGTHS.stage2,
+    stage3: stage3Questions.length || DEFAULT_STAGE_LENGTHS.stage3,
+  }), [stage1Questions.length, stage2Questions.length, stage3Questions.length])
+
+  const totalQuestions = stageLengths.stage1 + stageLengths.stage2 + stageLengths.stage3
+
+  const knownQuestionIds = useMemo(() => {
+    const ids = new Set<string>()
+    stage1Questions.forEach(q => ids.add(q.id))
+    stage2Questions.forEach(q => ids.add(q.id))
+    stage3Questions.forEach(q => ids.add(q.id))
+    return ids
+  }, [stage1Questions, stage2Questions, stage3Questions])
+
+  const answeredCount = useMemo(() => {
+    return Object.entries(answers).reduce((count, [questionId, response]) => {
+      if (!response) return count
+      if (knownQuestionIds.size > 0 && !knownQuestionIds.has(questionId)) return count
+      return count + 1
+    }, 0)
+  }, [answers, knownQuestionIds])
+
+  const stageIndex = stageToIndex(stage)
+
+  const overallQuestionNumber = useMemo(() => {
+    if (!currentQuestion) return Math.max(answeredCount, 0)
+    if (stage === 'stage1') return currentQuestionIndex + 1
+    if (stage === 'stage2') return stageLengths.stage1 + currentQuestionIndex + 1
+    if (stage === 'stage3') return stageLengths.stage1 + stageLengths.stage2 + currentQuestionIndex + 1
+    return totalQuestions
+  }, [currentQuestion, currentQuestionIndex, stage, stageLengths, totalQuestions, answeredCount])
+
+  const progressPercent = totalQuestions > 0
+    ? Math.round((Math.min(answeredCount, totalQuestions) / totalQuestions) * 100)
+    : 0
+
+  const persistAnswer = useCallback(async (
+    question: OnboardingQuestion,
+    response: QuestionResponse,
+  ): Promise<ProgressUpdateResponse | null> => {
+    setInlineError(null)
+    setSaving(true)
+    try {
+      const stageKey: OnboardingStage = question.stage === 1 ? 'stage1' : question.stage === 2 ? 'stage2' : 'stage3'
+      const doPost = async (payload: ProgressUpdateRequest) => fetch('/api/onboarding/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      let currentVersion = version
+      let payload: ProgressUpdateRequest = {
+        stage: stageKey,
+        questionId: question.id,
+        response,
+        version: currentVersion,
+      }
+
+      let res = await doPost(payload)
       if (res.status === 409) {
-        const s = await fetch('/api/onboarding/state', { cache:'no-store' })
-        if (s.ok) {
-          const sd: StateSummary = await s.json()
-          currentVersion = sd.version
-          setVersion(sd.version)
-          res = await doPost(currentVersion, { ...payload, version: currentVersion })
+        const stateRes = await fetch('/api/onboarding/state', { cache: 'no-store' })
+        if (stateRes.ok) {
+          const stateData: StateSummary = await stateRes.json()
+          currentVersion = stateData.version
+          setVersion(stateData.version)
+          payload = { ...payload, version: currentVersion }
+          res = await doPost(payload)
         }
       }
-      if (res.ok) {
-        const data = await res.json() as ProgressUpdateResponse
-        currentVersion = data.state.version
-        setVersion(data.state.version)
-      }
-    }
-    return currentVersion
-  }
 
-  const handleNext = async () => {
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(detail.error || 'Failed to save response')
+      }
+
+      const data = await res.json() as ProgressUpdateResponse
+      setVersion(data.state.version)
+      const snapshot = data.state.answers_snapshot || {}
+      setAnswers(prev => {
+        if (Object.keys(snapshot).length > 0) {
+          return snapshot
+        }
+        return { ...prev, [question.id]: response }
+      })
+      return data
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to save your response. Please try again.'
+      setInlineError(message)
+      return null
+    } finally {
+      setSaving(false)
+    }
+  }, [version])
+
+  const completeOnboarding = useCallback(async () => {
+    setInlineError(null)
+    setIsProcessing(true)
+    try {
+      const complete = async (ver: number) => fetch('/api/onboarding/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ version: ver }),
+      })
+
+      let currentVersion = version
+      let res = await complete(currentVersion)
+
+      if (res.status === 409) {
+        const stateRes = await fetch('/api/onboarding/state', { cache: 'no-store' })
+        if (stateRes.ok) {
+          const stateData: StateSummary = await stateRes.json()
+          currentVersion = stateData.version
+          setVersion(stateData.version)
+          res = await complete(currentVersion)
+        }
+      }
+
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(detail.error || 'Failed to finalize onboarding')
+      }
+
+      const data = await res.json() as CompletionResponse
+      setCompletionSummary(data.summary ?? null)
+      setCompletionRedirect(data.redirect)
+      setStage('complete')
+      setCurrentQuestionIndex(0)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'We had trouble completing onboarding. Please retry.'
+      setInlineError(message)
+    } finally {
+      setIsProcessing(false)
+    }
+  }, [version])
+
+  const handleNext = useCallback(async () => {
+    if (!currentQuestion) return
+    const response = answers[currentQuestion.id]
+    if (!response) return
+
+    const progress = await persistAnswer(currentQuestion, response)
+    if (!progress) return
+
     if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1)
-    } else {
-      if (stage === 'stage1') {
-        await saveAllForStage('stage1')
-        // Compute Stage 1 scores and select Stage 2 questions from local JSON
-        try {
-          const allQuestions = await loadOnboardingQuestions()
-          const stage2Bank = allQuestions.filter(q => q.stage === 2 && q.active)
-          const scoringMod = await import('@/lib/onboarding/scoring')
-          const selectorMod = await import('@/lib/onboarding/selector')
-          const stage1Scores = scoringMod.computeStage1Scores(answers)
-          const selection = selectorMod.selectStage2Questions(stage1Scores, stage2Bank)
-
-          // Persist selection and advance stage on server (version-aware)
-          const doPost = async (v: number) => fetch('/api/onboarding/selection', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ version: v, ids: selection.ids })
-          })
-          let res = await doPost(version)
-          if (res.status === 409) {
-            const s = await fetch('/api/onboarding/state', { cache: 'no-store' })
-            if (s.ok) {
-              const sd: StateSummary = await s.json()
-              setVersion(sd.version)
-              res = await doPost(sd.version)
-            }
-          }
-          // Regardless of response, proceed locally (server will catch up)
-          const selectedQuestions = stage2Bank.filter(q => selection.ids.includes(q.id)).sort((a,b)=>a.order_hint-b.order_hint)
-          setStage2Questions(selectedQuestions)
-          setStage('stage2')
-          setCurrentQuestionIndex(0)
-        } catch {
-          // Fallback: just move to stage2 with first four questions if selection failed
-          const allQuestions = await loadOnboardingQuestions()
-          const stage2Bank = allQuestions.filter(q => q.stage === 2 && q.active).slice(0,4)
-          setStage2Questions(stage2Bank)
-          setStage('stage2')
-          setCurrentQuestionIndex(0)
-        }
-      } else if (stage === 'stage2') {
-        await saveAllForStage('stage2')
-        // Load Stage 3 locally
-        const allQuestions = await loadOnboardingQuestions()
-        const s3 = allQuestions.filter(q => q.stage===3 && q.active).sort((a,b)=>a.order_hint-b.order_hint)
-        setStage3Questions(s3)
-        setStage('stage3')
-        setCurrentQuestionIndex(0)
-      } else if (stage === 'stage3') {
-        await saveAllForStage('stage3')
-        // Complete onboarding
-        const complete = async (v: number) => fetch('/api/onboarding/complete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ version: v }) })
-        let res = await complete(version)
-        if (res.status === 409) {
-          const s = await fetch('/api/onboarding/state', { cache: 'no-store' })
-          if (s.ok) {
-            const sd: StateSummary = await s.json()
-            setVersion(sd.version)
-            res = await complete(sd.version)
-          }
-        }
-        if (res.ok) {
-          const data = await res.json() as { redirect: string }
-          window.location.href = data.redirect
-        }
-      }
+      setCurrentQuestionIndex(index => index + 1)
+      return
     }
-  }
+
+    if (stage === 'stage1') {
+      const nextQuestions = progress.next?.questions as OnboardingQuestion[] | undefined
+      if (nextQuestions && nextQuestions.length > 0) {
+        nextQuestions.sort((a, b) => a.order_hint - b.order_hint)
+        setStage2Questions(nextQuestions)
+      } else if (stage2Bank.length >= 4) {
+        setStage2Questions(stage2Bank.slice(0, 4))
+      }
+      setStage('stage2')
+      setCurrentQuestionIndex(0)
+      track('onboarding_stage_completed', { stage: 'stage1' })
+      return
+    }
+
+    if (stage === 'stage2') {
+      setStage('stage3')
+      setCurrentQuestionIndex(0)
+      track('onboarding_stage_completed', { stage: 'stage2' })
+      return
+    }
+
+    if (stage === 'stage3') {
+      track('onboarding_stage_completed', { stage: 'stage3' })
+      await completeOnboarding()
+    }
+  }, [answers, completeOnboarding, currentQuestion, currentQuestionIndex, persistAnswer, questions.length, stage, stage2Bank])
 
   if (loading) {
     return (
@@ -207,7 +430,7 @@ export function OnboardingWizard() {
     )
   }
 
-  if (error) {
+  if (error && stage !== 'complete') {
     return (
       <div role="alert" className="rounded border border-destructive/50 bg-destructive/10 p-4 text-sm">
         {error}
@@ -215,35 +438,68 @@ export function OnboardingWizard() {
     )
   }
 
-  const stageTitles: Record<OnboardingStage, string> = {
-    stage1: 'Stage 1 — 5 quick probes',
-    stage2: 'Stage 2 — A few context questions',
-    stage3: 'Stage 3 — Somatic & Belief Mapping',
-    complete: 'Onboarding Complete',
+  if (isProcessing) {
+    return <ProcessingState />
   }
+
+  if (stage === 'complete' && completionSummary) {
+    return (
+      <OnboardingCompletionSummary
+        summary={completionSummary}
+        onContinue={() => {
+          window.location.href = completionRedirect
+        }}
+      />
+    )
+  }
+
+  if (!currentQuestion) {
+    return (
+      <div className="rounded border border-border/40 bg-background/70 p-4 text-sm text-muted-foreground">
+        We&apos;ll hold on to what you&apos;ve shared. Please refresh if you&apos;re ready to begin again.
+      </div>
+    )
+  }
+
+  const nextLabel = (() => {
+    const lastQuestion = currentQuestionIndex === questions.length - 1
+    if (!lastQuestion) return 'Continue'
+    if (stage === 'stage1') return "See what's next"
+    if (stage === 'stage2') return 'Move to somatic mapping'
+    if (stage === 'stage3') return 'See my onboarding summary'
+    return 'Continue'
+  })()
 
   return (
     <div className="space-y-6">
-      <section aria-labelledby="s1">
-        <h2 id="s1" className="text-lg font-medium">{stageTitles[stage]}</h2>
+      {inlineError ? (
+        <div role="alert" className="rounded border border-destructive/40 bg-destructive/10 p-3 text-sm">
+          {inlineError}
+        </div>
+      ) : null}
+
+      <section aria-labelledby="onboarding-stage">
+        <h2 id="onboarding-stage" className="text-lg font-medium">{STAGE_TITLES[stage]}</h2>
         <p className="mt-1 text-sm text-muted-foreground">Select what fits best. Some questions may allow multiple selections.</p>
         <div className="mt-4 space-y-4">
-          {currentQuestion && (
-            <QuestionCard
-              key={currentQuestion.id}
-              question={currentQuestion}
-              value={answers[currentQuestion.id]}
-              onChange={(resp) => handleAnswerChange(currentQuestion, resp)}
-            />
-          )}
+          <QuestionCard
+            key={currentQuestion.id}
+            question={currentQuestion}
+            value={answers[currentQuestion.id]}
+            onChange={resp => handleAnswerChange(currentQuestion, resp)}
+          />
         </div>
         <WizardFooter
-          saving={false}
+          saving={saving}
           onNext={handleNext}
-          nextDisabled={!currentQuestion || !answers[currentQuestion.id]}
-          nextLabel={currentQuestionIndex === questions.length - 1 && (stage === 'stage2' || stage === 'stage3') ? 'Finish' : 'Continue'}
-          totalQuestions={questions.length}
-          currentQuestionIndex={currentQuestionIndex}
+          nextDisabled={saving || !answers[currentQuestion.id]}
+          nextLabel={nextLabel}
+          stage={stage}
+          stageIndex={stageIndex}
+          totalStages={3}
+          overallQuestionNumber={overallQuestionNumber}
+          totalQuestions={totalQuestions}
+          progressPercent={progressPercent}
         />
       </section>
     </div>
