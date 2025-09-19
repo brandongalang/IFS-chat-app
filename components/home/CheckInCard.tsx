@@ -30,7 +30,7 @@ export function CheckInCard({ selectedDate = new Date() }: CheckInCardProps) {
     const hour = new Date().getHours()
     if (hour >= 4 && hour < 12) {
       setTimeOfDay('morning')
-    } else if (hour >= 16 && hour < 22) {
+    } else if (hour >= 18) {
       setTimeOfDay('evening')
     } else {
       setTimeOfDay('none')
