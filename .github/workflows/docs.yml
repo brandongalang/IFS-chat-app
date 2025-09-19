@@ -30,22 +30,31 @@ jobs:
           node-version: 20
 
       - name: Install OpenCode
-        if: ${{ github.event_name == 'pull_request' && env.GOOGLE_API_KEY != '' }}
+        if: ${{ github.event_name == 'pull_request' }}
         run: |
+          if [ -z "$GOOGLE_API_KEY" ]; then
+            echo "GOOGLE_API_KEY not configured; skipping OpenCode install."
+            exit 0
+          fi
           curl -fsSL https://opencode.ai/install | bash
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           rm -rf ~/.opencode/config.toml || true
 
       - name: Analyze and Update Docs via AI
         id: ai-update
-        if: ${{ github.event_name == 'pull_request' && env.GOOGLE_API_KEY != '' }}
+        if: ${{ github.event_name == 'pull_request' }}
         continue-on-error: true
         env:
           GOOGLE_API_KEY: ${{ env.GOOGLE_API_KEY }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.sha }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}
-        run: node .github/scripts/docs-update-ai.mjs
+        run: |
+          if [ -z "$GOOGLE_API_KEY" ]; then
+            echo "GOOGLE_API_KEY not configured; skipping docs update."
+            exit 0
+          fi
+          node .github/scripts/docs-update-ai.mjs
 
       - name: Check for AI-generated changes
         id: docs-check
