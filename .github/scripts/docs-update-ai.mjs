@@ -66,7 +66,7 @@ function runOpenCode(prompt, useDocsAgent = true) {
     // Escape quotes in prompt for shell safety and limit length
     const truncatedPrompt = prompt.length > 8000 ? prompt.substring(0, 8000) + '...' : prompt;
     const escapedPrompt = truncatedPrompt.replace(/"/g, '\\"').replace(/`/g, '\\`');
-    
+
     // Use the custom docs-updater agent if available, otherwise use default
     const agentFlag = useDocsAgent ? ' --agent docs-updater' : '';
     const command = `GOOGLE_API_KEY="${process.env.GOOGLE_API_KEY}" opencode -p "${escapedPrompt}"${agentFlag}`;
@@ -93,6 +93,23 @@ function runOpenCode(prompt, useDocsAgent = true) {
     console.error('This may be due to API limits or configuration issues');
     return null;
   }
+}
+
+function runOpenCodeWithRetry(prompt, useDocsAgent = true, maxAttempts = 2) {
+  let attempt = 0;
+  while (attempt < maxAttempts) {
+    const result = runOpenCode(prompt, useDocsAgent);
+    if (result) {
+      return result;
+    }
+
+    attempt += 1;
+    if (attempt < maxAttempts) {
+      console.warn(`OpenCode attempt ${attempt} failed; retrying...`);
+    }
+  }
+
+  return null;
 }
 
 function analyzeCodeChanges(changedFiles, base, head) {
@@ -122,7 +139,7 @@ Provide a concise summary of:
 
 Keep the response focused and under 200 words.`;
     
-    const analysis = runOpenCode(prompt);
+    const analysis = runOpenCodeWithRetry(prompt);
     if (analysis) {
       analyses.push({ file, analysis: analysis.trim() });
     }
@@ -165,7 +182,7 @@ If this is a new feature that doesn't have existing documentation, create compre
 
 Return only the updated documentation content in markdown format. Do not include explanations or metadata - just the documentation content.`;
 
-  return runOpenCode(prompt);
+  return runOpenCodeWithRetry(prompt);
 }
 
 function shouldCreateNewFeatureDoc(changedFiles, analyses) {
@@ -197,7 +214,7 @@ Don't create new docs for:
 - Internal refactoring
 - Updates to existing features`;
 
-  const response = runOpenCode(prompt);
+  const response = runOpenCodeWithRetry(prompt);
   if (!response) return null;
   
   try {
