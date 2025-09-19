@@ -11,6 +11,8 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    env:
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
     steps:
       - name: Skip push event
         if: ${{ github.event_name != 'pull_request' }}
@@ -28,9 +30,7 @@ jobs:
           node-version: 20
 
       - name: Install OpenCode
-        if: ${{ github.event_name == 'pull_request' && secrets.GOOGLE_API_KEY != '' }}
-        env:
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        if: ${{ github.event_name == 'pull_request' && env.GOOGLE_API_KEY != '' }}
         run: |
           curl -fsSL https://opencode.ai/install | bash
           echo "$HOME/.local/bin" >> $GITHUB_PATH
@@ -38,10 +38,10 @@ jobs:
 
       - name: Analyze and Update Docs via AI
         id: ai-update
-        if: ${{ github.event_name == 'pull_request' && secrets.GOOGLE_API_KEY != '' }}
+        if: ${{ github.event_name == 'pull_request' && env.GOOGLE_API_KEY != '' }}
         continue-on-error: true
         env:
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_API_KEY: ${{ env.GOOGLE_API_KEY }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.sha }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}
