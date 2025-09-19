@@ -147,7 +147,7 @@ export function CheckInCard({ selectedDate = new Date() }: CheckInCardProps) {
           <div className="text-xs opacity-90">Evening</div>
           <div className="text-lg font-semibold">Daily review</div>
           <p className="mt-2 text-sm text-indigo-100/90">Take a moment to wind down your day.</p>
-          <GuardedLink href="/check-in">
+          <GuardedLink href="/check-in/evening">
             <Button className="mt-4 bg-white text-black hover:bg-white/90">Begin</Button>
           </GuardedLink>
         </div>
@@ -170,7 +170,7 @@ export function CheckInCard({ selectedDate = new Date() }: CheckInCardProps) {
         <div className="text-xs opacity-90">Morning</div>
         <div className="text-lg font-semibold">Fresh start!</div>
         <p className="mt-2 text-sm text-green-100/90">Set your intention and ease into the day.</p>
-        <GuardedLink href="/check-in">
+        <GuardedLink href="/check-in/morning">
           <Button className="mt-4 bg-white text-black hover:bg-white/90">Begin</Button>
         </GuardedLink>
       </div>
@@ -183,7 +183,7 @@ export function CheckInCard({ selectedDate = new Date() }: CheckInCardProps) {
         <div className="text-xs opacity-90">Evening</div>
         <div className="text-lg font-semibold">Daily review</div>
         <p className="mt-2 text-sm text-indigo-100/90">Reflect on your day and notice what changed.</p>
-        <GuardedLink href="/check-in">
+        <GuardedLink href={hasMorning ? '/check-in/evening' : '/check-in/morning'}>
           <Button className="mt-4 bg-white text-black hover:bg-white/90">Begin</Button>
         </GuardedLink>
       </div>
