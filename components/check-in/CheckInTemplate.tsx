@@ -25,13 +25,14 @@ export interface FormField {
 interface CheckInTemplateProps {
   title: string
   description: string
-  fields: FormField[]
+  fields?: FormField[]
   onSubmit: React.FormEventHandler<HTMLFormElement>
   isLoading: boolean
   submitText: string
   submitDisabled?: boolean
   error: string | null
   preFieldsContent?: React.ReactNode
+  children?: React.ReactNode
   className?: string
 }
 
@@ -45,6 +46,7 @@ export function CheckInTemplate({
   submitDisabled = false,
   error,
   preFieldsContent,
+  children,
   className,
 }: CheckInTemplateProps & Omit<React.ComponentPropsWithoutRef<'div'>, 'onSubmit'>) {
   return (
@@ -58,18 +60,20 @@ export function CheckInTemplate({
           <form onSubmit={onSubmit}>
             <div className="flex flex-col gap-6">
               {preFieldsContent}
-              {fields.map((field) => (
-                <div className="grid gap-2" key={field.id}>
-                  <Label htmlFor={field.id}>{field.label}</Label>
-                  <Textarea
-                    id={field.id}
-                    placeholder={field.placeholder}
-                    required={field.required}
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
-                </div>
-              ))}
+              {children
+                ? children
+                : fields?.map((field) => (
+                  <div className="grid gap-2" key={field.id}>
+                    <Label htmlFor={field.id}>{field.label}</Label>
+                    <Textarea
+                      id={field.id}
+                      placeholder={field.placeholder}
+                      required={field.required}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </div>
+                ))}
               {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading || submitDisabled}>
                 {isLoading ? 'Saving...' : submitText}

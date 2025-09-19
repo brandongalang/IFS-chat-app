@@ -84,7 +84,7 @@ export function CheckInCard({ selectedDate = new Date() }: CheckInCardProps) {
       if (!isMountedRef.current) return
       setIsLoading(false)
     }
-  }, [selectedDate, targetDateString])
+  }, [targetDateString])
 
   useEffect(() => {
     fetchSelectedDateCheckIns()
