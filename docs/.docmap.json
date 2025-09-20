@@ -10,7 +10,10 @@
     },
     {
       "paths": ["components/auth/**", "app/auth/**", "supabase/migrations/**"],
-      "docs": ["docs/features/authentication-google.md"]
+      "docs": [
+        "docs/features/authentication-google.md",
+        "docs/runbooks/supabase-session-sync.md"
+      ]
     },
     {
       "paths": ["app/chat/**", "hooks/useChat.ts", "lib/database/**"],
@@ -23,7 +26,17 @@
     {
       "paths": ["app/api/insights/**", "lib/insights/**"],
       "docs": ["docs/features/insights.md"]
+    },
+    {
+      "paths": ["app/onboarding/**", "components/onboarding/**", "lib/onboarding/**"],
+      "docs": ["docs/features/onboarding.md"]
+    },
+    {
+      "paths": ["app/api/cron/memory-update/**", "lib/memory/**", "lib/api/cron-auth.ts"],
+      "docs": [
+        "docs/user-memory.md",
+        "docs/runbooks/memory-cron-vercel.md"
+      ]
     }
   ]
 }
-

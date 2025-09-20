@@ -4,10 +4,11 @@ This document outlines features and improvements that were part of the initial d
 
 ## 0. Pending Deployment Configuration
 
-- APP_BASE_URL (for scheduled cron): Set to your deployed app’s base URL (e.g. https://your-app.com)
-- CRON_SECRET: Generate a random string; store as Actions secret and in app env so /api/cron endpoints can validate the `Authorization` header (Bearer token)
-- Location to add: GitHub > Settings > Secrets and variables > Actions
-- After deployment, update memory-update-cron.yml secrets accordingly.
+- **Vercel Cron Secrets**
+  - `CRON_SECRET`: random string stored in Vercel project → Settings → Environment Variables (Production & Preview).
+  - `APP_BASE_URL` / `BASE_URL`: fully qualified origin used by `/api/cron/memory-update` logs and callback redirects.
+- **Cron schedule**: confirm `vercel.json` retains `0 8 * * *` and that the project has the cron enabled in the Vercel dashboard.
+- **Monitoring**: add a Vercel Cron notification channel (Slack/email) so failures surface quickly.
 
 ## 1. Implement the `potential_refinements` Table
 

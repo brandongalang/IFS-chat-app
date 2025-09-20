@@ -9,6 +9,7 @@ The onboarding dev playground provides a streamlined way to UAT test the onboard
 - Debug onboarding flow issues without creating test users
 - Verify scoring edge cases and validation rules
 - Compare fixture vs. live database behavior
+- Preview the completion summary payload rendered in the production onboarding flow
 
 ## Access
 
@@ -16,6 +17,12 @@ The onboarding dev playground provides a streamlined way to UAT test the onboard
 - **URL**: `/dev/onboarding`
 - **Access Control**: Only available when `NEXT_PUBLIC_IFS_DEV_MODE=true`
 - **Environment**: Development only (blocked in production)
+
+### Completion summary preview
+- Toggle **Show completion summary** to mount `OnboardingCompletionSummary` with the latest simulated `CompletionSummary` payload.
+- Use **Generate summary** to run `buildOnboardingSummary` against the current in-memory responses; the output matches the production `/api/onboarding/complete` response structure.
+- Inspect parts, themes, and somatic sections for accuracy before shipping copy updates.
+- Click **Continue to app** to confirm the CTA mirrors the production redirect behaviour.
 
 ### Quick Start Scripts
 
@@ -135,6 +142,8 @@ SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
 **Raw JSON View**: Expandable details sections show full data structures
 
+**Completion Summary Panel**: When enabled, surfaces the generated `CompletionSummary` JSON and flags missing parts/themes/somatic notes
+
 **Network Tab**: Monitor API calls when using live data mode
 
 **React DevTools**: Inspect component state and props
@@ -208,5 +217,6 @@ SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 | **Reset Data** | Click "Reset All" button |
 | **Toggle Data Source** | Click "Use Live Database" switch |
 | **View Raw JSON** | Click "View Raw JSON" or "View Selection Details" |
+| **Preview Completion Summary** | Enable "Show completion summary" toggle |
 
 For additional support, see the main project README or consult the onboarding implementation in `lib/onboarding/`.

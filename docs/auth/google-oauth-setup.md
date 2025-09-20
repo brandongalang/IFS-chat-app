@@ -8,6 +8,7 @@ Our Google authentication uses:
 - **Google Identity Services (GIS)** for client-side sign-in buttons
 - **Supabase Auth** for server-side token verification and user management
 - **Custom nonce handling** for enhanced security (raw/hashed nonce pattern)
+- **Supabase session synchronization** to keep server cookies aligned with client auth state
 
 ## Required Configuration
 
@@ -35,11 +36,16 @@ Our Google authentication uses:
 **Production Environment:**
 ```bash
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id-here
+BASE_URL=https://your-production-domain.com
+SUPABASE_SERVICE_ROLE_KEY=service-role-key
+CRON_SECRET=shared-secret-if-used
 ```
 
 **Local Environment (.env.local):**
 ```bash
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id-here
+BASE_URL=http://localhost:3000
+SUPABASE_SERVICE_ROLE_KEY=service-role-key
 ```
 
 ### 3. Supabase Provider Configuration
@@ -51,6 +57,7 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id-here
 4. **Client Secret**: From your Google Cloud Console OAuth client
 5. **Redirect URL**: `https://your-supabase-ref.supabase.co/auth/v1/callback`
 6. **Skip nonce check**: Keep **false** (recommended for security)
+ 7. **Refresh token rotation**: Keep **enabled** (required for session sync)
 
 **Local Supabase (supabase/config.toml):**
 ```toml
@@ -60,6 +67,8 @@ client_id = "your-google-client-id"
 secret = "your-google-client-secret"
 redirect_uri = "http://localhost:54321/auth/v1/callback"
 skip_nonce_check = false
+enable_refresh_token_rotation = true
+additional_redirect_urls = ["https://127.0.0.1:3000"]
 ```
 
 ## How It Works
@@ -108,6 +117,16 @@ useEffect(() => {
 
 ## Troubleshooting
 
+### Session sync failures (POST /auth/callback)
+
+**Symptoms:** `/auth/callback` POST returns 4xx/5xx, cookies fail to update, or repeated console retries.
+
+**Checklist:**
+1. Confirm `BASE_URL`/`APP_BASE_URL`/`NEXT_PUBLIC_APP_URL` match the domain making the request (origin allowlist lives in `app/auth/callback/route.ts`).
+2. Ensure refresh tokens are issued: in Supabase Auth settings enable refresh rotation and confirm the response payload includes `refresh_token`.
+3. Check server logs for `Auth callback session user mismatch` or `missing refresh token` and resolve underlying Supabase config.
+4. Verify `SUPABASE_SERVICE_ROLE_KEY` is present in the server environment; it is required for `setSession` calls.
+
 ### Nonce Mismatch Error
 
 **Root Cause**: Client ID mismatch between frontend and Supabase.
@@ -152,10 +171,23 @@ useEffect(() => {
 **Missing Environment Variables:**
 - Add Google Client ID to `.env.local`
 - Configure Supabase local instance with Google provider settings
+- Set `BASE_URL=http://localhost:3000` so the callback accepts the origin
 
 **HTTPS Requirements:**
 - Some Google features require HTTPS
 - Use `localhost` instead of `127.0.0.1` for better compatibility
+
+### Disallowed origin (403)
+
+**Root Cause:** The callback computes an allowlist from the current request, configured base URL, and Vercel preview URL. If your origin is missing, the request is rejected.
+
+**Solution:** Update `BASE_URL`, `APP_BASE_URL`, or `NEXT_PUBLIC_APP_URL` in the environment to the exact origin (protocol + host + port). For preview deployments, surface the generated URL via env vars or add to `additional_redirect_urls` in `supabase/config.toml`.
+
+### Missing refresh token (400)
+
+**Root Cause:** Supabase is not issuing refresh tokens (rotation disabled) or the POST body omitted the token.
+
+**Solution:** Re-enable refresh rotation in Supabase, ensure the browser payload includes `session.refresh_token`, and inspect network traces for redaction issues.
 
 ## Testing Checklist
 
@@ -164,20 +196,21 @@ useEffect(() => {
 - [ ] Supabase provider Client ID matches environment variable
 - [ ] Google Cloud Console has correct origins and redirect URIs
 - [ ] OAuth consent screen is published
-- [ ] Test sign-in flow in incognito window
+- [ ] Supabase Auth settings have refresh rotation enabled
+- [ ] Test sign-in flow in incognito window and observe `/auth/callback` POST succeeds
 
 ### Local Development
 - [ ] `.env.local` has Google Client ID
 - [ ] `supabase/config.toml` has Google provider configured
 - [ ] Local Supabase is running with `supabase start`
-- [ ] Test both login and sign-up forms
+- [ ] Test both login and sign-up forms and confirm cookies refresh after sign-in/out
 
 ### UI/UX Verification
 - [ ] Only one Google button appears on login page
 - [ ] Only one Google button appears on sign-up page
 - [ ] Buttons render with proper Google styling
 - [ ] Error messages are clear and helpful
-- [ ] Successful sign-in redirects correctly
+- [ ] Successful sign-in redirects correctly and retains session on full refresh
 
 ## Common Patterns
 

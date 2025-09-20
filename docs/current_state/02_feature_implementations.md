@@ -53,12 +53,16 @@ This section provides a quick, human-readable map of shipped and in-progress fea
   - Key routes: /check-in/morning, /check-in/evening. Key paths: app/check-in/*, components/check-in/*
 - Chat — Conversational interface. Status: shipped. See docs/features/chat.md
   - Key route: /chat. Key paths: app/chat/page.tsx, hooks/useChat.ts, lib/database/*
-- Authentication (Google) — OAuth via Google. Status: shipped. See docs/features/authentication-google.md
-  - Key paths: components/auth/*, app/auth/callback/route.ts, supabase/migrations/007_handle_new_users.sql
+- Authentication (Google) — OAuth via Google with Supabase session sync. Status: shipped. See docs/features/authentication-google.md and docs/runbooks/supabase-session-sync.md
+  - Key paths: components/auth/*, app/auth/callback/route.ts, components/auth/supabase-session-listener.tsx, supabase/migrations/007_handle_new_users.sql
+- Onboarding Flow — Staged questionnaire with adaptive Stage 2 and completion summary hand-off. Status: shipped. See docs/features/onboarding.md
+  - Key paths: app/onboarding/page.tsx, components/onboarding/*, app/api/onboarding/*, lib/onboarding/*
 - Agent Tools — Mastra tools and agent definitions. Status: shipped. See docs/features/agent-tools.md
   - Key paths: mastra/tools/*, mastra/agents/*
 - Insights — Scaffolding for insights generation. Status: experimental. See docs/features/insights.md
   - Key paths: app/api/insights/*, lib/insights/generator.ts
+- Memory Updates — Daily refresh pipeline for user memory snapshots. Status: shipped. See docs/user-memory.md and docs/runbooks/memory-cron-vercel.md
+  - Key paths: app/api/cron/memory-update/route.ts, lib/memory/*, lib/api/cron-auth.ts, vercel.json
 
 ## Implementation Gaps & In-Progress Features
 

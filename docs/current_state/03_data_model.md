@@ -60,7 +60,8 @@ Several other tables exist to support the agent's advanced functionality.
 While the database schema is very comprehensive, not all columns and tables are actively being written to by the current application logic. This is key for any developer to know before they try to use this data.
 
 -   **`insights` Table:** This table is **unused**. It exists as a placeholder for the future Insight Generation feature, which is not implemented.
--   **`user_memory` Table:** This table is **unused**. The cron job that would populate it is not active.
+-   **`user_memory_snapshots` Table:** Actively populated daily by the Vercel Cron job hitting `/api/cron/memory-update`; expect a new snapshot (JSON Patch) for each active user, plus periodic checkpoints controlled by `USER_MEMORY_CHECKPOINT_EVERY`.
+-   **`user_onboarding` & `onboarding_responses` Tables:** Actively written during the staged onboarding flow; `version`, `stage`, and `stage2_selected_questions` columns are relied on by autosave + completion validation.
 -   **Columns in the `sessions` Table:** The following columns are defined but are **never populated** by the current agent:
     -   `summary`
     -   `breakthroughs`

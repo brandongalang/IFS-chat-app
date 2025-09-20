@@ -26,7 +26,7 @@ Surface trends and patterns across sessions and parts over time.
 - insights table (or equivalent) reserved; exact schema may evolve
 
 ## Configuration
-- Cron setup and permissions documented in code; review before enabling
+- Cron pipeline not yet enabled; when ready wire through `vercel.json` (similar to memory-update cron) and provision its own `CRON_SECRET`
 
 ## Testing
 - Smoke scripts available via npm run smoke:insights

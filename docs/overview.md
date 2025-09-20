@@ -45,6 +45,9 @@ Date: 2025-08-28
   - Relationships model with types (polarized, protector-exile, allied) and polarization level
   - Action logging for all DB mutations and rollback tools
   - Development mode for local testing with a default user id and verbose logging
+  - Supabase session listener keeps browser and server auth state in sync across tabs
+  - Staged onboarding wizard with adaptive questions and a completion summary hand-off
+  - Daily memory refresh pipeline triggered by Vercel Cron updating `user_memory_snapshots`
 - Phase 2 Scope (Insights & Garden)
   - Detailed in docs/prds/insights-prd.md; built with AI scaffolding initially (mock content)
 
@@ -74,4 +77,3 @@ Date: 2025-08-28
 - M1: Core plumbing for sessions, logging, rollback.
 - M2: Core IFS features for part/relationship creation from chat.
 - M3: Insights & Garden Scaffolding (see docs/prds/insights-prd.md).
-

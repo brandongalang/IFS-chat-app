@@ -31,7 +31,7 @@ Understanding the flow of data from user input to AI response is key to understa
 
 - **Backend:** Implemented as server-side logic within the Next.js framework, primarily using **API Routes** and server components/actions.
 - **Database:** [PostgreSQL](https://www.postgresql.org/) hosted on [Supabase](https://supabase.com/).
-- **Authentication:** Handled entirely by Supabase Auth, using the `@supabase/ssr` library to manage user sessions seamlessly across client and server components.
+- **Authentication:** Supabase Auth with `@supabase/ssr`; a client-side session listener posts auth events to `/auth/callback` so server cookies stay in sync across tabs, and the callback enforces an origin allowlist plus refresh-token validation.
 - **Data modules split:** To prevent Node-only modules from leaking into the browser bundle, client code imports from `@/lib/data/parts-lite` (browser-safe), while server code imports from `@/lib/data/parts-server` (guarded via `server-only`). Richer logic (snapshots, action logging) lives behind the server entrypoint.
 - **Security:** The database schema makes extensive use of PostgreSQL's **Row Level Security (RLS)** to ensure users can only access their own data. Policies are defined for all major tables.
 
@@ -49,4 +49,4 @@ Understanding the flow of data from user input to AI response is key to understa
 ## Deployment & Operations
 
 - **Current Status:** The application is currently in a **local development phase**. It has not been deployed to a production environment.
-- **Cron Jobs:** There is logic for a cron job to perform periodic updates to user memory (`app/api/cron/memory-update/route.ts`), but this is **not currently active or scheduled**. It will need to be configured with a service like Vercel Cron or a similar scheduler upon deployment.
+- **Cron Jobs:** Daily memory refresh is scheduled via Vercel Cron (`vercel.json`, `0 8 * * *`) hitting `app/api/cron/memory-update/route.ts` with `CRON_SECRET` validation through `lib/api/cron-auth.ts`.

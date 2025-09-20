@@ -75,7 +75,7 @@ CREATE TABLE potential_refinements (
 
 A new daily job will be responsible for populating the `insights` table.
 
-- **Trigger:** Cron job (e.g., pg_cron) running once every 24 hours.
+- **Trigger:** Vercel Cron job (`vercel.json` schedule `0 8 * * *`).
 - **Logic:**
     1. For each active user, check the number of `pending` insights.
     2. If fewer than 3, calculate how many new insights to generate.

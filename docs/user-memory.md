@@ -30,14 +30,20 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
   - `USER_MEMORY_CHECKPOINT_EVERY` (default 50)
 
 ## Scheduling
-Use the GitHub Actions workflow `.github/workflows/memory-update-cron.yml`:
-- Set repo secrets `APP_BASE_URL` (e.g., https://your-app.example.com) and `CRON_SECRET`
-- The workflow runs daily (08:00 UTC) and can be triggered manually
+- Primary scheduler: **Vercel Cron** configured in `vercel.json` with `0 8 * * *` (08:00 UTC daily).
+- Secrets live in Vercel project settings:
+  - `CRON_SECRET`: shared between the cron definition and the Next.js runtime.
+  - `APP_BASE_URL` / `BASE_URL`: used by the cron handler for absolute links and logging.
+- Each invocation must supply **one** of the following headers (both accepted for backwards compatibility):
+  - `Authorization: Bearer <CRON_SECRET>`
+  - `x-vercel-cron-secret: <CRON_SECRET>`
+- GitHub Actions workflow has been retired; remove any lingering secrets or schedules referencing `.github/workflows/memory-update-cron.yml`.
 
 ## Local testing
 - Apply migrations (see below)
 - Run dev server, then:
   - `curl -X POST http://localhost:3000/api/cron/memory-update -H "Authorization: Bearer <CRON_SECRET>"`
+  - `curl -X POST http://localhost:3000/api/cron/memory-update -H "x-vercel-cron-secret: <CRON_SECRET>"` (mirrors production header)
 
 ## Migration
 - File: `supabase/migrations/006_user_memory.sql`
@@ -61,4 +67,4 @@ Use the GitHub Actions workflow `.github/workflows/memory-update-cron.yml`:
   - `listActiveUsersSince(isoISO)` and `loadTodayData(userId, isoISO)`
 - Types: `lib/memory/types.ts`
 - Cron route: `app/api/cron/memory-update/route.ts`
-
+- Auth helper: `lib/api/cron-auth.ts` (validates headers & allows dev bypass when `CRON_SECRET` unset)

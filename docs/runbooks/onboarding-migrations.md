@@ -2,6 +2,7 @@
 
 Problem
 - API /api/onboarding/state returns 500 with PGRST205: table public.user_onboarding not found.
+- Completion summaries fail because `onboarding_responses` or `user_onboarding.stage2_selected_questions` is missing.
 - Root cause: onboarding migrations (009–011) not yet applied to the remote Supabase database.
 
 Safety and prerequisites
@@ -17,6 +18,28 @@ A) Supabase CLI (preferred)
 B) Direct psql (apply only specific files)
 - Pros: precise (apply exactly 009–011 only).
 - Caveat: Requires STAGING_SUPABASE_DB_URL set locally (do not commit).
+
+## Verification checklist (post-migration)
+1. **Tables present**
+   - `select * from user_onboarding limit 1;`
+   - `select * from onboarding_responses limit 1;`
+   - Ensure `stage2_selected_questions` and `answers_snapshot` columns exist (JSONB).
+2. **Question bank**
+   - `select count(*) from onboarding_questions where stage = 2 and active = true;` (expect ≥4 for adaptive selection).
+   - Confirm `requirements` JSON exists for stages 1–3.
+3. **Version column**
+   - `select column_name from information_schema.columns where table_name = 'user_onboarding' and column_name = 'version';`
+   - Results should include `version` (int4) defaulting to 0.
+4. **Completion summary**
+   - Run `select build_onboarding_summary('<user-uuid>');` or hit `POST /api/onboarding/complete` for a staged account.
+   - Verify response includes populated `summary.parts`, `summary.themes`, and `summary.somatic` arrays.
+5. **Dev playground sanity check**
+   - Visit `/dev/onboarding`, enable "Show completion summary", and confirm summary chips render without errors.
+
+## Backfill guidance
+- If migrating existing users, run `scripts/onboarding/backfill-summary.ts` (or equivalent) to regenerate `CompletionSummary` caches.
+- For large batches, temporarily disable analytics events to avoid rate limits, then re-enable once the backfill finishes.
+- Document affected user IDs in the deployment log for support follow-up.
 
 Quick checklist
 1) Verify repo and environment
