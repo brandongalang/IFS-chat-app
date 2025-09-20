@@ -24,19 +24,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Scan for secrets
         uses: gitleaks/gitleaks-action@v2
-        with:
-          config-path: .gitleaks.toml
-          report-format: sarif
-          report-path: gitleaks.sarif
-          fail: true
-          args: --no-git --verbose
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
-      - name: Upload SARIF to Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: gitleaks.sarif
  
   build:
     name: Typecheck, Lint, and Build
