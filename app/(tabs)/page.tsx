@@ -6,9 +6,16 @@ import PersonaSwitcher from '@/components/dev/PersonaSwitcher'
 import { showDevToggle } from '@/config/features'
 import { CheckInCard } from '@/components/home/CheckInCard'
 import { WeekSelector } from '@/components/home/WeekSelector'
+import { useUser } from '@/context/UserContext'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { User as UserIcon } from 'lucide-react'
 
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const { profile } = useUser()
+  const avatarAlt = profile?.name ? `${profile.name}'s avatar` : 'User avatar'
+  const trimmedName = profile?.name?.trim()
+  const userInitial = trimmedName ? trimmedName.charAt(0).toUpperCase() : null
   
   // Get current time for greeting
   const now = new Date()
@@ -33,8 +40,15 @@ export default function HomePage() {
           <GuardedLink
             href="/profile"
             aria-label="profile"
-            className="size-6 rounded-full border border-border/40 bg-card/20 backdrop-blur"
-          />
+            className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-border/40 bg-card/20 backdrop-blur"
+          >
+            <Avatar className="h-full w-full bg-card/40">
+              {profile?.avatarUrl ? <AvatarImage src={profile.avatarUrl} alt={avatarAlt} /> : null}
+              <AvatarFallback className="flex items-center justify-center bg-transparent text-[10px] font-medium uppercase text-foreground/70">
+                {userInitial ?? <UserIcon aria-hidden="true" className="h-4 w-4" />}
+              </AvatarFallback>
+            </Avatar>
+          </GuardedLink>
         </div>
         <div className="mt-2 flex items-center gap-2">
           {showDevToggle && (
