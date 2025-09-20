@@ -30,18 +30,32 @@ export function UserProvider({ children }: { children: ReactNode }) {
       } = await supabase.auth.getUser()
 
       if (user) {
-        const { data } = await supabase
-          .from('users')
-          .select('name, bio, avatar_url')
-          .eq('id', user.id)
-          .single()
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('name, bio, avatar_url')
+            .eq('id', user.id)
+            .maybeSingle()
 
-        setProfile({
-          id: user.id,
-          name: data?.name || '',
-          bio: data?.bio || '',
-          avatarUrl: data?.avatar_url ? data.avatar_url : null,
-        })
+          if (error) {
+            console.error('Failed to load user profile', error)
+          }
+
+          setProfile({
+            id: user.id,
+            name: data?.name || '',
+            bio: data?.bio || '',
+            avatarUrl: data?.avatar_url?.trim() || null,
+          })
+        } catch (error) {
+          console.error('Unexpected error fetching user profile', error)
+          setProfile({
+            id: user.id,
+            name: '',
+            bio: '',
+            avatarUrl: null,
+          })
+        }
       } else {
         setProfile(null)
       }

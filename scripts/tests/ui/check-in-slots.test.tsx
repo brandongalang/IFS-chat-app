@@ -97,6 +97,7 @@ function createQuery(columns?: string) {
       filters.set(column, value)
       return builder
     },
+    // biome-ignore lint/suspicious/noThenProperty: test stub mimics Supabase thenable builders
     then(resolve: (value: unknown) => unknown, reject?: (reason?: unknown) => unknown) {
       const filtered = tableData.check_ins.filter((row) => {
         for (const [column, value] of filters.entries()) {
@@ -133,6 +134,13 @@ const supabaseStub = {
 setBrowserClientOverrideForTests(supabaseStub as any)
 
 const RealDate = Date
+
+function localDateString(d = new Date()) {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 function mockDateAtHour(hour: number) {
   const isoHour = String(hour).padStart(2, '0')
@@ -190,7 +198,7 @@ test('marks evening as available after 6pm when morning is complete', async (t) 
 
   setTableData({
     check_ins: [
-      { type: 'morning', user_id: TEST_USER_ID, check_in_date: '2024-07-01' },
+      { type: 'morning', user_id: TEST_USER_ID, check_in_date: localDateString(new Date()) },
     ],
   })
 

@@ -1,6 +1,11 @@
 'use client'
 
-import { CheckInSlotState, useDailyCheckIns } from '@/hooks/useDailyCheckIns'
+import {
+  CheckInSlotState,
+  useDailyCheckIns,
+  MORNING_START_HOUR,
+  EVENING_START_HOUR,
+} from '@/hooks/useDailyCheckIns'
 import { Button } from '@/components/ui/button'
 import { GuardedLink } from '@/components/common/GuardedLink'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -9,6 +14,8 @@ import { cn } from '@/lib/utils'
 interface CheckInSlotsProps {
   selectedDate?: Date
 }
+
+const SLOT_CARD_BASE_CLASS = 'col-span-2 md:col-span-1 rounded-xl border p-4'
 
 export function CheckInSlots({ selectedDate = new Date() }: CheckInSlotsProps) {
   const { isLoading, error, refetch, isViewingToday, targetDate, morning, evening } = useDailyCheckIns(selectedDate)
@@ -73,16 +80,13 @@ interface SlotCardProps {
 }
 
 function MorningSlotCard({ state, isViewingToday, targetDate }: SlotCardProps) {
-  const baseClass = 'col-span-2 md:col-span-1 rounded-xl border p-4'
-
-
   if (state.status === 'completed') {
     return (
       <div
         data-testid="check-in-morning-card"
         data-slot="morning"
         data-state="completed"
-        className={cn(baseClass, 'border-border bg-emerald-600 text-white')}
+        className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-emerald-600 text-white')}
       >
         <div className="text-xs uppercase tracking-wide opacity-90">Morning</div>
         <div className="mt-1 text-lg font-semibold">Morning check-in complete</div>
@@ -99,7 +103,7 @@ function MorningSlotCard({ state, isViewingToday, targetDate }: SlotCardProps) {
         data-testid="check-in-morning-card"
         data-slot="morning"
         data-state="available"
-        className={cn(baseClass, 'border-border bg-green-600 text-white')}
+        className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-green-600 text-white')}
       >
         <div className="text-xs uppercase tracking-wide opacity-90">Morning</div>
         <div className="mt-1 text-lg font-semibold">Fresh start</div>
@@ -117,11 +121,13 @@ function MorningSlotCard({ state, isViewingToday, targetDate }: SlotCardProps) {
         data-testid="check-in-morning-card"
         data-slot="morning"
         data-state="upcoming"
-        className={cn(baseClass, 'border-border bg-muted')}
+        className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-muted')}
       >
         <div className="text-xs font-semibold uppercase text-muted-foreground">Morning</div>
         <div className="mt-1 text-base font-semibold">Opens soon</div>
-        <p className="mt-2 text-sm text-muted-foreground">Morning check-in unlocks at 4:00 AM.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Morning check-in unlocks at {formatHourLabel(MORNING_START_HOUR)}.
+        </p>
       </div>
     )
   }
@@ -132,12 +138,12 @@ function MorningSlotCard({ state, isViewingToday, targetDate }: SlotCardProps) {
         data-testid="check-in-morning-card"
         data-slot="morning"
         data-state="closed"
-        className={cn(baseClass, 'border-border/60 border-dashed bg-muted')}
+        className={cn(SLOT_CARD_BASE_CLASS, 'border-border/60 border-dashed bg-muted')}
       >
         <div className="text-xs font-semibold uppercase text-muted-foreground">Morning</div>
         <div className="mt-1 text-base font-semibold text-muted-foreground">Morning check-in closed</div>
         <p className="mt-2 text-sm text-muted-foreground">
-          The morning check-in closes at 6:00 PM. Come back tomorrow for a fresh start.
+          The morning check-in closes at {formatHourLabel(EVENING_START_HOUR)}. Come back tomorrow for a fresh start.
         </p>
       </div>
     )
@@ -148,7 +154,7 @@ function MorningSlotCard({ state, isViewingToday, targetDate }: SlotCardProps) {
       data-testid="check-in-morning-card"
       data-slot="morning"
       data-state="empty"
-      className={cn(baseClass, 'border-border bg-muted')}
+      className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-muted')}
     >
       <div className="text-xs font-semibold uppercase text-muted-foreground">Morning</div>
       <div className="mt-1 text-base font-semibold">No morning check-in</div>
@@ -162,15 +168,13 @@ function MorningSlotCard({ state, isViewingToday, targetDate }: SlotCardProps) {
 }
 
 function EveningSlotCard({ state, isViewingToday, targetDate }: SlotCardProps) {
-  const baseClass = 'col-span-2 md:col-span-1 rounded-xl border p-4'
-
   if (state.status === 'completed') {
     return (
       <div
         data-testid="check-in-evening-card"
         data-slot="evening"
         data-state="completed"
-        className={cn(baseClass, 'border-border bg-indigo-600 text-white')}
+        className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-indigo-600 text-white')}
       >
         <div className="text-xs uppercase tracking-wide opacity-90">Evening</div>
         <div className="mt-1 text-lg font-semibold">Evening reflection complete</div>
@@ -187,7 +191,7 @@ function EveningSlotCard({ state, isViewingToday, targetDate }: SlotCardProps) {
         data-testid="check-in-evening-card"
         data-slot="evening"
         data-state="available"
-        className={cn(baseClass, 'border-border bg-indigo-600 text-white')}
+        className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-indigo-600 text-white')}
       >
         <div className="text-xs uppercase tracking-wide opacity-90">Evening</div>
         <div className="mt-1 text-lg font-semibold">Daily review</div>
@@ -205,11 +209,13 @@ function EveningSlotCard({ state, isViewingToday, targetDate }: SlotCardProps) {
         data-testid="check-in-evening-card"
         data-slot="evening"
         data-state="locked"
-        className={cn(baseClass, 'border-border bg-muted')}
+        className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-muted')}
       >
         <div className="text-xs font-semibold uppercase text-muted-foreground">Evening</div>
         <div className="mt-1 text-base font-semibold">Unlocks later today</div>
-        <p className="mt-2 text-sm text-muted-foreground">Evening reflection unlocks at 6:00 PM.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Evening reflection unlocks at {formatHourLabel(EVENING_START_HOUR)}.
+        </p>
       </div>
     )
   }
@@ -219,7 +225,7 @@ function EveningSlotCard({ state, isViewingToday, targetDate }: SlotCardProps) {
       data-testid="check-in-evening-card"
       data-slot="evening"
       data-state="empty"
-      className={cn(baseClass, 'border-border bg-muted')}
+      className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-muted')}
     >
       <div className="text-xs font-semibold uppercase text-muted-foreground">Evening</div>
       <div className="mt-1 text-base font-semibold">No evening check-in</div>
@@ -238,4 +244,10 @@ function formatDisplayDate(date: Date) {
     month: 'short',
     day: 'numeric',
   })
+}
+
+function formatHourLabel(hour24: number) {
+  const hour12 = hour24 % 12 || 12
+  const suffix = hour24 >= 12 ? 'PM' : 'AM'
+  return `${hour12}:00 ${suffix}`
 }

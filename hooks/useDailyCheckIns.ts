@@ -29,8 +29,8 @@ export interface UseDailyCheckInsResult {
   evening: CheckInSlotState
 }
 
-const MORNING_START_HOUR = 4
-const EVENING_START_HOUR = 18
+export const MORNING_START_HOUR = 4
+export const EVENING_START_HOUR = 18
 
 function computeStatuses(
   args: {
@@ -111,8 +111,9 @@ export function useDailyCheckIns(selectedDate: Date = new Date()): UseDailyCheck
       if (!isMountedRef.current) return
       setError('We couldn’t load your check-ins. Please try again.')
     } finally {
-      if (!isMountedRef.current) return
-      setIsLoading(false)
+      if (isMountedRef.current) {
+        setIsLoading(false)
+      }
     }
   }, [targetDateString])
 
