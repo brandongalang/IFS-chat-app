@@ -7,6 +7,7 @@ export interface UserProfile {
   id: string
   name: string
   bio: string
+  avatarUrl: string | null
 }
 
 export interface UserContextValue {
@@ -31,7 +32,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       if (user) {
         const { data } = await supabase
           .from('users')
-          .select('name, bio')
+          .select('name, bio, avatar_url')
           .eq('id', user.id)
           .single()
 
@@ -39,6 +40,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           id: user.id,
           name: data?.name || '',
           bio: data?.bio || '',
+          avatarUrl: data?.avatar_url ? data.avatar_url : null,
         })
       } else {
         setProfile(null)
