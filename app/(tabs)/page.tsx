@@ -14,9 +14,10 @@ import { User as UserIcon } from 'lucide-react'
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const { profile } = useUser()
-  const avatarAlt = profile?.name ? `${profile.name}'s avatar` : 'User avatar'
   const trimmedName = profile?.name?.trim()
-  const userInitial = trimmedName ? trimmedName.charAt(0).toUpperCase() : null
+  const avatarAlt = trimmedName ? `${trimmedName}'s avatar` : 'User avatar'
+  const userInitial =
+    trimmedName?.match(/\p{L}|\p{N}/u)?.[0]?.toUpperCase() ?? null
   
   // Get current time for greeting
   const now = new Date()
@@ -41,14 +42,18 @@ export default function HomePage() {
             <span className="font-medium" style={{ color: 'rgba(255,255,255,var(--eth-user-opacity))' }}>{greeting}</span>
             <GuardedLink
               href="/profile"
-              aria-label="profile"
-              className="h-8 w-8 rounded-full border border-border/40 bg-card/20 backdrop-blur flex items-center justify-center overflow-hidden"
+              aria-label="Open profile"
+              title={trimmedName || 'Profile'}
+              className="h-8 w-8 rounded-full border border-border/40 bg-card/20 backdrop-blur flex items-center justify-center overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
             >
               <Avatar className="h-full w-full bg-card/40">
                 {profile?.avatarUrl ? (
-                  <AvatarImage src={profile.avatarUrl} alt={avatarAlt} />
+                  <AvatarImage src={profile.avatarUrl} alt={avatarAlt} decoding="async" />
                 ) : null}
-                <AvatarFallback className="flex items-center justify-center bg-transparent text-[10px] font-medium uppercase text-foreground/70">
+                <AvatarFallback
+                  aria-hidden="true"
+                  className="flex items-center justify-center bg-transparent text-[10px] font-medium uppercase text-foreground/70"
+                >
                   {userInitial ?? <UserIcon aria-hidden="true" className="h-4 w-4" />}
                 </AvatarFallback>
               </Avatar>
@@ -79,10 +84,7 @@ export default function HomePage() {
 
       {/* Week Selector with Streak System */}
       <PageContainer className="mt-2">
-        <WeekSelector 
-          selectedDate={selectedDate} 
-          onDateChange={setSelectedDate}
-        />
+        <WeekSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
       </PageContainer>
 
       {/* Action cards */}
