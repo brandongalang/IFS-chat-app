@@ -7,6 +7,7 @@ import {
   summarizeScores,
 } from './scoring'
 import { getPartHypothesis } from './part-hypotheses'
+import { QuestionResponse as QuestionResponseSchema } from './types'
 import type {
   CompletionSummary,
   OnboardingQuestion,
@@ -70,12 +71,21 @@ export async function buildOnboardingSummary(
 
     for (const row of responses) {
       if (!row || typeof row !== 'object') continue
-      const { question_id: questionId, stage, response } = row as {
-        question_id: string
-        stage: number
-        response: QuestionResponse
+
+      const record = row as Record<string, unknown>
+      const questionId = typeof record.question_id === 'string' ? record.question_id : null
+      const stage = typeof record.stage === 'number' ? record.stage : null
+      const parsedResponse = QuestionResponseSchema.safeParse(record.response)
+
+      if (!questionId || stage === null || !parsedResponse.success) {
+        console.warn('buildOnboardingSummary: skipping malformed response row', {
+          question_id: questionId,
+          stage,
+        })
+        continue
       }
-      if (!questionId || !response) continue
+
+      const response = parsedResponse.data
 
       if (stage === 1) {
         stage1Snapshot[questionId] = response

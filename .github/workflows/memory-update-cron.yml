@@ -11,13 +11,13 @@ permissions:
 
 jobs:
   call-cron-endpoint:
-    if: ${{ secrets.APP_BASE_URL != '' && secrets.CRON_SECRET != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Call /api/cron/memory-update
         env:
           APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        if: ${{ env.APP_BASE_URL != '' && env.CRON_SECRET != '' }}
         run: |
           if [ -z "$APP_BASE_URL" ] || [ -z "$CRON_SECRET" ]; then
             echo "APP_BASE_URL or CRON_SECRET not configured in repo secrets" >&2

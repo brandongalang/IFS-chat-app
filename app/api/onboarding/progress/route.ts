@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     if (stage === 'stage2' && userState!.stage !== 'complete') {
       const selectedQuestions = userState!.stage2_selected_questions || [];
-      if (selectedQuestions.length > 0 && (userState!.stage === 'stage2' || userState!.stage === 'stage1')) {
+      if (selectedQuestions.length > 0 && userState!.stage === 'stage2') {
         const allAnswered = selectedQuestions.every((id: string) => Boolean(updatedAnswers[id]));
         if (allAnswered) {
           updateData.stage = 'stage3';
