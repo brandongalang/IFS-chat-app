@@ -57,6 +57,7 @@ plan.md
 CLAUDE.md
 CLAUDE.local.md
 .claude/settings.local.json
+.code/
 
 # Development artifacts and logs  
 *.log
