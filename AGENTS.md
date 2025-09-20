@@ -13,14 +13,6 @@ All code is TypeScript with React 19 function components. Follow a 2-space inden
 Keep unit tests deterministic and colocated in `scripts/tests/unit/*.test.ts`. Favor descriptive test names that mirror user behavior. Run `npm test` before every push, and verify E2E flows with `npm run test:e2e` when touching routes or async flows. Add targeted tests for regressions.
 - After finishing the feature or fix that was requested, run `npm run lint`, `npm run typecheck`, and `npm test` before pushing or asking for review so we hand off a fully verified branch.
 
-## CodeRabbit CLI Review Loop
-- Run `coderabbit review --plain` from the repo root after local tests (`npm test`, `npm run lint`, and `npm run typecheck`) to generate actionable fix suggestions.
-- Apply high-signal suggestions immediately, iterating until CodeRabbit reports no blocking issues; rerun the command after each round of edits.
-- Use `coderabbit --prompt-only` for lightweight spot checks when you only need the summary feedback.
-- `cr --help` lists all options; keep reviews scoped to the current branch to avoid noise from unrelated changes.
-- Capture noteworthy findings in PR descriptions, e.g., "CodeRabbit: resolved X lint issues via auto-fix".
-- If CodeRabbit flags flaky output or CI integration concerns, document follow-up steps before requesting review.
-
 ## ast-grep Structural Checks
 - Reach for `ast-grep` when text search falls short—use `ast-grep scan` with repository rules to enforce structural policies before opening a PR, or run ad-hoc patterns like `ast-grep -p '$A && $A()' -l ts -r '$A?.()'` for safe codemods.
 - Bootstrap new rule sets with `ast-grep new` so teams can codify recurring review comments and keep a tested `rules/` + `rule-tests/` scaffold under version control.
