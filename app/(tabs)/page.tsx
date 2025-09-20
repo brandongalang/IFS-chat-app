@@ -6,7 +6,6 @@ import PersonaSwitcher from '@/components/dev/PersonaSwitcher'
 import { showDevToggle } from '@/config/features'
 import { CheckInCard } from '@/components/home/CheckInCard'
 import { WeekSelector } from '@/components/home/WeekSelector'
-import { InboxShelf } from '@/components/inbox'
 import { useUser } from '@/context/UserContext'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { User as UserIcon } from 'lucide-react'
@@ -90,7 +89,33 @@ export default function HomePage() {
         <div className="w-full max-w-md grid grid-cols-2 gap-3">
           <CheckInCard selectedDate={selectedDate} />
 
-          <InboxShelf />
+          {/* Daily meditations (spans 2 columns) */}
+          <div className="col-span-2 rounded-xl border border-border/40 bg-card/20 backdrop-blur p-4 mt-2">
+            <div
+              className="text-xs font-semibold"
+              style={{
+                color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.75))',
+                letterSpacing: 'var(--eth-letter-spacing-user)',
+              }}
+            >
+              DAILY MEDITATIONS
+            </div>
+            <div className="mt-3 text-sm">
+              <blockquote className="italic">“So whatever you want to do, just do it… Making a damn fool of yourself is absolutely essential.”</blockquote>
+              <div
+                className="text-xs mt-2"
+                style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.65))' }}
+              >
+                — Gloria Steinem
+              </div>
+            </div>
+            <div
+              className="mt-3 text-xs"
+              style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.65))' }}
+            >
+              Tap to explore more insights
+            </div>
+          </div>
         </div>
       </main>
     </div>
