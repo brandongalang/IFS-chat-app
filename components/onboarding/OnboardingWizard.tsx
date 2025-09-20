@@ -57,6 +57,56 @@ function stageToIndex(stage: OnboardingStage): number {
   }
 }
 
+async function fetchStage2Questions(
+  fallbackBank: OnboardingQuestion[],
+  logContext: string,
+): Promise<OnboardingQuestion[] | null> {
+  try {
+    const res = await fetch('/api/onboarding/questions?stage=2', { cache: 'no-store' })
+    if (!res.ok) {
+      throw new Error('Failed to fetch Stage 2 questions')
+    }
+
+    const data = await res.json()
+    if (Array.isArray(data?.questions)) {
+      return (data.questions as OnboardingQuestion[])
+        .filter(question => question.active)
+        .sort((a, b) => a.order_hint - b.order_hint)
+    }
+
+    console.warn(`${logContext}: unexpected Stage 2 payload`, data)
+  } catch (error) {
+    console.warn(`${logContext}: falling back to local Stage 2 selection`, error)
+  }
+
+  if (fallbackBank.length >= 4) {
+    return fallbackBank.slice(0, 4)
+  }
+
+  return null
+}
+
+async function withVersionRetry(
+  operation: (version: number) => Promise<Response>,
+  initialVersion: number,
+  onVersionUpdate: (version: number) => void,
+): Promise<{ response: Response; version: number }> {
+  let versionToUse = initialVersion
+  let response = await operation(versionToUse)
+
+  if (response.status === 409) {
+    const stateRes = await fetch('/api/onboarding/state', { cache: 'no-store' })
+    if (stateRes.ok) {
+      const stateData: StateSummary = await stateRes.json()
+      versionToUse = stateData.version
+      onVersionUpdate(stateData.version)
+      response = await operation(versionToUse)
+    }
+  }
+
+  return { response, version: versionToUse }
+}
+
 function ProcessingState() {
   return (
     <div className="space-y-4 rounded-md border border-border/40 bg-background/80 p-6 text-center">
@@ -154,7 +204,13 @@ export function OnboardingWizard() {
 
         // If we land mid-flow on Stage 2, hydrate from API selection
         if (nextStage === 'stage2') {
-          await hydrateStage2FromServer(s2)
+          const prepared = await fetchStage2Questions(
+            s2,
+            'OnboardingWizard: hydrate Stage 2 questions',
+          )
+          if (!cancelled && prepared) {
+            setStage2Questions(prepared)
+          }
         }
 
         // Stage 3 uses static bank; no extra fetch needed here
@@ -165,26 +221,6 @@ export function OnboardingWizard() {
         }
       } finally {
         if (!cancelled) setLoading(false)
-      }
-    }
-
-    async function hydrateStage2FromServer(fallbackBank: OnboardingQuestion[]) {
-      if (cancelled) return
-      try {
-        const res = await fetch('/api/onboarding/questions?stage=2', { cache: 'no-store' })
-        if (!res.ok) throw new Error('Failed to hydrate Stage 2 questions')
-        const data = await res.json()
-        if (!cancelled && Array.isArray(data.questions)) {
-          const prepared = (data.questions as OnboardingQuestion[])
-            .filter(q => q.active)
-            .sort((a, b) => a.order_hint - b.order_hint)
-          setStage2Questions(prepared)
-        }
-      } catch (err) {
-        console.warn('Unable to hydrate Stage 2 questions from server, using fallback.', err)
-        if (!cancelled && fallbackBank.length >= 4) {
-          setStage2Questions(fallbackBank.slice(0, 4))
-        }
       }
     }
 
@@ -199,25 +235,15 @@ export function OnboardingWizard() {
     if (stage !== 'stage2' || stage2Questions.length > 0) return
 
     let cancelled = false
-    async function fetchStage2() {
-      try {
-        const res = await fetch('/api/onboarding/questions?stage=2', { cache: 'no-store' })
-        if (!res.ok) throw new Error('Failed to fetch Stage 2 questions')
-        const data = await res.json()
-        if (!cancelled && Array.isArray(data.questions)) {
-          const prepared = (data.questions as OnboardingQuestion[])
-            .filter(q => q.active)
-            .sort((a, b) => a.order_hint - b.order_hint)
-          setStage2Questions(prepared)
-        }
-      } catch (err) {
-        console.warn('fallback Stage 2 selection used due to fetch error', err)
-        if (!cancelled && stage2Bank.length >= 4) {
-          setStage2Questions(stage2Bank.slice(0, 4))
-        }
+    void (async () => {
+      const prepared = await fetchStage2Questions(
+        stage2Bank,
+        'OnboardingWizard: ensure Stage 2 questions',
+      )
+      if (!cancelled && prepared) {
+        setStage2Questions(prepared)
       }
-    }
-    void fetchStage2()
+    })()
     return () => {
       cancelled = true
     }
@@ -289,31 +315,21 @@ export function OnboardingWizard() {
     setSaving(true)
     try {
       const stageKey: OnboardingStage = question.stage === 1 ? 'stage1' : question.stage === 2 ? 'stage2' : 'stage3'
-      const doPost = async (payload: ProgressUpdateRequest) => fetch('/api/onboarding/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      let currentVersion = version
-      let payload: ProgressUpdateRequest = {
+      const payloadBase = {
         stage: stageKey,
         questionId: question.id,
         response,
-        version: currentVersion,
-      }
+      } satisfies Omit<ProgressUpdateRequest, 'version'>
 
-      let res = await doPost(payload)
-      if (res.status === 409) {
-        const stateRes = await fetch('/api/onboarding/state', { cache: 'no-store' })
-        if (stateRes.ok) {
-          const stateData: StateSummary = await stateRes.json()
-          currentVersion = stateData.version
-          setVersion(stateData.version)
-          payload = { ...payload, version: currentVersion }
-          res = await doPost(payload)
-        }
-      }
+      const { response: res } = await withVersionRetry(
+        ver => fetch('/api/onboarding/progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payloadBase, version: ver }),
+        }),
+        version,
+        setVersion,
+      )
 
       if (!res.ok) {
         const detail = await res.json().catch(() => ({})) as { error?: string }
@@ -343,24 +359,15 @@ export function OnboardingWizard() {
     setInlineError(null)
     setIsProcessing(true)
     try {
-      const complete = async (ver: number) => fetch('/api/onboarding/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ version: ver }),
-      })
-
-      let currentVersion = version
-      let res = await complete(currentVersion)
-
-      if (res.status === 409) {
-        const stateRes = await fetch('/api/onboarding/state', { cache: 'no-store' })
-        if (stateRes.ok) {
-          const stateData: StateSummary = await stateRes.json()
-          currentVersion = stateData.version
-          setVersion(stateData.version)
-          res = await complete(currentVersion)
-        }
-      }
+      const { response: res } = await withVersionRetry(
+        ver => fetch('/api/onboarding/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ version: ver }),
+        }),
+        version,
+        setVersion,
+      )
 
       if (!res.ok) {
         const detail = await res.json().catch(() => ({})) as { error?: string }

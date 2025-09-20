@@ -11,6 +11,7 @@ All code is TypeScript with React 19 function components. Follow a 2-space inden
 
 ## Testing Guidelines
 Keep unit tests deterministic and colocated in `scripts/tests/unit/*.test.ts`. Favor descriptive test names that mirror user behavior. Run `npm test` before every push, and verify E2E flows with `npm run test:e2e` when touching routes or async flows. Add targeted tests for regressions.
+- After finishing the feature or fix that was requested, run `npm run lint`, `npm run typecheck`, and `npm test` before pushing or asking for review so we hand off a fully verified branch.
 
 ## CodeRabbit CLI Review Loop
 - Run `coderabbit review --plain` from the repo root after local tests (`npm test`, `npm run lint`, and `npm run typecheck`) to generate actionable fix suggestions.

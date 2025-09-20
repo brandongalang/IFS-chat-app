@@ -26,11 +26,11 @@ export default function RootLayout({
               {/* Global ethereal backdrop & theme controller */}
               <GlobalBackdrop />
               <ThemeController />
+              <SupabaseSessionListener />
               {children}
             </UserProvider>
           </ComingSoonProvider>
         </ThemeProvider>
-        <SupabaseSessionListener />
       </body>
     </html>
   )
