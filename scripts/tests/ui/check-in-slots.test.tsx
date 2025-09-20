@@ -6,7 +6,6 @@ import React from 'react'
 process.env.NODE_ENV = 'test'
 process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://supabase.local'
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'anon-key'
-process.env.IFS_TEST_PERSONA = 'beginner'
 
 const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http://localhost' })
 const { window } = dom
@@ -35,6 +34,8 @@ assignGlobal('getComputedStyle', window.getComputedStyle.bind(window))
 assignGlobal('localStorage', window.localStorage)
 assignGlobal('MutationObserver', window.MutationObserver)
 assignGlobal('React', React)
+copyProps(window, globalThis)
+
 if (!(globalThis as any).matchMedia) {
   ;(globalThis as any).matchMedia = () => ({
     matches: false,
@@ -42,30 +43,27 @@ if (!(globalThis as any).matchMedia) {
     removeListener() {},
     addEventListener() {},
     removeEventListener() {},
-    dispatchEvent() { return false },
+    dispatchEvent() {
+      return false
+    },
   })
 }
+
 if (!(globalThis as any).requestAnimationFrame) {
   ;(globalThis as any).requestAnimationFrame = (cb: FrameRequestCallback) => setTimeout(() => cb(Date.now()), 0)
   ;(globalThis as any).cancelAnimationFrame = (id: number) => clearTimeout(id)
 }
 
-copyProps(window, globalThis)
-
-const { cleanup, render, screen } = await import('@testing-library/react')
-
+const { cleanup, renderHook, waitFor } = await import('@testing-library/react')
 const { setBrowserClientOverrideForTests } = await import('@/lib/supabase/client')
-const { ComingSoonProvider } = await import('@/components/common/ComingSoonProvider')
-const { CheckInCard } = await import('@/components/home/CheckInCard')
+const { useDailyCheckIns } = await import('@/hooks/useDailyCheckIns')
 
 type TableData = {
   check_ins: Array<Record<string, unknown>>
-  sessions: Array<Record<string, unknown>>
 }
 
 const tableData: TableData = {
   check_ins: [],
-  sessions: [],
 }
 
 const TEST_USER_ID = 'user-auth-id'
@@ -74,20 +72,15 @@ function setTableData(data: Partial<TableData>) {
   if (data.check_ins) {
     tableData.check_ins = data.check_ins
   }
-  if (data.sessions) {
-    tableData.sessions = data.sessions
-  }
 }
 
 function resetTableData() {
   tableData.check_ins = []
-  tableData.sessions = []
 }
 
 function pickColumns(row: Record<string, unknown>, columns?: string) {
-  if (!columns) return row
-  if (columns === '*') return row
-  const names = columns.split(',').map((col) => col.trim())
+  if (!columns || columns === '*' ) return row
+  const names = columns.split(',').map((name) => name.trim())
   const picked: Record<string, unknown> = {}
   for (const name of names) {
     if (name in row) {
@@ -97,22 +90,16 @@ function pickColumns(row: Record<string, unknown>, columns?: string) {
   return picked
 }
 
-function createQuery(table: keyof TableData, columns?: string) {
+function createQuery(columns?: string) {
   const filters = new Map<string, unknown>()
   const builder: any = {
     eq(column: string, value: unknown) {
       filters.set(column, value)
       return builder
     },
-    order() {
-      return builder
-    },
-    limit() {
-      return builder
-    },
+    // biome-ignore lint/suspicious/noThenProperty: test stub mimics Supabase thenable builders
     then(resolve: (value: unknown) => unknown, reject?: (reason?: unknown) => unknown) {
-      const rows = tableData[table]
-      const filtered = rows.filter((row) => {
+      const filtered = tableData.check_ins.filter((row) => {
         for (const [column, value] of filters.entries()) {
           if ((row as Record<string, unknown>)[column] !== value) return false
         }
@@ -135,10 +122,10 @@ const supabaseStub = {
       return { data: { user: { id: TEST_USER_ID } }, error: null }
     },
   },
-  from(table: keyof TableData) {
+  from() {
     return {
       select(columns?: string) {
-        return createQuery(table, columns)
+        return createQuery(columns)
       },
     }
   },
@@ -147,6 +134,13 @@ const supabaseStub = {
 setBrowserClientOverrideForTests(supabaseStub as any)
 
 const RealDate = Date
+
+function localDateString(d = new Date()) {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 function mockDateAtHour(hour: number) {
   const isoHour = String(hour).padStart(2, '0')
@@ -170,76 +164,70 @@ function restoreDate() {
   ;(globalThis as any).Date = RealDate
 }
 
-function renderCard() {
-  return render(
-    <ComingSoonProvider>
-      <CheckInCard />
-    </ComingSoonProvider>
-  )
-}
-
-function setCheckIns(rows: Array<Record<string, unknown>>) {
-  setTableData({ check_ins: rows })
-}
-
-function clearData() {
-  resetTableData()
-}
-
 process.on('exit', () => {
   setBrowserClientOverrideForTests(null)
 })
 
-test('renders the morning check-in entry point with navigation link', async (t) => {
+test('returns morning available and evening locked during morning hours', async (t) => {
   mockDateAtHour(9)
   t.after(() => {
     cleanup()
     restoreDate()
-    clearData()
+    resetTableData()
   })
 
-  setCheckIns([])
-  renderCard()
+  setTableData({ check_ins: [] })
 
-  const title = await screen.findByText('Fresh start!')
-  assert.ok(title)
-  const link = await screen.findByRole('link', { name: /begin/i })
-  assert.equal(link.getAttribute('href'), '/check-in/morning')
+  const { result } = renderHook(() => useDailyCheckIns())
+
+  await waitFor(() => {
+    assert.equal(result.current.isLoading, false)
+  })
+
+  assert.equal(result.current.morning.status, 'available')
+  assert.equal(result.current.evening.status, 'locked')
 })
 
-test('renders the evening variant during evening hours', async (t) => {
+test('marks evening as available after 6pm when morning is complete', async (t) => {
   mockDateAtHour(18)
   t.after(() => {
     cleanup()
     restoreDate()
-    clearData()
+    resetTableData()
   })
 
-  setCheckIns([
-    { type: 'morning', user_id: TEST_USER_ID, check_in_date: '2024-07-01' },
-  ])
-  renderCard()
+  setTableData({
+    check_ins: [
+      { type: 'morning', user_id: TEST_USER_ID, check_in_date: localDateString(new Date()) },
+    ],
+  })
 
-  const label = await screen.findByText('Daily review')
-  assert.ok(label)
-  await screen.findByText('Evening')
-  const link = await screen.findByRole('link', { name: /begin/i })
-  assert.equal(link.getAttribute('href'), '/check-in/evening')
+  const { result } = renderHook(() => useDailyCheckIns())
+
+  await waitFor(() => {
+    assert.equal(result.current.isLoading, false)
+  })
+
+  assert.equal(result.current.morning.status, 'completed')
+  assert.equal(result.current.evening.status, 'available')
 })
 
-test('hides the call-to-action outside check-in windows', async (t) => {
-  mockDateAtHour(13)
+test('closes the morning slot after 6pm when no entry exists', async (t) => {
+  mockDateAtHour(19)
   t.after(() => {
     cleanup()
     restoreDate()
-    clearData()
+    resetTableData()
   })
 
-  setCheckIns([])
-  renderCard()
+  setTableData({ check_ins: [] })
 
-  const message = await screen.findByText('Come back later')
-  assert.ok(message)
-  const link = screen.queryByRole('link', { name: /begin/i })
-  assert.equal(link, null)
+  const { result } = renderHook(() => useDailyCheckIns())
+
+  await waitFor(() => {
+    assert.equal(result.current.isLoading, false)
+  })
+
+  assert.equal(result.current.morning.status, 'closed')
+  assert.equal(result.current.morning.canStart, false)
 })

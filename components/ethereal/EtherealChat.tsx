@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation"
 import { StreamingText } from "./StreamingText"
 import { TaskList } from "@/components/tasks/TaskList"
 import { ActiveTaskOverlay } from "./ActiveTaskOverlay"
+import { PageContainer } from "@/components/common/PageContainer"
 
 // Minimal, bubble-less chat presentation
 export function EtherealChat() {
@@ -121,8 +122,8 @@ export function EtherealChat() {
       </div>
 
       {/* Messages area */}
-      <div className="relative z-10 flex-1 overflow-y-auto px-4 pb-[120px] pt-[calc(env(safe-area-inset-top)+16px)]">
-        <div className="mx-auto flex max-w-[820px] flex-col gap-6">
+      <div className="relative z-10 flex-1 overflow-y-auto pb-[120px] pt-[calc(env(safe-area-inset-top)+16px)]">
+        <PageContainer className="flex flex-col gap-6">
           {(messages as ChatMessage[]).map((m) => (
             <motion.div
               key={m.id}
@@ -161,22 +162,22 @@ export function EtherealChat() {
             </motion.div>
           ))}
           <div ref={messagesEndRef} />
-        </div>
+        </PageContainer>
       </div>
 
       {/* Task overlay for current streaming message */}
       {currentTasks?.length ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(100px+env(safe-area-inset-bottom))] z-20 flex justify-center px-3">
-          <div className="pointer-events-auto w-full max-w-[900px]">
+        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(100px+env(safe-area-inset-bottom))] z-20">
+          <PageContainer className="pointer-events-auto">
             <ActiveTaskOverlay tasks={currentTasks} />
-          </div>
+          </PageContainer>
         </div>
       ) : null}
 
       {/* Translucent input bar (always visible) */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pb-[calc(12px+env(safe-area-inset-bottom))]">
-        <div className="mx-auto w-full max-w-[900px] px-3">
-          <div className="pointer-events-auto rounded-2xl border border-white/15 bg-white/10 p-2 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.25)]">
+        <PageContainer className="pointer-events-auto">
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-2 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.25)]">
             <Textarea
               ref={inputRef}
               value={text}
@@ -199,7 +200,7 @@ export function EtherealChat() {
               </Button>
             </div>
           </div>
-        </div>
+        </PageContainer>
       </div>
 
       {/* Confirm end session dialog */}

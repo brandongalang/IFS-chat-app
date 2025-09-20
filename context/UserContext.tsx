@@ -38,7 +38,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             .maybeSingle()
 
           if (error) {
-            console.error('Error fetching user profile', error)
+            console.error('Failed to load user profile', error)
           }
 
           setProfile({
