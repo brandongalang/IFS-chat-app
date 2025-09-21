@@ -4,11 +4,12 @@ import { useState } from 'react'
 import { GuardedLink } from '@/components/common/GuardedLink'
 import { PageContainer } from '@/components/common/PageContainer'
 import PersonaSwitcher from '@/components/dev/PersonaSwitcher'
-import { showDevToggle } from '@/config/features'
+import { showDevToggle, isInboxEnabled } from '@/config/features'
 import { CheckInSlots } from '@/components/home/CheckInSlots'
 import { WeekSelector } from '@/components/home/WeekSelector'
 import { useUser } from '@/context/UserContext'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Inbox } from '@/components/inbox/Inbox'
 import { User as UserIcon } from 'lucide-react'
 
 export default function HomePage() {
@@ -18,6 +19,8 @@ export default function HomePage() {
   const avatarAlt = trimmedName ? `${trimmedName}'s avatar` : 'User avatar'
   const userInitial =
     trimmedName?.match(/\p{L}|\p{N}/u)?.[0]?.toUpperCase() ?? null
+
+  const inboxEnabled = isInboxEnabled()
   
   // Get current time for greeting
   const now = new Date()
@@ -92,35 +95,42 @@ export default function HomePage() {
         <PageContainer className="grid grid-cols-2 gap-3">
           <CheckInSlots selectedDate={selectedDate} />
 
-          {/* Daily meditations (spans 2 columns) */}
-          <div className="col-span-2 rounded-xl border border-border/40 bg-card/20 backdrop-blur p-4 mt-2">
-            <div
-              className="text-xs font-semibold"
-              style={{
-                color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.75))',
-                letterSpacing: 'var(--eth-letter-spacing-user)',
-              }}
-            >
-              DAILY MEDITATIONS
-            </div>
-            <div className="mt-3 text-sm">
-              <blockquote className="italic">“So whatever you want to do, just do it… Making a damn fool of yourself is absolutely essential.”</blockquote>
-              <div
-                className="text-xs mt-2"
-                style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.65))' }}
-              >
-                — Gloria Steinem
-              </div>
-            </div>
-            <div
-              className="mt-3 text-xs"
-              style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.65))' }}
-            >
-              Tap to explore more insights
-            </div>
-          </div>
+          {inboxEnabled ? <Inbox /> : <DailyMeditationsCard />}
         </PageContainer>
       </main>
+    </div>
+  )
+}
+
+function DailyMeditationsCard() {
+  return (
+    <div className="col-span-2 mt-2 rounded-xl border border-border/40 bg-card/20 p-4 backdrop-blur">
+      <div
+        className="text-xs font-semibold"
+        style={{
+          color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.75))',
+          letterSpacing: 'var(--eth-letter-spacing-user)',
+        }}
+      >
+        DAILY MEDITATIONS
+      </div>
+      <div className="mt-3 text-sm">
+        <blockquote className="italic">
+          “So whatever you want to do, just do it… Making a damn fool of yourself is absolutely essential.”
+        </blockquote>
+        <div
+          className="mt-2 text-xs"
+          style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.65))' }}
+        >
+          — Gloria Steinem
+        </div>
+      </div>
+      <div
+        className="mt-3 text-xs"
+        style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.65))' }}
+      >
+        Tap to explore more insights
+      </div>
     </div>
   )
 }
