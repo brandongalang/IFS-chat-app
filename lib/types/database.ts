@@ -117,7 +117,10 @@ export interface Database {
       }
     }
     Views: {
-      [_ in never]: never
+      inbox_items_view: {
+        Row: InboxItemsViewRow
+        Relationships: []
+      }
     }
     Functions: {
       update_part_confidence: {
@@ -261,6 +264,7 @@ export interface PartRow {
   first_noticed: string
   acknowledged_at: string | null
   last_active: string
+  last_interaction_at: string | null
   last_charged_at: string | null
   last_charge_intensity: number | null
   created_at: string
@@ -288,6 +292,7 @@ export interface PartInsert {
   first_noticed?: string
   acknowledged_at?: string | null
   last_active?: string
+  last_interaction_at?: string | null
   last_charged_at?: string | null
   last_charge_intensity?: number | null
   created_at?: string
@@ -315,6 +320,7 @@ export interface PartUpdate {
   first_noticed?: string
   acknowledged_at?: string | null
   last_active?: string
+  last_interaction_at?: string | null
   last_charged_at?: string | null
   last_charge_intensity?: number | null
   created_at?: string
@@ -641,6 +647,17 @@ export interface InsightUpdate {
   meta?: Json
   created_at?: string
   updated_at?: string
+}
+
+export interface InboxItemsViewRow {
+  user_id: string
+  source_type: 'insight' | 'part_follow_up'
+  source_id: string
+  status: InsightStatus
+  content: Json
+  part_id: string | null
+  metadata: Json
+  created_at: string
 }
 
 // API Response Types
