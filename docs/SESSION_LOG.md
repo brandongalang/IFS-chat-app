@@ -37,7 +37,7 @@ Through a series of clarifying questions and brainstorming, the vision expanded 
 ### 4. Documentation Cleanup & Consolidation
 
 - As part of the pivot, a decision was made to clean up the existing documentation.
-- Obsolete files (`TECHNICAL_DESIGN.md`, `CLAUDE.md`, `docs/README_DELTA.md`) were identified for deletion.
+- Obsolete files (`TECHNICAL_DESIGN.md`, `docs/ops/claude.md`, `docs/README_DELTA.md`) were identified for deletion.
 - The final plan was to consolidate all the planning and design work into a clear set of documents:
     - An updated `docs/PRD.md` to reflect the full feature set.
     - A new `docs/SYSTEM_DESIGN.md` to provide the technical blueprint.

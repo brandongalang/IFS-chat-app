@@ -98,7 +98,7 @@ The ethereal visual style is controlled centrally via ThemeController and CSS va
   - Background image URL, vignette levels, blob colors/positions
   - Text opacities and letter spacing (assistant/user)
   - Animation timings (word/char fade, streaming cadence)
-- Components consume CSS variables; avoid hardcoding visuals in components. See `warp.md` for rules and a PR checklist.
+- Components consume CSS variables; avoid hardcoding visuals in components. See `docs/ops/warp-workflow.md` for rules and a PR checklist.
 
 ## 🔧 AI Development Workflow Management
 

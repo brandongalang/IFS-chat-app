@@ -25,3 +25,6 @@ When interacting with GitHub from the command line (opening PRs, checking status
 
 ## Security & Configuration Tips
 Never commit secrets; store credentials in environment files modeled after `.env.example`. Confirm that `.env*` entries remain git-ignored. Configure Supabase keys only via env variables. Keep `AGENTS.md` local—Git ignores it by default, so share it manually when needed.
+
+## Documentation & Repo Hygiene
+Keep the repository root focused on production code. Personal scratch files, playground scripts, or tooling experiments belong in directories that are already ignored, or add them to `.gitignore` before committing. Any net-new documentation should live under `docs/`—create a sensible subfolder if one does not exist—so we do not clutter the top level of the project.
