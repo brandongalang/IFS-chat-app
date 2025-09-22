@@ -1,3 +1,0 @@
-- PR 201: Refactor part schemas into shared module by @brandongalang (https://github.com/brandongalang/IFS-chat-app/pull/201)
-- PR 202: Use JWT-scoped Supabase clients for chat sessions by @brandongalang (https://github.com/brandongalang/IFS-chat-app/pull/202)
-- PR 203: Consolidated: merge all open codex PRs by @brandongalang (https://github.com/brandongalang/IFS-chat-app/pull/203)
