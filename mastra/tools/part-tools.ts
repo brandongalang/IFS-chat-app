@@ -42,6 +42,7 @@ function makeStubPart(userId: string, overrides: Partial<PartRow> = {}): PartRow
     first_noticed: overrides.first_noticed ?? now,
     acknowledged_at: overrides.acknowledged_at ?? null,
     last_active: overrides.last_active ?? now,
+    last_interaction_at: overrides.last_interaction_at ?? now,
     last_charged_at: overrides.last_charged_at ?? null,
     last_charge_intensity: overrides.last_charge_intensity ?? null,
     created_at: overrides.created_at ?? now,

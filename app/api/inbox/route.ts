@@ -1,214 +1,220 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
-import { rankInboxItems, type RankedInboxItem } from '@/lib/data/inbox-ranking'
-import type { InboxContent, InboxItem, PaginatedInboxResponse } from '@/types/inbox'
+import { isInboxEnabled } from '@/config/features'
+import { normalizeInboxResponse } from '@/lib/inbox/normalize'
+import { getPragmaticInboxFeed } from '@/lib/inbox/pragmaticData'
 
-const DEFAULT_LIMIT = 10
-const MAX_LIMIT = 50
-const SUPABASE_FETCH_LIMIT = 200
+interface SupabaseInboxPayload {
+  headline?: string | null
+  summary?: string | null
+  detail?: Record<string, unknown> | null
+  cta?: Record<string, unknown> | null
+  metadata?: Record<string, unknown> | null
+}
 
-type InboxItemRow = {
+interface SupabaseInboxRow {
   id: string
-  user_id: string
-  source_type: string
-  status: string
-  part_id: string | null
-  content: unknown
-  metadata: unknown
+  type: string
+  priority: number | null
+  tags: string[] | null
   created_at: string
+  updated_at: string | null
+  expires_at: string | null
+  inbox_message_payloads: SupabaseInboxPayload | SupabaseInboxPayload[] | null
 }
 
-type CursorPayload = {
-  rankBucket: number
-  createdAt: string
-  id: string
-}
-
-function parseLimit(limitParam: string | null): number | null {
-  if (!limitParam) return DEFAULT_LIMIT
-
-  const parsed = Number.parseInt(limitParam, 10)
-  if (Number.isNaN(parsed) || parsed <= 0) {
-    return null
+export async function GET(_req: NextRequest) {
+  if (!isInboxEnabled()) {
+    return NextResponse.json({ data: [], message: 'Inbox is disabled' }, { status: 404 })
   }
 
-  return Math.min(parsed, MAX_LIMIT)
-}
-
-function decodeCursor(afterParam: string | null): CursorPayload | null {
-  if (!afterParam) return null
+  const fallback = normalizeInboxResponse(getPragmaticInboxFeed())
 
   try {
-    const decoded = Buffer.from(afterParam, 'base64url').toString('utf8')
-    const payload = JSON.parse(decoded) as Partial<CursorPayload>
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-    if (
-      typeof payload.rankBucket === 'number' &&
-      typeof payload.createdAt === 'string' &&
-      typeof payload.id === 'string'
-    ) {
-      return {
-        rankBucket: payload.rankBucket,
-        createdAt: payload.createdAt,
-        id: payload.id,
-      }
-    }
-  } catch (error) {
-    console.error('Failed to decode inbox cursor', error)
-  }
-
-  return null
-}
-
-function encodeCursor(item: RankedInboxItem): string {
-  const payload: CursorPayload = {
-    rankBucket: item.rankBucket,
-    createdAt: item.createdAt,
-    id: item.id,
-  }
-
-  return Buffer.from(JSON.stringify(payload)).toString('base64url')
-}
-
-function mapRowToItem(row: InboxItemRow): InboxItem {
-  return {
-    id: row.id,
-    userId: row.user_id,
-    sourceType: row.source_type,
-    status: row.status,
-    partId: row.part_id,
-    content: normalizeContent(row.content),
-    metadata: normalizeMetadata(row.metadata),
-    createdAt: row.created_at,
-  }
-}
-
-function normalizeContent(content: unknown): InboxContent | null {
-  if (content == null) return null
-
-  if (typeof content === 'string') {
-    try {
-      return JSON.parse(content)
-    } catch {
-      return { value: content }
-    }
-  }
-
-  if (typeof content === 'object') {
-    return content as InboxContent
-  }
-
-  return null
-}
-
-function normalizeMetadata(metadata: unknown): Record<string, unknown> | null {
-  if (metadata == null) return null
-
-  if (typeof metadata === 'string') {
-    try {
-      return JSON.parse(metadata) as Record<string, unknown>
-    } catch {
-      return { value: metadata }
-    }
-  }
-
-  if (typeof metadata === 'object') {
-    return metadata as Record<string, unknown>
-  }
-
-  return null
-}
-
-function findCursorIndex(items: RankedInboxItem[], cursor: CursorPayload) {
-  return items.findIndex((item) => {
-    return (
-      item.rankBucket === cursor.rankBucket &&
-      item.createdAt === cursor.createdAt &&
-      item.id === cursor.id
-    )
-  })
-}
-
-function paginateItems(
-  rankedItems: RankedInboxItem[],
-  limit: number,
-  cursor: CursorPayload | null
-) {
-  let startIndex = 0
-
-  if (cursor) {
-    const index = findCursorIndex(rankedItems, cursor)
-    if (index === -1) {
-      return {
-        page: [] as RankedInboxItem[],
-        nextCursor: null,
-        cursorInvalid: true,
-      }
+    if (!user) {
+      return NextResponse.json(
+        {
+          data: fallback,
+          source: 'fallback',
+          variant: 'pragmatic',
+          reason: 'unauthenticated',
+          generatedAt: new Date().toISOString(),
+        },
+        { status: 200 },
+      )
     }
 
-    startIndex = index + 1
-  }
-
-  const page = rankedItems.slice(startIndex, startIndex + limit)
-  const hasNext = startIndex + limit < rankedItems.length
-  const nextCursor = hasNext ? encodeCursor(rankedItems[startIndex + limit]) : null
-
-  return { page, nextCursor, cursorInvalid: false }
-}
-
-export async function GET(request: NextRequest) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
-  }
-
-  const url = new URL(request.url)
-  const limitParam = url.searchParams.get('limit')
-  const afterParam = url.searchParams.get('after')
-
-  const limit = parseLimit(limitParam)
-  if (!limit) {
-    return errorResponse('Invalid limit parameter', HTTP_STATUS.BAD_REQUEST)
-  }
-
-  const cursor = decodeCursor(afterParam)
-  if (afterParam && !cursor) {
-    return errorResponse('Invalid cursor parameter', HTTP_STATUS.BAD_REQUEST)
-  }
-
-  try {
     const { data, error } = await supabase
-      .from('inbox_items_view')
-      .select('*')
+      .from('inbox_message_subjects')
+      .select(
+        `id, type, priority, tags, created_at, updated_at, expires_at,
+         inbox_message_payloads (headline, summary, detail, cta, metadata)`,
+      )
       .eq('user_id', user.id)
-      .limit(Math.min(SUPABASE_FETCH_LIMIT, Math.max(limit * 3, limit + 20)))
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(10)
 
     if (error) {
-      console.error('Failed to fetch inbox items', error)
-      return errorResponse('Failed to fetch inbox items', HTTP_STATUS.INTERNAL_SERVER_ERROR)
+      console.error('[api/inbox] supabase error', error)
+      return NextResponse.json(
+        {
+          data: fallback,
+          source: 'fallback',
+          variant: 'pragmatic',
+          reason: 'supabase_error',
+          generatedAt: new Date().toISOString(),
+        },
+        { status: 200 },
+      )
     }
 
-    const items = (data ?? []).map((row: InboxItemRow) => mapRowToItem(row))
-    const rankedItems = rankInboxItems(items)
-    const { page, nextCursor, cursorInvalid } = paginateItems(rankedItems, limit, cursor)
+    const rows = Array.isArray(data) ? data : []
+    const raw = rows.map((row) => mapSupabaseRow(row))
+    const normalized = normalizeInboxResponse(raw)
+    const payload = normalized.length ? normalized : fallback
+    const source = normalized.length ? 'supabase' : 'fallback'
 
-    if (cursorInvalid) {
-      return errorResponse('Cursor no longer valid', HTTP_STATUS.BAD_REQUEST)
-    }
-
-    const response: PaginatedInboxResponse = {
-      items: page,
-      nextCursor,
-    }
-
-    return jsonResponse(response)
+    return NextResponse.json(
+      {
+        data: payload,
+        source,
+        variant: 'pragmatic',
+        generatedAt: new Date().toISOString(),
+      },
+      { status: 200 },
+    )
   } catch (error) {
-    console.error('Unexpected inbox GET error', error)
-    return errorResponse('An unexpected error occurred', HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    console.error('[api/inbox] unexpected error', error)
+    return NextResponse.json(
+      {
+        data: fallback,
+        source: 'fallback',
+        variant: 'pragmatic',
+        reason: 'unexpected_error',
+        generatedAt: new Date().toISOString(),
+      },
+      { status: 200 },
+    )
   }
+}
+
+function mapSupabaseRow(row: SupabaseInboxRow) {
+  const payloadCandidate = Array.isArray(row.inbox_message_payloads)
+    ? row.inbox_message_payloads[0]
+    : row.inbox_message_payloads
+  const base = {
+    id: row.id,
+    type: row.type,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    expiresAt: row.expires_at,
+    readAt: null,
+    source: 'supabase' as const,
+    priority: row.priority ?? undefined,
+    tags: row.tags ?? undefined,
+    actions: {
+      kind: 'boolean' as const,
+      positiveLabel: 'This resonates',
+      negativeLabel: 'Not right now',
+      allowNotes: true,
+    },
+    metadata: payloadCandidate?.metadata ?? undefined,
+  }
+
+  switch (row.type) {
+    case 'insight_spotlight':
+      return {
+        ...base,
+        payload: {
+          insightId: getMetadataString(payloadCandidate?.metadata, 'insight_id') ?? row.id,
+          title: stringOrNull(payloadCandidate?.headline) ?? 'Insight spotlight',
+          summary:
+            stringOrNull(payloadCandidate?.summary) ?? 'Tap to open the latest insight.',
+          prompt: getMetadataString(payloadCandidate?.metadata, 'prompt') ?? undefined,
+          readingTimeMinutes: getMetadataNumber(payloadCandidate?.metadata, 'reading_time_minutes'),
+          detail:
+            payloadCandidate?.detail && typeof payloadCandidate.detail === 'object'
+              ? (payloadCandidate.detail as Record<string, unknown>)
+              : undefined,
+          cta: coerceCta(payloadCandidate?.cta) ?? undefined,
+        },
+      }
+    case 'nudge':
+      return {
+        ...base,
+        payload: {
+          headline: stringOrNull(payloadCandidate?.headline) ?? 'Reminder',
+          body: stringOrNull(payloadCandidate?.summary) ?? 'Check in with yourself today.',
+          cta: coerceCta(payloadCandidate?.cta) ?? undefined,
+        },
+      }
+    case 'cta':
+      return {
+        ...base,
+        payload: {
+          title: stringOrNull(payloadCandidate?.headline) ?? 'Action needed',
+          description: stringOrNull(payloadCandidate?.summary) ?? 'Complete the suggested action.',
+          action:
+            coerceCta(payloadCandidate?.cta) ?? {
+              label: 'Open',
+              href: '/',
+            },
+        },
+      }
+    case 'notification':
+      return {
+        ...base,
+        payload: {
+          title: stringOrNull(payloadCandidate?.headline) ?? 'Notification',
+          body: stringOrNull(payloadCandidate?.summary) ?? 'You have a new notification.',
+          unread: true,
+        },
+      }
+    default:
+      return {
+        ...base,
+        payload: payloadCandidate ?? {},
+      }
+  }
+}
+
+function coerceCta(value: Record<string, unknown> | null | undefined) {
+  if (!value) return undefined
+  const label = stringOrNull(value.label)
+  if (!label) return undefined
+  return {
+    label,
+    href: stringOrNull(value.href) ?? undefined,
+    actionId: stringOrNull(value.actionId) ?? undefined,
+    intent: stringOrNull(value.intent) === 'secondary' ? 'secondary' : 'primary',
+    helperText: stringOrNull(value.helperText) ?? undefined,
+    target: stringOrNull(value.target) === '_blank' ? '_blank' : undefined,
+    analyticsTag: stringOrNull(value.analyticsTag) ?? undefined,
+  }
+}
+
+function stringOrNull(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed.length ? trimmed : null
+  }
+  return null
+}
+
+function getMetadataString(metadata: Record<string, unknown> | null | undefined, key: string) {
+  if (!metadata) return null
+  return stringOrNull(metadata[key])
+}
+
+function getMetadataNumber(metadata: Record<string, unknown> | null | undefined, key: string) {
+  if (!metadata) return undefined
+  const value = metadata[key]
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  return undefined
 }

@@ -90,6 +90,8 @@ linkedin-*.md
 
 # Root docs kept local-only
 AGENTS.md
+QWEN.md
+GEMINI.md
 
 # Local memory snapshots
 .data/
