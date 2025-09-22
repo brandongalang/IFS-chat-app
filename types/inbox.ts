@@ -159,6 +159,15 @@ export interface InboxFeedResponse {
   generatedAt?: string
   source?: InboxEnvelopeSource | 'fallback'
   variant?: InboxFeedVariant
+  reason?: string
+}
+
+export interface InboxFeedResult {
+  envelopes: InboxEnvelope[]
+  variant: InboxFeedVariant
+  source: InboxEnvelopeSource | 'fallback'
+  generatedAt?: string
+  reason?: string
 }
 
 export interface InboxActionRequest {

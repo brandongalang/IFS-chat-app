@@ -38,13 +38,10 @@ const payloadSchema = z.discriminatedUnion('action', [
   snoozeActionSchema,
 ])
 
-type RouteContext = {
-  params: {
-    id?: string
-  }
-}
-
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   const supabase = (await createClient()) as SupabaseClient<Database>
   const {
     data: { user },
@@ -55,7 +52,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 
   const { params } = context
-  const { id } = params
+  const { id } = await params
 
   if (!id) {
     return errorResponse('Missing inbox item id', HTTP_STATUS.BAD_REQUEST)
