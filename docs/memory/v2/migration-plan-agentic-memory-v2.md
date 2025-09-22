@@ -34,7 +34,7 @@ Phase 0 — Flags, ADRs, scaffolding (1 PR)
 - Acceptance: CI green; no runtime changes.
 
 Phase 1 — DB migrations (1–2 PRs)
-- Create events table and idempotency_records (see future/DATA_SCHEMA.md). No partitioning (4B). Add recommended indexes.
+- Create events table and idempotency_records (see docs/memory/v2/data-schema.md). No partitioning (4B). Add recommended indexes.
 - Add RLS: owner-only reads; writes via service role only. Confirm policies in Supabase Studio.
 - Configure env for integrity HMAC:
   - MEMORY_EVENTS_HMAC_SECRET (server-only)
@@ -133,7 +133,7 @@ Timeline (strawman)
 Deliverables & scripts
 - Migrations: supabase/migrations/0xx_events.sql, 0xx_idempotency.sql
 - Utilities: lib/memory/events-logger.ts, lib/memory/canonicalize.ts, lib/memory/idempotency.ts
-- Tools: server modules for fs.*, md.*, events.*, lint.* (as per future/TOOL_API_SPEC.md)
+- Tools: server modules for fs.*, md.*, events.*, lint.* (as per docs/memory/v2/tool-api-spec.md)
 - Scripts:
   - scripts/scaffold-snapshots-from-db.ts
   - scripts/backfill-events-from-agent-actions.ts
