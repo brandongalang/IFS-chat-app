@@ -21,6 +21,10 @@ const devMode = isDevMode()
 const gardenGridEnvOverride =
   process.env.NEXT_PUBLIC_IFS_GARDEN_GRID_VIEW ?? process.env.IFS_GARDEN_GRID_VIEW
 
+const inboxFlag = process.env.NEXT_PUBLIC_IFS_INBOX ?? process.env.IFS_INBOX
+const inboxActionsFlag =
+  process.env.NEXT_PUBLIC_IFS_INBOX_ACTIONS ?? process.env.IFS_INBOX_ACTIONS
+
 const gardenFlag = process.env.ENABLE_GARDEN ?? process.env.NEXT_PUBLIC_ENABLE_GARDEN
 const gardenStatus: FeatureStatus =
   gardenFlag === undefined ? 'enabled' : isTrue(gardenFlag) ? 'enabled' : 'disabled'
@@ -92,4 +96,17 @@ export function isGardenGridViewEnabled(): boolean {
     return true
   }
   return isTrue(gardenGridEnvOverride)
+}
+
+export function isInboxEnabled(): boolean {
+  if (devMode) return true
+  if (typeof window !== 'undefined' && clientDevOverride()) return true
+  return inboxFlag === undefined ? false : isTrue(inboxFlag)
+}
+
+export function isInboxActionsEnabled(): boolean {
+  if (!isInboxEnabled()) return false
+  if (devMode) return true
+  if (typeof window !== 'undefined' && clientDevOverride()) return true
+  return inboxActionsFlag === undefined ? true : isTrue(inboxActionsFlag)
 }
