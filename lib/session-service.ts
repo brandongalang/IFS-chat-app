@@ -20,9 +20,12 @@ export class ChatSessionService {
   private readonly supabase: SupabaseClient<Database>
   private readonly actionLogger: DatabaseActionLogger
   private readonly userId: string
+  private readonly accessToken?: string
+  private userRecordEnsured = false
 
   constructor(options: ChatSessionServiceOptions) {
     this.userId = options.userId
+    this.accessToken = options.accessToken
 
     if (options.supabase) {
       this.supabase = options.supabase
@@ -39,6 +42,8 @@ export class ChatSessionService {
    * Start a new chat session for the current user
    */
   async startSession(): Promise<string> {
+    await this.ensureUserRecord()
+
     const session: SessionInsert = {
       user_id: this.userId,
       start_time: new Date().toISOString(),
@@ -80,6 +85,95 @@ export class ChatSessionService {
     })
 
     return data.id
+  }
+
+  private async ensureUserRecord(): Promise<void> {
+    if (this.userRecordEnsured) {
+      return
+    }
+
+    const {
+      data: existing,
+      error: selectError,
+    } = await this.supabase
+      .from('users')
+      .select('id')
+      .eq('id', this.userId)
+      .maybeSingle()
+
+    if (selectError && selectError.code !== 'PGRST116') {
+      throw new Error(`Failed to verify user record: ${selectError.message}`)
+    }
+
+    if (existing?.id) {
+      this.userRecordEnsured = true
+      return
+    }
+
+    const profile = await this.fetchProfileDetails()
+
+    if (!profile?.email) {
+      throw new Error('Authenticated Supabase user is missing an email; cannot ensure profile record')
+    }
+
+    const nameMetadata =
+      (profile.user_metadata?.full_name as string | undefined) ||
+      (profile.user_metadata?.name as string | undefined) ||
+      profile.email
+
+    const { error: upsertError } = await this.supabase
+      .from('users')
+      .upsert(
+        {
+          id: this.userId,
+          email: profile.email,
+          name: nameMetadata,
+        },
+        { onConflict: 'id' },
+      )
+
+    if (upsertError) {
+      throw new Error(`Failed to upsert user profile: ${upsertError.message}`)
+    }
+
+    console.info('ChatSessionService: created missing user profile', { userId: this.userId })
+
+    this.userRecordEnsured = true
+  }
+
+  private async fetchProfileDetails(): Promise<{
+    email: string | null
+    user_metadata?: Record<string, unknown>
+  } | null> {
+    if (this.accessToken) {
+      const { data, error } = await this.supabase.auth.getUser(this.accessToken)
+      if (error) {
+        throw new Error(`Failed to fetch authenticated user profile: ${error.message}`)
+      }
+      if (!data?.user) {
+        return null
+      }
+      return {
+        email: data.user.email ?? null,
+        user_metadata: data.user.user_metadata as Record<string, unknown> | undefined,
+      }
+    }
+
+    if (this.supabase.auth?.admin) {
+      const { data, error } = await this.supabase.auth.admin.getUserById(this.userId)
+      if (error) {
+        throw new Error(`Failed to fetch admin user profile: ${error.message}`)
+      }
+      if (!data?.user) {
+        return null
+      }
+      return {
+        email: data.user.email ?? null,
+        user_metadata: data.user.user_metadata as Record<string, unknown> | undefined,
+      }
+    }
+
+    throw new Error('Unable to resolve Supabase user profile for session operations')
   }
 
   /**

@@ -51,7 +51,7 @@ type AuthCallbackPayload = {
   session?: Session | null
 }
 
-const allowedEvents = new Set(['SIGNED_IN', 'TOKEN_REFRESHED', 'SIGNED_OUT'])
+const allowedEvents = new Set(['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED', 'SIGNED_OUT'])
 
 function normalizeOrigin(origin: string | null): string | null {
   if (!origin) {
@@ -125,6 +125,11 @@ export async function POST(request: Request) {
     } = await supabase.auth.getSession()
 
     if (!session?.access_token) {
+      if (event === 'INITIAL_SESSION') {
+        console.info('Auth callback received initial session with no active session; clearing cookies')
+        await supabase.auth.signOut()
+        return NextResponse.json({ success: true })
+      }
       console.warn('Auth callback POST missing access token', { event })
       return NextResponse.json({ success: false }, { status: 400 })
     }
