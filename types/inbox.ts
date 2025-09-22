@@ -71,9 +71,30 @@ export interface InsightSpotlightDetailSource {
   url: string
 }
 
+export interface InsightSpotlightEvidenceReference {
+  type: string
+  sessionId?: string
+  sessionLabel?: string
+  sessionUrl?: string
+  metadata?: Record<string, unknown>
+}
+
 export interface InsightSpotlightDetail {
   body?: string
   sources?: InsightSpotlightDetailSource[]
+  evidence?: InsightSpotlightEvidenceReference[]
+}
+
+export interface InsightSpotlightEvidenceItem {
+  id: string
+  type: string
+  summary?: string
+  quote?: string
+  sessionId?: string
+  sessionLabel?: string
+  occurredAt?: string
+  confidence?: number
+  metadata?: Record<string, unknown>
 }
 
 export interface InsightSpotlightMessage {
@@ -83,6 +104,7 @@ export interface InsightSpotlightMessage {
   prompt?: string
   readingTimeMinutes?: number
   detail?: InsightSpotlightDetail
+  evidence?: InsightSpotlightEvidenceItem[]
   cta?: InboxCTA
 }
 
