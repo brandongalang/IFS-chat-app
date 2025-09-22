@@ -54,12 +54,35 @@ export async function withSupabaseOrDev(
 
     try {
       const supabase = await createServerSupabase()
-      const {
+      const [{
         data: { session },
-      } = await supabase.auth.getSession()
-      const authedUserId = session?.user?.id
+        error: sessionError,
+      }, {
+        data: userData,
+        error: userError,
+      }] = await Promise.all([
+        supabase.auth.getSession(),
+        supabase.auth.getUser(),
+      ])
+
+      if (sessionError) {
+        console.error('Supabase guard: session retrieval failed', sessionError)
+      }
+
+      if (userError) {
+        console.error('Supabase guard: user retrieval failed', userError)
+      }
+
       const accessToken = session?.access_token
+      const authedUserId = userData?.user?.id
+
       if (authedUserId && typeof accessToken === 'string' && accessToken.length > 0) {
+        if (session?.user?.id && session.user.id !== authedUserId) {
+          console.warn('Supabase guard: session user mismatch', {
+            sessionUserId: session.user.id,
+            authenticatedUserId: authedUserId,
+          })
+        }
         return handler({ type: 'authed', supabase, userId: authedUserId, accessToken })
       }
     } catch (error) {
