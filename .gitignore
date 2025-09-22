@@ -76,6 +76,13 @@ jules-scratch/
 feat-*.md
 linkedin-*.md
 
+# Temporary merge-train artifacts
+pkg-ours.json
+pkg-theirs.json
+tmp_*.json
+tmp_*.md
+tmp_*.txt
+
 # Obsidian vault
 .obsidian/
 
