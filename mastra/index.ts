@@ -7,15 +7,27 @@ import { createUpdateSummarizerAgent } from './agents/update-summarizer'
 
 type Profile = Parameters<typeof createIfsAgent>[0]
 
-let mastraInstance: any = null
+type RegisteredAgents = {
+  ifsAgent: ReturnType<typeof createIfsAgent>
+  insightGeneratorAgent: typeof insightGeneratorAgent
+  updateSummarizerAgent: ReturnType<typeof createUpdateSummarizerAgent>
+}
 
-export function createMastra(profile: Profile = null) {
-  return new Mastra({
+type RegisteredLegacyWorkflows = Record<string, never>
+type RegisteredWorkflows = {
+  generateInsightWorkflow: typeof generateInsightWorkflow
+}
+
+type MastraInstance = Mastra<RegisteredAgents, RegisteredLegacyWorkflows, RegisteredWorkflows>
+
+let mastraInstance: MastraInstance | null = null
+
+export function createMastra(profile: Profile = null): MastraInstance {
+  return new Mastra<RegisteredAgents, RegisteredLegacyWorkflows, RegisteredWorkflows>({
     logger: new PinoLogger({
       name: 'IFS-Therapy-App',
       level: 'info',
     }),
-    // Expose agents and workflows to the Mastra runtime
     agents: {
       ifsAgent: createIfsAgent(profile),
       insightGeneratorAgent,
@@ -24,16 +36,15 @@ export function createMastra(profile: Profile = null) {
     workflows: {
       generateInsightWorkflow,
     },
-    // Optional telemetry config can be added here when needed
-    // telemetry: { /* configure telemetry here if desired */ },
-  }) as any
+    // Additional Mastra primitives (telemetry, storage, etc.) can be configured here as needed.
+  })
 }
 
-export function getMastra(profile: Profile = null) {
+export function getMastra(profile: Profile = null): MastraInstance {
   if (!mastraInstance) {
     mastraInstance = createMastra(profile)
   }
-  return mastraInstance as any
+  return mastraInstance
 }
 
 // Export a default Mastra instance for the Mastra CLI dev entry
