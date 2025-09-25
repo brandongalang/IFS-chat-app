@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveUserId } from '@/config/dev';
 import type { Json } from '@/lib/types/database';
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response';
+import { readJsonBody, isRecord } from '@/lib/api/request';
 
 async function saveInsightsToDb(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -46,8 +47,9 @@ async function saveInsightsToDb(
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const userId = resolveUserId(body.userId);
+    const body = await readJsonBody(req);
+    const providedUserId = isRecord(body) && typeof body.userId === 'string' ? body.userId : undefined;
+    const userId = resolveUserId(providedUserId);
     const supabase = await createClient();
 
     console.log(`Insight generation request received for user: ${userId}`);

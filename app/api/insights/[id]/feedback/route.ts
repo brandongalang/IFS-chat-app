@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getSupabaseKey, getSupabaseUrl } from '@/lib/supabase/config'
 import { jsonResponse, errorResponse } from '@/lib/api/response'
+import { readJsonBody, isRecord } from '@/lib/api/request'
 
 const supabaseUrl = getSupabaseUrl()
 const supabaseAnon = getSupabaseKey()
@@ -14,11 +15,13 @@ const hasSupabase =
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params
-    const { rating, feedback } = await req.json().catch(() => ({}))
-
-    if (!id || typeof rating === 'undefined') {
+    const raw = await readJsonBody(req)
+    if (!id || !isRecord(raw) || !('rating' in raw)) {
       return errorResponse('rating is required', 400)
     }
+
+    const rating = raw.rating
+    const feedback = typeof raw.feedback === 'string' ? raw.feedback : null
 
     if (!hasSupabase) {
       return jsonResponse({ ok: true, stored: false })

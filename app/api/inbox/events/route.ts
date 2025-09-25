@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { errorResponse, HTTP_STATUS } from '@/lib/api/response'
 import { isInboxActionsEnabled, isInboxEnabled } from '@/config/features'
 import type { InboxActionRequest } from '@/types/inbox'
+import { readJsonBody, isRecord } from '@/lib/api/request'
 
 export async function POST(req: NextRequest) {
   if (!isInboxEnabled()) {
@@ -12,9 +13,16 @@ export async function POST(req: NextRequest) {
     return errorResponse('Inbox actions disabled', HTTP_STATUS.FORBIDDEN)
   }
 
-  const payload = (await req.json()) as InboxActionRequest
-  if (!payload?.subjectId) {
+  const raw = await readJsonBody(req)
+  if (!isRecord(raw) || typeof raw.subjectId !== 'string') {
     return errorResponse('subjectId is required', HTTP_STATUS.BAD_REQUEST)
+  }
+
+  const payload: InboxActionRequest = {
+    subjectId: raw.subjectId,
+    eventType: typeof raw.eventType === 'string' ? raw.eventType : undefined,
+    action: typeof raw.action === 'string' ? raw.action : undefined,
+    notes: typeof raw.notes === 'string' ? raw.notes : undefined,
   }
 
   const supabase = await createClient()

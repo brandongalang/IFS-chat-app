@@ -3,14 +3,17 @@ import { dev } from '@/config/dev'
 import { errorResponse } from '@/lib/api/response'
 import { getUserIdFromSupabase, provideDevFallbackStream, handleAgentStream } from './logic'
 import { summarizePendingUpdatesForUser } from '@/lib/memory/update-runner'
+import { readJsonBody, isRecord } from '@/lib/api/request'
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, profile } = await req.json()
-
-    if (!messages || !Array.isArray(messages)) {
+    const body = await readJsonBody(req)
+    if (!isRecord(body) || !Array.isArray(body.messages)) {
       return errorResponse('Messages array is required', 400)
     }
+
+    const messages = body.messages
+    const profile = isRecord(body.profile) ? body.profile : {}
 
     const userId = await getUserIdFromSupabase()
 
@@ -18,7 +21,7 @@ export async function POST(req: NextRequest) {
       return errorResponse('Unauthorized', 401)
     }
 
-    const secureProfile = { ...profile, userId }
+    const secureProfile: Record<string, unknown> = { ...profile, userId }
 
     try {
       const { isMemoryV2Enabled } = await import('@/lib/memory/config')

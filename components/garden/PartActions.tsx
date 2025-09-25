@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useCallback, useState, useTransition } from 'react'
 import Link from 'next/link'
 import type { PartRow } from '@/lib/types/database'
 import { addPartNote, updatePartDetails } from '@/app/garden/actions'
@@ -24,8 +24,49 @@ interface PartActionsProps {
   part: PartRow
 }
 
-export function PartActions({ part }: PartActionsProps) {
+function usePartActionToasts() {
   const { toast } = useToast()
+
+  const notifyPartUpdated = useCallback(() => {
+    toast({
+      title: 'Part Updated',
+      description: 'Your changes have been saved.',
+    })
+  }, [toast])
+
+  const notifyNoteAdded = useCallback(() => {
+    toast({
+      title: 'Note added',
+      description: 'Clarification saved for this part.',
+    })
+  }, [toast])
+
+  const notifyEmptyNote = useCallback(() => {
+    toast({
+      title: 'Note is empty',
+      description: 'Add some details before saving a clarification.',
+      variant: 'destructive',
+    })
+  }, [toast])
+
+  const notifyError = useCallback((description: string) => {
+    toast({
+      title: 'Error',
+      description,
+      variant: 'destructive',
+    })
+  }, [toast])
+
+  return {
+    notifyPartUpdated,
+    notifyNoteAdded,
+    notifyEmptyNote,
+    notifyError,
+  }
+}
+
+export function PartActions({ part }: PartActionsProps) {
+  const { notifyPartUpdated, notifyNoteAdded, notifyEmptyNote, notifyError } = usePartActionToasts()
   const [isUpdatePending, startUpdate] = useTransition()
   const [isNotePending, startAddNote] = useTransition()
   const [isOpen, setIsOpen] = useState(false)
@@ -44,21 +85,14 @@ export function PartActions({ part }: PartActionsProps) {
       const result = await updatePartDetails(formData)
 
       if (result.success) {
-        toast({
-          title: 'Part Updated',
-          description: 'Your changes have been saved.',
-        })
+        notifyPartUpdated()
         setIsOpen(false)
       } else {
         // Handle both string errors and validation errors
         const errorMessage = typeof result.error === 'string'
           ? result.error
           : 'Validation failed. Please check your input.'
-        toast({
-          title: 'Error',
-          description: errorMessage,
-          variant: 'destructive',
-        })
+        notifyError(errorMessage)
       }
     })
   }
@@ -68,11 +102,7 @@ export function PartActions({ part }: PartActionsProps) {
     const noteContent = clarificationNote.trim()
 
     if (!noteContent) {
-      toast({
-        title: 'Note is empty',
-        description: 'Add some details before saving a clarification.',
-        variant: 'destructive',
-      })
+      notifyEmptyNote()
       return
     }
 
@@ -84,21 +114,13 @@ export function PartActions({ part }: PartActionsProps) {
       const result = await addPartNote(formData)
 
       if (result.success) {
-        toast({
-          title: 'Note added',
-          description: 'Clarification saved for this part.',
-        })
+        notifyNoteAdded()
         setClarificationNote('')
       } else {
         const errorMessage = typeof result.error === 'string'
           ? result.error
           : 'Could not save your note. Please try again.'
-
-        toast({
-          title: 'Error',
-          description: errorMessage,
-          variant: 'destructive',
-        })
+        notifyError(errorMessage)
       }
     })
   }

@@ -2,14 +2,16 @@ import { NextRequest } from 'next/server'
 import { withSupabaseOrDev } from '@/lib/api/supabaseGuard'
 import { jsonResponse, errorResponse } from '@/lib/api/response'
 import { resolveUserId } from '@/config/dev'
+import { readJsonBody, isRecord } from '@/lib/api/request'
 
 export async function POST(req: NextRequest) {
   try {
-    const { sessionId } = await req.json()
-
-    if (!sessionId || typeof sessionId !== 'string') {
+    const body = await readJsonBody(req)
+    if (!isRecord(body) || typeof body.sessionId !== 'string') {
       return errorResponse('sessionId is required', 400)
     }
+
+    const sessionId = body.sessionId
 
     return withSupabaseOrDev(req, async (ctx) => {
       if (ctx.type === 'no-supabase') {

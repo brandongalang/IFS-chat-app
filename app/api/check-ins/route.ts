@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { dev, resolveUserId } from '@/config/dev'
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
+import { readJsonBody } from '@/lib/api/request'
 
 const DEFAULT_EVENING_PROMPT = 'What stood out for you today?'
 
@@ -161,14 +162,21 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const json = await req.json()
+    const body = await readJsonBody(req)
 
-    if (!json?.type || (json.type !== 'morning' && json.type !== 'evening')) {
+    if (!body || typeof body !== 'object' || !('type' in body)) {
       return errorResponse('Invalid check-in type', HTTP_STATUS.BAD_REQUEST)
     }
 
-    if (json.type === 'morning') {
-      const parsed = morningSchema.safeParse(json)
+    const requestPayload = body as Record<string, unknown>
+    const type = requestPayload.type
+
+    if (type !== 'morning' && type !== 'evening') {
+      return errorResponse('Invalid check-in type', HTTP_STATUS.BAD_REQUEST)
+    }
+
+    if (type === 'morning') {
+      const parsed = morningSchema.safeParse(requestPayload)
       if (!parsed.success) {
         return errorResponse('Invalid check-in payload', HTTP_STATUS.BAD_REQUEST)
       }
@@ -232,7 +240,7 @@ export async function POST(req: NextRequest) {
       return jsonResponse(data ?? [], HTTP_STATUS.CREATED)
     }
 
-    const parsed = eveningSchema.safeParse(json)
+    const parsed = eveningSchema.safeParse(requestPayload)
     if (!parsed.success) {
       return errorResponse('Invalid check-in payload', HTTP_STATUS.BAD_REQUEST)
     }

@@ -2,12 +2,24 @@ import { NextRequest } from 'next/server'
 import { withSupabaseOrDev } from '@/lib/api/supabaseGuard'
 import { jsonResponse, errorResponse } from '@/lib/api/response'
 import { resolveUserId } from '@/config/dev'
+import { readJsonBody, isRecord } from '@/lib/api/request'
 
 export async function POST(req: NextRequest) {
   try {
-    const { sessionId, role, content } = await req.json()
+    const body = await readJsonBody(req)
+    if (!isRecord(body)) {
+      return errorResponse('Invalid payload', 400)
+    }
 
-    if (!sessionId || (role !== 'user' && role !== 'assistant') || typeof content !== 'string') {
+    const sessionId = body.sessionId
+    const role = body.role
+    const content = body.content
+
+    if (
+      typeof sessionId !== 'string' ||
+      (role !== 'user' && role !== 'assistant') ||
+      typeof content !== 'string'
+    ) {
       return errorResponse('Invalid payload', 400)
     }
 

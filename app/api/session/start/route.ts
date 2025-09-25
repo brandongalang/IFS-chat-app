@@ -2,11 +2,12 @@ import { NextRequest } from 'next/server'
 import { resolveUserId } from '@/config/dev'
 import { withSupabaseOrDev } from '@/lib/api/supabaseGuard'
 import { jsonResponse, errorResponse } from '@/lib/api/response'
+import { readJsonBody } from '@/lib/api/request'
 
 export async function POST(req: NextRequest) {
   try {
     // Body is ignored for user identity; server derives user on its own
-    await req.json().catch(() => ({} as Record<string, unknown>))
+    await readJsonBody(req)
 
     return withSupabaseOrDev(req, async (ctx) => {
       if (ctx.type === 'no-supabase') {
