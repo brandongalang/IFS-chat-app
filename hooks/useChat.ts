@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
-import type { UIMessage } from 'ai'
+import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useChat as useAiChat } from '@ai-sdk/react'
 import { useSearchParams } from 'next/navigation'
 
@@ -32,15 +32,27 @@ interface ChatHookReturn {
 }
 
 function extractText(message: UIMessage): string {
-  if ('content' in message && typeof message.content === 'string') {
-    return message.content
-  }
   if (!Array.isArray(message.parts)) return ''
   return message.parts
     .map((part) => {
-      if (part?.type === 'text') return part.text
-      if (part?.type === 'tool-result' && typeof part.result === 'string') return part.result
-      if (part?.type === 'data' && typeof part.data === 'string') return part.data
+      if (!part || typeof part !== 'object') return ''
+      if ('type' in part && part.type === 'text') {
+        return part.text ?? ''
+      }
+
+      if ('type' in part && typeof part.type === 'string' && part.type.startsWith('tool-')) {
+        if ('state' in part && part.state === 'output-available' && typeof part.output === 'string') {
+          return part.output
+        }
+        if ('state' in part && part.state === 'output-error' && typeof part.errorText === 'string') {
+          return part.errorText
+        }
+      }
+
+      if ('data' in part && typeof part.data === 'string') {
+        return part.data
+      }
+
       return ''
     })
     .join('')
@@ -53,13 +65,28 @@ function toBasicMessage(message: UIMessage): Message {
   if (!messageTimestamps[message.id]) {
     messageTimestamps[message.id] = Date.now()
   }
+  const isStreamingAssistant =
+    message.role === 'assistant' &&
+    Array.isArray(message.parts) &&
+    message.parts.some((part) => {
+      if (!part || typeof part !== 'object') return false
+      if (!('type' in part)) return false
+      if (part.type === 'text' && 'state' in part) {
+        return part.state === 'streaming'
+      }
+      if (typeof part.type === 'string' && part.type.startsWith('tool-') && 'state' in part) {
+        return part.state === 'input-streaming'
+      }
+      return false
+    })
+
   return {
     id: message.id,
     role: message.role === 'assistant' || message.role === 'system' ? 'assistant' : 'user',
     content: extractText(message),
     timestamp: messageTimestamps[message.id],
     persona: message.role === 'assistant' ? 'claude' : undefined,
-    streaming: message.role === 'assistant' && message.status === 'streaming',
+    streaming: isStreamingAssistant,
     tasks: [],
   }
 }
@@ -87,6 +114,8 @@ export function useChat(): ChatHookReturn {
   const [sessionId, setSessionId] = useState<string | null>(getSessionId())
   const [tasksByMessage, setTasksByMessage] = useState<Record<string, TaskEvent[]>>({})
 
+  const transport = useMemo(() => new DefaultChatTransport({ api: '/api/chat' }), [])
+
   const {
     messages: uiMessages,
     setMessages,
@@ -95,7 +124,7 @@ export function useChat(): ChatHookReturn {
     stop,
     error,
   } = useAiChat({
-    api: '/api/chat',
+    transport,
     onError(error) {
       console.error('Chat stream error:', error)
       toast({
@@ -104,8 +133,8 @@ export function useChat(): ChatHookReturn {
         variant: 'destructive',
       })
     },
-    async onFinish({ response }) {
-      const last = response.messages.at(-1)
+    async onFinish({ message, messages }) {
+      const last = message ?? messages.at(-1)
       if (last && last.role === 'assistant' && sessionId) {
         const text = extractText(last)
         if (text) {
@@ -138,7 +167,19 @@ export function useChat(): ChatHookReturn {
   const isLoading = status === 'submitted' || status === 'streaming'
 
   const currentStreamingId = useMemo(() => {
-    const lastAssistant = [...uiMessages].reverse().find((msg) => msg.role === 'assistant' && msg.status === 'streaming')
+    const lastAssistant = [...uiMessages].reverse().find((msg) => {
+      if (msg.role !== 'assistant' || !Array.isArray(msg.parts)) return false
+      return msg.parts.some((part) => {
+        if (!part || typeof part !== 'object' || !('type' in part)) return false
+        if (part.type === 'text' && 'state' in part) {
+          return part.state === 'streaming'
+        }
+        if (typeof part.type === 'string' && part.type.startsWith('tool-') && 'state' in part) {
+          return part.state === 'input-streaming'
+        }
+        return false
+      })
+    })
     return lastAssistant?.id
   }, [uiMessages])
 
@@ -157,7 +198,13 @@ export function useChat(): ChatHookReturn {
           const message: UIMessage = {
             id: `seed-${partId}`,
             role: 'assistant',
-            content: `Let's talk about your "${partName}" part. What's on your mind regarding it?`,
+            parts: [
+              {
+                type: 'text',
+                text: `Let's talk about your "${partName}" part. What's on your mind regarding it?`,
+                state: 'done',
+              },
+            ],
           }
           setMessages([message])
         }
@@ -209,7 +256,13 @@ export function useChat(): ChatHookReturn {
         {
           id,
           role: 'assistant',
-          content,
+          parts: [
+            {
+              type: 'text',
+              text: content,
+              state: 'done',
+            },
+          ],
         },
       ])
 
@@ -249,7 +302,12 @@ export function useChat(): ChatHookReturn {
       await sdkSendMessage(
         {
           role: 'user',
-          content: trimmed,
+          parts: [
+            {
+              type: 'text',
+              text: trimmed,
+            },
+          ],
         },
         {
           headers: id ? { 'x-session-id': id } : undefined,
@@ -335,8 +393,13 @@ export function useChat(): ChatHookReturn {
       processedTaskParts.current[message.id] = partCount
 
       message.parts.forEach((part) => {
-        if (part?.type === 'data' && part.data && typeof part.data === 'object' && 'taskUpdate' in part.data) {
-          const update = part.data.taskUpdate as TaskEventUpdate
+        if (!part || typeof part !== 'object') return
+        if (!('type' in part) || typeof part.type !== 'string') return
+        if (!part.type.startsWith('data-')) return
+
+        const data = (part as { data?: unknown }).data
+        if (data && typeof data === 'object' && 'taskUpdate' in data) {
+          const update = (data as { taskUpdate: TaskEventUpdate }).taskUpdate
           upsertTaskForMessage(message.id, update)
         }
       })
