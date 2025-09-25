@@ -24,10 +24,9 @@ export interface Message {
 
 export interface ChatState {
   messages: Message[];
-  isStreaming: boolean;
+  isLoading: boolean;
   currentStreamingId?: string;
   hasActiveSession?: boolean;
   // Map assistant message id -> list of task events
   tasksByMessage?: Record<string, TaskEvent[]>;
 }
-

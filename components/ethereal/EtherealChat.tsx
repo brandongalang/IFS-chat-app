@@ -17,14 +17,17 @@ import { PageContainer } from "@/components/common/PageContainer"
 export function EtherealChat() {
   const {
     messages,
-    sendMessage,
-    isStreaming,
+    input,
+    setInput,
+    handleSubmit,
+    isLoading,
     hasActiveSession,
     endSession,
     addAssistantMessage,
     tasksByMessage,
     currentStreamingId,
     needsAuth,
+    authLoading,
   } = useChat()
   const router = useRouter()
   const taskListStyles: CSSProperties = {
@@ -36,15 +39,14 @@ export function EtherealChat() {
   } as CSSProperties
 
   // UI state
-  const [text, setText] = useState("")
   const [confirmOpen, setConfirmOpen] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // redirect to login if auth required
   useEffect(() => {
-    if (needsAuth) router.push('/auth/login')
-  }, [needsAuth, router])
+    if (!authLoading && needsAuth) router.push('/auth/login')
+  }, [authLoading, needsAuth, router])
 
   // End any active session when this component unmounts
   useEffect(() => {
@@ -58,43 +60,36 @@ export function EtherealChat() {
     if (!inputRef.current) return
     inputRef.current.style.height = "auto"
     inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 132)}px`
-  }, [text])
+  }, [input])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-    if (!isStreaming) {
+    if (!isLoading) {
       inputRef.current?.focus()
     }
-  }, [messages, isStreaming])
-
-  const onSubmit = () => {
-    const value = text.trim()
-    if (!value || isStreaming) return
-    sendMessage(value)
-    setText("")
-  }
+  }, [messages, isLoading])
 
   const onKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
-      onSubmit()
+      handleSubmit()
     }
   }
 
   // Ensure the hero message is present and persisted on a fresh session
   const seededRef = useRef(false)
   useEffect(() => {
-    if (needsAuth) return
+    if (authLoading || needsAuth) return
     if (seededRef.current) return
     if ((messages?.length ?? 0) === 0) {
       seededRef.current = true
       addAssistantMessage("what feels unresolved or undefined for you right now?", { persist: true, id: "ethereal-welcome" })
     }
-  }, [messages?.length, addAssistantMessage, needsAuth])
+  }, [messages?.length, addAssistantMessage, needsAuth, authLoading])
 
   const currentTasks = currentStreamingId ? tasksByMessage?.[currentStreamingId] : undefined
 
-  if (needsAuth) {
+  if (!authLoading && needsAuth) {
     return null
   }
 
@@ -178,27 +173,29 @@ export function EtherealChat() {
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pb-[calc(12px+env(safe-area-inset-bottom))]">
         <PageContainer className="pointer-events-auto">
           <div className="rounded-2xl border border-white/15 bg-white/10 p-2 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.25)]">
-            <Textarea
-              ref={inputRef}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder="type your thought…"
-              className="min-h-[44px] max-h-[132px] w-full resize-none border-0 bg-transparent p-3 text-[16px] text-white/90 placeholder:text-white/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 focus:border-0 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.15)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.1)] transition-shadow duration-200"
-              data-testid="ethereal-input"
-              aria-label="Message"
-              disabled={isStreaming}
-            />
-            <div className="flex items-center justify-end px-2 pb-1">
-              <Button
-                size="sm"
-                onClick={onSubmit}
-                disabled={!text.trim() || isStreaming}
-                className="h-8 rounded-full bg-white/20 px-4 text-white hover:bg-white/30"
-              >
-                send
-              </Button>
-            </div>
+            <form onSubmit={handleSubmit} className="space-y-2">
+              <Textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={onKeyDown}
+                placeholder="type your thought…"
+                className="min-h-[44px] max-h-[132px] w-full resize-none border-0 bg-transparent p-3 text-[16px] text-white/90 placeholder:text-white/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 focus:border-0 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.15)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.1)] transition-shadow duration-200"
+                data-testid="ethereal-input"
+                aria-label="Message"
+                disabled={isLoading}
+              />
+              <div className="flex items-center justify-end px-2 pb-1">
+                <Button
+                  size="sm"
+                  type="submit"
+                  disabled={!input.trim() || isLoading}
+                  className="h-8 rounded-full bg-white/20 px-4 text-white hover:bg-white/30"
+                >
+                  send
+                </Button>
+              </div>
+            </form>
           </div>
         </PageContainer>
       </div>

@@ -1,63 +1,179 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { Dispatch, FormEvent, SetStateAction } from 'react'
+import type { UIMessage } from 'ai'
+import { useChat as useAiChat } from '@ai-sdk/react'
 import { useSearchParams } from 'next/navigation'
-import { getPartById } from '@/lib/data/parts-lite'
-import { streamFromMastra } from '@/lib/chatClient'
-import type { Message, TaskEvent, TaskEventUpdate } from '@/types/chat'
-import { useChatState } from './useChatState'
+
 import { useChatSession } from './useChatSession'
 import { useToast } from './use-toast'
-import { useStreamBuffer } from './useStreamBuffer'
 import { useUser } from '@/context/UserContext'
+import { getPartById } from '@/lib/data/parts-lite'
+import type { Message, TaskEvent, TaskEventUpdate } from '@/types/chat'
 
-export function useChat() {
+interface ChatHookReturn {
+  messages: Message[]
+  input: string
+  setInput: Dispatch<SetStateAction<string>>
+  handleSubmit: (event?: FormEvent<HTMLFormElement> | { preventDefault?: () => void }) => void
+  isLoading: boolean
+  currentStreamingId?: string
+  hasActiveSession: boolean
+  tasksByMessage: Record<string, TaskEvent[]>
+  sendMessage: (content: string) => Promise<void>
+  addAssistantMessage: (content: string, opts?: { persist?: boolean; id?: string; persona?: 'claude' | 'default' }) => Promise<void>
+  clearChat: () => void
+  endSession: () => Promise<void>
+  sendFeedback: (messageId: string, rating: 'thumb_up' | 'thumb_down', explanation?: string) => Promise<void>
+  needsAuth: boolean
+  authLoading: boolean
+  error?: Error
+}
+
+function extractText(message: UIMessage): string {
+  if ('content' in message && typeof message.content === 'string') {
+    return message.content
+  }
+  if (!Array.isArray(message.parts)) return ''
+  return message.parts
+    .map((part) => {
+      if (part?.type === 'text') return part.text
+      if (part?.type === 'tool-result' && typeof part.result === 'string') return part.result
+      if (part?.type === 'data' && typeof part.data === 'string') return part.data
+      return ''
+    })
+    .join('')
+    .trim()
+}
+
+const messageTimestamps: Record<string, number> = {}
+
+function toBasicMessage(message: UIMessage): Message {
+  if (!messageTimestamps[message.id]) {
+    messageTimestamps[message.id] = Date.now()
+  }
+  return {
+    id: message.id,
+    role: message.role === 'assistant' || message.role === 'system' ? 'assistant' : 'user',
+    content: extractText(message),
+    timestamp: messageTimestamps[message.id],
+    persona: message.role === 'assistant' ? 'claude' : undefined,
+    streaming: message.role === 'assistant' && message.status === 'streaming',
+    tasks: [],
+  }
+}
+
+function resetMessageTimestamps() {
+  for (const key of Object.keys(messageTimestamps)) {
+    delete messageTimestamps[key]
+  }
+}
+
+export function useChat(): ChatHookReturn {
   const searchParams = useSearchParams()
-  const { profile } = useUser()
-  const needsAuth = !profile
-
-  const { state, addMessage, updateMessage, mergeState, setTasks, reset } = useChatState()
-  const { ensureSession: ensureSessionRaw, persistMessage: persistMessageRaw, endSession: endSessionRaw, getSessionId } =
-    useChatSession()
+  const { profile, loading: authLoading } = useUser()
+  const needsAuth = !authLoading && !profile
   const { toast } = useToast()
-  const createStreamBuffer = useStreamBuffer()
+  const {
+    ensureSession: ensureSessionRaw,
+    persistMessage,
+    endSession: endSessionRaw,
+    clearSession,
+    getSessionId,
+  } = useChatSession()
 
-  const streamingCancelRef = useRef<(() => void) | null>(null)
-  const generateId = (): string => Math.random().toString(36).slice(2)
+  const [hasActiveSession, setHasActiveSession] = useState<boolean>(Boolean(getSessionId()))
+  const [sessionId, setSessionId] = useState<string | null>(getSessionId())
+  const [tasksByMessage, setTasksByMessage] = useState<Record<string, TaskEvent[]>>({})
+
+  const {
+    messages: uiMessages,
+    setMessages,
+    sendMessage: sdkSendMessage,
+    status,
+    stop,
+    error,
+  } = useAiChat({
+    api: '/api/chat',
+    onError(error) {
+      console.error('Chat stream error:', error)
+      toast({
+        title: 'Stream failed',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive',
+      })
+    },
+    async onFinish({ response }) {
+      const last = response.messages.at(-1)
+      if (last && last.role === 'assistant' && sessionId) {
+        const text = extractText(last)
+        if (text) {
+          persistMessage(sessionId, 'assistant', text).catch(() => {})
+        }
+      }
+    },
+  })
+
+  const ensureSession = useCallback(async () => {
+    if (needsAuth) {
+      const error = new Error('Authentication required')
+      toast({ title: 'Session failed', description: error.message, variant: 'destructive' })
+      throw error
+    }
+    try {
+      const id = await ensureSessionRaw()
+      setSessionId(id)
+      setHasActiveSession(true)
+      return id
+    } catch (error: unknown) {
+      throw error
+    }
+  }, [ensureSessionRaw, needsAuth, toast])
+
+  const derivedMessages = useMemo(() => uiMessages.map(toBasicMessage), [uiMessages])
+
+  const [input, setInput] = useState('')
+
+  const isLoading = status === 'submitted' || status === 'streaming'
+
+  const currentStreamingId = useMemo(() => {
+    const lastAssistant = [...uiMessages].reverse().find((msg) => msg.role === 'assistant' && msg.status === 'streaming')
+    return lastAssistant?.id
+  }, [uiMessages])
+
+  const seededRef = useRef(false)
+  const processedTaskParts = useRef<Record<string, number>>({})
 
   useEffect(() => {
     const partId = searchParams.get('partId')
-    if (!partId || state.messages.length > 0) return
+    if (!partId || seededRef.current || derivedMessages.length > 0 || needsAuth) return
 
     const fetchPartAndStart = async () => {
       try {
         const part = await getPartById({ partId })
         if (part) {
           const partName = part.name ?? 'part'
-          const initialMessage: Message = {
-            id: generateId(),
+          const message: UIMessage = {
+            id: `seed-${partId}`,
             role: 'assistant',
             content: `Let's talk about your "${partName}" part. What's on your mind regarding it?`,
-            timestamp: Date.now(),
-            persona: 'claude',
-            streaming: false,
-            tasks: [],
           }
-          mergeState({ messages: [initialMessage] })
+          setMessages([message])
         }
       } catch {
-        // ignore fetch errors; chat can still start without the tailored prompt
+        // ignore
       }
     }
 
+    seededRef.current = true
     void fetchPartAndStart()
-  }, [searchParams, state.messages.length, mergeState])
+  }, [derivedMessages.length, needsAuth, searchParams, setMessages])
 
-  const upsertTaskForMessage = useCallback(
-    (messageId: string, evt: TaskEventUpdate) => {
-      const existing = state.tasksByMessage ?? {}
-      const currentList = existing[messageId] ?? []
-      const idx = currentList.findIndex((task) => task.id === evt.id)
+  const upsertTaskForMessage = useCallback((messageId: string, evt: TaskEventUpdate) => {
+    setTasksByMessage((prev) => {
+      const list = prev[messageId] ?? []
+      const idx = list.findIndex((task) => task.id === evt.id)
 
       const mergeTask = (current: TaskEvent | undefined, update: TaskEventUpdate): TaskEvent => {
         const base: TaskEvent = current
@@ -79,221 +195,105 @@ export function useChat() {
         return base
       }
 
-      const nextList =
-        idx >= 0
-          ? currentList.map((task, taskIndex) => (taskIndex === idx ? mergeTask(task, evt) : task))
-          : [...currentList, mergeTask(undefined, evt)]
+      const nextList = idx >= 0 ? list.map((task, i) => (i === idx ? mergeTask(task, evt) : task)) : [...list, mergeTask(undefined, evt)]
+      return { ...prev, [messageId]: nextList }
+    })
+  }, [])
 
-      setTasks(messageId, nextList)
-    },
-    [setTasks, state.tasksByMessage],
-  )
-
-  const ensureSession = useCallback(async (): Promise<string> => {
-    if (needsAuth) {
-      const error = new Error('Authentication required')
-      toast({ title: 'Session failed', description: error.message, variant: 'destructive' })
-      throw error
-    }
-
-    try {
-      const sessionId = await ensureSessionRaw()
-      mergeState({ hasActiveSession: true })
-      return sessionId
-    } catch (error: unknown) {
-      console.error('Error starting session:', error)
-      toast({
-        title: 'Session failed',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive',
-      })
-      throw error
-    }
-  }, [ensureSessionRaw, mergeState, needsAuth, toast])
-
-  const persistMessage = useCallback(
-    async (sessionId: string, role: 'user' | 'assistant', content: string) => {
-      if (needsAuth) return
-      try {
-        await persistMessageRaw(sessionId, role, content)
-      } catch (error: unknown) {
-        console.error('Error persisting message:', error)
-        toast({
-          title: 'Persist failed',
-          description: error instanceof Error ? error.message : 'Unknown error',
-          variant: 'destructive',
-        })
-        throw error
-      }
-    },
-    [needsAuth, persistMessageRaw, toast],
-  )
-
-  const addAssistantMessage = useCallback(
-    async (content: string, opts?: { persist?: boolean; id?: string; persona?: 'claude' | 'default' }) => {
-      if (needsAuth) return
-      const id = opts?.id ?? generateId()
-      const message: Message = {
-        id,
-        role: 'assistant',
-        content,
-        timestamp: Date.now(),
-        persona: opts?.persona ?? 'claude',
-        streaming: false,
-        tasks: [],
-      }
-
-      addMessage(message)
+  const addAssistantMessage = useCallback<ChatHookReturn['addAssistantMessage']>(
+    async (content, opts) => {
+      if (needsAuth || !content) return
+      const id = opts?.id ?? `assistant-${Math.random().toString(36).slice(2)}`
+      setMessages((prev) => [
+        ...prev,
+        {
+          id,
+          role: 'assistant',
+          content,
+        },
+      ])
 
       if (opts?.persist) {
         try {
-          const sessionId = await ensureSession()
-          await persistMessage(sessionId, 'assistant', content)
+          const id = await ensureSession()
+          await persistMessage(id, 'assistant', content)
         } catch {
-          // persistence failures already surfaced via toast; keep chat available
+          // persistence errors already surfaced via toast
         }
       }
     },
-    [addMessage, ensureSession, needsAuth, persistMessage],
+    [ensureSession, needsAuth, persistMessage, setMessages],
   )
 
-  const sendMessage = useCallback(
-    async (content: string) => {
-      if (needsAuth || !content.trim() || state.isStreaming) return
+  const sendMessage = useCallback<ChatHookReturn['sendMessage']>(
+    async (content) => {
+      const trimmed = content.trim()
+      if (!trimmed || authLoading || needsAuth) return
 
-      if (streamingCancelRef.current) {
-        streamingCancelRef.current()
+      if (status === 'streaming') {
+        await stop()
       }
 
-      const userMessage: Message = {
-        id: generateId(),
-        role: 'user',
-        content: content.trim(),
-        timestamp: Date.now(),
-      }
-
-      addMessage(userMessage)
-
-      const assistantId = generateId()
-      const assistantMessage: Message = {
-        id: assistantId,
-        role: 'assistant',
-        content: '',
-        timestamp: Date.now(),
-        persona: 'claude',
-        streaming: true,
-        tasks: [],
-      }
-
-      addMessage(assistantMessage)
-      mergeState({
-        isStreaming: true,
-        currentStreamingId: assistantId,
-        tasksByMessage: { ...(state.tasksByMessage ?? {}), [assistantId]: [] },
-      })
-
-      const sessionId = await ensureSession()
-      persistMessage(sessionId, 'user', userMessage.content).catch(() => {})
-
-      const controller = new AbortController()
-      streamingCancelRef.current = () => controller.abort()
-
-      const apiMessages = [...state.messages, userMessage].map((message) => ({ role: message.role, content: message.content }))
-
-      const streamBuffer = createStreamBuffer({
-        onUpdate: (messageContent, streaming) => {
-          updateMessage(assistantId, { content: messageContent, streaming })
-        },
-      })
-
-      let shouldPersistAssistant = false
-      let streamError: unknown = null
-
+      let id = sessionId
       try {
-        await streamFromMastra({
-          messages: apiMessages,
-          sessionId,
-          profile: profile ?? { name: '', bio: '' },
-          signal: controller.signal,
-          apiPath: '/api/chat',
-          onTask: (evt) => upsertTaskForMessage(assistantId, evt),
-          onChunk: (chunk, done) => {
-            if (chunk) {
-              streamBuffer.appendTokens(chunk)
-            }
-            if (done) {
-              shouldPersistAssistant = true
-            }
-          },
-        })
-      } catch (error: unknown) {
-        streamError = error
-      }
-
-      const finalContent = await streamBuffer.finalize()
-
-      mergeState({ isStreaming: false, currentStreamingId: undefined })
-      streamingCancelRef.current = null
-
-      if (streamError) {
-        if (finalContent.length === 0) {
-          updateMessage(assistantId, {
-            content: 'Sorry, something went wrong while streaming the response.',
-            streaming: false,
-          })
-        }
-        console.error('Stream failed:', streamError)
-        toast({
-          title: 'Stream failed',
-          description: streamError instanceof Error ? streamError.message : 'Unknown error',
-          variant: 'destructive',
-        })
+        id = await ensureSession()
+      } catch (error) {
+        console.error('Failed to start session:', error)
         return
       }
 
-      if (shouldPersistAssistant) {
-        persistMessage(sessionId, 'assistant', finalContent).catch(() => {})
+      if (id) {
+        persistMessage(id, 'user', trimmed).catch(() => {})
       }
+
+      await sdkSendMessage(
+        {
+          role: 'user',
+          content: trimmed,
+        },
+        {
+          headers: id ? { 'x-session-id': id } : undefined,
+          body: {
+            profile: profile ?? { name: '', bio: '' },
+          },
+        },
+      )
     },
-    [
-      addMessage,
-      createStreamBuffer,
-      ensureSession,
-      mergeState,
-      needsAuth,
-      persistMessage,
-      profile,
-      state.isStreaming,
-      state.messages,
-      state.tasksByMessage,
-      toast,
-      updateMessage,
-      upsertTaskForMessage,
-    ],
+    [authLoading, ensureSession, needsAuth, persistMessage, profile, sdkSendMessage, sessionId, status, stop],
   )
 
   const clearChat = useCallback(() => {
-    if (streamingCancelRef.current) {
-      streamingCancelRef.current()
-    }
-    reset()
-  }, [reset])
+    void stop()
+    setMessages([])
+    setTasksByMessage({})
+    processedTaskParts.current = {}
+    resetMessageTimestamps()
+  }, [setMessages, stop])
 
   const endSession = useCallback(async () => {
     if (needsAuth) {
-      reset()
+      clearChat()
+      setSessionId(null)
+      setHasActiveSession(false)
+      clearSession()
       return
     }
 
-    await endSessionRaw().catch(() => {})
-    reset()
-  }, [endSessionRaw, needsAuth, reset])
+    try {
+      await endSessionRaw()
+    } finally {
+      clearChat()
+      setSessionId(null)
+      setHasActiveSession(false)
+      clearSession()
+    }
+  }, [clearChat, clearSession, endSessionRaw, needsAuth])
 
-  const sendFeedback = useCallback(
-    async (messageId: string, rating: 'thumb_up' | 'thumb_down', explanation?: string) => {
+  const sendFeedback = useCallback<ChatHookReturn['sendFeedback']>(
+    async (messageId, rating, explanation) => {
       if (needsAuth) return
-      const sessionId = getSessionId()
-      if (!sessionId) {
+      const id = sessionId ?? getSessionId()
+      if (!id) {
         toast({
           title: 'Error',
           description: 'No active session to submit feedback for.',
@@ -306,7 +306,7 @@ export function useChat() {
         const res = await fetch('/api/feedback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId, messageId, rating, explanation }),
+          body: JSON.stringify({ sessionId: id, messageId, rating, explanation }),
         })
 
         if (!res.ok) {
@@ -323,20 +323,54 @@ export function useChat() {
         })
       }
     },
-    [getSessionId, needsAuth, toast],
+    [getSessionId, needsAuth, sessionId, toast],
+  )
+
+  useEffect(() => {
+    uiMessages.forEach((message) => {
+      if (!Array.isArray(message.parts) || message.parts.length === 0) return
+      const partCount = message.parts.length
+      if (processedTaskParts.current[message.id] === partCount) return
+
+      processedTaskParts.current[message.id] = partCount
+
+      message.parts.forEach((part) => {
+        if (part?.type === 'data' && part.data && typeof part.data === 'object' && 'taskUpdate' in part.data) {
+          const update = part.data.taskUpdate as TaskEventUpdate
+          upsertTaskForMessage(message.id, update)
+        }
+      })
+    })
+  }, [uiMessages, upsertTaskForMessage])
+
+  const handleSubmit = useCallback<ChatHookReturn['handleSubmit']>(
+    (event) => {
+      event?.preventDefault?.()
+      const currentInput = input.trim()
+      if (!currentInput || isLoading) return
+
+      setInput('')
+      void sendMessage(currentInput)
+    },
+    [input, isLoading, sendMessage],
   )
 
   return {
-    messages: state.messages,
-    isStreaming: state.isStreaming,
-    currentStreamingId: state.currentStreamingId,
-    hasActiveSession: state.hasActiveSession ?? false,
-    tasksByMessage: state.tasksByMessage ?? {},
+    messages: derivedMessages,
+    input,
+    setInput,
+    handleSubmit,
+    isLoading,
+    currentStreamingId,
+    hasActiveSession,
+    tasksByMessage,
     sendMessage,
     addAssistantMessage,
     clearChat,
     endSession,
     sendFeedback,
     needsAuth,
+    authLoading,
+    error,
   }
 }
