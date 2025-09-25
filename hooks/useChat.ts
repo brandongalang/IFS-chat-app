@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
-import type { UIMessage } from 'ai'
+import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useChat as useAiChat } from '@ai-sdk/react'
 import { useSearchParams } from 'next/navigation'
 
@@ -39,8 +39,12 @@ function extractText(message: UIMessage): string {
   return message.parts
     .map((part) => {
       if (part?.type === 'text') return part.text
-      if (part?.type === 'tool-result' && typeof part.result === 'string') return part.result
-      if (part?.type === 'data' && typeof part.data === 'string') return part.data
+      if (part?.type === 'tool-result' && 'result' in part && typeof part.result === 'string') {
+        return part.result
+      }
+      if (typeof part?.type === 'string' && part.type.startsWith('data') && 'data' in part && typeof part.data === 'string') {
+        return part.data
+      }
       return ''
     })
     .join('')
@@ -53,13 +57,16 @@ function toBasicMessage(message: UIMessage): Message {
   if (!messageTimestamps[message.id]) {
     messageTimestamps[message.id] = Date.now()
   }
+  const status = typeof (message as { status?: unknown }).status === 'string'
+    ? (message as { status?: string }).status
+    : undefined
   return {
     id: message.id,
     role: message.role === 'assistant' || message.role === 'system' ? 'assistant' : 'user',
     content: extractText(message),
     timestamp: messageTimestamps[message.id],
     persona: message.role === 'assistant' ? 'claude' : undefined,
-    streaming: message.role === 'assistant' && message.status === 'streaming',
+    streaming: message.role === 'assistant' && status === 'streaming',
     tasks: [],
   }
 }
@@ -75,6 +82,7 @@ export function useChat(): ChatHookReturn {
   const { profile, loading: authLoading } = useUser()
   const needsAuth = !authLoading && !profile
   const { toast } = useToast()
+  const chatTransport = useMemo(() => new DefaultChatTransport({ api: '/api/chat', credentials: 'include' }), [])
   const {
     ensureSession: ensureSessionRaw,
     persistMessage,
@@ -95,7 +103,7 @@ export function useChat(): ChatHookReturn {
     stop,
     error,
   } = useAiChat({
-    api: '/api/chat',
+    transport: chatTransport,
     onError(error) {
       console.error('Chat stream error:', error)
       toast({
@@ -104,10 +112,10 @@ export function useChat(): ChatHookReturn {
         variant: 'destructive',
       })
     },
-    async onFinish({ response }) {
-      const last = response.messages.at(-1)
-      if (last && last.role === 'assistant' && sessionId) {
-        const text = extractText(last)
+    async onFinish({ message, messages }) {
+      const completed = message ?? messages.at(-1)
+      if (completed && completed.role === 'assistant' && sessionId) {
+        const text = extractText(completed)
         if (text) {
           persistMessage(sessionId, 'assistant', text).catch(() => {})
         }
@@ -138,7 +146,9 @@ export function useChat(): ChatHookReturn {
   const isLoading = status === 'submitted' || status === 'streaming'
 
   const currentStreamingId = useMemo(() => {
-    const lastAssistant = [...uiMessages].reverse().find((msg) => msg.role === 'assistant' && msg.status === 'streaming')
+    const lastAssistant = [...uiMessages]
+      .reverse()
+      .find((msg) => msg.role === 'assistant' && typeof (msg as { status?: unknown }).status === 'string' && (msg as { status?: string }).status === 'streaming')
     return lastAssistant?.id
   }, [uiMessages])
 
@@ -157,7 +167,12 @@ export function useChat(): ChatHookReturn {
           const message: UIMessage = {
             id: `seed-${partId}`,
             role: 'assistant',
-            content: `Let's talk about your "${partName}" part. What's on your mind regarding it?`,
+            parts: [
+              {
+                type: 'text',
+                text: `Let's talk about your "${partName}" part. What's on your mind regarding it?`,
+              },
+            ],
           }
           setMessages([message])
         }
@@ -209,7 +224,12 @@ export function useChat(): ChatHookReturn {
         {
           id,
           role: 'assistant',
-          content,
+          parts: [
+            {
+              type: 'text',
+              text: content,
+            },
+          ],
         },
       ])
 
@@ -249,7 +269,12 @@ export function useChat(): ChatHookReturn {
       await sdkSendMessage(
         {
           role: 'user',
-          content: trimmed,
+          parts: [
+            {
+              type: 'text',
+              text: trimmed,
+            },
+          ],
         },
         {
           headers: id ? { 'x-session-id': id } : undefined,
@@ -335,8 +360,15 @@ export function useChat(): ChatHookReturn {
       processedTaskParts.current[message.id] = partCount
 
       message.parts.forEach((part) => {
-        if (part?.type === 'data' && part.data && typeof part.data === 'object' && 'taskUpdate' in part.data) {
-          const update = part.data.taskUpdate as TaskEventUpdate
+        if (
+          typeof part?.type === 'string' &&
+          part.type.startsWith('data') &&
+          'data' in part &&
+          part.data &&
+          typeof part.data === 'object' &&
+          'taskUpdate' in part.data
+        ) {
+          const update = (part.data as { taskUpdate: TaskEventUpdate }).taskUpdate
           upsertTaskForMessage(message.id, update)
         }
       })

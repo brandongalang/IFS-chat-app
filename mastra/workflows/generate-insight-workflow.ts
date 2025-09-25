@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { createWorkflow } from '@mastra/core';
 import { z } from 'zod';
 import { insightResearchTools, getRecentSessions, getActiveParts, getPolarizedRelationships, getRecentInsights } from '../tools/insight-research-tools';

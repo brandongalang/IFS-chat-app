@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { createTool } from '@mastra/core'
 import {
   searchParts,

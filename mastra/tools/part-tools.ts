@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { randomUUID } from 'crypto'
 import { createTool } from '@mastra/core'
 import { z } from 'zod'

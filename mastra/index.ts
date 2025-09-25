@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { Mastra } from '@mastra/core'
 import { PinoLogger } from '@mastra/loggers'
 import { createIfsAgent } from './agents/ifs-agent'

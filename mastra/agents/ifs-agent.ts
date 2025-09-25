@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { Agent } from '@mastra/core'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { getPartTools } from '../tools/part-tools.mastra'

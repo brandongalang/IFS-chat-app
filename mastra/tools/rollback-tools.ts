@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { createTool } from '@mastra/core'
 import { z } from 'zod'
 import { actionLogger } from '../../lib/database/action-logger'

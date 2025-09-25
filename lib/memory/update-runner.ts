@@ -1,3 +1,5 @@
+import 'server-only'
+
 import type { CoreMessage } from 'ai'
 import { createUpdateSummarizerAgent, updateDigestSchema, type UpdateDigest } from '@/mastra/agents/update-summarizer'
 import { fetchPendingUpdates, markUpdatesProcessed, type MemoryUpdateRecord } from '@/lib/memory/updates'
@@ -92,4 +94,3 @@ export async function summarizePendingUpdatesForUser(userId: string, opts: { lim
     raw: digest,
   }
 }
-
