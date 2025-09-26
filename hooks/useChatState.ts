@@ -6,7 +6,6 @@ import type { ChatState, Message, TaskEvent } from '@/types/chat'
 const initialState: ChatState = {
   messages: [],
   isLoading: false,
-  isStreaming: false,
   currentStreamingId: undefined,
   hasActiveSession: false,
   tasksByMessage: {},
