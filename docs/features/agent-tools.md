@@ -2,7 +2,7 @@
 title: Feature: Agent Tools
 owner: @brandongalang
 status: shipped
-last_updated: 2025-08-31
+last_updated: 2025-09-26
 feature_flag: null
 code_paths:
   - mastra/tools/*.ts
@@ -28,7 +28,9 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 - agent_actions (audit log), part_assessments, parts/relationships
 
 ## Configuration
-- Provider/model configuration via env vars (names only)
+- Provider configuration now centralized in `config/model.ts` and `mastra/index.ts`
+- Override defaults with `IFS_MODEL`, `IFS_TEMPERATURE`, and `IFS_PROVIDER_BASE_URL` env vars (falls back to `OPENROUTER_BASE_URL`)
+- Agents share a single `openrouter` provider created during Mastra bootstrap
 
 ## Testing
 - Unit tests for tool logic; integration tests via smoke scripts (scripts/smoke-*)

@@ -70,11 +70,20 @@ export function createInsightGeneratorAgent(overrides: AgentModelConfig = {}): I
     baseURL,
   })
 
+  const modelSettings =
+    typeof temperature === 'number'
+      ? ({
+          extraBody: {
+            temperature,
+          },
+        } as const)
+      : undefined
+
   return new Agent({
     name: 'insightGeneratorAgent',
     instructions: systemPrompt,
     tools: insightResearchTools,
-    model: openrouter(modelId, { temperature }),
+    model: openrouter(modelId, modelSettings),
   })
 }
 

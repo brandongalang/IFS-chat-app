@@ -34,10 +34,19 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
     baseURL,
   })
 
+  const modelSettings =
+    typeof temperature === 'number'
+      ? ({
+          extraBody: {
+            temperature,
+          },
+        } as const)
+      : undefined
+
   return new Agent({
     name: 'ifs-companion',
     instructions: generateSystemPrompt(profile),
-    model: openrouter(modelId, { temperature }),
+    model: openrouter(modelId, modelSettings),
     tools: {
       ...getPartTools(userId), // Part management tools
       ...assessmentTools, // Confidence assessment tool

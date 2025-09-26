@@ -62,10 +62,19 @@ export function createUpdateSummarizerAgent(overrides: AgentModelConfig = {}) {
     baseURL,
   })
 
+  const modelSettings =
+    typeof temperature === 'number'
+      ? ({
+          extraBody: {
+            temperature,
+          },
+        } as const)
+      : undefined
+
   return new Agent({
     name: 'update-summarizer',
     instructions: systemPrompt,
-    model: openrouter(modelId, { temperature }),
+    model: openrouter(modelId, modelSettings),
     tools: updateSyncTools as any,
   })
 }
