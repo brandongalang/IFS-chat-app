@@ -2,7 +2,7 @@
 title: Feature: Parts Garden
 owner: @brandongalang
 status: shipped
-last_updated: 2025-09-02
+last_updated: 2025-09-26
 feature_flag: ENABLE_GARDEN
 code_paths:
   - app/garden/page.tsx
@@ -23,7 +23,7 @@ Offers a spatial/visual way to understand internal parts and relationships.
 - Grid overview at app/garden/page.tsx (client) uses `@/lib/data/parts-lite`
 - Detail at app/garden/[partId]/page.tsx (server) uses `@/lib/data/parts-server`
 - PartActions server actions import from `@/lib/data/parts-server`
-- Mastra tools provide part querying and updates
+- Part tool invocations now route through tightened Zod schemas and an injected Supabase client, preventing untrusted payloads from mutating data
 
 ## Data model
 - parts, part_relationships (read/derived views)
