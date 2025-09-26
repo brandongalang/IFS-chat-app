@@ -1,5 +1,5 @@
 import { Agent } from '@mastra/core'
-import { createOpenRouter } from '@openrouter/ai-sdk-provider'
+import type { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { getPartTools } from '../tools/part-tools.mastra'
 import { assessmentTools } from '../tools/assessment-tools'
 import { proposalTools } from '../tools/proposal-tools'
@@ -9,16 +9,11 @@ import { memoryTools } from '../tools/memory-tools'
 import { updateSyncTools } from '../tools/update-sync-tools'
 import { generateSystemPrompt } from './ifs_agent_prompt'
 
-// Configure OpenRouter provider through Mastra
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  // Use env-driven base URL; default to OpenRouter cloud if unset
-  baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
-})
+type OpenRouterProvider = ReturnType<typeof createOpenRouter>
 
 type Profile = { name?: string; bio?: string, userId?: string } | null
 
-export function createIfsAgent(profile: Profile) {
+export function createIfsAgent(profile: Profile, openrouter: OpenRouterProvider) {
   const userId = profile?.userId
   return new Agent({
     name: 'ifs-companion',

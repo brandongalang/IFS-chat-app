@@ -1,15 +1,26 @@
 import { Mastra } from '@mastra/core'
 import { PinoLogger } from '@mastra/loggers'
+import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { createIfsAgent } from './agents/ifs-agent'
-import { insightGeneratorAgent } from './agents/insight-generator'
-import { generateInsightWorkflow } from './workflows/generate-insight-workflow'
+import { createInsightGeneratorAgent } from './agents/insight-generator'
+import { createGenerateInsightWorkflow } from './workflows/generate-insight-workflow'
 import { createUpdateSummarizerAgent } from './agents/update-summarizer'
 
 type Profile = Parameters<typeof createIfsAgent>[0]
 
-let mastraInstance: any = null
+let mastraInstance: InstanceType<typeof Mastra> | null = null
 
 export function createMastra(profile: Profile = null) {
+  const openrouter = createOpenRouter({
+    apiKey: process.env.OPENROUTER_API_KEY,
+    baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
+  })
+
+  const ifsAgent = createIfsAgent(profile, openrouter)
+  const insightGeneratorAgent = createInsightGeneratorAgent(openrouter)
+  const updateSummarizerAgent = createUpdateSummarizerAgent(openrouter)
+  const insightWorkflow = createGenerateInsightWorkflow(insightGeneratorAgent)
+
   return new Mastra({
     logger: new PinoLogger({
       name: 'IFS-Therapy-App',
@@ -17,12 +28,12 @@ export function createMastra(profile: Profile = null) {
     }),
     // Expose agents and workflows to the Mastra runtime
     agents: {
-      ifsAgent: createIfsAgent(profile),
+      ifsAgent,
       insightGeneratorAgent,
-      updateSummarizerAgent: createUpdateSummarizerAgent(),
+      updateSummarizerAgent,
     },
     workflows: {
-      generateInsightWorkflow,
+      generateInsightWorkflow: insightWorkflow,
     },
     // Optional telemetry config can be added here when needed
     // telemetry: { /* configure telemetry here if desired */ },

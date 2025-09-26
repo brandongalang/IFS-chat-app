@@ -1,5 +1,5 @@
 import { Agent } from '@mastra/core'
-import { createOpenRouter } from '@openrouter/ai-sdk-provider'
+import type { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { z } from 'zod'
 import { updateSyncTools } from '../tools/update-sync'
 
@@ -45,12 +45,9 @@ Guardrails:
 - Respond with JSON that matches the provided schema exactly—no extra keys or commentary.
 `
 
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
-})
+type OpenRouterProvider = ReturnType<typeof createOpenRouter>
 
-export function createUpdateSummarizerAgent() {
+export function createUpdateSummarizerAgent(openrouter: OpenRouterProvider) {
   return new Agent({
     name: 'update-summarizer',
     instructions: systemPrompt,
@@ -59,3 +56,4 @@ export function createUpdateSummarizerAgent() {
   })
 }
 
+export type UpdateSummarizerAgent = ReturnType<typeof createUpdateSummarizerAgent>

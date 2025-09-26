@@ -1,5 +1,5 @@
 import { Agent } from '@mastra/core';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import type { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
 import { insightResearchTools } from '../tools/insight-research-tools';
 
@@ -51,13 +51,15 @@ After completing your research, analyze your findings to identify opportunities 
 - The insights you generate must be valid JSON objects matching the provided schema.
 `;
 
-const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY as string });
+type OpenRouterProvider = ReturnType<typeof createOpenRouter>;
 
 export type InsightGeneratorAgent = Agent<'insightGeneratorAgent', typeof insightResearchTools>;
 
-export const insightGeneratorAgent: InsightGeneratorAgent = new Agent({
-  name: 'insightGeneratorAgent',
-  instructions: systemPrompt,
-  tools: insightResearchTools,
-  model: openrouter('z-ai/glm-4.5'),
-});
+export function createInsightGeneratorAgent(openrouter: OpenRouterProvider): InsightGeneratorAgent {
+  return new Agent({
+    name: 'insightGeneratorAgent',
+    instructions: systemPrompt,
+    tools: insightResearchTools,
+    model: openrouter('z-ai/glm-4.5'),
+  });
+}
