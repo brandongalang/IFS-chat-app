@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
       if (ctx.type === 'authed') {
         const sessionService = createChatSessionService({
-          accessToken: ctx.accessToken,
+          supabase: ctx.supabase,
           userId: ctx.userId,
         })
         await sessionService.endSession(sessionId)

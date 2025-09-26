@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getUserClient } from '@/lib/supabase/clients'
 import { getSupabaseKey, getSupabaseUrl } from '@/lib/supabase/config'
 
 export async function getUserIdFromSupabase(): Promise<string | undefined> {
@@ -12,7 +12,7 @@ export async function getUserIdFromSupabase(): Promise<string | undefined> {
     return undefined
   }
   try {
-    const supabase = await createClient()
+    const supabase = getUserClient()
     const {
       data: { session },
     } = await supabase.auth.getSession()
