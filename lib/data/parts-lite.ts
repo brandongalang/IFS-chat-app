@@ -1,6 +1,6 @@
-import type { PartRow, PartRelationshipRow } from '@/lib/types/database'
-import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
-import { getBrowserSupabaseClient } from '@/lib/supabase/clients'
+import type { PartRow, PartRelationshipRow, Database } from '@/lib/types/database'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { buildPartsQuery, type PartQueryFilters } from './parts-query'
 import {
   searchPartsSchema,
@@ -14,12 +14,14 @@ import {
   type GetPartRelationshipsResult,
 } from './parts.schema'
 
+type SupabaseDatabaseClient = SupabaseClient<Database>
+
 type PartsLiteDependencies = {
   client?: SupabaseDatabaseClient
 }
 
 function resolveClient(deps?: PartsLiteDependencies): SupabaseDatabaseClient {
-  return deps?.client ?? getBrowserSupabaseClient()
+  return deps?.client ?? createBrowserSupabaseClient()
 }
 
 export async function searchParts(input: SearchPartsInput, deps: PartsLiteDependencies = {}): Promise<SearchPartsResult> {
@@ -148,4 +150,3 @@ export async function getPartRelationships(
     throw error instanceof Error ? error : new Error('Unknown error occurred')
   }
 }
-
