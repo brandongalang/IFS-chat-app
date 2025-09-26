@@ -1,6 +1,7 @@
 import { DAY_MS } from '@/config/time'
 import { requireCronAuth } from '@/lib/api/cron-auth'
 import { listActiveUsersSince, reconstructMemory, loadTodayData, generateMemoryUpdate, saveNewSnapshot, markUpdatesProcessed } from '@/lib/memory/service'
+import { summarizePendingUpdates } from '@/lib/services/memory'
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 
 async function runDailyMemoryUpdate(): Promise<Response> {
@@ -28,7 +29,10 @@ async function runDailyMemoryUpdate(): Promise<Response> {
     }
   }
 
-  return jsonResponse({ cutoff, processed: users.length, results })
+  const summaryOutcome = await summarizePendingUpdates()
+  console.log('[CRON] summarizePendingUpdates outcome', summaryOutcome)
+
+  return jsonResponse({ cutoff, processed: users.length, results, summaries: summaryOutcome.processed })
 }
 
 export async function GET(req: Request) {
