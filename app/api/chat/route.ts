@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server'
 import { dev } from '@/config/dev'
 import { errorResponse } from '@/lib/api/response'
 import { getUserIdFromSupabase, provideDevFallbackStream, handleAgentStream } from './logic'
-import { summarizePendingUpdatesForUser } from '@/lib/memory/update-runner'
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,28 +19,8 @@ export async function POST(req: NextRequest) {
 
     const secureProfile = { ...profile, userId }
 
-    try {
-      const { isMemoryV2Enabled } = await import('@/lib/memory/config')
-      if (userId && isMemoryV2Enabled()) {
-        await import('@/lib/memory/snapshots/scaffold').then(({ ensureOverviewExists }) => ensureOverviewExists(userId))
-      }
-    } catch (error) {
-      console.warn('first-run scaffold skipped', error)
-    }
-
     if (userId) {
-      try {
-        const outcome = await summarizePendingUpdatesForUser(userId)
-        if (!outcome.skipped && outcome.itemCount > 0) {
-          console.log('[CHAT] Cleared pending memory updates', {
-            userId,
-            processed: outcome.itemCount,
-            digest: outcome.digest,
-          })
-        }
-      } catch (error) {
-        console.warn('[CHAT] update summarizer failed', error)
-      }
+      console.log('[CHAT] Memory maintenance deferred to cron worker', { userId })
     }
 
     const baseURL = process.env.OPENROUTER_BASE_URL

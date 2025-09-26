@@ -6,7 +6,10 @@ This runbook explains how to operate the daily `/api/cron/memory-update` job now
 - **Schedule:** 08:00 UTC daily (configured in `vercel.json`).
 - **Endpoint:** `POST /api/cron/memory-update` (app router handler).
 - **Auth:** Requires `CRON_SECRET` provided via either `Authorization: Bearer <secret>` or `x-vercel-cron-secret: <secret>` header.
-- **Purpose:** Reconstruct and persist `user_memory_snapshots` for users active in the last 24 hours.
+- **Purpose:**
+  - Reconstruct and persist `user_memory_snapshots` for users active in the last 24 hours
+  - **Enhanced:** Process pending memory updates for all users with queued changes
+  - **Background Processing:** Memory maintenance moved from chat requests to this dedicated worker
 
 ## Prerequisites (updated 2025-09-26)
 - `CRON_SECRET` defined for Production & Preview environments in Vercel project settings.
@@ -37,8 +40,10 @@ curl -X POST https://<preview-host>/api/cron/memory-update \
 
 ### Monitoring
 - Add Vercel Cron notifications (Project → Monitoring → Cron Jobs) to alert on failures.
-- Inspect application logs (`vercel logs <deployment-url>`) for entries tagged `memory-update` or `Cron auth`.
+- Inspect application logs (`vercel logs <deployment-url>`) for entries tagged `memory-update`, `MEMORY`, or `Cron auth`.
+- **Response Format**: JSON includes `{ cutoff, processed, results, summaries }` where `summaries` is the count of pending updates processed.
 - Track snapshots in Supabase: `select user_id, version, applied_at from user_memory_snapshots order by applied_at desc limit 5;`
+- **Performance**: Chat latency improved since memory maintenance no longer blocks request processing.
 
 ## Triage checklist
 1. **403 / Unauthorized**
@@ -62,4 +67,5 @@ curl -X POST https://<preview-host>/api/cron/memory-update \
 - `lib/api/cron-auth.ts`
 - `app/api/cron/memory-update/route.ts`
 - `lib/memory/service.ts`
+- **`lib/services/memory.ts`** - Background memory service functions
 - `docs/user-memory.md`
