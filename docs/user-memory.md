@@ -9,16 +9,19 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - Reconstruction: Start from last full snapshot, apply patches forward
 
 ## Data flow
-1. Daily (active users only): reconstruct current memory
-2. Gather new data from last 24h (sessions, insights)
-3. Summarizer generates the next memory JSON (schema-validated)
-4. Compute a JSON Patch diff and insert a new snapshot (checkpoint every N)
+1. **Background Processing**: Memory maintenance runs in scheduled background workers, not during chat requests
+2. Daily (active users only): reconstruct current memory
+3. Gather new data from last 24h (sessions, insights)
+4. Summarizer generates the next memory JSON (schema-validated)
+5. Compute a JSON Patch diff and insert a new snapshot (checkpoint every N)
+6. **Pending Updates**: Background service also processes pending memory updates for all users with queued changes
 
 ## API
 - `POST /api/cron/memory-update`
   - Header: `Authorization: Bearer <CRON_SECRET>`
   - Finds users active in last 24h, runs the update pipeline for each
-  - Returns per-user result and latest version if saved
+  - **Enhanced**: Also processes pending memory updates for all users
+  - Returns per-user result, latest version if saved, and summary statistics
 
 ## Environment variables (updated 2025-09-26)
 - Required on server:
@@ -61,12 +64,16 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - `supabase db push --local`
 
 ## Implementation (updated 2025-09-26)
-- Service: `lib/memory/service.ts`
+- **Background Services**: `lib/services/memory.ts`
+  - `scaffoldUserMemory({ userId })` - ensures memory scaffolding exists
+  - `summarizePendingUpdates({ userId?, limit? })` - processes pending updates for users
+- Core Service: `lib/memory/service.ts`
   - `reconstructMemory(userId)`
   - `generateMemoryUpdate({ userId, oldMemory, todayData })` (LLM-backed, Zod-validated)
   - `saveNewSnapshot({ userId, previous, next })`
   - `listActiveUsersSince(isoISO)` and `loadTodayData(userId, isoISO)`
 - Types: `lib/memory/types.ts`
 - Cron route: `app/api/cron/memory-update/route.ts`
+- **Chat Integration**: Memory maintenance removed from `app/api/chat/route.ts` - now handled by background workers
 - Auth helper: `lib/api/cron-auth.ts` (validates headers & allows dev bypass when `CRON_SECRET` unset)
-- Supabase client access flows through `lib/supabase/clients.ts`, which lazily loads the server client to avoid bundling `next/headers` into browser code paths.
+- Supabase client access flows through `lib/supabase/clients.ts`, which exposes shared helpers (`getUserClient`, `getServiceClient`, `getBrowserSupabaseClient`) suitable for server, service-role, and browser usage.
