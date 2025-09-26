@@ -1,6 +1,9 @@
 import { Agent } from '@mastra/core'
 import type { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { z } from 'zod'
+import { ENV } from '@/config/env'
+import { resolveModel } from '@/config/model'
+import type { AgentModelConfig } from './ifs-agent'
 import { updateSyncTools } from '../tools/update-sync'
 
 export const updateDigestSchema = z.object({
@@ -47,11 +50,26 @@ Guardrails:
 
 type OpenRouterProvider = ReturnType<typeof createOpenRouter>
 
-export function createUpdateSummarizerAgent(openrouter: OpenRouterProvider) {
+export function createUpdateSummarizerAgent(
+  openrouter: OpenRouterProvider,
+  overrides: AgentModelConfig = {},
+) {
+  const modelId = overrides.modelId ?? resolveModel(ENV.IFS_MODEL)
+  const temperature = overrides.temperature ?? ENV.IFS_TEMPERATURE
+
+  const modelSettings =
+    typeof temperature === 'number'
+      ? ({
+          extraBody: {
+            temperature,
+          },
+        } as const)
+      : undefined
+
   return new Agent({
     name: 'update-summarizer',
     instructions: systemPrompt,
-    model: openrouter('z-ai/glm-4.5-air'),
+    model: openrouter(modelId, modelSettings),
     tools: updateSyncTools as any,
   })
 }
