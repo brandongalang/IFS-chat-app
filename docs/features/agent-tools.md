@@ -20,7 +20,7 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 
 ## How it works
 - Mastra tools implement capabilities (parts, relationships, evidence, assessments, proposals, rollback)
-- Tool handlers now co-locate Zod input/output schemas; malformed payloads short-circuit before touching providers/Supabase
+- Tool handlers co-locate Zod input/output schemas; malformed payloads short-circuit before hitting providers/Supabase
 - Session analysis utilities read recent sessions via StorageAdapter snapshots to keep lookback/limit semantics consistent across environments
 - Agent prompt and configuration live under mastra/agents/
 - Insights generator scaffolding exists in lib/insights/generator.ts

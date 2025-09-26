@@ -5,6 +5,7 @@ import { fetchPendingUpdates } from '@/lib/memory/updates'
 
 const updateSyncInputSchema = z
   .object({
+    userId: z.string().uuid().optional().describe('User ID whose pending updates should be retrieved.'),
     limit: z
       .number()
       .int()
@@ -17,15 +18,20 @@ const updateSyncInputSchema = z
 
 export type UpdateSyncInput = z.infer<typeof updateSyncInputSchema>
 
-export function createPendingUpdateTools(userId?: string) {
-  const updateSyncTool = createTool({
+type UpdateSyncRuntime = {
+  userId?: string
+}
+
+function createUpdateSyncTool(defaultUserId?: string) {
+  return createTool({
     id: 'updateSync',
     description: 'Fetches outstanding memory updates that have not yet been summarized. Use before crafting a digest.',
     inputSchema: updateSyncInputSchema,
-    execute: async ({ context, runtime }: { context: UpdateSyncInput; runtime?: { userId?: string } }) => {
+    execute: async ({ context, runtime }: { context: UpdateSyncInput; runtime?: UpdateSyncRuntime }) => {
       const input = updateSyncInputSchema.parse(context)
-      const resolvedUserId = resolveUserId(runtime?.userId ?? userId)
+      const resolvedUserId = resolveUserId(input.userId ?? runtime?.userId ?? defaultUserId)
       const updates = await fetchPendingUpdates(resolvedUserId, input.limit)
+
       return updates.map((update) => ({
         id: update.id,
         kind: update.kind,
@@ -36,10 +42,16 @@ export function createPendingUpdateTools(userId?: string) {
       }))
     },
   })
+}
+
+export function createPendingUpdateTools(userId?: string) {
+  const updateSync = createUpdateSyncTool(userId)
 
   return {
-    updateSync: updateSyncTool,
+    updateSync,
   }
 }
+
+export const updateSyncTools = createPendingUpdateTools()
 
 export type UpdateSyncTools = ReturnType<typeof createPendingUpdateTools>
