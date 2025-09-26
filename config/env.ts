@@ -4,7 +4,11 @@ const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
   // Providers / Secrets
-  OPENROUTER_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().min(1),
+  OPENROUTER_BASE_URL: z.string().url().optional(),
+  IFS_MODEL: z.string().default('glm-4.5-air'),
+  IFS_PROVIDER_BASE_URL: z.string().url().optional(),
+  IFS_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.3),
 
   // Supabase
   NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
@@ -14,8 +18,8 @@ const EnvSchema = z.object({
   // IFS dev toggles
   IFS_DEV_MODE: z.string().optional(),
   NEXT_PUBLIC_IFS_DEV_MODE: z.string().optional(),
-  IFS_TEST_PERSONA: z.enum(['beginner','moderate','advanced']).optional(),
-  NEXT_PUBLIC_IFS_TEST_PERSONA: z.enum(['beginner','moderate','advanced']).optional(),
+  IFS_TEST_PERSONA: z.enum(['beginner', 'moderate', 'advanced']).optional(),
+  NEXT_PUBLIC_IFS_TEST_PERSONA: z.enum(['beginner', 'moderate', 'advanced']).optional(),
   IFS_DEFAULT_USER_ID: z.string().uuid().optional(),
   IFS_VERBOSE: z.string().optional(),
   IFS_DISABLE_POLARIZATION_UPDATE: z.string().optional(),
@@ -31,6 +35,10 @@ const raw = EnvSchema.parse({
 
   // Providers / Secrets
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+  OPENROUTER_BASE_URL: process.env.OPENROUTER_BASE_URL || undefined,
+  IFS_MODEL: process.env.IFS_MODEL || undefined,
+  IFS_PROVIDER_BASE_URL: process.env.IFS_PROVIDER_BASE_URL || undefined,
+  IFS_TEMPERATURE: process.env.IFS_TEMPERATURE,
 
   // Supabase
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -51,6 +59,8 @@ const raw = EnvSchema.parse({
 
 const toBool = (v?: string) => v === 'true'
 
+export const ENV = raw
+
 export const env = {
   ...raw,
   NEXT_PUBLIC_SUPABASE_URL: raw.NEXT_PUBLIC_SUPABASE_URL ?? '',
@@ -70,4 +80,7 @@ export const env = {
     toBool(raw.IFS_DEV_FORCE_NO_SUPABASE) ||
     !raw.NEXT_PUBLIC_SUPABASE_URL ||
     !raw.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  ifsModel: raw.IFS_MODEL,
+  ifsProviderBaseUrl: raw.IFS_PROVIDER_BASE_URL ?? raw.OPENROUTER_BASE_URL,
+  ifsTemperature: raw.IFS_TEMPERATURE,
 }

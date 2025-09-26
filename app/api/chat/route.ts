@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { dev } from '@/config/dev'
+import { ENV } from '@/config/env'
 import { errorResponse } from '@/lib/api/response'
 import { getUserIdFromSupabase, provideDevFallbackStream, handleAgentStream } from './logic'
 import { summarizePendingUpdatesForUser } from '@/lib/memory/update-runner'
@@ -44,8 +45,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const baseURL = process.env.OPENROUTER_BASE_URL
-    const hasOpenrouter = typeof process.env.OPENROUTER_API_KEY === 'string' && process.env.OPENROUTER_API_KEY.length > 10
+    const baseURL = ENV.IFS_PROVIDER_BASE_URL ?? ENV.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1'
+    const hasOpenrouter = typeof ENV.OPENROUTER_API_KEY === 'string' && ENV.OPENROUTER_API_KEY.length > 0
     console.log('[CHAT] OpenRouter env', { hasOpenrouter, baseURL })
     if (!hasOpenrouter) {
       return provideDevFallbackStream(
