@@ -52,7 +52,10 @@ export async function summarizePendingUpdatesForUser(
     return { userId, processedIds: [], digest: undefined, itemCount: 0, skipped: true, reason: 'summarizer-missing' }
   }
 
-  let model: unknown
+  type SummarizerModel = Awaited<ReturnType<UpdateSummarizerAgent['getModel']>>
+  type SummarizerResult = Awaited<ReturnType<UpdateSummarizerAgent['generate']>>
+
+  let model: SummarizerModel | undefined
   try {
     model = await summarizer.getModel({})
   } catch (error) {
@@ -61,12 +64,12 @@ export async function summarizePendingUpdatesForUser(
     return { userId, processedIds: [], digest: undefined, itemCount: 0, skipped: true, reason }
   }
 
-  let result: any
+  let result: SummarizerResult
   try {
     result = await summarizer.generate(buildPrompt(userId), {
       structuredOutput: {
         schema: updateDigestSchema,
-        model: model as any,
+        model,
         errorStrategy: 'strict',
       },
       toolChoice: 'auto',
