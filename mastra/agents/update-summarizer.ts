@@ -1,7 +1,7 @@
 import { Agent } from '@mastra/core'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { z } from 'zod'
-import { updateSyncTools } from '../tools/update-sync'
+import { createPendingUpdateTools } from '../tools/update-sync'
 
 export const updateDigestSchema = z.object({
   digest: z.string().min(3).max(400).describe('One or two sentences to append to the user change log.'),
@@ -55,7 +55,7 @@ export function createUpdateSummarizerAgent() {
     name: 'update-summarizer',
     instructions: systemPrompt,
     model: openrouter('z-ai/glm-4.5-air'),
-    tools: updateSyncTools as any,
+    tools: createPendingUpdateTools() as any,
   })
 }
 

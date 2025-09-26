@@ -19,7 +19,7 @@ const evidenceSchema = z.object({
   confidence: z.number().min(0).max(1),
   sessionId: z.string().uuid(),
   timestamp: z.string().datetime(),
-})
+}).strict()
 
 const relationshipDynamicSchema = z.object({
   observation: z.string().min(1).describe('What was noticed about the interaction'),
@@ -35,25 +35,22 @@ const relationshipDynamicSchema = z.object({
     .datetime()
     .optional()
     .describe('When this dynamic occurred (defaults to now)'),
-})
+}).strict()
 
 export const searchPartsSchema = z.object({
   query: z.string().optional().describe('Search query for part names or roles'),
   status: partStatusEnum.optional().describe('Filter by part status'),
   category: partCategoryEnum.optional().describe('Filter by part category'),
   limit: z.number().min(1).max(50).default(20).describe('Maximum number of results to return'),
-  userId: z.string().uuid().optional().describe('User ID for the search (optional in development mode)'),
-})
+}).strict()
 
 export const getPartByIdSchema = z.object({
   partId: z.string().uuid().describe('The UUID of the part to retrieve'),
-  userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)'),
-})
+}).strict()
 
 export const getPartDetailSchema = z.object({
   partId: z.string().uuid().describe('The UUID of the part to retrieve details for'),
-  userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)'),
-})
+}).strict()
 
 export const createEmergingPartSchema = z.object({
   name: z.string().min(1).max(100).describe('Name of the emerging part'),
@@ -65,15 +62,13 @@ export const createEmergingPartSchema = z.object({
   emotions: z.array(z.string()).optional().default([]).describe('Emotions associated with this part'),
   beliefs: z.array(z.string()).optional().default([]).describe('Beliefs held by this part'),
   somaticMarkers: z.array(z.string()).optional().default([]).describe('Physical sensations associated with this part'),
-  userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)'),
   userConfirmed: z
     .boolean()
     .describe('Whether the user has confirmed this part exists through chat interaction'),
-})
+}).strict()
 
 export const updatePartSchema = z.object({
   partId: z.string().uuid().describe('The UUID of the part to update'),
-  userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)'),
   updates: z
     .object({
       name: z.string().min(1).max(100).optional(),
@@ -112,24 +107,21 @@ export const updatePartSchema = z.object({
     .describe('Fields to update'),
   evidence: evidenceSchema.optional().describe('New evidence to add for this update'),
   auditNote: z.string().optional().describe('Note about why this update was made'),
-})
+}).strict()
 
 export const getPartRelationshipsSchema = z.object({
-  userId: z.string().uuid().optional().describe('User ID to get relationships for (optional in development mode)'),
   partId: z.string().uuid().optional().describe('Optional: Get relationships for specific part'),
   relationshipType: relationshipTypeEnum.optional().describe('Optional: Filter by relationship type'),
   status: relationshipStatusEnum.optional().describe('Optional: Filter by relationship status'),
   includePartDetails: z.boolean().default(false).describe('Include part names and status in response'),
   limit: z.number().min(1).max(50).default(20).describe('Maximum number of relationships to return'),
-})
+}).strict()
 
 export const getPartNotesSchema = z.object({
   partId: z.string().uuid().describe('The UUID of the part to retrieve notes for'),
-  userId: z.string().uuid().optional().describe('User ID who owns the part (optional in development mode)'),
-})
+}).strict()
 
 export const logRelationshipSchema = z.object({
-  userId: z.string().uuid().optional().describe('User ID who owns the relationship (optional in development mode)'),
   partIds: z
     .array(z.string().uuid())
     .min(2)
@@ -156,7 +148,7 @@ export const logRelationshipSchema = z.object({
     .boolean()
     .default(true)
     .describe('Update existing relationship if it exists; otherwise create'),
-})
+}).strict()
 
 export type SearchPartsInput = z.infer<typeof searchPartsSchema>
 export type SearchPartsResult = PartRow[]

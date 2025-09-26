@@ -4,19 +4,26 @@ import { resolveUserId } from '@/config/dev'
 import type { ToolResult } from '@/lib/types/database'
 import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
 
-const searchConversationsSchema = z.object({
-  query: z.string().min(1).describe('The search query for keywords or themes'),
-  timePeriod: z.enum(['last_7_days', 'last_30_days', 'all_time']).default('all_time').describe('The time period to search within'),
-  userId: z.string().uuid().optional().describe('User ID to search for (optional in development mode)')
-})
+const searchConversationsSchema = z
+  .object({
+    query: z.string().min(1).describe('The search query for keywords or themes'),
+    timePeriod: z
+      .enum(['last_7_days', 'last_30_days', 'all_time'])
+      .default('all_time')
+      .describe('The time period to search within'),
+  })
+  .strict()
 
-export async function searchConversations(input: z.infer<typeof searchConversationsSchema>): Promise<ToolResult<any[]>> {
+export type SearchConversationsInput = z.infer<typeof searchConversationsSchema>
+
+export async function searchConversations(
+  input: SearchConversationsInput,
+  userId: string
+): Promise<ToolResult<any[]>> {
   try {
     const validated = searchConversationsSchema.parse(input)
-    const userId = resolveUserId(validated.userId)
     const storage = await getStorageAdapter()
 
-    // List session files for the user and attempt a simple text search.
     const prefix = `users/${userId}/sessions`
     const paths = await storage.list(prefix)
     const searchResults: any[] = []
@@ -57,19 +64,24 @@ export async function searchConversations(input: z.infer<typeof searchConversati
   }
 }
 
-export const searchConversationsTool = createTool({
-  id: 'searchConversations',
-  description: "Performs a semantic search over the user's entire chat history.",
-  inputSchema: searchConversationsSchema,
-  execute: async ({ context }) => {
-    const result = await searchConversations(context)
-    if (!result.success) {
-      throw new Error(result.error)
-    }
-    return result.data
-  }
-})
+export function createMemoryTools(userId?: string) {
+  const searchConversationsTool = createTool({
+    id: 'searchConversations',
+    description: "Performs a semantic search over the user's entire chat history.",
+    inputSchema: searchConversationsSchema,
+    execute: async ({ context, runtime }: { context: SearchConversationsInput; runtime?: { userId?: string } }) => {
+      const resolvedUserId = resolveUserId(runtime?.userId ?? userId)
+      const result = await searchConversations(context, resolvedUserId)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      return result.data
+    },
+  })
 
-export const memoryTools = {
-    searchConversations: searchConversationsTool
+  return {
+    searchConversations: searchConversationsTool,
+  }
 }
+
+export type MemoryTools = ReturnType<typeof createMemoryTools>

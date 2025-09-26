@@ -1,5 +1,6 @@
-import type { PartRow, PartRelationshipRow } from '@/lib/types/database'
-import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
+import type { PartRow, PartRelationshipRow, Database } from '@/lib/types/database'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { buildPartsQuery, type PartQueryFilters } from './parts-query'
 import {
   searchPartsSchema,
@@ -13,15 +14,20 @@ import {
   type GetPartRelationshipsResult,
 } from './parts.schema'
 
-function getSupabaseClient() {
-  // Always use browser client in lite (client-safe) module
-  return createBrowserSupabase()
+type SupabaseDatabaseClient = SupabaseClient<Database>
+
+type PartsLiteDependencies = {
+  client?: SupabaseDatabaseClient
 }
 
-export async function searchParts(input: SearchPartsInput): Promise<SearchPartsResult> {
+function resolveClient(deps?: PartsLiteDependencies): SupabaseDatabaseClient {
+  return deps?.client ?? createBrowserSupabaseClient()
+}
+
+export async function searchParts(input: SearchPartsInput, deps: PartsLiteDependencies = {}): Promise<SearchPartsResult> {
   try {
     const validated = searchPartsSchema.parse(input)
-    const supabase = getSupabaseClient()
+    const supabase = resolveClient(deps)
 
     const filters: PartQueryFilters = {
       name: validated.query,
@@ -39,10 +45,10 @@ export async function searchParts(input: SearchPartsInput): Promise<SearchPartsR
   }
 }
 
-export async function getPartById(input: GetPartByIdInput): Promise<GetPartByIdResult> {
+export async function getPartById(input: GetPartByIdInput, deps: PartsLiteDependencies = {}): Promise<GetPartByIdResult> {
   try {
     const validated = getPartByIdSchema.parse(input)
-    const supabase = getSupabaseClient()
+    const supabase = resolveClient(deps)
 
     const { data, error } = await supabase
       .from('parts')
@@ -65,10 +71,11 @@ export async function getPartById(input: GetPartByIdInput): Promise<GetPartByIdR
 
 export async function getPartRelationships(
   input: GetPartRelationshipsInput,
+  deps: PartsLiteDependencies = {}
 ): Promise<GetPartRelationshipsResult> {
   try {
     const validated = getPartRelationshipsSchema.parse(input)
-    const supabase = getSupabaseClient()
+    const supabase = resolveClient(deps)
 
     let query = supabase
       .from('part_relationships')
@@ -143,4 +150,3 @@ export async function getPartRelationships(
     throw error instanceof Error ? error : new Error('Unknown error occurred')
   }
 }
-

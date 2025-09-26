@@ -1,4 +1,6 @@
 import { createTool } from '@mastra/core'
+import { getServerSupabaseClient } from '@/lib/supabase/clients'
+import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
 import {
   searchParts,
   getPartById,
@@ -20,15 +22,24 @@ import {
 
 
 export function getPartTools(userId?: string) {
+  async function resolveDeps(runtime?: { userId?: string }) {
+    const supabase = await getServerSupabaseClient()
+    const resolvedUserId = userId ?? runtime?.userId
+    if (!resolvedUserId) {
+      throw new Error('userId is required to execute part tools')
+    }
+    return { supabase, userId: resolvedUserId }
+  }
+
   return {
     searchParts: createTool({
       id: 'searchParts',
       description: 'Search for parts based on query, status, or category',
       inputSchema: searchPartsSchema,
-      execute: async ({ context }: any) => {
-        const secureContext = { ...context, userId };
+      execute: async ({ context, runtime }: any) => {
+        const { supabase, userId: resolvedUserId } = await resolveDeps(runtime)
         try {
-          return await searchParts(secureContext);
+          return await searchParts(context, { client: supabase, userId: resolvedUserId });
         } catch (err) {
           throw err instanceof Error ? err : new Error(String(err));
         }
@@ -38,10 +49,10 @@ export function getPartTools(userId?: string) {
       id: 'getPartById',
       description: 'Get a specific part by its ID',
       inputSchema: getPartByIdSchema,
-      execute: async ({ context }: any) => {
-        const secureContext = { ...context, userId };
+      execute: async ({ context, runtime }: any) => {
+        const { supabase, userId: resolvedUserId } = await resolveDeps(runtime)
         try {
-          return await getPartById(secureContext);
+          return await getPartById(context, { client: supabase, userId: resolvedUserId });
         } catch (err) {
           throw err instanceof Error ? err : new Error(String(err));
         }
@@ -52,10 +63,10 @@ export function getPartTools(userId?: string) {
       description:
         'Retrieves a complete dossier for a given part, including core attributes, relationships, and recent evidence.',
       inputSchema: getPartDetailSchema,
-      execute: async ({ context }: any) => {
-        const secureContext = { ...context, userId };
+      execute: async ({ context, runtime }: any) => {
+        const { supabase, userId: resolvedUserId } = await resolveDeps(runtime)
         try {
-          return await getPartDetail(secureContext);
+          return await getPartDetail(context, { client: supabase, userId: resolvedUserId });
         } catch (err) {
           throw err instanceof Error ? err : new Error(String(err));
         }
@@ -65,10 +76,10 @@ export function getPartTools(userId?: string) {
       id: 'createEmergingPart',
       description: 'Create a new emerging part (requires 3+ evidence and user confirmation)',
       inputSchema: createEmergingPartSchema,
-      execute: async ({ context }: any) => {
-        const secureContext = { ...context, userId };
+      execute: async ({ context, runtime }: any) => {
+        const { supabase, userId: resolvedUserId } = await resolveDeps(runtime)
         try {
-          return await createEmergingPart(secureContext);
+          return await createEmergingPart(context, { client: supabase, userId: resolvedUserId });
         } catch (err) {
           throw err instanceof Error ? err : new Error(String(err));
         }
@@ -78,10 +89,10 @@ export function getPartTools(userId?: string) {
       id: 'updatePart',
       description: 'Update an existing part with confidence increment and audit trail',
       inputSchema: updatePartSchema,
-      execute: async ({ context }: any) => {
-        const secureContext = { ...context, userId };
+      execute: async ({ context, runtime }: any) => {
+        const { supabase, userId: resolvedUserId } = await resolveDeps(runtime)
         try {
-          return await updatePart(secureContext);
+          return await updatePart(context, { client: supabase, userId: resolvedUserId });
         } catch (err) {
           throw err instanceof Error ? err : new Error(String(err));
         }
@@ -92,10 +103,10 @@ export function getPartTools(userId?: string) {
       description:
         'Get part relationships with optional filtering by part, type, status, and include part details',
       inputSchema: getPartRelationshipsSchema,
-      execute: async ({ context }: any) => {
-        const secureContext = { ...context, userId };
+      execute: async ({ context, runtime }: any) => {
+        const { supabase, userId: resolvedUserId } = await resolveDeps(runtime)
         try {
-          return await getPartRelationships(secureContext);
+          return await getPartRelationships(context, { client: supabase, userId: resolvedUserId });
         } catch (err) {
           throw err instanceof Error ? err : new Error(String(err));
         }
@@ -106,10 +117,10 @@ export function getPartTools(userId?: string) {
       description:
         'Create or update a relationship between two parts; optionally append a dynamic observation and adjust polarization.',
       inputSchema: logRelationshipSchema,
-      execute: async ({ context }: any) => {
-        const secureContext = { ...context, userId };
+      execute: async ({ context, runtime }: any) => {
+        const { supabase, userId: resolvedUserId } = await resolveDeps(runtime)
         try {
-          return await logRelationship(secureContext);
+          return await logRelationship(context, { client: supabase, userId: resolvedUserId });
         } catch (err) {
           throw err instanceof Error ? err : new Error(String(err));
         }

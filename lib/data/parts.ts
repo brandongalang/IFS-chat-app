@@ -1,11 +1,11 @@
 import 'server-only'
 
-import { z } from 'zod'
-import { createServerClient } from '@supabase/ssr'
-import { createClient as createBrowserClient } from '@supabase/supabase-js'
-import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/dev'
+import { requiresUserConfirmation, devLog, dev } from '@/config/dev'
+import { getSupabaseServiceRoleKey } from '@/lib/supabase/config'
+import { isMemoryV2Enabled } from '@/lib/memory/config'
+import { recordSnapshotUsage } from '@/lib/memory/observability'
+import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
 import type {
-  Database,
   PartRow,
   PartInsert,
   PartUpdate,
@@ -15,11 +15,6 @@ import type {
   RelationshipDynamic,
   PartNoteRow,
 } from '../types/database'
-import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { getSupabaseKey, getSupabaseServiceRoleKey, getSupabaseUrl } from '@/lib/supabase/config'
-import { isMemoryV2Enabled } from '@/lib/memory/config'
-import { recordSnapshotUsage } from '@/lib/memory/observability'
 import { buildPartsQuery, type PartQueryFilters } from './parts-query'
 import {
   searchPartsSchema,
@@ -48,47 +43,33 @@ import {
   type LogRelationshipResult,
 } from './parts.schema'
 
-// Helper to resolve env using the standard Next.js public variables
-function getSupabaseClient() {
-  // Browser: use the preconfigured Next.js helper so env is inlined at build time
-  if (typeof window !== 'undefined') {
-    return createBrowserSupabase()
+type PartsDataDependencies = {
+  client: SupabaseDatabaseClient
+  userId: string
+}
+
+function assertDependencies(deps: PartsDataDependencies): PartsDataDependencies {
+  if (!deps || !deps.client) {
+    throw new Error('Supabase client is required for parts data operations')
   }
-
-  // Server: read from Node env and optionally use service role in dev
-  const url = getSupabaseUrl()
-  const anonKey = getSupabaseKey()
-
-  if (!url || !anonKey) {
-    throw new Error(
-      "Your project's URL and Key are required to create a Supabase client!\n\n" +
-      'Missing NEXT_PUBLIC_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_ANON_KEY.\n' +
-      'Check your .env and ensure the Mastra dev server is loading it (npm run dev:mastra -- --env .env).'
-    )
+  if (!deps.userId) {
+    throw new Error('userId is required for parts data operations')
   }
+  return deps
+}
 
-  const serviceRole = getSupabaseServiceRoleKey()
-  if (dev.enabled && serviceRole) {
-    // Dev-only bypass with service role on server
-    return createAdminClient()
-  }
-
-  return createServerClient<Database>(url, anonKey, {
-    cookies: {
-      getAll: () => [],
-      setAll: () => {},
-    },
-  })
+async function getActionLogger(client: SupabaseDatabaseClient) {
+  const { createActionLogger } = await import('../database/action-logger')
+  return createActionLogger(client)
 }
 
 /**
  * Search for parts based on various criteria
  */
-export async function searchParts(input: SearchPartsInput): Promise<SearchPartsResult> {
+export async function searchParts(input: SearchPartsInput, deps: PartsDataDependencies): Promise<SearchPartsResult> {
   try {
     const validated = searchPartsSchema.parse(input)
-    const userId = resolveUserId(validated.userId)
-    const supabase = getSupabaseClient()
+    const { client: supabase, userId } = assertDependencies(deps)
 
     devLog('searchParts called', { userId, query: validated.query })
 
@@ -115,11 +96,10 @@ export async function searchParts(input: SearchPartsInput): Promise<SearchPartsR
 /**
  * Get a specific part by ID
  */
-export async function getPartById(input: GetPartByIdInput): Promise<GetPartByIdResult> {
+export async function getPartById(input: GetPartByIdInput, deps: PartsDataDependencies): Promise<GetPartByIdResult> {
   try {
     const validated = getPartByIdSchema.parse(input)
-    const userId = resolveUserId(validated.userId)
-    const supabase = getSupabaseClient()
+    const { client: supabase, userId } = assertDependencies(deps)
 
     devLog('getPartById called', { userId, partId: validated.partId })
 
@@ -167,11 +147,10 @@ export async function getPartById(input: GetPartByIdInput): Promise<GetPartByIdR
 /**
  * Get a specific part by ID along with its relationships
  */
-export async function getPartDetail(input: GetPartDetailInput): Promise<GetPartDetailResult> {
+export async function getPartDetail(input: GetPartDetailInput, deps: PartsDataDependencies): Promise<GetPartDetailResult> {
   try {
     const validated = getPartDetailSchema.parse(input)
-    const userId = resolveUserId(validated.userId)
-    const supabase = getSupabaseClient()
+    const { client: supabase, userId } = assertDependencies(deps)
 
     devLog('getPartDetail called', { userId, partId: validated.partId })
 
@@ -258,10 +237,10 @@ export async function getPartDetail(input: GetPartDetailInput): Promise<GetPartD
 /**
  * Create an emerging part with 3+ evidence rule enforcement
  */
-export async function createEmergingPart(input: CreateEmergingPartInput): Promise<CreateEmergingPartResult> {
+export async function createEmergingPart(input: CreateEmergingPartInput, deps: PartsDataDependencies): Promise<CreateEmergingPartResult> {
   try {
     const validated = createEmergingPartSchema.parse(input)
-    const userId = resolveUserId(validated.userId)
+    const { client: supabase, userId } = assertDependencies(deps)
 
     // Enforce 3+ evidence rule
     if (validated.evidence.length < 3) {
@@ -272,8 +251,6 @@ export async function createEmergingPart(input: CreateEmergingPartInput): Promis
     if (requiresUserConfirmation(validated.userConfirmed)) {
       throw new Error('Cannot create emerging part: User confirmation is required through chat interaction')
     }
-
-    const supabase = getSupabaseClient()
 
     devLog('createEmergingPart called', { userId, partName: validated.name, evidenceCount: validated.evidence.length })
 
@@ -326,7 +303,7 @@ export async function createEmergingPart(input: CreateEmergingPartInput): Promis
     }
 
     // Use action logger for INSERT with rollback capability
-    const { actionLogger } = await import('../database/action-logger')
+    const actionLogger = await getActionLogger(supabase)
     const data = await actionLogger.loggedInsert<PartRow>(
       'parts',
       partInsert as any,
@@ -433,11 +410,10 @@ function combineUpdatePatches(patches: UpdatePatch[]): UpdatePatch {
 /**
  * Update a part with confidence increment and audit trail
  */
-export async function updatePart(input: UpdatePartInput): Promise<UpdatePartResult> {
+export async function updatePart(input: UpdatePartInput, deps: PartsDataDependencies): Promise<UpdatePartResult> {
   try {
     const validated = updatePartSchema.parse(input)
-    const userId = resolveUserId(validated.userId)
-    const supabase = getSupabaseClient()
+    const { client: supabase, userId } = assertDependencies(deps)
 
     devLog('updatePart called', { userId, partId: validated.partId })
 
@@ -505,7 +481,7 @@ export async function updatePart(input: UpdatePartInput): Promise<UpdatePartResu
     }
 
     // Use action logger for UPDATE with rollback capability
-    const { actionLogger } = await import('../database/action-logger')
+    const actionLogger = await getActionLogger(supabase)
     const data = await actionLogger.loggedUpdate<PartRow>(
       'parts',
       validated.partId,
@@ -538,11 +514,11 @@ export async function updatePart(input: UpdatePartInput): Promise<UpdatePartResu
  */
 export async function getPartRelationships(
   input: GetPartRelationshipsInput,
+  deps: PartsDataDependencies
 ): Promise<GetPartRelationshipsResult> {
   try {
     const validated = getPartRelationshipsSchema.parse(input)
-    const userId = resolveUserId(validated.userId)
-    const supabase = getSupabaseClient()
+    const { client: supabase, userId } = assertDependencies(deps)
 
     devLog('getPartRelationships called', { userId, partId: validated.partId })
 
@@ -676,11 +652,10 @@ export async function getPartRelationships(
 /**
  * Fetch clarification notes for a part ordered from newest to oldest
  */
-export async function getPartNotes(input: GetPartNotesInput): Promise<GetPartNotesResult> {
+export async function getPartNotes(input: GetPartNotesInput, deps: PartsDataDependencies): Promise<GetPartNotesResult> {
   try {
     const validated = getPartNotesSchema.parse(input)
-    const userId = resolveUserId(validated.userId)
-    const supabase = getSupabaseClient()
+    const { client: supabase, userId } = assertDependencies(deps)
 
     devLog('getPartNotes called', { userId, partId: validated.partId })
 
@@ -715,11 +690,10 @@ export async function getPartNotes(input: GetPartNotesInput): Promise<GetPartNot
 /**
  * Create or update a part relationship, optionally appending a dynamic observation
  */
-export async function logRelationship(input: LogRelationshipInput): Promise<LogRelationshipResult> {
+export async function logRelationship(input: LogRelationshipInput, deps: PartsDataDependencies): Promise<LogRelationshipResult> {
   try {
     const validated = logRelationshipSchema.parse(input)
-    const userId = resolveUserId(validated.userId)
-    const supabase = getSupabaseClient()
+    const { client: supabase, userId } = assertDependencies(deps)
 
     // Normalize part IDs for stable matching
     const partIds = [...validated.partIds].sort()
@@ -835,7 +809,7 @@ export async function logRelationship(input: LogRelationshipInput): Promise<LogR
       }
 
       try {
-        const { actionLogger } = await import('../database/action-logger')
+        const actionLogger = await getActionLogger(supabase)
         const updated = await actionLogger.loggedUpdate<PartRelationshipRow>(
           'part_relationships',
           existing.id,
@@ -901,7 +875,7 @@ export async function logRelationship(input: LogRelationshipInput): Promise<LogR
       return createdDirect as LogRelationshipResult
     }
 
-    const { actionLogger } = await import('../database/action-logger')
+    const actionLogger = await getActionLogger(supabase)
     const created = await actionLogger.loggedInsert<PartRelationshipRow>(
       'part_relationships',
       insert as any,

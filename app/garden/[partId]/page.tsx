@@ -1,4 +1,6 @@
 import { getPartById, getPartRelationships, getPartNotes } from '@/lib/data/parts-server'
+import { createClient } from '@/lib/supabase/server'
+import { resolveUserId } from '@/config/dev'
 import type { PartRow, PartNoteRow } from '@/lib/types/database'
 import type { PartRelationshipWithDetails } from '@/lib/data/parts.schema'
 import Link from 'next/link'
@@ -53,11 +55,18 @@ function StorySection({ title, content }: { title: string; content?: string | nu
 export default async function PartDetailPage({ params }: PartDetailPageProps) {
   const { partId } = await params
 
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const userId = resolveUserId(user?.id)
+  const deps = { userId, client: supabase }
+
   // Fetch part details and relationships in parallel for efficiency
   const [partResult, relationshipsResult, notesResult] = await Promise.all([
-    getPartById({ partId }),
-    getPartRelationships({ partId, includePartDetails: true, limit: 20 }),
-    getPartNotes({ partId }),
+    getPartById({ partId }, deps),
+    getPartRelationships({ partId, includePartDetails: true, limit: 20 }, deps),
+    getPartNotes({ partId }, deps),
   ])
 
   // Handle case where the part is not found or fails to load
