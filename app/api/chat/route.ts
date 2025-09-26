@@ -1,9 +1,7 @@
 import { NextRequest } from 'next/server'
 import { dev } from '@/config/dev'
 import { errorResponse } from '@/lib/api/response'
-import { getUserIdFromSupabase, provideDevFallbackStream } from './logic'
-import { summarizePendingUpdatesForUser } from '@/lib/memory/update-runner'
-import { createMastra } from '@/mastra'
+import { getUserIdFromSupabase, provideDevFallbackStream, handleAgentStream } from './logic'
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,28 +19,8 @@ export async function POST(req: NextRequest) {
 
     const secureProfile = { ...profile, userId }
 
-    try {
-      const { isMemoryV2Enabled } = await import('@/lib/memory/config')
-      if (userId && isMemoryV2Enabled()) {
-        await import('@/lib/memory/snapshots/scaffold').then(({ ensureOverviewExists }) => ensureOverviewExists(userId))
-      }
-    } catch (error) {
-      console.warn('first-run scaffold skipped', error)
-    }
-
     if (userId) {
-      try {
-        const outcome = await summarizePendingUpdatesForUser(userId)
-        if (!outcome.skipped && outcome.itemCount > 0) {
-          console.log('[CHAT] Cleared pending memory updates', {
-            userId,
-            processed: outcome.itemCount,
-            digest: outcome.digest,
-          })
-        }
-      } catch (error) {
-        console.warn('[CHAT] update summarizer failed', error)
-      }
+      console.log('[CHAT] Memory maintenance deferred to cron worker', { userId })
     }
 
     const baseURL = process.env.OPENROUTER_BASE_URL
@@ -54,33 +32,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    try {
-      const mastra = createMastra(secureProfile)
-      const agent = mastra.getAgent?.('ifsAgent') ?? mastra.agents?.ifsAgent
-
-      if (!agent || typeof agent.streamVNext !== 'function') {
-        console.error('[CHAT] ifsAgent missing streamVNext')
-        return provideDevFallbackStream(
-          'Hello! (fallback)\nAgent streaming is unavailable (missing streamVNext).',
-        )
-      }
-
-      const stream = await agent.streamVNext(messages, { format: 'aisdk' })
-
-      if (!stream || typeof stream.toDataStreamResponse !== 'function') {
-        console.error('[CHAT] streamVNext did not return AISDK stream shape')
-        return provideDevFallbackStream(
-          'Hello! (fallback)\nAgent streaming returned an unexpected response shape.',
-        )
-      }
-
-      return stream.toDataStreamResponse()
-    } catch (streamError) {
-      console.error('[CHAT] Agent streaming failed', streamError)
-      return provideDevFallbackStream(
-        'Hello! (fallback)\nAgent streaming failed to initialize.',
-      )
-    }
+    return handleAgentStream(messages, secureProfile)
   } catch (error) {
     console.error('Chat API error:', error)
     return errorResponse('Something went wrong', 500)
