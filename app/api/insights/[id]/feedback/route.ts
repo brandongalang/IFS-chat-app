@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getUserClient } from '@/lib/supabase/clients'
 import { getSupabaseKey, getSupabaseUrl } from '@/lib/supabase/config'
 import { jsonResponse, errorResponse } from '@/lib/api/response'
 
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return jsonResponse({ ok: true, stored: false })
     }
 
-    const supabase = await createClient()
+    const supabase = getUserClient()
 
     const { data: current, error: fetchErr } = await supabase
       .from('insights')

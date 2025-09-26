@@ -1,7 +1,7 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { dev } from '@/config/dev'
 import { getSupabaseKey, getSupabaseUrl } from './config'
+import { getUserClient, type UserClientCookieAdapter } from './clients'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -20,26 +20,23 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  const supabase = createServerClient(
-    url,
-    key,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
+  const adapter: UserClientCookieAdapter = {
+    get(name) {
+      return request.cookies.get(name)?.value
+    },
+    set(name, value, options) {
+      request.cookies.set(name, value)
+      supabaseResponse = NextResponse.next({ request })
+      supabaseResponse.cookies.set(name, value, options as any)
+    },
+    remove(name, options) {
+      request.cookies.set(name, '')
+      supabaseResponse = NextResponse.next({ request })
+      supabaseResponse.cookies.set(name, '', options as any)
+    },
+  }
+
+  const supabase = getUserClient(adapter)
 
   // Do not run code between createServerClient and any auth calls.
   // A simple mistake could make it very hard to debug issues with sessions.
