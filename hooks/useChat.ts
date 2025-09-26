@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
-import type { UIMessage } from 'ai'
-import { DefaultChatTransport } from 'ai'
+import { TextStreamChatTransport, isToolOrDynamicToolUIPart, type UIMessage } from 'ai'
 import { useChat as useAiChat } from '@ai-sdk/react'
 import { useSearchParams } from 'next/navigation'
 
@@ -12,6 +11,19 @@ import { useToast } from './use-toast'
 import { useUser } from '@/context/UserContext'
 import { getPartById } from '@/lib/data/parts-lite'
 import type { Message, TaskEvent, TaskEventUpdate } from '@/types/chat'
+
+type UIPart = UIMessage['parts'][number]
+
+function isDataUIPart(part: UIPart): part is UIPart & { type: `data-${string}`; data: unknown } {
+  return typeof part?.type === 'string' && part.type.startsWith('data-') && 'data' in part
+}
+
+function getToolOutput(part: UIPart): string {
+  if (!isToolOrDynamicToolUIPart(part)) return ''
+  if (part.state !== 'output-available') return ''
+  const output = (part as typeof part & { output?: unknown }).output
+  return typeof output === 'string' ? output : ''
+}
 
 interface ChatHookReturn {
   messages: Message[]
@@ -33,30 +45,38 @@ interface ChatHookReturn {
 }
 
 function extractText(message: UIMessage): string {
-  if (!Array.isArray(message.parts)) return ''
   return message.parts
     .map((part) => {
-      if (part?.type === 'text') return part.text ?? ''
-
-      if (typeof part?.type === 'string' && part.type.startsWith('tool-')) {
-        const output = (part as { output?: unknown }).output
-        return typeof output === 'string' ? output : ''
+      if (part?.type === 'text' || part?.type === 'reasoning') {
+        return part.text
       }
-
-      if (typeof part?.type === 'string' && part.type.startsWith('data-')) {
-        const data = (part as { data?: unknown }).data
-        return typeof data === 'string' ? data : ''
+      const toolOutput = getToolOutput(part)
+      if (toolOutput) return toolOutput
+      if (isDataUIPart(part) && typeof part.data === 'string') {
+        return part.data
       }
-
       return ''
     })
     .join('')
     .trim()
 }
 
+function isAssistantStreaming(message: UIMessage): boolean {
+  if (message.role !== 'assistant') return false
+  return message.parts.some((part) => {
+    if (part?.type === 'text' || part?.type === 'reasoning') {
+      return part.state === 'streaming'
+    }
+    if (isToolOrDynamicToolUIPart(part)) {
+      return part.state === 'input-streaming'
+    }
+    return false
+  })
+}
+
 const messageTimestamps: Record<string, number> = {}
 
-function toBasicMessage(message: UIMessage, isStreaming: boolean): Message {
+function toBasicMessage(message: UIMessage): Message {
   if (!messageTimestamps[message.id]) {
     messageTimestamps[message.id] = Date.now()
   }
@@ -66,7 +86,7 @@ function toBasicMessage(message: UIMessage, isStreaming: boolean): Message {
     content: extractText(message),
     timestamp: messageTimestamps[message.id],
     persona: message.role === 'assistant' ? 'claude' : undefined,
-    streaming: message.role === 'assistant' && isStreaming,
+    streaming: isAssistantStreaming(message),
     tasks: [],
   }
 }
@@ -74,6 +94,19 @@ function toBasicMessage(message: UIMessage, isStreaming: boolean): Message {
 function resetMessageTimestamps() {
   for (const key of Object.keys(messageTimestamps)) {
     delete messageTimestamps[key]
+  }
+}
+
+function createTextUiMessage(id: string, role: 'assistant' | 'user', text: string): UIMessage {
+  return {
+    id,
+    role,
+    parts: [
+      {
+        type: 'text',
+        text,
+      },
+    ],
   }
 }
 
@@ -94,7 +127,7 @@ export function useChat(): ChatHookReturn {
   const [sessionId, setSessionId] = useState<string | null>(getSessionId())
   const [tasksByMessage, setTasksByMessage] = useState<Record<string, TaskEvent[]>>({})
 
-  const chatTransport = useMemo(() => new DefaultChatTransport({ api: '/api/chat' }), [])
+  const transport = useMemo(() => new TextStreamChatTransport({ api: '/api/chat' }), [])
 
   const {
     messages: uiMessages,
@@ -104,7 +137,7 @@ export function useChat(): ChatHookReturn {
     stop,
     error,
   } = useAiChat({
-    transport: chatTransport,
+    transport,
     onError(error) {
       console.error('Chat stream error:', error)
       toast({
@@ -114,8 +147,9 @@ export function useChat(): ChatHookReturn {
       })
     },
     async onFinish({ message }) {
-      if (message.role === 'assistant' && sessionId) {
-        const text = extractText(message)
+      const last = message
+      if (last?.role === 'assistant' && sessionId) {
+        const text = extractText(last)
         if (text) {
           persistMessage(sessionId, 'assistant', text).catch(() => {})
         }
@@ -139,20 +173,16 @@ export function useChat(): ChatHookReturn {
     }
   }, [ensureSessionRaw, needsAuth, toast])
 
+  const derivedMessages = useMemo(() => uiMessages.map(toBasicMessage), [uiMessages])
+
   const [input, setInput] = useState('')
 
   const isLoading = status === 'submitted' || status === 'streaming'
 
   const currentStreamingId = useMemo(() => {
-    if (status !== 'streaming') return undefined
-    const lastAssistant = [...uiMessages].reverse().find((msg) => msg.role === 'assistant')
+    const lastAssistant = [...uiMessages].reverse().find((msg) => msg.role === 'assistant' && isAssistantStreaming(msg))
     return lastAssistant?.id
-  }, [status, uiMessages])
-
-  const derivedMessages = useMemo(
-    () => uiMessages.map((msg) => toBasicMessage(msg, currentStreamingId === msg.id)),
-    [currentStreamingId, uiMessages],
-  )
+  }, [uiMessages])
 
   const seededRef = useRef(false)
   const processedTaskParts = useRef<Record<string, number>>({})
@@ -166,16 +196,11 @@ export function useChat(): ChatHookReturn {
         const part = await getPartById({ partId })
         if (part) {
           const partName = part.name ?? 'part'
-          const message: UIMessage = {
-            id: `seed-${partId}`,
-            role: 'assistant',
-            parts: [
-              {
-                type: 'text',
-                text: `Let's talk about your "${partName}" part. What's on your mind regarding it?`,
-              },
-            ],
-          }
+          const message = createTextUiMessage(
+            `seed-${partId}`,
+            'assistant',
+            `Let's talk about your "${partName}" part. What's on your mind regarding it?`,
+          )
           setMessages([message])
         }
       } catch {
@@ -221,14 +246,7 @@ export function useChat(): ChatHookReturn {
     async (content, opts) => {
       if (needsAuth || !content) return
       const id = opts?.id ?? `assistant-${Math.random().toString(36).slice(2)}`
-      setMessages((prev) => [
-        ...prev,
-        {
-          id,
-          role: 'assistant',
-          parts: [{ type: 'text', text: content }],
-        },
-      ])
+      setMessages((prev) => [...prev, createTextUiMessage(id, 'assistant', content)])
 
       if (opts?.persist) {
         try {
@@ -349,11 +367,12 @@ export function useChat(): ChatHookReturn {
       processedTaskParts.current[message.id] = partCount
 
       message.parts.forEach((part) => {
-        if (typeof part?.type !== 'string' || !part.type.startsWith('data-')) return
-        const data = (part as { data?: unknown }).data
-        if (data && typeof data === 'object' && 'taskUpdate' in data) {
-          const update = (data as { taskUpdate: TaskEventUpdate }).taskUpdate
-          upsertTaskForMessage(message.id, update)
+        if (isDataUIPart(part)) {
+          const payload = part.data
+          if (payload && typeof payload === 'object' && 'taskUpdate' in payload) {
+            const update = (payload as { taskUpdate: TaskEventUpdate }).taskUpdate
+            upsertTaskForMessage(message.id, update)
+          }
         }
       })
     })
