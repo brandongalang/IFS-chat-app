@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers'
+import { cookies, type UnsafeUnwrappedCookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -20,7 +20,7 @@ type CookieAdapter = {
 }
 
 function resolveCookieAdapter(): CookieAdapter {
-  const cookieStore = cookies()
+  const cookieStore = cookies() as unknown as UnsafeUnwrappedCookies
 
   return {
     get(name) {

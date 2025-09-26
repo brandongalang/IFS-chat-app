@@ -2,7 +2,7 @@
 title: Feature: Agent Tools
 owner: @brandongalang
 status: shipped
-last_updated: 2025-08-31
+last_updated: 2025-09-26
 feature_flag: null
 code_paths:
   - mastra/tools/*.ts
@@ -20,6 +20,7 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 
 ## How it works
 - Mastra tools implement capabilities (parts, relationships, evidence, assessments, proposals, rollback)
+- Tool handlers co-locate Zod input/output schemas; malformed payloads short-circuit before hitting providers/Supabase
 - Session analysis utilities read recent sessions via StorageAdapter snapshots to keep lookback/limit semantics consistent across environments
 - Agent prompt and configuration live under mastra/agents/
 - Insights generator scaffolding exists in lib/insights/generator.ts
@@ -28,7 +29,9 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 - agent_actions (audit log), part_assessments, parts/relationships
 
 ## Configuration
-- Provider/model configuration via env vars (names only)
+- Provider configuration centralized in `config/model.ts` and `mastra/index.ts`
+- Override defaults with `IFS_MODEL`, `IFS_TEMPERATURE`, and `IFS_PROVIDER_BASE_URL` env vars (fallback to `OPENROUTER_BASE_URL`)
+- Agents share the single `openrouter` provider created during Mastra bootstrap
 
 ## Testing
 - Unit tests for tool logic; integration tests via smoke scripts (scripts/smoke-*)
