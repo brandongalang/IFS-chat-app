@@ -1,7 +1,10 @@
-import { Agent } from '@mastra/core';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { z } from 'zod';
-import { insightResearchTools } from '../tools/insight-research-tools';
+import { Agent } from '@mastra/core'
+import { createOpenRouter } from '@openrouter/ai-sdk-provider'
+import { z } from 'zod'
+import { ENV } from '@/config/env'
+import { resolveModel } from '@/config/model'
+import type { AgentModelConfig } from './ifs-agent'
+import { insightResearchTools } from '../tools/insight-research-tools'
 
 export const insightSchema = z.object({
   type: z.enum(['session_summary', 'nudge', 'follow_up', 'observation', 'question']),
@@ -19,12 +22,12 @@ export const insightSchema = z.object({
     .array(z.string().uuid())
     .optional()
     .describe('IDs of sessions that informed this insight.'),
-});
+})
 
-export type Insight = z.infer<typeof insightSchema>;
+export type Insight = z.infer<typeof insightSchema>
 
 export interface InsightGeneratorResponse {
-  insights: Insight[];
+  insights: Insight[]
 }
 
 const systemPrompt = `
@@ -49,15 +52,30 @@ After completing your research, analyze your findings to identify opportunities 
 - Generate a maximum of 2 insights per run.
 - Frame your insights as gentle, curious hypotheses, not as definitive statements. Use phrases like "I'm wondering if...", "It seems like...", "I'm curious about...".
 - The insights you generate must be valid JSON objects matching the provided schema.
-`;
+`
 
-const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY as string });
+export type InsightGeneratorAgent = Agent<'insightGeneratorAgent', typeof insightResearchTools>
 
-export type InsightGeneratorAgent = Agent<'insightGeneratorAgent', typeof insightResearchTools>;
+export function createInsightGeneratorAgent(overrides: AgentModelConfig = {}): InsightGeneratorAgent {
+  const modelId = overrides.modelId ?? resolveModel(ENV.IFS_MODEL)
+  const temperature = overrides.temperature ?? ENV.IFS_TEMPERATURE
+  const baseURL =
+    overrides.baseURL ??
+    ENV.IFS_PROVIDER_BASE_URL ??
+    ENV.OPENROUTER_BASE_URL ??
+    'https://openrouter.ai/api/v1'
 
-export const insightGeneratorAgent: InsightGeneratorAgent = new Agent({
-  name: 'insightGeneratorAgent',
-  instructions: systemPrompt,
-  tools: insightResearchTools,
-  model: openrouter('z-ai/glm-4.5'),
-});
+  const openrouter = createOpenRouter({
+    apiKey: ENV.OPENROUTER_API_KEY,
+    baseURL,
+  })
+
+  return new Agent({
+    name: 'insightGeneratorAgent',
+    instructions: systemPrompt,
+    tools: insightResearchTools,
+    model: openrouter(modelId, { temperature }),
+  })
+}
+
+export const insightGeneratorAgent: InsightGeneratorAgent = createInsightGeneratorAgent()

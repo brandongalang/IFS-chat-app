@@ -1,6 +1,9 @@
 import { Agent } from '@mastra/core'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { z } from 'zod'
+import { ENV } from '@/config/env'
+import { resolveModel } from '@/config/model'
+import type { AgentModelConfig } from './ifs-agent'
 import { updateSyncTools } from '../tools/update-sync'
 
 export const updateDigestSchema = z.object({
@@ -45,17 +48,24 @@ Guardrails:
 - Respond with JSON that matches the provided schema exactly—no extra keys or commentary.
 `
 
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
-})
+export function createUpdateSummarizerAgent(overrides: AgentModelConfig = {}) {
+  const modelId = overrides.modelId ?? resolveModel(ENV.IFS_MODEL)
+  const temperature = overrides.temperature ?? ENV.IFS_TEMPERATURE
+  const baseURL =
+    overrides.baseURL ??
+    ENV.IFS_PROVIDER_BASE_URL ??
+    ENV.OPENROUTER_BASE_URL ??
+    'https://openrouter.ai/api/v1'
 
-export function createUpdateSummarizerAgent() {
+  const openrouter = createOpenRouter({
+    apiKey: ENV.OPENROUTER_API_KEY,
+    baseURL,
+  })
+
   return new Agent({
     name: 'update-summarizer',
     instructions: systemPrompt,
-    model: openrouter('z-ai/glm-4.5-air'),
+    model: openrouter(modelId, { temperature }),
     tools: updateSyncTools as any,
   })
 }
-
