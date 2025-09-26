@@ -515,7 +515,6 @@ export async function updatePart(input: UpdatePartInput, deps: PartsDataDependen
 export async function getPartRelationships(
   input: GetPartRelationshipsInput,
   deps: PartsDataDependencies
-): Promise<GetPartRelationshipsResult> {  input: GetPartRelationshipsInput,
 ): Promise<GetPartRelationshipsResult> {
   try {
     const validated = getPartRelationshipsSchema.parse(input)
