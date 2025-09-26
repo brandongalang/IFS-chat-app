@@ -36,8 +36,7 @@ jobs:
             echo "GOOGLE_API_KEY not configured; skipping OpenCode install."
             exit 0
           fi
-          curl -fsSL https://opencode.ai/install | bash
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          npm install -g opencode-ai
           rm -rf ~/.opencode/config.toml || true
 
       - name: Analyze and Update Docs via AI
