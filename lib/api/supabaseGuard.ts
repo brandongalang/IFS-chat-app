@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createClient as createServerSupabase } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { getServiceClient, getUserClient } from '@/lib/supabase/clients'
 import { dev } from '@/config/dev'
 import { getSupabaseKey, getSupabaseUrl } from '@/lib/supabase/config'
 import { env } from '@/config/env'
@@ -22,11 +21,10 @@ export type SupabaseGuardContext =
   | { type: 'no-supabase' }
   | {
       type: 'authed'
-      supabase: Awaited<ReturnType<typeof createServerSupabase>>
+      supabase: ReturnType<typeof getUserClient>
       userId: string
-      accessToken: string
     }
-  | { type: 'admin'; admin: ReturnType<typeof createAdminClient> }
+  | { type: 'admin'; admin: ReturnType<typeof getServiceClient> }
 
 export async function withSupabaseOrDev(
   _req: NextRequest,
@@ -53,7 +51,7 @@ export async function withSupabaseOrDev(
     }
 
     try {
-      const supabase = await createServerSupabase()
+      const supabase = getUserClient()
       const [{
         data: { session },
         error: sessionError,
@@ -73,17 +71,16 @@ export async function withSupabaseOrDev(
         console.error('Supabase guard: user retrieval failed', userError)
       }
 
-      const accessToken = session?.access_token
       const authedUserId = userData?.user?.id
 
-      if (authedUserId && typeof accessToken === 'string' && accessToken.length > 0) {
+      if (authedUserId) {
         if (session?.user?.id && session.user.id !== authedUserId) {
           console.warn('Supabase guard: session user mismatch', {
             sessionUserId: session.user.id,
             authenticatedUserId: authedUserId,
           })
         }
-        return handler({ type: 'authed', supabase, userId: authedUserId, accessToken })
+        return handler({ type: 'authed', supabase, userId: authedUserId })
       }
     } catch (error) {
       console.error('Supabase guard: auth session check failed', error)
@@ -94,7 +91,7 @@ export async function withSupabaseOrDev(
 
     if (dev.enabled) {
       if (await isReachable(supabaseUrl)) {
-        const admin = createAdminClient()
+        const admin = getServiceClient()
         return handler({ type: 'admin', admin })
       }
       return handler({ type: 'no-supabase' })

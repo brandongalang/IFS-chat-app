@@ -2,7 +2,7 @@
 title: Feature: Guided Check-ins
 owner: @brandongalang
 status: shipped
-last_updated: 2025-08-31
+last_updated: 2025-09-26
 feature_flag: null
 code_paths:
   - app/check-in/morning/page.tsx
@@ -24,7 +24,7 @@ Provides a gentle, repeatable practice to capture mood, intentions, and observat
 - Morning flow collects emoji-based ratings for mood, energy, and intention focus, plus “what’s on your mind?” and an intention note
 - Evening flow replays morning context, generates a short reflective prompt using OpenRouter, and captures reflections, gratitude, and extra notes
 - Optional multi-select chips let users mark active parts (when parts exist); new parts are nudged toward chat or the free-text note
-- Form submissions persist via Supabase with structured `parts_data` blobs for downstream agents
+- Form submissions persist via Supabase with structured `parts_data` blobs for downstream agents using the shared `getUserClient` helper from `lib/supabase/clients`
 - Auth middleware ensures session enforcement for protected routes
 
 ## Data model

@@ -1,11 +1,11 @@
 import { getMastra } from '@/mastra';
-import { createClient } from '@/lib/supabase/server';
+import { getUserClient } from '@/lib/supabase/clients';
 import { resolveUserId } from '@/config/dev';
 import type { Json } from '@/lib/types/database';
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response';
 
 async function saveInsightsToDb(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof getUserClient>,
   userId: string,
   insights: Array<{ type: string; title: string; body: string; sourceSessionIds?: string[] }>
 ): Promise<boolean> {
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const userId = resolveUserId(body.userId);
-    const supabase = await createClient();
+    const supabase = getUserClient();
 
     console.log(`Insight generation request received for user: ${userId}`);
 

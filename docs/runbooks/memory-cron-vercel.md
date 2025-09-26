@@ -8,9 +8,10 @@ This runbook explains how to operate the daily `/api/cron/memory-update` job now
 - **Auth:** Requires `CRON_SECRET` provided via either `Authorization: Bearer <secret>` or `x-vercel-cron-secret: <secret>` header.
 - **Purpose:** Reconstruct and persist `user_memory_snapshots` for users active in the last 24 hours.
 
-## Prerequisites
+## Prerequisites (updated 2025-09-26)
 - `CRON_SECRET` defined for Production & Preview environments in Vercel project settings.
 - `SUPABASE_SERVICE_ROLE_KEY` available to the app runtime (needed for memory service writes).
+- Shared Mastra provider env (`IFS_MODEL`, `IFS_TEMPERATURE`, `IFS_PROVIDER_BASE_URL`, `OPENROUTER_API_KEY`) configured so the summarizer agents can run.
 - Vercel project has Cron feature enabled (Billing → Cron Jobs).
 
 ## Operating procedures
@@ -26,12 +27,13 @@ curl -X POST https://<preview-host>/api/cron/memory-update \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 
-### Secret rotation
+### Secret rotation / config drift
 1. Generate new random secret (e.g., `openssl rand -hex 32`).
 2. Update Vercel project Environment Variables (`CRON_SECRET`) for Production and Preview.
 3. Redeploy or trigger redeploy so the runtime picks up the new value.
 4. Update any Terraform/infra notes storing the canonical secret value.
 5. Optional: keep old secret valid for 5 minutes by setting both headers during the overlap.
+6. When changing model/provider defaults, update the same env vars in Vercel to keep cron runs aligned with interactive agents.
 
 ### Monitoring
 - Add Vercel Cron notifications (Project → Monitoring → Cron Jobs) to alert on failures.

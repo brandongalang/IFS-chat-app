@@ -1,6 +1,8 @@
 import { createTool } from '@mastra/core'
 import { z } from 'zod'
-import { actionLogger } from '../../lib/database/action-logger'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { DatabaseActionLogger } from '../../lib/database/action-logger'
+import type { Database } from '../../lib/types/database'
 
 // Input schemas for rollback tools
 const getRecentActionsSchema = z.object({
@@ -38,11 +40,15 @@ const rollbackActionSchema = z.object({
 /**
  * Get recent agent actions for review before rollback
  */
-export async function getRecentActions(input: z.infer<typeof getRecentActionsSchema>) {
+export async function getRecentActions(
+  supabase: SupabaseClient<Database>,
+  input: z.infer<typeof getRecentActionsSchema>,
+) {
   try {
     const validated = getRecentActionsSchema.parse(input)
 
-    const actions = await actionLogger.getActionEvents(
+    const logger = new DatabaseActionLogger(supabase)
+    const actions = await logger.getActionEvents(
       validated.userId,
       validated.limit,
       validated.withinMinutes
@@ -64,11 +70,15 @@ export async function getRecentActions(input: z.infer<typeof getRecentActionsSch
 /**
  * Rollback action using natural language description
  */
-export async function rollbackByDescription(input: z.infer<typeof rollbackByDescriptionSchema>) {
+export async function rollbackByDescription(
+  supabase: SupabaseClient<Database>,
+  input: z.infer<typeof rollbackByDescriptionSchema>,
+) {
   try {
     const validated = rollbackByDescriptionSchema.parse(input)
-    
-    const result = await actionLogger.rollbackByDescription(
+
+    const logger = new DatabaseActionLogger(supabase)
+    const result = await logger.rollbackByDescription(
       validated.userId,
       validated.description,
       validated.reason,
@@ -87,11 +97,15 @@ export async function rollbackByDescription(input: z.infer<typeof rollbackByDesc
 /**
  * Rollback specific action by ID
  */
-export async function rollbackAction(input: z.infer<typeof rollbackActionSchema>) {
+export async function rollbackAction(
+  supabase: SupabaseClient<Database>,
+  input: z.infer<typeof rollbackActionSchema>,
+) {
   try {
     const validated = rollbackActionSchema.parse(input)
-    
-    const result = await actionLogger.rollbackAction(
+
+    const logger = new DatabaseActionLogger(supabase)
+    const result = await logger.rollbackAction(
       validated.actionId,
       validated.reason
     )
@@ -111,7 +125,15 @@ export const getRecentActionsTool = createTool({
   description: 'Get recent agent actions for review and potential rollback. Use this first to see what actions can be undone.',
   inputSchema: getRecentActionsSchema,
   execute: async ({ context }) => {
-    const result = await getRecentActions(context)
+    const { supabase, ...input } = context as z.infer<typeof getRecentActionsSchema> & {
+      supabase?: SupabaseClient<Database>
+    }
+
+    if (!supabase) {
+      throw new Error('Supabase client not provided to rollback tool context')
+    }
+
+    const result = await getRecentActions(supabase, input)
     if (!result.success) {
       throw new Error((result as any).error || (result as any).message || 'Unknown error')
     }
@@ -124,7 +146,15 @@ export const rollbackByDescriptionTool = createTool({
   description: 'Rollback an agent action using natural language description. Use when user says things like "undo that confidence change" or "remove that new part".',
   inputSchema: rollbackByDescriptionSchema,
   execute: async ({ context }) => {
-    const result = await rollbackByDescription(context)
+    const { supabase, ...input } = context as z.infer<typeof rollbackByDescriptionSchema> & {
+      supabase?: SupabaseClient<Database>
+    }
+
+    if (!supabase) {
+      throw new Error('Supabase client not provided to rollback tool context')
+    }
+
+    const result = await rollbackByDescription(supabase, input)
     if (!result.success) {
       throw new Error((result as any).error || (result as any).message || 'Unknown error')
     }
@@ -137,7 +167,15 @@ export const rollbackActionTool = createTool({
   description: 'Rollback a specific action by ID. Use after getRecentActions to rollback a specific action from the list.',
   inputSchema: rollbackActionSchema,
   execute: async ({ context }) => {
-    const result = await rollbackAction(context)
+    const { supabase, ...input } = context as z.infer<typeof rollbackActionSchema> & {
+      supabase?: SupabaseClient<Database>
+    }
+
+    if (!supabase) {
+      throw new Error('Supabase client not provided to rollback tool context')
+    }
+
+    const result = await rollbackAction(supabase, input)
     if (!result.success) {
       throw new Error((result as any).error || (result as any).message || 'Unknown error')
     }

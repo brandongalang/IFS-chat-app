@@ -1,16 +1,17 @@
 import { createWorkflow } from '@mastra/core';
 import { z } from 'zod';
 import { insightResearchTools, getRecentSessions, getActiveParts, getPolarizedRelationships, getRecentInsights } from '../tools/insight-research-tools';
-import { insightGeneratorAgent } from '../agents/insight-generator';
+import type { InsightGeneratorAgent } from '../agents/insight-generator';
 
 const workflowInputSchema = z.object({
   userId: z.string().uuid(),
 });
 
-export const generateInsightWorkflow = createWorkflow({
-  id: 'generate-insight-workflow',
-  inputSchema: workflowInputSchema,
-  steps: [
+export function createGenerateInsightWorkflow(insightGeneratorAgent: InsightGeneratorAgent) {
+  return createWorkflow({
+    id: 'generate-insight-workflow',
+    inputSchema: workflowInputSchema,
+    steps: [
     {
       id: 'researchStep',
       description: 'Gathers research materials about the user.',
@@ -48,7 +49,7 @@ export const generateInsightWorkflow = createWorkflow({
           Recent Insights: ${JSON.stringify(researchStepOutput.recentInsights, null, 2)}
         `;
 
-        // Run the insight generator agent directly to avoid circular imports
+        // Run the injected insight generator agent directly to avoid circular imports
         const agentRun = await (insightGeneratorAgent as any).run({
           input: researchSummary,
           context: { userId: input.userId }, // Pass original userId through
@@ -61,5 +62,6 @@ export const generateInsightWorkflow = createWorkflow({
         return [];
       },
     },
-  ],
-});
+    ],
+  });
+}

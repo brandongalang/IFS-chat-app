@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { getUserClient } from '@/lib/supabase/clients';
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response';
 
 /**
@@ -13,7 +13,7 @@ import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response';
  */
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const supabase = getUserClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {

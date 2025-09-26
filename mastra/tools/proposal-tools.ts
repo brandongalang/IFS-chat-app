@@ -1,36 +1,8 @@
 import { createTool } from '@mastra/core'
 import { z } from 'zod'
-import { createServerClient } from '@supabase/ssr'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, PartRow } from '../../lib/types/database'
-import { actionLogger } from '../../lib/database/action-logger'
-
-function getEnvVar(keys: string[]): string | undefined {
-  const anyProcessEnv = typeof process !== 'undefined' ? (process as any).env : undefined
-  if (anyProcessEnv) {
-    for (const k of keys) {
-      const v = anyProcessEnv[k]
-      if (v) return v as string
-    }
-  }
-  return undefined
-}
-
-function getSupabaseClient() {
-  const url = getEnvVar(['NEXT_PUBLIC_SUPABASE_URL'])
-  const anonKey = getEnvVar(['NEXT_PUBLIC_SUPABASE_ANON_KEY'])
-  if (!url || !anonKey) {
-    throw new Error(
-      "Your project's URL and Key are required to create a Supabase client!\n\n" +
-      'Missing NEXT_PUBLIC_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_ANON_KEY.'
-    )
-  }
-  return createServerClient<Database>(url, anonKey, {
-    cookies: {
-      getAll: () => [],
-      setAll: () => {}
-    }
-  })
-}
+import { DatabaseActionLogger } from '../../lib/database/action-logger'
 
 const splitChildSchema = z.object({
   name: z.string().min(1).max(100),
@@ -61,8 +33,10 @@ const approveRejectSchema = z.object({
   approvedBy: z.string().min(1),
 })
 
-async function proposePartSplit(input: z.infer<typeof proposePartSplitSchema>) {
-  const supabase = getSupabaseClient()
+async function proposePartSplit(
+  supabase: SupabaseClient<Database>,
+  input: z.infer<typeof proposePartSplitSchema>,
+) {
   const { error, data } = await supabase
     .from('part_change_proposals')
     .insert({
@@ -86,8 +60,10 @@ async function proposePartSplit(input: z.infer<typeof proposePartSplitSchema>) {
   return { success: true, data }
 }
 
-async function proposePartMerge(input: z.infer<typeof proposePartMergeSchema>) {
-  const supabase = getSupabaseClient()
+async function proposePartMerge(
+  supabase: SupabaseClient<Database>,
+  input: z.infer<typeof proposePartMergeSchema>,
+) {
   const { error, data } = await supabase
     .from('part_change_proposals')
     .insert({
@@ -111,8 +87,10 @@ async function proposePartMerge(input: z.infer<typeof proposePartMergeSchema>) {
   return { success: true, data }
 }
 
-async function approveProposal(input: z.infer<typeof approveRejectSchema>) {
-  const supabase = getSupabaseClient()
+async function approveProposal(
+  supabase: SupabaseClient<Database>,
+  input: z.infer<typeof approveRejectSchema>,
+) {
   const { data: proposal, error } = await supabase
     .from('part_change_proposals')
     .select('*')
@@ -140,8 +118,10 @@ async function approveProposal(input: z.infer<typeof approveRejectSchema>) {
   return { success: true, data: updated }
 }
 
-async function rejectProposal(input: z.infer<typeof approveRejectSchema>) {
-  const supabase = getSupabaseClient()
+async function rejectProposal(
+  supabase: SupabaseClient<Database>,
+  input: z.infer<typeof approveRejectSchema>,
+) {
   const { data: proposal, error } = await supabase
     .from('part_change_proposals')
     .select('*')
@@ -170,8 +150,12 @@ async function rejectProposal(input: z.infer<typeof approveRejectSchema>) {
 }
 
 // Execute helpers
-async function executeSplit(userId: string, proposalId: string) {
-  const supabase = getSupabaseClient()
+async function executeSplit(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  proposalId: string,
+) {
+  const logger = new DatabaseActionLogger(supabase)
   // Fetch proposal
   const { data: proposal } = await supabase
     .from('part_change_proposals')
@@ -234,7 +218,7 @@ async function executeSplit(userId: string, proposalId: string) {
   const relationships = parent.relationships || {}
   const lineage = { ...(relationships.lineage || {}) }
   lineage['superseded_by'] = [...(lineage['superseded_by'] || []), ...children.map((c: PartRow) => c.id)]
-  const updatedParent = await actionLogger.loggedUpdate<PartRow>(
+  const updatedParent = await logger.loggedUpdate<PartRow>(
     'parts',
     parent.id,
     { relationships: { ...relationships, lineage }, updated_at: now },
@@ -253,8 +237,12 @@ async function executeSplit(userId: string, proposalId: string) {
   return { parent: updatedParent, children }
 }
 
-async function executeMerge(userId: string, proposalId: string) {
-  const supabase = getSupabaseClient()
+async function executeMerge(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  proposalId: string,
+) {
+  const logger = new DatabaseActionLogger(supabase)
   const { data: proposal } = await supabase
     .from('part_change_proposals')
     .select('*')
@@ -277,7 +265,7 @@ async function executeMerge(userId: string, proposalId: string) {
   const now = new Date().toISOString()
 
   // Update canonical name if needed
-  const updatedCanonical = await actionLogger.loggedUpdate<PartRow>(
+  const updatedCanonical = await logger.loggedUpdate<PartRow>(
     'parts',
     canonical.id,
     { name: payload.canonicalName, updated_at: now },
@@ -291,7 +279,7 @@ async function executeMerge(userId: string, proposalId: string) {
     const relationships = p.relationships || {}
     const lineage = { ...(relationships.lineage || {}) }
     lineage['superseded_by'] = [...(lineage['superseded_by'] || []), updatedCanonical.id]
-    await actionLogger.loggedUpdate<PartRow>(
+    await logger.loggedUpdate<PartRow>(
       'parts',
       p.id,
       { relationships: { ...relationships, lineage }, updated_at: now },
@@ -316,7 +304,15 @@ const proposePartSplitTool = createTool({
   description: 'Create a proposal to split a parent part into multiple child parts. No data is mutated until approval.',
   inputSchema: proposePartSplitSchema,
   execute: async ({ context }) => {
-    const result = await proposePartSplit(context)
+    const { supabase, ...input } = context as z.infer<typeof proposePartSplitSchema> & {
+      supabase?: SupabaseClient<Database>
+    }
+
+    if (!supabase) {
+      throw new Error('Supabase client not provided to proposal tool context')
+    }
+
+    const result = await proposePartSplit(supabase, input)
     if (!result.success) throw new Error(result.error)
     return result.data
   }
@@ -327,7 +323,15 @@ const proposePartMergeTool = createTool({
   description: 'Create a proposal to merge multiple parts into a canonical part. No data is mutated until approval.',
   inputSchema: proposePartMergeSchema,
   execute: async ({ context }) => {
-    const result = await proposePartMerge(context)
+    const { supabase, ...input } = context as z.infer<typeof proposePartMergeSchema> & {
+      supabase?: SupabaseClient<Database>
+    }
+
+    if (!supabase) {
+      throw new Error('Supabase client not provided to proposal tool context')
+    }
+
+    const result = await proposePartMerge(supabase, input)
     if (!result.success) throw new Error(result.error)
     return result.data
   }
@@ -338,7 +342,15 @@ const approveProposalTool = createTool({
   description: 'Approve a pending proposal (split or merge). Does not execute the mutation yet.',
   inputSchema: approveRejectSchema,
   execute: async ({ context }) => {
-    const result = await approveProposal(context)
+    const { supabase, ...input } = context as z.infer<typeof approveRejectSchema> & {
+      supabase?: SupabaseClient<Database>
+    }
+
+    if (!supabase) {
+      throw new Error('Supabase client not provided to proposal tool context')
+    }
+
+    const result = await approveProposal(supabase, input)
     if (!result.success) throw new Error(result.error)
     return result.data
   }
@@ -349,7 +361,15 @@ const rejectProposalTool = createTool({
   description: 'Reject a pending proposal (split or merge).',
   inputSchema: approveRejectSchema,
   execute: async ({ context }) => {
-    const result = await rejectProposal(context)
+    const { supabase, ...input } = context as z.infer<typeof approveRejectSchema> & {
+      supabase?: SupabaseClient<Database>
+    }
+
+    if (!supabase) {
+      throw new Error('Supabase client not provided to proposal tool context')
+    }
+
+    const result = await rejectProposal(supabase, input)
     if (!result.success) throw new Error(result.error)
     return result.data
   }
@@ -360,8 +380,17 @@ const executeSplitTool = createTool({
   description: 'Execute an approved split proposal. Mutates data and updates lineage.',
   inputSchema: z.object({ userId: z.string().uuid(), proposalId: z.string().uuid() }),
   execute: async ({ context }) => {
-    const { userId, proposalId } = context as { userId: string; proposalId: string }
-    const result = await executeSplit(userId, proposalId)
+    const { supabase, userId, proposalId } = context as {
+      supabase?: SupabaseClient<Database>
+      userId: string
+      proposalId: string
+    }
+
+    if (!supabase) {
+      throw new Error('Supabase client not provided to proposal tool context')
+    }
+
+    const result = await executeSplit(supabase, userId, proposalId)
     return result
   }
 })
@@ -371,8 +400,17 @@ const executeMergeTool = createTool({
   description: 'Execute an approved merge proposal. Mutates data and updates lineage.',
   inputSchema: z.object({ userId: z.string().uuid(), proposalId: z.string().uuid() }),
   execute: async ({ context }) => {
-    const { userId, proposalId } = context as { userId: string; proposalId: string }
-    const result = await executeMerge(userId, proposalId)
+    const { supabase, userId, proposalId } = context as {
+      supabase?: SupabaseClient<Database>
+      userId: string
+      proposalId: string
+    }
+
+    if (!supabase) {
+      throw new Error('Supabase client not provided to proposal tool context')
+    }
+
+    const result = await executeMerge(supabase, userId, proposalId)
     return result
   }
 })
@@ -385,4 +423,3 @@ export const proposalTools = {
   executeSplit: executeSplitTool,
   executeMerge: executeMergeTool,
 }
-

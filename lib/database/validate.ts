@@ -1,7 +1,7 @@
 // Database Validation Utilities
 // Validates database schema, RLS policies, and data integrity
 
-import { createClient } from '../supabase/server'
+import { getServiceClient } from '../supabase/clients'
 
 interface ValidationResult {
   success: boolean
@@ -18,14 +18,14 @@ interface ValidationSuite {
 }
 
 export class DatabaseValidator {
-  private supabase: Awaited<ReturnType<typeof createClient>>
+  private supabase: ReturnType<typeof getServiceClient>
 
-  private constructor(supabase: Awaited<ReturnType<typeof createClient>>) {
+  private constructor(supabase: ReturnType<typeof getServiceClient>) {
     this.supabase = supabase
   }
 
   static async create() {
-    const supabase = await createClient()
+    const supabase = getServiceClient()
     return new DatabaseValidator(supabase)
   }
 

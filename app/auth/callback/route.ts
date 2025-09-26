@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { BASE_URL } from '@/config/app'
-import { createClient } from '@/lib/supabase/server'
+import { getUserClient } from '@/lib/supabase/clients'
 import type { Session } from '@supabase/supabase-js'
 
 export async function GET(request: Request) {
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
   if (code) {
     try {
-      const supabase = await createClient()
+      const supabase = getUserClient()
       const { error, data } = await supabase.auth.exchangeCodeForSession(code)
       
       if (!error && data?.session) {
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     }
 
     const { event, session } = (await request.json()) as AuthCallbackPayload
-    const supabase = await createClient()
+    const supabase = getUserClient()
 
     if (!event || !allowedEvents.has(event)) {
       console.warn('Auth callback POST received unsupported event', { event })

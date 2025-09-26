@@ -2,7 +2,7 @@
 title: Feature: Authentication (Google Sign-In)
 owner: @brandongalang
 status: shipped
-last_updated: 2025-09-20
+last_updated: 2025-09-26
 feature_flag: null
 code_paths:
   - components/auth/login-form.tsx
@@ -26,6 +26,7 @@ Lower-friction sign-in and account creation with secure provider flows.
 - UI components for login and sign-up with native authentication
 - Direct token validation with Supabase using `signInWithIdToken`
 - Client-side Supabase session listener mirrors browser auth state into server cookies via `/auth/callback`
+- Server-side session writes now use the shared Supabase client factory (`lib/supabase/clients`) so cookies are managed consistently across features
 - Callback route validates origins, events, and refresh tokens before persisting sessions through `supabase.auth.setSession`
 
 ### Session synchronization lifecycle

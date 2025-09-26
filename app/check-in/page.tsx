@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getUserClient } from '@/lib/supabase/clients'
 import { statusForPath } from '@/config/features'
 import ComingSoonPage from '@/components/common/ComingSoonPage'
 import { dev } from '@/config/dev'
@@ -10,7 +10,7 @@ export default async function CheckInPage() {
     return <ComingSoonPage featureKey={feature.key} />
   }
 
-  const supabase = await createClient()
+  const supabase = getUserClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()

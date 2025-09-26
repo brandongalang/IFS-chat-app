@@ -2,8 +2,8 @@ import { createTool } from '@mastra/core'
 import { z } from 'zod'
 import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/dev'
 import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, PartRow, PartEvidence, PartUpdate, ToolResult, SessionRow } from '@/lib/types/database'
-import { createClient } from '@/lib/supabase/client'
 
 const evidenceItemSchema = z.object({
   type: z.enum(['direct_mention', 'pattern', 'behavior', 'emotion']).describe('Type of evidence'),
@@ -49,9 +49,15 @@ const findPatterns = createTool({
   inputSchema: findPatternsSchema,
   execute: async ({ context }): Promise<ToolResult> => {
     try {
-      const { userId, sessionLimit, minConfidence, includeExistingParts } = context as z.infer<typeof findPatternsSchema>
+      const { supabase, userId, sessionLimit, minConfidence, includeExistingParts } = context as z.infer<typeof findPatternsSchema> & {
+        supabase?: SupabaseClient<Database>
+      }
+
+      if (!supabase) {
+        return { success: false, error: 'Supabase client not provided to tool context' }
+      }
+
       const resolvedUserId = await resolveUserId(userId)
-      const supabase = createClient()
 
       devLog('findPatterns called', { 
         userId: resolvedUserId, 

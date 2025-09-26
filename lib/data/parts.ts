@@ -1,8 +1,6 @@
 import 'server-only'
 
 import { z } from 'zod'
-import { createServerClient } from '@supabase/ssr'
-import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import { resolveUserId, requiresUserConfirmation, devLog, dev } from '@/config/dev'
 import type {
   Database,
@@ -16,7 +14,7 @@ import type {
   PartNoteRow,
 } from '../types/database'
 import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { getServiceClient, getUserClient } from '@/lib/supabase/clients'
 import { getSupabaseKey, getSupabaseServiceRoleKey, getSupabaseUrl } from '@/lib/supabase/config'
 import { isMemoryV2Enabled } from '@/lib/memory/config'
 import { recordSnapshotUsage } from '@/lib/memory/observability'
@@ -70,15 +68,10 @@ function getSupabaseClient() {
   const serviceRole = getSupabaseServiceRoleKey()
   if (dev.enabled && serviceRole) {
     // Dev-only bypass with service role on server
-    return createAdminClient()
+    return getServiceClient()
   }
 
-  return createServerClient<Database>(url, anonKey, {
-    cookies: {
-      getAll: () => [],
-      setAll: () => {},
-    },
-  })
+  return getUserClient()
 }
 
 /**
@@ -326,7 +319,8 @@ export async function createEmergingPart(input: CreateEmergingPartInput): Promis
     }
 
     // Use action logger for INSERT with rollback capability
-    const { actionLogger } = await import('../database/action-logger')
+    const { createActionLogger } = await import('../database/action-logger')
+    const actionLogger = createActionLogger(supabase)
     const data = await actionLogger.loggedInsert<PartRow>(
       'parts',
       partInsert as any,
@@ -505,7 +499,8 @@ export async function updatePart(input: UpdatePartInput): Promise<UpdatePartResu
     }
 
     // Use action logger for UPDATE with rollback capability
-    const { actionLogger } = await import('../database/action-logger')
+    const { createActionLogger } = await import('../database/action-logger')
+    const actionLogger = createActionLogger(supabase)
     const data = await actionLogger.loggedUpdate<PartRow>(
       'parts',
       validated.partId,
@@ -835,7 +830,8 @@ export async function logRelationship(input: LogRelationshipInput): Promise<LogR
       }
 
       try {
-        const { actionLogger } = await import('../database/action-logger')
+        const { createActionLogger } = await import('../database/action-logger')
+        const actionLogger = createActionLogger(supabase)
         const updated = await actionLogger.loggedUpdate<PartRelationshipRow>(
           'part_relationships',
           existing.id,
@@ -901,7 +897,8 @@ export async function logRelationship(input: LogRelationshipInput): Promise<LogR
       return createdDirect as LogRelationshipResult
     }
 
-    const { actionLogger } = await import('../database/action-logger')
+    const { createActionLogger } = await import('../database/action-logger')
+    const actionLogger = createActionLogger(supabase)
     const created = await actionLogger.loggedInsert<PartRelationshipRow>(
       'part_relationships',
       insert as any,

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-import { createClient } from '@/lib/supabase/server'
+import { getUserClient } from '@/lib/supabase/clients'
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 import { getInboxItemById } from '@/lib/data/inbox-items'
 import type { InboxItem } from '@/types/inbox'
@@ -42,7 +42,7 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const supabase = (await createClient()) as SupabaseClient<Database>
+  const supabase = getUserClient() as SupabaseClient<Database>
   const {
     data: { user },
   } = await supabase.auth.getUser()

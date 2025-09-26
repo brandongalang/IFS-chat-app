@@ -1,37 +1,8 @@
 import { createTool } from '@mastra/core'
 import { z } from 'zod'
-import { actionLogger } from '../../lib/database/action-logger'
-import { createServerClient } from '@supabase/ssr'
+import { DatabaseActionLogger } from '../../lib/database/action-logger'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../lib/types/database'
-
-// Minimal Supabase client for server-side tool execution
-function getEnvVar(keys: string[]): string | undefined {
-  const anyProcessEnv = typeof process !== 'undefined' ? (process as any).env : undefined
-  if (anyProcessEnv) {
-    for (const k of keys) {
-      const v = anyProcessEnv[k]
-      if (v) return v as string
-    }
-  }
-  return undefined
-}
-
-function getSupabaseClient() {
-  const url = getEnvVar(['NEXT_PUBLIC_SUPABASE_URL'])
-  const anonKey = getEnvVar(['NEXT_PUBLIC_SUPABASE_ANON_KEY'])
-  if (!url || !anonKey) {
-    throw new Error(
-      "Your project's URL and Key are required to create a Supabase client!\n\n" +
-      'Missing NEXT_PUBLIC_SUPABASE_URL and/or NEXT_PUBLIC_SUPABASE_ANON_KEY.'
-    )
-  }
-  return createServerClient<Database>(url, anonKey, {
-    cookies: {
-      getAll: () => [],
-      setAll: () => {}
-    }
-  })
-}
 
 const recordPartAssessmentSchema = z.object({
   userId: z.string().uuid().describe('User ID who owns the part'),
@@ -46,8 +17,10 @@ const recordPartAssessmentSchema = z.object({
 
 export type RecordPartAssessmentInput = z.infer<typeof recordPartAssessmentSchema>
 
-export async function recordPartAssessment(input: RecordPartAssessmentInput) {
-  const supabase = getSupabaseClient()
+export async function recordPartAssessment(
+  supabase: SupabaseClient<Database>,
+  input: RecordPartAssessmentInput,
+) {
 
   // Insert assessment row with idempotency
   const { error: assessErr } = await supabase
@@ -76,7 +49,8 @@ export async function recordPartAssessment(input: RecordPartAssessmentInput) {
   const updates = { confidence: input.score, updated_at: new Date().toISOString() }
 
   try {
-    const updated = await actionLogger.loggedUpdate(
+    const logger = new DatabaseActionLogger(supabase)
+    const updated = await logger.loggedUpdate(
       'parts',
       input.partId,
       updates,
@@ -102,7 +76,15 @@ export const recordPartAssessmentTool = createTool({
   description: 'Record an identification assessment for a part (LLM-as-judge or human) and set the part\'s confidence explicitly. Provide idempotencyKey to avoid duplicate application on retries.',
   inputSchema: recordPartAssessmentSchema,
   execute: async ({ context }) => {
-    const result = await recordPartAssessment(context)
+    const { supabase, ...input } = context as RecordPartAssessmentInput & {
+      supabase?: SupabaseClient<Database>
+    }
+
+    if (!supabase) {
+      throw new Error('Supabase client not provided to assessment tool context')
+    }
+
+    const result = await recordPartAssessment(supabase, input)
     if (!result.success) throw new Error(result.error)
     return result.data
   }
@@ -111,4 +93,3 @@ export const recordPartAssessmentTool = createTool({
 export const assessmentTools = {
   recordPartAssessment: recordPartAssessmentTool
 }
-

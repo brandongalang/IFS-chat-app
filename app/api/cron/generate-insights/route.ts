@@ -2,11 +2,11 @@ import { DAY_MS, HOUR_MS, INSIGHT_COOLDOWN_HOURS } from '@/config/time'
 import { getMastra } from '@/mastra'
 import { requireCronAuth } from '@/lib/api/cron-auth'
 import { jsonResponse, errorResponse } from '@/lib/api/response'
-import { createClient } from '@/lib/supabase/server'
+import { getServiceClient } from '@/lib/supabase/clients'
 import type { Json } from '@/lib/types/database'
 
 async function saveInsightsToDb(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof getServiceClient>,
   userId: string,
   insights: Array<{ type: string; title: string; body: string; sourceSessionIds?: string[] }>,
 ): Promise<boolean> {
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
   }
 
   console.log('[Cron] Starting daily insight generation job.')
-  const supabase = await createClient()
+  const supabase = getServiceClient()
 
   const { data: users, error: usersError } = await supabase.from('users').select('id')
 

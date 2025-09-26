@@ -10,11 +10,12 @@ This runbook covers how to diagnose and recover issues with the client → serve
 ## Architecture snapshot
 - **Client listener:** `components/auth/supabase-session-listener.tsx` subscribes to Supabase auth events and posts `{ event, session }` payloads to `/auth/callback` with exponential backoff (3 attempts, 250ms → 1s).
 - **Callback (GET):** `app/auth/callback/route.ts` exchanges OAuth codes, validates errors, and redirects back to `next`.
-- **Callback (POST):** Validates the `Origin` header, ensures the event is one of `SIGNED_IN | TOKEN_REFRESHED | SIGNED_OUT`, verifies the session against Supabase, and persists it via `supabase.auth.setSession` or `signOut`.
+- **Callback (POST):** Validates the `Origin` header, ensures the event is one of `SIGNED_IN | TOKEN_REFRESHED | SIGNED_OUT`, verifies the session against Supabase, and persists it via `supabase.auth.setSession` or `signOut` using the shared server client created in `lib/supabase/clients`.
 - **Origins allowlist:** Built from request origin, `BASE_URL`, `APP_BASE_URL`, `NEXT_PUBLIC_APP_URL`, and `https://${VERCEL_URL}`.
 
 ## Preconditions
 - `SUPABASE_SERVICE_ROLE_KEY` is available to the server runtime (required to validate and set sessions)
+- `IFS_MODEL`, `IFS_TEMPERATURE`, `IFS_PROVIDER_BASE_URL` configured alongside Supabase keys so Mastra agents invoked during callback reuse the same provider defaults
 - Supabase Auth has refresh token rotation enabled (`enable_refresh_token_rotation = true`)
 - `BASE_URL` (or equivalent) matches the domain being used
 

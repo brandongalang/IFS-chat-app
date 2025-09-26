@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getUserClient } from '@/lib/supabase/clients'
 import { errorResponse, HTTP_STATUS } from '@/lib/api/response'
 import { isInboxActionsEnabled, isInboxEnabled } from '@/config/features'
 import type { InboxActionRequest } from '@/types/inbox'
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     return errorResponse('subjectId is required', HTTP_STATUS.BAD_REQUEST)
   }
 
-  const supabase = await createClient()
+  const supabase = getUserClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

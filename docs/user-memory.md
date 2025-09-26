@@ -20,13 +20,14 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
   - Finds users active in last 24h, runs the update pipeline for each
   - Returns per-user result and latest version if saved
 
-## Environment variables
+## Environment variables (updated 2025-09-26)
 - Required on server:
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `SUPABASE_SERVICE_ROLE_KEY`
   - `CRON_SECRET` (shared secret for the cron endpoint)
 - Optional:
   - `OPENROUTER_API_KEY` (LLM for summarization; falls back if unset)
+  - `IFS_MODEL`, `IFS_TEMPERATURE`, `IFS_PROVIDER_BASE_URL` (shared Mastra provider config)
   - `USER_MEMORY_CHECKPOINT_EVERY` (default 50)
 
 ## Scheduling
@@ -59,7 +60,7 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - `supabase start` (if needed)
 - `supabase db push --local`
 
-## Implementation
+## Implementation (updated 2025-09-26)
 - Service: `lib/memory/service.ts`
   - `reconstructMemory(userId)`
   - `generateMemoryUpdate({ userId, oldMemory, todayData })` (LLM-backed, Zod-validated)
@@ -68,3 +69,4 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - Types: `lib/memory/types.ts`
 - Cron route: `app/api/cron/memory-update/route.ts`
 - Auth helper: `lib/api/cron-auth.ts` (validates headers & allows dev bypass when `CRON_SECRET` unset)
+- Supabase client access flows through `lib/supabase/clients.ts`, which lazily loads the server client to avoid bundling `next/headers` into browser code paths.

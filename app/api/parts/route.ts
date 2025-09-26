@@ -1,8 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
+import { getUserClient } from '@/lib/supabase/clients'
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 
 export async function GET() {
-  const supabase = await createClient()
+  const supabase = getUserClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
