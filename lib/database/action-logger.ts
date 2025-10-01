@@ -1,6 +1,4 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { createClient } from '../supabase/client'
-import { getSupabaseKey, getSupabaseUrl } from '../supabase/config'
 import { logEvent } from '@/lib/memory/events-logger'
 import type { Database } from '@/lib/types/database'
 
@@ -70,8 +68,8 @@ export interface ActionSummary {
 export class DatabaseActionLogger {
   private supabase: SupabaseClient<Database>
 
-  constructor(supabase?: SupabaseClient<Database>) {
-    this.supabase = supabase ?? (createClient() as SupabaseClient<Database>)
+  constructor(supabase: SupabaseClient<Database>) {
+    this.supabase = supabase
   }
 
   /**
@@ -339,14 +337,6 @@ case 'add_part_evidence':
 }
 
 // Export singleton instance
-const supabaseUrl = getSupabaseUrl()
-const supabaseKey = getSupabaseKey()
-const hasSupabase =
-  typeof supabaseUrl === 'string' &&
-  /^https?:\/\//.test(supabaseUrl) &&
-  typeof supabaseKey === 'string' &&
-  supabaseKey.length > 20
-
 export class NoopActionLogger {
   async loggedInsert<T extends DataObject>(_table: string, data: Partial<T>): Promise<T> {
     // Return the data as-is to simulate insert result
@@ -372,10 +362,8 @@ export class NoopActionLogger {
 export type ActionLogger = DatabaseActionLogger | NoopActionLogger
 
 export function createActionLogger(supabase?: SupabaseClient<Database>): ActionLogger {
-  if (!hasSupabase) {
+  if (!supabase) {
     return new NoopActionLogger()
   }
   return new DatabaseActionLogger(supabase)
 }
-
-export const actionLogger: ActionLogger = createActionLogger()

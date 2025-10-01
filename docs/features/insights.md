@@ -2,7 +2,7 @@
 title: Feature: Insights (Scaffolding)
 owner: @brandongalang
 status: experimental
-last_updated: 2025-08-31
+last_updated: 2025-09-26
 feature_flag: null
 code_paths:
   - app/api/insights/*
@@ -20,6 +20,7 @@ Surface trends and patterns across sessions and parts over time.
 
 ## How it works
 - API routes exist for requesting insights and a cron endpoint for generation
+- `mastra/workflows/generate-insight-workflow.ts` orchestrates research + writing using the shared insight generator agent with centralized model configuration
 - lib/insights/generator.ts contains placeholder logic pending full implementation
 
 ## Data model

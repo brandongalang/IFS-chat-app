@@ -76,4 +76,4 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - Cron route: `app/api/cron/memory-update/route.ts`
 - **Chat Integration**: Memory maintenance removed from `app/api/chat/route.ts` - now handled by background workers
 - Auth helper: `lib/api/cron-auth.ts` (validates headers & allows dev bypass when `CRON_SECRET` unset)
-- Supabase client access flows through `lib/supabase/clients.ts`, which lazily loads the server client to avoid bundling `next/headers` into browser code paths.
+- Supabase client access flows through `lib/supabase/clients.ts`, which exposes shared helpers (`getUserClient`, `getServiceClient`, `getBrowserSupabaseClient`) suitable for server, service-role, and browser usage.

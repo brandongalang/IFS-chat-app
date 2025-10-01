@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getUserClient } from '@/lib/supabase/clients'
 import { jitTopUpInsights } from '@/lib/insights/generator'
 import { getSupabaseKey, getSupabaseUrl } from '@/lib/supabase/config'
 import { jsonResponse, errorResponse } from '@/lib/api/response'
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
       return jsonResponse(sample.slice(0, limit))
     }
 
-    const supabase = await createClient()
+    const supabase = getUserClient()
 
     let userId: string | null = null
     try {
