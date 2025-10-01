@@ -95,7 +95,7 @@ const toRecord = (value: unknown): MetadataRecord => {
   return {}
 }
 
-const toString = (value: unknown): string | undefined => {
+const toTrimmedString = (value: unknown): string | undefined => {
   if (typeof value === 'string') {
     const trimmed = value.trim()
     return trimmed.length > 0 ? trimmed : undefined
@@ -125,7 +125,7 @@ const toBoolean = (value: unknown): boolean | undefined => {
 }
 
 const toDateString = (value: unknown): string | null => {
-  const raw = toString(value)
+  const raw = toTrimmedString(value)
   if (!raw) return null
   const date = new Date(raw)
   if (Number.isNaN(date.getTime())) return null
@@ -142,23 +142,24 @@ const collectTags = (value: unknown): string[] | undefined => {
 
 const buildScaleActions = (metadata: MetadataRecord): InboxActionSchema => {
   const labels = toRecord(metadata.response_labels)
-  const helperText = toString(metadata.action_helper_text)
+  const helperText = toTrimmedString(metadata.action_helper_text)
   const allowNotes = toBoolean(metadata.allow_notes)
   return {
     kind: 'scale4',
-    agreeStrongLabel: toString(labels.agreeStrong) ?? toString(labels.agree_strong) ?? DEFAULT_SCALE_LABELS.agreeStrong,
-    agreeLabel: toString(labels.agree) ?? DEFAULT_SCALE_LABELS.agree,
-    disagreeLabel: toString(labels.disagree) ?? DEFAULT_SCALE_LABELS.disagree,
+    agreeStrongLabel:
+      toTrimmedString(labels.agreeStrong) ?? toTrimmedString(labels.agree_strong) ?? DEFAULT_SCALE_LABELS.agreeStrong,
+    agreeLabel: toTrimmedString(labels.agree) ?? DEFAULT_SCALE_LABELS.agree,
+    disagreeLabel: toTrimmedString(labels.disagree) ?? DEFAULT_SCALE_LABELS.disagree,
     disagreeStrongLabel:
-      toString(labels.disagreeStrong) ?? toString(labels.disagree_strong) ?? DEFAULT_SCALE_LABELS.disagreeStrong,
+      toTrimmedString(labels.disagreeStrong) ?? toTrimmedString(labels.disagree_strong) ?? DEFAULT_SCALE_LABELS.disagreeStrong,
     helperText: helperText ?? undefined,
     allowNotes: allowNotes ?? true,
   }
 }
 
 const buildAcknowledgeActions = (metadata: MetadataRecord): InboxActionSchema => {
-  const label = toString(metadata.ack_label)
-  const helperText = toString(metadata.action_helper_text)
+  const label = toTrimmedString(metadata.ack_label)
+  const helperText = toTrimmedString(metadata.action_helper_text)
   const allowNotes = toBoolean(metadata.allow_notes)
   return {
     kind: 'acknowledge',
@@ -170,8 +171,8 @@ const buildAcknowledgeActions = (metadata: MetadataRecord): InboxActionSchema =>
 
 const resolveEnvelopeType = (item: InboxItem, metadata: MetadataRecord): InboxMessageType => {
   const sourceType = item.sourceType
-  const metaKind = toString(metadata.kind)
-  const insightType = toString(metadata.insight_type)
+  const metaKind = toTrimmedString(metadata.kind)
+  const insightType = toTrimmedString(metadata.insight_type)
 
   if (sourceType === 'part_follow_up' || metaKind === 'stale_part_follow_up') {
     return 'nudge'
@@ -193,18 +194,19 @@ const resolveEnvelopeType = (item: InboxItem, metadata: MetadataRecord): InboxMe
 }
 
 const toInsightPayload = (item: InboxItem, content: MetadataRecord, metadata: MetadataRecord): InsightSpotlightMessage => {
-  const title = toString(content.title) ?? 'Insight update'
-  const summary = toString(content.summary) ?? toString(content.body) ?? 'Open to explore this insight.'
-  const prompt = toString(content.prompt) ?? toString(metadata.prompt)
-  const detailBody = toString(content.body) ?? undefined
+  const title = toTrimmedString(content.title) ?? 'Insight update'
+  const summary =
+    toTrimmedString(content.summary) ?? toTrimmedString(content.body) ?? 'Open to explore this insight.'
+  const prompt = toTrimmedString(content.prompt) ?? toTrimmedString(metadata.prompt)
+  const detailBody = toTrimmedString(content.body) ?? undefined
   const sourcesRaw = Array.isArray(content.sources) ? content.sources : metadata.sources
   const sources = Array.isArray(sourcesRaw)
     ? sourcesRaw
         .map((entry) => {
           if (!entry || typeof entry !== 'object') return null
           const record = entry as MetadataRecord
-          const label = toString(record.label)
-          const url = toString(record.url)
+          const label = toTrimmedString(record.label)
+          const url = toTrimmedString(record.url)
           if (!label || !url) return null
           return { label, url }
         })
@@ -233,8 +235,11 @@ const toInsightPayload = (item: InboxItem, content: MetadataRecord, metadata: Me
 }
 
 const toNudgePayload = (content: MetadataRecord, metadata: MetadataRecord): NudgeMessage => {
-  const headline = toString(content.title) ?? toString(content.headline) ?? 'Gentle reminder'
-  const body = toString(content.body) ?? toString(metadata.body) ?? 'Take a quick action that supports your practice.'
+  const headline =
+    toTrimmedString(content.title) ?? toTrimmedString(content.headline) ?? 'Gentle reminder'
+  const body =
+    toTrimmedString(content.body) ?? toTrimmedString(metadata.body) ??
+    'Take a quick action that supports your practice.'
   const cta = normalizeCta(content.cta ?? metadata.cta)
   return {
     headline,
@@ -244,14 +249,15 @@ const toNudgePayload = (content: MetadataRecord, metadata: MetadataRecord): Nudg
 }
 
 const toNotificationPayload = (content: MetadataRecord, metadata: MetadataRecord): NotificationMessage => {
-  const title = toString(content.title) ?? toString(metadata.title) ?? 'Update'
-  const body = toString(content.body) ?? toString(metadata.body) ?? 'There is something new to review.'
+  const title = toTrimmedString(content.title) ?? toTrimmedString(metadata.title) ?? 'Update'
+  const body =
+    toTrimmedString(content.body) ?? toTrimmedString(metadata.body) ?? 'There is something new to review.'
   const unread = toBoolean(metadata.unread) ?? true
   const linkRecord = toRecord(content.link ?? metadata.link)
-  const linkLabel = toString(linkRecord.label)
-  const linkHref = toString(linkRecord.href)
-  const linkTarget = toString(linkRecord.target)
-  const analyticsTag = toString(linkRecord.analyticsTag)
+  const linkLabel = toTrimmedString(linkRecord.label)
+  const linkHref = toTrimmedString(linkRecord.href)
+  const linkTarget = toTrimmedString(linkRecord.target)
+  const analyticsTag = toTrimmedString(linkRecord.analyticsTag)
   return {
     title,
     body,
@@ -271,14 +277,14 @@ const toNotificationPayload = (content: MetadataRecord, metadata: MetadataRecord
 const normalizeCta = (candidate: unknown): InboxCTA | null => {
   if (!candidate || typeof candidate !== 'object') return null
   const record = candidate as MetadataRecord
-  const label = toString(record.label)
+  const label = toTrimmedString(record.label)
   if (!label) return null
-  const href = toString(record.href)
-  const actionId = toString(record.actionId)
-  const intent = toString(record.intent)
-  const helperText = toString(record.helperText)
-  const targetRaw = toString(record.target)
-  const analyticsTag = toString(record.analyticsTag)
+  const href = toTrimmedString(record.href)
+  const actionId = toTrimmedString(record.actionId)
+  const intent = toTrimmedString(record.intent)
+  const helperText = toTrimmedString(record.helperText)
+  const targetRaw = toTrimmedString(record.target)
+  const analyticsTag = toTrimmedString(record.analyticsTag)
   return {
     label,
     href,

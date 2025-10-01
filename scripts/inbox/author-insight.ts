@@ -11,10 +11,10 @@ loadEnv({ path: path.resolve(process.cwd(), '.env.local') })
 loadEnv({ path: path.resolve(process.cwd(), '.env') })
 
 const argMap = new Map<string, string>()
-for (let i = 2; i < process.argv.length; i += 1) {
+for (let i = 2; i < process.argv.length; i += 2) {
   const key = process.argv[i]
-  const value = process.argv[i + 1]
   if (!key?.startsWith('--')) continue
+  const value = process.argv[i + 1]
   if (!value || value.startsWith('--')) {
     console.error(`Missing value for argument ${key}`)
     process.exit(1)
@@ -28,11 +28,11 @@ const InsightContentSchema = z.object({
   summary: z.string().optional(),
   prompt: z.string().optional(),
   evidence: z.unknown().optional(),
-  sources: z.array(z.object({ label: z.string(), url: z.string() })).optional(),
+  sources: z.array(z.object({ label: z.string(), url: z.string().url() })).optional(),
   cta: z
     .object({
       label: z.string(),
-      href: z.string().optional(),
+      href: z.string().url().optional(),
       helperText: z.string().optional(),
       target: z.enum(['_self', '_blank']).optional(),
     })
@@ -66,6 +66,18 @@ if (!userId) {
   process.exit(1)
 }
 
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+if (!uuidRegex.test(userId)) {
+  console.error('Invalid --user format: expected UUID')
+  process.exit(1)
+}
+
+const allowedTypes = ['session_summary', 'nudge', 'follow_up', 'observation', 'question'] as const
+if (!allowedTypes.includes(type as typeof allowedTypes[number])) {
+  console.error(`Invalid --type value. Expected one of: ${allowedTypes.join(', ')}`)
+  process.exit(1)
+}
+
 if (!contentPath) {
   console.error('Missing required --content <path-to-json> argument')
   process.exit(1)
@@ -77,11 +89,11 @@ const resolveJsonInput = (inputPath: string) => {
     console.error(`File not found: ${absolutePath}`)
     process.exit(1)
   }
-  const raw = fs.readFileSync(absolutePath, 'utf8')
   try {
+    const raw = fs.readFileSync(absolutePath, 'utf8')
     return JSON.parse(raw)
   } catch (error) {
-    console.error(`Failed to parse JSON from ${absolutePath}:`, error)
+    console.error(`Failed to read or parse JSON from ${absolutePath}:`, error)
     process.exit(1)
   }
 }
@@ -121,4 +133,7 @@ async function main() {
   console.log('Title:', content.title)
 }
 
-void main()
+void main().catch((error) => {
+  console.error('Unexpected error:', error)
+  process.exit(1)
+})
