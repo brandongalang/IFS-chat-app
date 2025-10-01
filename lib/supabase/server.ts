@@ -83,3 +83,4 @@ export function createClientWithAccessToken(accessToken: string): SupabaseClient
     },
   })
 }
+

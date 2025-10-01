@@ -1,5 +1,4 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { createClientWithAccessToken } from './supabase/server'
 import { DatabaseActionLogger } from './database/action-logger'
 import type {
   Database,
@@ -11,8 +10,7 @@ import type {
 import { getStorageAdapter, sessionTranscriptPath } from './memory/snapshots/fs-helpers'
 
 export interface ChatSessionServiceOptions {
-  accessToken?: string
-  supabase?: SupabaseClient<Database>
+  supabase: SupabaseClient<Database>
   userId: string
 }
 
@@ -20,20 +18,11 @@ export class ChatSessionService {
   private readonly supabase: SupabaseClient<Database>
   private readonly actionLogger: DatabaseActionLogger
   private readonly userId: string
-  private readonly accessToken?: string
   private userRecordEnsured = false
 
   constructor(options: ChatSessionServiceOptions) {
     this.userId = options.userId
-    this.accessToken = options.accessToken
-
-    if (options.supabase) {
-      this.supabase = options.supabase
-    } else if (options.accessToken) {
-      this.supabase = createClientWithAccessToken(options.accessToken)
-    } else {
-      throw new Error('Supabase client or access token is required to use ChatSessionService')
-    }
+    this.supabase = options.supabase
 
     this.actionLogger = new DatabaseActionLogger(this.supabase)
   }
@@ -145,14 +134,8 @@ export class ChatSessionService {
     email: string | null
     user_metadata?: Record<string, unknown>
   } | null> {
-    if (this.accessToken) {
-      const { data, error } = await this.supabase.auth.getUser(this.accessToken)
-      if (error) {
-        throw new Error(`Failed to fetch authenticated user profile: ${error.message}`)
-      }
-      if (!data?.user) {
-        return null
-      }
+    const { data, error } = await this.supabase.auth.getUser()
+    if (!error && data?.user) {
       return {
         email: data.user.email ?? null,
         user_metadata: data.user.user_metadata as Record<string, unknown> | undefined,
