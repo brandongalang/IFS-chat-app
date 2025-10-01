@@ -5,7 +5,7 @@ import { resolveModel } from '@/config/model'
 import { createIfsAgent } from './agents/ifs-agent'
 import { createInsightGeneratorAgent } from './agents/insight-generator'
 import { createUpdateSummarizerAgent } from './agents/update-summarizer'
-import { generateInsightWorkflow } from './workflows/generate-insight-workflow'
+import { createGenerateInsightWorkflow } from './workflows/generate-insight-workflow'
 
 type Profile = Parameters<typeof createIfsAgent>[0]
 
@@ -33,6 +33,8 @@ if (process.env.NODE_ENV !== 'test') {
 let mastraInstance: any = null
 
 export function createMastra(profile: Profile = null) {
+  const insightGeneratorAgent = createInsightGeneratorAgent(agentConfig)
+
   return new Mastra({
     logger: new PinoLogger({
       name: 'IFS-Therapy-App',
@@ -41,11 +43,11 @@ export function createMastra(profile: Profile = null) {
     // Expose agents and workflows to the Mastra runtime
     agents: {
       ifsAgent: createIfsAgent(profile, agentConfig),
-      insightGeneratorAgent: createInsightGeneratorAgent(agentConfig),
+      insightGeneratorAgent,
       updateSummarizerAgent: createUpdateSummarizerAgent(agentConfig),
     },
     workflows: {
-      generateInsightWorkflow,
+      generateInsightWorkflow: createGenerateInsightWorkflow(insightGeneratorAgent as any),
     },
     // Optional telemetry config can be added here when needed
     // telemetry: { /* configure telemetry here if desired */ },
