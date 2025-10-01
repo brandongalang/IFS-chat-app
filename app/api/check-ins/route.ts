@@ -2,8 +2,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { generateObject } from 'ai'
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { getServiceClient, getUserClient } from '@/lib/supabase/clients'
 import { dev, resolveUserId } from '@/config/dev'
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 
@@ -136,7 +135,7 @@ Keep it grounded, avoid clinical language, and never promise outcomes.`
 
 export async function POST(req: NextRequest) {
   const useAdmin = dev.enabled && !!process.env.SUPABASE_SERVICE_ROLE_KEY
-  const supabase = useAdmin ? createAdminClient() : await createClient()
+  const supabase = useAdmin ? getServiceClient() : getUserClient()
 
   let effectiveUserId: string | null = null
 

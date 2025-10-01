@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getUserClient } from '@/lib/supabase/clients';
 import {
   QuestionsResponse,
   OnboardingQuestion
@@ -20,7 +20,7 @@ import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response';
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = getUserClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {

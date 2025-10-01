@@ -1,5 +1,6 @@
-import { env } from './config/env'
+export { createMastra, getMastra, mastra } from './mastra'
 
+// Minimal Mastra CLI shim to point tooling at the code-defined bootstrap.
 const configObject = {
   name: 'ifs-therapy-companion',
   agents: {
@@ -8,15 +9,8 @@ const configObject = {
   tools: {
     directory: './mastra/tools',
   },
-  providers: {
-    openrouter: {
-      apiKey: env.OPENROUTER_API_KEY,
-    },
-  },
-  db: {
-    provider: 'supabase',
-    url: env.NEXT_PUBLIC_SUPABASE_URL,
-    apiKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  workflows: {
+    directory: './mastra/workflows',
   },
 }
 

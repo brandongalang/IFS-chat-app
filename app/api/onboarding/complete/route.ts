@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import questionsConfig from '@/config/onboarding-questions.json';
-import { createClient } from '@/lib/supabase/server';
+import { getUserClient } from '@/lib/supabase/clients';
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response';
 import { validateCompletionRequest } from '@/lib/onboarding/validate-completion-request';
 import { completeOnboardingState } from '@/lib/onboarding/complete-state';
@@ -28,7 +28,7 @@ const getRequiredQuestionIds = (stage: number): string[] => onboardingRequiremen
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = getUserClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
