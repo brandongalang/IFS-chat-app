@@ -24,11 +24,10 @@ async function main() {
     status: 'emerging',
     category: 'manager',
     limit: 5,
-    userId: uuid1,
   })
 
-  getPartByIdSchema.parse({ partId: uuid1, userId: uuid2 })
-  getPartDetailSchema.parse({ partId: uuid1, userId: uuid2 })
+  getPartByIdSchema.parse({ partId: uuid1 })
+  getPartDetailSchema.parse({ partId: uuid1 })
 
   createEmergingPartSchema.parse({
     name: 'Inner Critic',
@@ -62,13 +61,11 @@ async function main() {
     emotions: ['shame'],
     beliefs: ['must be perfect'],
     somaticMarkers: ['tight chest'],
-    userId: uuid2,
     userConfirmed: true,
   })
 
   updatePartSchema.parse({
     partId: uuid1,
-    userId: uuid2,
     updates: {
       name: 'New Name',
       status: 'acknowledged',
@@ -95,7 +92,6 @@ async function main() {
   })
 
   getPartRelationshipsSchema.parse({
-    userId: uuid2,
     partId: uuid1,
     relationshipType: 'polarized',
     status: 'active',
@@ -104,7 +100,6 @@ async function main() {
   })
 
   logRelationshipSchema.parse({
-    userId: uuid2,
     partIds: [uuid1, uuid4],
     type: 'allied',
     description: 'Work together',

@@ -12,7 +12,7 @@
 - [x] Adjust `/api/inbox/[id]/action` to store new outcomes and clear items.
 - [x] Add durable analytics table + server emitters for delivered/opened/actioned.
 - [x] Create guarded admin/CLI helper for authoring validated `insights` entries.
-- [ ] Ship unit/e2e coverage for mapper, action flow, and analytics logging. *(`npm run test:unit` now runs the trimmed suite; the legacy rollback test was removed per product decision. Current failure is unrelated: `scripts/tests/unit/part-schemas.test.ts` rejects the new `userId` key and needs follow-up.)*
+- [~] Ship unit/e2e coverage for mapper, action flow, and analytics logging. *(Unit suite updated; `npm run test:unit` now passes. E2E coverage still TBD once generation workflows land.)*
 
 ## Open Decisions / Assumptions
 - Slider labels: "Agree a lot", "Agree a little", "Disagree a little", "Disagree a lot" (can be refined with UX copy later).
