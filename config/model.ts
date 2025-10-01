@@ -5,7 +5,7 @@ export const MODEL_MAP = {
 } as const
 
 export type ModelKey = keyof typeof MODEL_MAP
-export type ModelId = (typeof MODEL_MAP)[ModelKey]['id']
+export type ModelId = string
 
 export function resolveModel(key?: string): ModelId {
   if (!key) {
@@ -22,6 +22,8 @@ export function resolveModel(key?: string): ModelId {
     return candidate.id
   }
 
-  console.warn(`[Model Config] Unknown model "${key}", falling back to glm-4.5-air`)
+  if (process.env.NODE_ENV !== 'test') {
+    console.warn(`[Model Config] Unknown model "${key}", falling back to glm-4.5-air`)
+  }
   return MODEL_MAP['glm-4.5-air'].id
 }

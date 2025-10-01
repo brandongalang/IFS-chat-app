@@ -4,7 +4,7 @@ const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
   // Providers / Secrets
-  OPENROUTER_API_KEY: z.string().min(1),
+  OPENROUTER_API_KEY: z.string().optional(),
   OPENROUTER_BASE_URL: z.string().url().optional(),
   IFS_MODEL: z.string().default('glm-4.5-air'),
   IFS_PROVIDER_BASE_URL: z.string().url().optional(),

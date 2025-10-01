@@ -53,8 +53,13 @@ export function createMastra(profile: Profile = null) {
 }
 
 export function getMastra(profile: Profile = null) {
+  // For user-scoped calls, create a fresh instance to avoid cross-user state.
+  if (profile) {
+    return createMastra(profile)
+  }
+  // For CLI/dev use, keep a default cached instance.
   if (!mastraInstance) {
-    mastraInstance = createMastra(profile)
+    mastraInstance = createMastra(null)
   }
   return mastraInstance as any
 }
