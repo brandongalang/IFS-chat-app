@@ -28,7 +28,14 @@ Rules:
 - Keep language gentle and invitational.
 - Output JSON matching the required schema exactly.`
 
-export type InboxObservationAgent = Agent<'inboxObservationAgent', typeof observationResearchTools>
+export type InboxObservationAgentRunResult = {
+  status: string
+  output?: unknown
+}
+
+export type InboxObservationAgent = Agent<'inboxObservationAgent', typeof observationResearchTools> & {
+  run: (options: { input: string; context?: Record<string, unknown> }) => Promise<InboxObservationAgentRunResult>
+}
 
 export interface InboxObservationAgentResult extends ObservationBatch {}
 

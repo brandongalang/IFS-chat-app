@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type { Database, InboxObservationStatus } from '@/lib/types/database'
 import { observationBatchSchema, type ObservationBatch, type ObservationCandidate } from './observation-schema'
-import type { InboxObservationAgent } from '@/mastra/agents/inbox-observation'
+import type { InboxObservationAgent, InboxObservationAgentRunResult } from '@/mastra/agents/inbox-observation'
 import {
   getInboxQueueSnapshot,
   getRecentObservationHistory,
@@ -81,7 +81,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
 
   const prompt = buildAgentPrompt({ userId, history, remaining, now })
 
-  let agentRun: Awaited<ReturnType<InboxObservationAgent['run']>>
+  let agentRun: InboxObservationAgentRunResult
   try {
     agentRun = await agent.run({
       input: prompt,

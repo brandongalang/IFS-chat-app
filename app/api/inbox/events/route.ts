@@ -3,7 +3,7 @@ import { getUserClient } from '@/lib/supabase/clients'
 import { errorResponse, HTTP_STATUS } from '@/lib/api/response'
 import { isInboxActionsEnabled, isInboxEnabled } from '@/config/features'
 import type { InboxActionRequest, InboxEventType, InboxEnvelopeSource, InboxMessageType } from '@/types/inbox'
-import { isValidUuid, shouldPersistInboxEvent } from './helpers'
+import { shouldPersistInboxEvent } from './helpers'
 
 const allowedEventTypes: InboxEventType[] = ['delivered', 'opened', 'actioned']
 
