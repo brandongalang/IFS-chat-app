@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
-    "test:unit": "npm exec tsx scripts/tests/unit/scoring.test.ts && npm exec tsx scripts/tests/unit/selector.test.ts && npm exec tsx scripts/tests/unit/prompt.test.ts && npm exec tsx scripts/tests/unit/security.test.ts && npm exec tsx scripts/tests/unit/part-schemas.test.ts && npm exec tsx scripts/tests/unit/inbox-mapper.test.ts",
+    "test:unit": "npm exec tsx scripts/tests/unit/scoring.test.ts && npm exec tsx scripts/tests/unit/selector.test.ts && npm exec tsx scripts/tests/unit/prompt.test.ts && npm exec tsx scripts/tests/unit/security.test.ts && npm exec tsx scripts/tests/unit/part-schemas.test.ts && npm exec tsx scripts/tests/unit/inbox-mapper.test.ts && npm exec tsx scripts/tests/unit/inbox-row-mapper.test.ts && npm exec tsx scripts/tests/unit/inbox-events.test.ts && npm exec tsx scripts/tests/unit/inbox-queue.test.ts && npm exec tsx scripts/tests/unit/inbox-search-guards.test.ts",
     "test:integration": "tsx scripts/tests/integration/check-ins.test.ts",
     "test:ui": "tsx scripts/tests/ui/check-in-slots.test.tsx",
     "test": "npm run test:unit && npm run test:integration && npm run test:ui && tsx scripts/test-onboarding.ts",
@@ -32,7 +32,8 @@
     "smoke:md": "tsx scripts/smoke-md-tools.ts",
     "read:snapshot": "tsx scripts/read-snapshot.ts",
     "scaffold:first-run": "tsx scripts/scaffold-first-run.ts",
-    "inbox:author": "tsx scripts/inbox/author-insight.ts"
+    "inbox:author": "tsx scripts/inbox/author-insight.ts",
+    "inbox:generate": "tsx scripts/inbox/generate-observations.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "^2.0.26",
