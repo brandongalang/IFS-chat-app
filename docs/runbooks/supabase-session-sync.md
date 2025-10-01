@@ -52,3 +52,4 @@ This runbook covers how to diagnose and recover issues with the client → serve
 - `components/auth/supabase-session-listener.tsx`
 - `app/auth/callback/route.ts`
 - `supabase/config.toml`
+- `supabase/migrations/106_inbox_observations.sql` (adds observation/job logging tables; no changes required for session sync but ensure migrations run alongside auth updates)
