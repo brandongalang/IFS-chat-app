@@ -10,33 +10,14 @@ import type { Database } from '@/lib/types/database'
 import {
   confirmInboxItemAction,
   dismissInboxItemAction,
-  snoozeInboxItemAction,
   type ConfirmInboxActionPayload,
   type DismissInboxActionPayload,
-  type SnoozeInboxActionPayload,
 } from '@/lib/data/inbox-actions'
 
-const confirmActionSchema = z.object({
-  action: z.literal('confirm'),
-  note: z.string().trim().max(1000).optional(),
+const responseSchema = z.object({
+  action: z.enum(['agree_strong', 'agree', 'disagree', 'disagree_strong', 'ack']),
+  notes: z.string().trim().max(1000).optional(),
 })
-
-const dismissActionSchema = z.object({
-  action: z.literal('dismiss'),
-  reason: z.string().trim().max(1000).optional(),
-})
-
-const snoozeActionSchema = z.object({
-  action: z.literal('snooze'),
-  snoozeUntil: z.coerce.date(),
-  reason: z.string().trim().max(1000).optional(),
-})
-
-const payloadSchema = z.discriminatedUnion('action', [
-  confirmActionSchema,
-  dismissActionSchema,
-  snoozeActionSchema,
-])
 
 export async function POST(
   request: NextRequest,
@@ -66,7 +47,7 @@ export async function POST(
     return errorResponse('Invalid JSON body', HTTP_STATUS.BAD_REQUEST)
   }
 
-  const parsedPayload = payloadSchema.safeParse(payloadJson)
+  const parsedPayload = responseSchema.safeParse(payloadJson)
   if (!parsedPayload.success) {
     return errorResponse('Invalid action payload', HTTP_STATUS.BAD_REQUEST)
   }
@@ -88,49 +69,32 @@ export async function POST(
   try {
     let updatedItem: InboxItem
 
-    switch (payload.action) {
-      case 'confirm': {
-        const actionPayload: ConfirmInboxActionPayload = {
-          note: payload.note,
-        }
-
-        updatedItem = await confirmInboxItemAction({
-          supabase,
-          item: inboxItem,
-          userId: user.id,
-          payload: actionPayload,
-        })
-        break
+    if (payload.action === 'agree_strong' || payload.action === 'agree' || payload.action === 'ack') {
+      const actionPayload: ConfirmInboxActionPayload = {
+        note: payload.notes,
+        actionValue: payload.action,
       }
-      case 'dismiss': {
-        const actionPayload: DismissInboxActionPayload = {
-          reason: payload.reason,
-        }
 
-        updatedItem = await dismissInboxItemAction({
-          supabase,
-          item: inboxItem,
-          userId: user.id,
-          payload: actionPayload,
-        })
-        break
+      updatedItem = await confirmInboxItemAction({
+        supabase,
+        item: inboxItem,
+        userId: user.id,
+        payload: actionPayload,
+      })
+    } else if (payload.action === 'disagree' || payload.action === 'disagree_strong') {
+      const actionPayload: DismissInboxActionPayload = {
+        reason: payload.notes,
+        actionValue: payload.action,
       }
-      case 'snooze': {
-        const actionPayload: SnoozeInboxActionPayload = {
-          snoozeUntil: payload.snoozeUntil,
-          reason: payload.reason,
-        }
 
-        updatedItem = await snoozeInboxItemAction({
-          supabase,
-          item: inboxItem,
-          userId: user.id,
-          payload: actionPayload,
-        })
-        break
-      }
-      default:
-        return errorResponse('Unsupported action', HTTP_STATUS.BAD_REQUEST)
+      updatedItem = await dismissInboxItemAction({
+        supabase,
+        item: inboxItem,
+        userId: user.id,
+        payload: actionPayload,
+      })
+    } else {
+      return errorResponse('Unsupported action', HTTP_STATUS.BAD_REQUEST)
     }
 
     return jsonResponse({ item: updatedItem })

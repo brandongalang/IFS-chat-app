@@ -187,11 +187,22 @@ function coerceNotificationPayload(candidate: unknown): NotificationMessage | nu
 function coerceActions(candidate: unknown): InboxActionSchema | undefined {
   if (!isRecord(candidate)) return undefined
   const kind = safeString(candidate.kind)
-  if (kind === 'boolean') {
+  if (kind === 'scale4') {
     return {
-      kind: 'boolean',
-      positiveLabel: safeString(candidate.positiveLabel) ?? undefined,
-      negativeLabel: safeString(candidate.negativeLabel) ?? undefined,
+      kind: 'scale4',
+      agreeStrongLabel: safeString(candidate.agreeStrongLabel) ?? undefined,
+      agreeLabel: safeString(candidate.agreeLabel) ?? undefined,
+      disagreeLabel: safeString(candidate.disagreeLabel) ?? undefined,
+      disagreeStrongLabel: safeString(candidate.disagreeStrongLabel) ?? undefined,
+      helperText: safeString(candidate.helperText) ?? undefined,
+      allowNotes: typeof candidate.allowNotes === 'boolean' ? candidate.allowNotes : undefined,
+    }
+  }
+  if (kind === 'acknowledge') {
+    return {
+      kind: 'acknowledge',
+      label: safeString(candidate.label) ?? undefined,
+      helperText: safeString(candidate.helperText) ?? undefined,
       allowNotes: typeof candidate.allowNotes === 'boolean' ? candidate.allowNotes : undefined,
     }
   }

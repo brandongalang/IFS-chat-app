@@ -20,18 +20,18 @@ export interface InboxItem {
   createdAt: string
 }
 
-export interface PaginatedInboxResponse {
-  items: InboxItem[]
-  nextCursor: string | null
-}
-
 // Inbox feed envelope types used by client-side normalization helpers
 
 export type InboxMessageType = 'insight_spotlight' | 'nudge' | 'cta' | 'notification'
 export type InboxEnvelopeSource = 'network' | 'fallback' | 'supabase' | 'edge'
 
-export type InboxEventType = 'delivered' | 'opened' | 'dismissed' | 'cta_clicked'
-export type InboxQuickActionValue = 'yes' | 'no'
+export type InboxEventType = 'delivered' | 'opened' | 'actioned'
+export type InboxQuickActionValue =
+  | 'agree_strong'
+  | 'agree'
+  | 'disagree'
+  | 'disagree_strong'
+  | 'ack'
 
 export interface InboxCTA {
   label: string
@@ -43,14 +43,24 @@ export interface InboxCTA {
   analyticsTag?: string
 }
 
-export interface InboxBooleanActionSchema {
-  kind: 'boolean'
-  positiveLabel?: string
-  negativeLabel?: string
+export interface InboxScaleActionSchema {
+  kind: 'scale4'
+  agreeStrongLabel?: string
+  agreeLabel?: string
+  disagreeLabel?: string
+  disagreeStrongLabel?: string
+  helperText?: string
   allowNotes?: boolean
 }
 
-export type InboxActionSchema = InboxBooleanActionSchema
+export interface InboxAcknowledgeActionSchema {
+  kind: 'acknowledge'
+  label?: string
+  helperText?: string
+  allowNotes?: boolean
+}
+
+export type InboxActionSchema = InboxScaleActionSchema | InboxAcknowledgeActionSchema
 
 export interface InboxEnvelopeBase {
   id: string
@@ -182,6 +192,7 @@ export interface InboxFeedResponse {
   source?: InboxEnvelopeSource | 'fallback'
   variant?: InboxFeedVariant
   reason?: string
+  nextCursor?: string | null
 }
 
 export interface InboxFeedResult {
@@ -190,6 +201,7 @@ export interface InboxFeedResult {
   source: InboxEnvelopeSource | 'fallback'
   generatedAt?: string
   reason?: string
+  nextCursor?: string | null
 }
 
 export interface InboxActionRequest {
@@ -197,4 +209,7 @@ export interface InboxActionRequest {
   eventType?: InboxEventType
   action?: InboxQuickActionValue
   notes?: string
+  messageType?: InboxMessageType
+  source?: InboxEnvelopeSource | 'fallback'
+  attributes?: Record<string, unknown>
 }

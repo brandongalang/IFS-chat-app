@@ -25,6 +25,7 @@ Current migration files (in recommended apply order):
 19. 018_sessions_auth_context.sql
 20. 022_add_avatar_url_to_users.sql
 21. 104_inbox_items_view.sql
+22. 105_inbox_message_events.sql
 
 Notes about duplicate numeric prefixes
 - There are two files with the prefix `017_`.

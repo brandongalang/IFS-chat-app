@@ -2,6 +2,8 @@
 
 import type { InboxEnvelope, InboxQuickActionValue } from '@/types/inbox'
 import { InsightSpotlightCard, type InsightSpotlightEnvelope } from '@/components/inbox/cards/InsightSpotlightCard'
+import { NudgeCard, type NudgeEnvelope } from '@/components/inbox/cards/NudgeCard'
+import { NotificationCard, type NotificationEnvelope } from '@/components/inbox/cards/NotificationCard'
 
 export interface InboxCardRegistryContext {
   onOpen?: (envelope: InboxEnvelope) => void
@@ -20,8 +22,24 @@ export function renderInboxCard(envelope: InboxEnvelope, context: InboxCardRegis
         />
       )
     case 'nudge':
-    case 'cta':
+      return (
+        <NudgeCard
+          key={envelope.id}
+          envelope={envelope as NudgeEnvelope}
+          onOpen={(entry) => context.onOpen?.(entry)}
+          onQuickAction={(entry, action) => context.onQuickAction?.(entry, action)}
+        />
+      )
     case 'notification':
+      return (
+        <NotificationCard
+          key={envelope.id}
+          envelope={envelope as NotificationEnvelope}
+          onOpen={(entry) => context.onOpen?.(entry)}
+          onQuickAction={(entry, action) => context.onQuickAction?.(entry, action)}
+        />
+      )
+    case 'cta':
     default:
       return (
         <div

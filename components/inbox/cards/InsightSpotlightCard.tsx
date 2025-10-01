@@ -18,9 +18,15 @@ export function InsightSpotlightCard({ envelope, onOpen, onQuickAction, classNam
   const readingTime = typeof payload.readingTimeMinutes === 'number' && payload.readingTimeMinutes > 0
     ? `${payload.readingTimeMinutes} min read`
     : undefined
-  const actions = envelope.actions?.kind === 'boolean' ? envelope.actions : null
-  const positiveLabel = actions?.positiveLabel ?? 'This resonates'
-  const negativeLabel = actions?.negativeLabel ?? 'Not today'
+  const actions = envelope.actions?.kind === 'scale4' ? envelope.actions : null
+  const scaleOptions: { value: InboxQuickActionValue; label: string }[] = actions
+    ? [
+        { value: 'agree_strong', label: actions.agreeStrongLabel ?? 'Agree a lot' },
+        { value: 'agree', label: actions.agreeLabel ?? 'Agree a little' },
+        { value: 'disagree', label: actions.disagreeLabel ?? 'Disagree a little' },
+        { value: 'disagree_strong', label: actions.disagreeStrongLabel ?? 'Disagree a lot' },
+      ]
+    : []
 
   return (
     <div
@@ -57,27 +63,27 @@ export function InsightSpotlightCard({ envelope, onOpen, onQuickAction, classNam
       </button>
 
       {actions ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            className="rounded-full px-4"
-            onClick={() => onQuickAction?.(envelope, 'yes')}
-          >
-            {positiveLabel}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="rounded-full px-4"
-            onClick={() => onQuickAction?.(envelope, 'no')}
-          >
-            {negativeLabel}
-          </Button>
+        <div className="mt-4">
+          <div className="flex flex-wrap gap-2">
+            {scaleOptions.map((option) => (
+              <Button
+                key={`${envelope.id}-${option.value}`}
+                type="button"
+                size="sm"
+                variant={option.value.startsWith('agree') ? 'default' : 'secondary'}
+                className="rounded-full px-4"
+                onClick={() => onQuickAction?.(envelope, option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-foreground/60">
+            {actions.helperText ?? 'Let us know how much this resonates.'}
+          </p>
           {actions.allowNotes ? (
-            <span className="text-[11px] text-foreground/60">
-              Add a note after choosing if you want to explain more.
+            <span className="mt-1 block text-[11px] text-foreground/50">
+              You can add an optional note after selecting.
             </span>
           ) : null}
         </div>

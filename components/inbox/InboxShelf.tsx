@@ -89,7 +89,10 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
 
   const handleQuickAction = (envelope: InboxEnvelope, action: InboxQuickActionValue) => {
     markAsRead(envelope.id)
-    if (envelope.actions?.kind === 'boolean' && envelope.actions.allowNotes) {
+    const allowNotes =
+      (envelope.actions?.kind === 'scale4' || envelope.actions?.kind === 'acknowledge') &&
+      envelope.actions.allowNotes
+    if (allowNotes) {
       setPendingAction({ envelope, action })
       setNoteDraft('')
       return
@@ -229,8 +232,10 @@ function renderEnvelopeDetail(envelope: InboxEnvelope) {
     case 'insight_spotlight':
       return renderInsightDetail(envelope)
     case 'nudge':
-    case 'cta':
+      return renderNudgeDetail(envelope)
     case 'notification':
+      return renderNotificationDetail(envelope)
+    case 'cta':
     default:
       return (
         <DialogHeader>
@@ -275,6 +280,39 @@ function renderInsightDetail(envelope: Extract<InboxEnvelope, { type: 'insight_s
   )
 }
 
+function renderNudgeDetail(envelope: Extract<InboxEnvelope, { type: 'nudge' }>) {
+  const { payload } = envelope
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{payload.headline}</DialogTitle>
+        <DialogDescription>{payload.body}</DialogDescription>
+      </DialogHeader>
+      {payload.cta ? (
+        <div className="mt-4">
+          <Link
+            href={payload.cta.href ?? '#'}
+            target={payload.cta.target ?? '_self'}
+            className="inline-flex items-center text-sm text-foreground underline"
+          >
+            {payload.cta.label}
+          </Link>
+        </div>
+      ) : null}
+    </>
+  )
+}
+
+function renderNotificationDetail(envelope: Extract<InboxEnvelope, { type: 'notification' }>) {
+  const { payload } = envelope
+  return (
+    <DialogHeader>
+      <DialogTitle>{payload.title}</DialogTitle>
+      <DialogDescription>{payload.body}</DialogDescription>
+    </DialogHeader>
+  )
+}
+
 function renderEnvelopeFooter(envelope: InboxEnvelope | null, onClose: () => void) {
   if (!envelope) return null
   if (envelope.type === 'insight_spotlight' && envelope.payload.cta?.href) {
@@ -286,6 +324,32 @@ function renderEnvelopeFooter(envelope: InboxEnvelope | null, onClose: () => voi
         className="inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition hover:bg-foreground/90"
       >
         {envelope.payload.cta.label}
+      </Link>
+    )
+  }
+
+  if (envelope.type === 'nudge' && envelope.payload.cta?.href) {
+    return (
+      <Link
+        href={envelope.payload.cta.href}
+        onClick={onClose}
+        target={envelope.payload.cta.target ?? '_self'}
+        className="inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition hover:bg-foreground/90"
+      >
+        {envelope.payload.cta.label}
+      </Link>
+    )
+  }
+
+  if (envelope.type === 'notification' && envelope.payload.link) {
+    return (
+      <Link
+        href={envelope.payload.link.href}
+        onClick={onClose}
+        target={envelope.payload.link.target ?? '_self'}
+        className="inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition hover:bg-foreground/90"
+      >
+        {envelope.payload.link.label}
       </Link>
     )
   }

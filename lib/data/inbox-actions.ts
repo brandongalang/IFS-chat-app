@@ -7,10 +7,12 @@ import type { Database, InsightRow, InsightUpdate, PartRow, PartUpdate } from '@
 
 export type ConfirmInboxActionPayload = {
   note?: string
+  actionValue: 'agree_strong' | 'agree' | 'ack'
 }
 
 export type DismissInboxActionPayload = {
   reason?: string
+  actionValue: 'disagree' | 'disagree_strong'
 }
 
 export type SnoozeInboxActionPayload = {
@@ -57,22 +59,32 @@ export async function confirmInboxItemAction({
   const insight = insightRow as Pick<InsightRow, 'id' | 'status' | 'meta' | 'revealed_at'>
 
   const insightUpdate: Partial<InsightUpdate> = {}
-  if (insight.status !== 'revealed') {
-    insightUpdate.status = 'revealed'
+  insightUpdate.status = 'actioned'
+  insightUpdate.actioned_at = now
+  if (!insight.revealed_at) {
     insightUpdate.revealed_at = now
   }
 
   const metaRecord = toRecord(insight.meta)
   const confirmationMeta = toRecord(metaRecord.confirmation)
   confirmationMeta.last_confirmed_at = now
+  confirmationMeta.last_value = payload.actionValue
   if (note) {
     confirmationMeta.note = note
     confirmationMeta.note_updated_at = now
   }
 
+  const responseMeta = toRecord(metaRecord.inbox_response)
+  responseMeta.last_value = payload.actionValue
+  responseMeta.last_recorded_at = now
+  if (note) {
+    responseMeta.note = note
+  }
+
   const updatedMeta = {
     ...metaRecord,
     confirmation: confirmationMeta,
+    inbox_response: responseMeta,
   }
 
   insightUpdate.meta = updatedMeta as InsightUpdate['meta']
@@ -80,6 +92,7 @@ export async function confirmInboxItemAction({
   await actionLogger.loggedUpdate<InsightRow>('insights', insight.id, insightUpdate, userId, 'confirm_insight', {
     changeDescription: 'User confirmed inbox insight',
     ...(note ? { note } : {}),
+    responseValue: payload.actionValue,
   })
 
   if (item.partId) {
@@ -180,13 +193,14 @@ export async function dismissInboxItemAction(
       userId,
       timestamp,
       reason,
+      actionValue: payload.actionValue,
     })
 
     if (updated) {
       return updated
     }
 
-    return buildDismissedFallback(item, timestamp, reason)
+    return buildDismissedFallback(item, timestamp, reason, payload.actionValue)
   }
 
   if (item.sourceType === 'part_follow_up' || item.sourceType === 'follow_up') {
@@ -197,16 +211,17 @@ export async function dismissInboxItemAction(
       userId,
       timestamp,
       reason,
+      actionValue: payload.actionValue,
     })
 
     if (updated) {
       return updated
     }
 
-    return buildDismissedFallback(item, timestamp, reason)
+    return buildDismissedFallback(item, timestamp, reason, payload.actionValue)
   }
 
-  return buildDismissedFallback(item, timestamp, reason)
+  return buildDismissedFallback(item, timestamp, reason, payload.actionValue)
 }
 
 export async function snoozeInboxItemAction(
@@ -222,6 +237,7 @@ type DismissContext = {
   userId: string
   timestamp: string
   reason?: string
+  actionValue: 'disagree' | 'disagree_strong'
 }
 
 async function dismissInsightInboxItem({
@@ -231,6 +247,7 @@ async function dismissInsightInboxItem({
   userId,
   timestamp,
   reason,
+  actionValue,
 }: DismissContext): Promise<InboxItem | null> {
   const { data: insightRow, error } = await supabase
     .from('insights')
@@ -261,14 +278,23 @@ async function dismissInsightInboxItem({
     dismissedMeta.reason = reason
   }
 
+  const responseMeta = toRecord(metaRecord.inbox_response)
+  responseMeta.last_value = actionValue
+  responseMeta.last_recorded_at = timestamp
+  if (reason) {
+    responseMeta.reason = reason
+  }
+
   insightUpdate.meta = {
     ...metaRecord,
     dismissed: dismissedMeta,
+    inbox_response: responseMeta,
   } as InsightUpdate['meta']
 
   await actionLogger.loggedUpdate<InsightRow>('insights', insight.id, insightUpdate, userId, 'dismiss_insight', {
     changeDescription: 'User dismissed inbox insight',
     ...(reason ? { reason } : {}),
+    responseValue: actionValue,
   })
 
   return getInboxItemById(supabase, item.id, userId)
@@ -281,6 +307,7 @@ async function dismissPartFollowUpInboxItem({
   userId,
   timestamp,
   reason,
+  actionValue,
 }: DismissContext): Promise<InboxItem | null> {
   if (!item.partId) {
     throw new Error('Part follow-up item missing partId')
@@ -311,16 +338,23 @@ async function dismissPartFollowUpInboxItem({
     partName: part.name,
     changeDescription: 'User dismissed part follow-up reminder',
     ...(reason ? { reason } : {}),
+    responseValue: actionValue,
   })
 
   return getInboxItemById(supabase, item.id, userId)
 }
 
-function buildDismissedFallback(item: InboxItem, timestamp: string, reason?: string): InboxItem {
+function buildDismissedFallback(
+  item: InboxItem,
+  timestamp: string,
+  reason?: string,
+  actionValue?: string,
+): InboxItem {
   const metadata = {
     ...(item.metadata ?? {}),
     dismissedAt: timestamp,
     ...(reason ? { dismissReason: reason } : {}),
+    ...(actionValue ? { lastResponse: actionValue } : {}),
   }
 
   return {

@@ -7,12 +7,12 @@
 - Provide a minimal admin/CLI path to validate and insert `insights` rows with required JSON fields for authoring.
 
 ## Execution Checklist
-- [ ] Implement server-side mapper from `inbox_items_view` → `InboxEnvelope`.
-- [ ] Update API + types: support 4-point action values (`agree_strong`, `agree`, `disagree`, `disagree_strong`, `ack`).
-- [ ] Adjust `/api/inbox/[id]/action` to store new outcomes and clear items.
-- [ ] Add durable analytics table + server emitters for delivered/opened/actioned.
-- [ ] Create guarded admin/CLI helper for authoring validated `insights` entries.
-- [ ] Ship unit/e2e coverage for mapper, action flow, and analytics logging.
+- [x] Implement server-side mapper from `inbox_items_view` → `InboxEnvelope`.
+- [x] Update API + types: support 4-point action values (`agree_strong`, `agree`, `disagree`, `disagree_strong`, `ack`).
+- [x] Adjust `/api/inbox/[id]/action` to store new outcomes and clear items.
+- [x] Add durable analytics table + server emitters for delivered/opened/actioned.
+- [x] Create guarded admin/CLI helper for authoring validated `insights` entries.
+- [ ] Ship unit/e2e coverage for mapper, action flow, and analytics logging. *(Unit harness added; `npm run test:unit` now executes but existing `rollback` regression test fails upstream: `getRecentActions is not a function`.)*
 
 ## Open Decisions / Assumptions
 - Slider labels: "Agree a lot", "Agree a little", "Disagree a little", "Disagree a lot" (can be refined with UX copy later).
