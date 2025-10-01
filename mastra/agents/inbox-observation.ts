@@ -4,7 +4,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { ENV } from '@/config/env'
 import { resolveModel } from '@/config/model'
 import { observationResearchTools } from '../tools/inbox-observation-tools'
-import { observationBatchSchema, type ObservationBatch } from '@/lib/inbox/observation-schema'
+import type { ObservationBatch } from '@/lib/inbox/observation-schema'
 
 export interface InboxObservationAgentConfig {
   modelId?: string
@@ -51,7 +51,6 @@ export function createInboxObservationAgent(config: InboxObservationAgentConfig 
     instructions: SYSTEM_PROMPT,
     tools: observationResearchTools,
     model: openrouter(modelId, modelSettings),
-    output: observationBatchSchema,
   }) as InboxObservationAgent
 
   return agent
