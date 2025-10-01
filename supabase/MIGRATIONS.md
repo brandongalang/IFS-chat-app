@@ -27,6 +27,10 @@ Current migration files (in recommended apply order):
 21. 104_inbox_items_view.sql
 22. 105_inbox_message_events.sql
 
+Inbox notes
+- `inbox_items_view` intentionally exposes `source_id` (no synthetic `id`). API handlers map this value to `id`/`sourceId` in responses. Keep the view schema as-is unless we introduce a new identifier story.
+- `inbox_message_events` stores `subject_id uuid`. Server logic only persists events for Supabase-sourced envelopes with UUID identifiers to avoid conflicts with fallback/mock data.
+
 Notes about duplicate numeric prefixes
 - There are two files with the prefix `017_`.
 - Supabase applies migrations in lexicographic order of the full filename, so the effective order is stable:

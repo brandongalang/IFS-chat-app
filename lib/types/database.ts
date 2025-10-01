@@ -115,6 +115,47 @@ export interface Database {
           }
         ]
       }
+      inbox_observations: {
+        Row: InboxObservationRow
+        Insert: InboxObservationInsert
+        Update: InboxObservationUpdate
+        Relationships: [
+          {
+            foreignKeyName: "inbox_observations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      observation_events: {
+        Row: ObservationEventRow
+        Insert: ObservationEventInsert
+        Update: ObservationEventUpdate
+        Relationships: [
+          {
+            foreignKeyName: "observation_events_observation_id_fkey"
+            columns: ["observation_id"]
+            isOneToOne: false
+            referencedRelation: "inbox_observations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observation_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      inbox_job_runs: {
+        Row: InboxJobRunRow
+        Insert: InboxJobRunInsert
+        Update: InboxJobRunUpdate
+        Relationships: []
+      }
     }
     Views: {
       inbox_items_view: {
@@ -649,11 +690,141 @@ export interface InsightUpdate {
   updated_at?: string
 }
 
+// Inbox Observation Types
+export type InboxObservationStatus = 'pending' | 'queued' | 'confirmed' | 'dismissed'
+
+export interface InboxObservationRow {
+  id: string
+  user_id: string
+  status: InboxObservationStatus
+  content: Json
+  metadata: Json
+  related_part_ids: string[]
+  semantic_hash: string | null
+  confidence: number | null
+  timeframe_start: string | null
+  timeframe_end: string | null
+  created_at: string
+  queued_at: string | null
+  confirmed_at: string | null
+  dismissed_at: string | null
+  updated_at: string
+}
+
+export interface InboxObservationInsert {
+  id?: string
+  user_id: string
+  status?: InboxObservationStatus
+  content?: Json
+  metadata?: Json
+  related_part_ids?: string[]
+  semantic_hash?: string | null
+  confidence?: number | null
+  timeframe_start?: string | null
+  timeframe_end?: string | null
+  created_at?: string
+  queued_at?: string | null
+  confirmed_at?: string | null
+  dismissed_at?: string | null
+  updated_at?: string
+}
+
+export interface InboxObservationUpdate {
+  id?: string
+  user_id?: string
+  status?: InboxObservationStatus
+  content?: Json
+  metadata?: Json
+  related_part_ids?: string[]
+  semantic_hash?: string | null
+  confidence?: number | null
+  timeframe_start?: string | null
+  timeframe_end?: string | null
+  created_at?: string
+  queued_at?: string | null
+  confirmed_at?: string | null
+  dismissed_at?: string | null
+  updated_at?: string
+}
+
+export type ObservationEventType =
+  | 'generated'
+  | 'queued'
+  | 'delivered'
+  | 'confirmed'
+  | 'dismissed'
+  | 'skipped'
+  | 'error'
+
+export interface ObservationEventRow {
+  id: string
+  observation_id: string
+  user_id: string
+  event_type: ObservationEventType
+  payload: Json
+  created_at: string
+}
+
+export interface ObservationEventInsert {
+  id?: string
+  observation_id: string
+  user_id: string
+  event_type: ObservationEventType
+  payload?: Json
+  created_at?: string
+}
+
+export interface ObservationEventUpdate {
+  id?: string
+  observation_id?: string
+  user_id?: string
+  event_type?: ObservationEventType
+  payload?: Json
+  created_at?: string
+}
+
+export type InboxJobStatus = 'running' | 'success' | 'failed'
+
+export interface InboxJobRunRow {
+  id: string
+  job_name: string
+  status: InboxJobStatus
+  started_at: string
+  finished_at: string | null
+  metadata: Json
+  error: Json | null
+  created_at: string
+}
+
+export interface InboxJobRunInsert {
+  id?: string
+  job_name: string
+  status?: InboxJobStatus
+  started_at?: string
+  finished_at?: string | null
+  metadata?: Json
+  error?: Json | null
+  created_at?: string
+}
+
+export interface InboxJobRunUpdate {
+  id?: string
+  job_name?: string
+  status?: InboxJobStatus
+  started_at?: string
+  finished_at?: string | null
+  metadata?: Json
+  error?: Json | null
+  created_at?: string
+}
+
+export type InboxItemRowStatus = InsightStatus | InboxObservationStatus | 'snoozed'
+
 export interface InboxItemsViewRow {
   user_id: string
-  source_type: 'insight' | 'part_follow_up'
+  source_type: 'insight' | 'part_follow_up' | 'observation'
   source_id: string
-  status: InsightStatus
+  status: InboxItemRowStatus
   content: Json
   part_id: string | null
   metadata: Json

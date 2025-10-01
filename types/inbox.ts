@@ -11,6 +11,7 @@ export interface InboxContent {
 
 export interface InboxItem {
   id: string
+  sourceId: string
   userId: string
   sourceType: InboxItemSourceType
   status: InboxItemStatus
@@ -64,6 +65,7 @@ export type InboxActionSchema = InboxScaleActionSchema | InboxAcknowledgeActionS
 
 export interface InboxEnvelopeBase {
   id: string
+  sourceId: string
   type: InboxMessageType
   createdAt: string
   updatedAt: string | null
@@ -181,6 +183,7 @@ export type InboxAnalyticsEvent =
 
 export interface InboxAnalyticsPayload {
   envelopeId: string
+  sourceId?: string
   messageType: InboxMessageType
   source: InboxEnvelopeSource
   metadata?: Record<string, unknown>

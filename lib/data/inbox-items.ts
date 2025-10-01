@@ -15,13 +15,13 @@ import type {
 import type { Database } from '@/lib/types/database'
 
 export type InboxItemRow = {
-  id: string
   user_id: string
   source_type: string
   status: string
   part_id: string | null
   content: unknown
   metadata: unknown
+  source_id: string
   created_at: string
 }
 
@@ -63,7 +63,8 @@ export function normalizeInboxMetadata(metadata: unknown): Record<string, unknow
 
 export function mapInboxRowToItem(row: InboxItemRow): InboxItem {
   return {
-    id: row.id,
+    id: row.source_id,
+    sourceId: row.source_id,
     userId: row.user_id,
     sourceType: row.source_type,
     status: row.status,
@@ -316,6 +317,7 @@ export function mapInboxItemToEnvelope(item: InboxItem): InboxEnvelope | null {
 
   const base = {
     id: item.id,
+    sourceId: item.sourceId ?? item.id,
     createdAt: toDateString(item.createdAt) ?? new Date(item.createdAt).toISOString(),
     updatedAt: updatedAtFromMetadata(metadata),
     expiresAt: expiresAtFromMetadata(metadata),
@@ -370,7 +372,7 @@ export async function getInboxItemById(
   const { data, error } = await supabase
     .from('inbox_items_view')
     .select('*')
-    .eq('id', id)
+    .eq('source_id', id)
     .eq('user_id', userId)
     .maybeSingle()
 

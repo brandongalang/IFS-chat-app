@@ -6,6 +6,7 @@ async function main() {
 
   const envelope = mapInboxItemToEnvelope({
     id: 'insight-123',
+    sourceId: 'insight-123',
     userId: 'user-1',
     sourceType: 'insight',
     status: 'pending',
@@ -24,6 +25,7 @@ async function main() {
   assert(envelope?.type === 'insight_spotlight', 'Expected insight items to map to insight_spotlight')
   assert(envelope?.actions?.kind === 'scale4', 'Expected scale4 actions for insights')
   assert(envelope?.payload.title?.length, 'Expected payload title to exist')
+  assert(envelope?.sourceId === 'insight-123', 'Expected envelope to expose sourceId passthrough')
 
   console.log('Inbox mapper test passed.')
 }

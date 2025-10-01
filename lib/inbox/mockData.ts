@@ -3,6 +3,7 @@ import type { InboxEnvelope } from '@/types/inbox'
 export const mockInboxEnvelopes: InboxEnvelope[] = [
   {
     id: 'mock-insight-spotlight-1',
+    sourceId: 'mock-insight-spotlight-1',
     type: 'insight_spotlight',
     createdAt: new Date().toISOString(),
     updatedAt: null,

@@ -52,6 +52,7 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
     setActiveEnvelope(envelope)
     emitInboxEvent('inbox_card_opened', {
       envelopeId: envelope.id,
+      sourceId: envelope.sourceId ?? envelope.id,
       messageType: envelope.type,
       source: envelope.source,
       metadata: { variant: activeVariant },
@@ -62,6 +63,7 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
     if (activeEnvelope) {
       emitInboxEvent('inbox_card_dismissed', {
         envelopeId: activeEnvelope.id,
+        sourceId: activeEnvelope.sourceId ?? activeEnvelope.id,
         messageType: activeEnvelope.type,
         source: activeEnvelope.source,
         metadata: { variant: activeVariant },

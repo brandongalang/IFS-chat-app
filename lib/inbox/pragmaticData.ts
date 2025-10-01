@@ -6,6 +6,7 @@ export function getPragmaticInboxFeed(): InboxEnvelope[] {
   return [
     {
       id: 'pragmatic-insight-spotlight-1',
+      sourceId: 'pragmatic-insight-spotlight-1',
       type: 'insight_spotlight',
       createdAt: issuedAt(),
       updatedAt: null,

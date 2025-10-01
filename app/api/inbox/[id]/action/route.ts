@@ -70,17 +70,43 @@ export async function POST(
     let updatedItem: InboxItem
 
     if (payload.action === 'agree_strong' || payload.action === 'agree' || payload.action === 'ack') {
-      const actionPayload: ConfirmInboxActionPayload = {
-        note: payload.notes,
-        actionValue: payload.action,
-      }
+      if (inboxItem.sourceType === 'insight') {
+        const actionPayload: ConfirmInboxActionPayload = {
+          note: payload.notes,
+          actionValue: payload.action,
+        }
 
-      updatedItem = await confirmInboxItemAction({
-        supabase,
-        item: inboxItem,
-        userId: user.id,
-        payload: actionPayload,
-      })
+        updatedItem = await confirmInboxItemAction({
+          supabase,
+          item: inboxItem,
+          userId: user.id,
+          payload: actionPayload,
+        })
+      } else if (inboxItem.sourceType === 'observation') {
+        const actionPayload: ConfirmInboxActionPayload = {
+          note: payload.notes,
+          actionValue: payload.action,
+        }
+
+        updatedItem = await confirmInboxItemAction({
+          supabase,
+          item: inboxItem,
+          userId: user.id,
+          payload: actionPayload,
+        })
+      } else {
+        const actionPayload: DismissInboxActionPayload = {
+          reason: payload.notes,
+          actionValue: payload.action,
+        }
+
+        updatedItem = await dismissInboxItemAction({
+          supabase,
+          item: inboxItem,
+          userId: user.id,
+          payload: actionPayload,
+        })
+      }
     } else if (payload.action === 'disagree' || payload.action === 'disagree_strong') {
       const actionPayload: DismissInboxActionPayload = {
         reason: payload.notes,

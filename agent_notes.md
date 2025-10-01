@@ -18,3 +18,4 @@
 - Slider labels: "Agree a lot", "Agree a little", "Disagree a little", "Disagree a lot" (can be refined with UX copy later).
 - Nudge cards share the 4-point slider; notification cards expose only acknowledge + notes.
 - Event payloads record user id, source id, envelope type, action value, notes, and timestamp. Additional campaign tags can be added later if needed.
+- Supabase-backed feeds use `source_id` as the canonical subject identifier; API responses expose both `id` and `sourceId` (currently identical) so clients can specialize without schema churn.

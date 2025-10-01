@@ -102,6 +102,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
       })
       emitInboxEvent('inbox_feed_loaded', {
         envelopeId: result.envelopes[0]?.id ?? 'unknown',
+        sourceId: result.envelopes[0]?.sourceId ?? result.envelopes[0]?.id,
         messageType: result.envelopes[0]?.type ?? 'insight_spotlight',
         source: result.source,
         metadata: {
@@ -125,6 +126,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
         })
         emitInboxEvent('inbox_feed_loaded', {
           envelopeId: fallbackEnvelopes[0]?.id ?? 'unknown',
+          sourceId: fallbackEnvelopes[0]?.sourceId ?? fallbackEnvelopes[0]?.id,
           messageType: fallbackEnvelopes[0]?.type ?? 'insight_spotlight',
           source: 'fallback',
           metadata: { variant, count: fallbackEnvelopes.length, reason: 'client_error' },
@@ -138,8 +140,8 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
           variant,
           reason: error instanceof Error ? error.message : 'unknown_error',
           generatedAt: undefined,
+          nextCursor: null,
         })
-        nextCursor: null,
       }
     }
   }, [fallbackEnvelopes, variant])
@@ -165,7 +167,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
     }))
 
     void submitInboxEvent({
-      subjectId: envelopeId,
+      subjectId: envelope?.sourceId ?? envelopeId,
       eventType: 'opened',
       messageType: envelope?.type,
       source: envelope?.source ?? state.source,
@@ -197,6 +199,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
 
       emitInboxEvent('inbox_quick_action', {
         envelopeId,
+        sourceId: envelope?.sourceId ?? envelopeId,
         messageType: envelope?.type ?? 'insight_spotlight',
         source: state.source,
         metadata: {
@@ -224,7 +227,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
         }
 
         await submitInboxEvent({
-          subjectId: envelopeId,
+          subjectId: envelope?.sourceId ?? envelopeId,
           eventType: 'actioned',
           action,
           notes,
@@ -242,6 +245,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
         if (notes) {
           emitInboxEvent('inbox_notes_submitted', {
             envelopeId,
+            sourceId: envelope?.sourceId ?? envelopeId,
             messageType: envelope?.type ?? 'insight_spotlight',
             source: state.source,
             metadata: {

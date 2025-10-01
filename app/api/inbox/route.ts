@@ -13,6 +13,7 @@ type CursorPayload = {
   rankBucket: number
   createdAt: string
   id: string
+  sourceType?: string
 }
 
 function parseLimit(limitParam: string | null): number | null {
@@ -42,6 +43,7 @@ function decodeCursor(afterParam: string | null): CursorPayload | null {
         rankBucket: payload.rankBucket,
         createdAt: payload.createdAt,
         id: payload.id,
+        sourceType: typeof payload.sourceType === 'string' ? payload.sourceType : undefined,
       }
     }
   } catch (error) {
@@ -56,6 +58,7 @@ function encodeCursor(item: RankedInboxItem): string {
     rankBucket: item.rankBucket,
     createdAt: item.createdAt,
     id: item.id,
+    sourceType: item.sourceType,
   }
 
   return Buffer.from(JSON.stringify(payload)).toString('base64url')
@@ -63,11 +66,18 @@ function encodeCursor(item: RankedInboxItem): string {
 
 function findCursorIndex(items: RankedInboxItem[], cursor: CursorPayload) {
   return items.findIndex((item) => {
-    return (
+    const baseMatch =
       item.rankBucket === cursor.rankBucket &&
       item.createdAt === cursor.createdAt &&
       item.id === cursor.id
-    )
+
+    if (!baseMatch) return false
+
+    if (cursor.sourceType) {
+      return item.sourceType === cursor.sourceType
+    }
+
+    return true
   })
 }
 
@@ -92,8 +102,10 @@ function paginateItems(
   }
 
   const page = rankedItems.slice(startIndex, startIndex + limit)
-  const hasNext = startIndex + limit < rankedItems.length
-  const nextCursor = hasNext ? encodeCursor(rankedItems[startIndex + limit]) : null
+  const lastItem = page[page.length - 1]
+  const lastIndex = lastItem ? rankedItems.findIndex((item) => item.id === lastItem.id) : -1
+  const hasNext = lastIndex >= 0 && lastIndex < rankedItems.length - 1
+  const nextCursor = hasNext && lastItem ? encodeCursor(lastItem) : null
 
   return { page, nextCursor, cursorInvalid: false }
 }
@@ -147,23 +159,43 @@ export async function GET(request: NextRequest) {
       .filter((envelope): envelope is InboxEnvelope => Boolean(envelope))
 
     if (envelopes.length) {
-      const deliveredRows = envelopes.map((envelope) => ({
-        subject_id: envelope.id,
-        user_id: user.id,
-        envelope_type: envelope.type,
-        source_type: envelope.source,
-        event_type: 'delivered' as const,
-        action_value: null,
-        notes: null,
-        attributes: { deliveredAt: new Date().toISOString() },
-      }))
+      const deliverable = envelopes.filter((envelope) => envelope.source === 'supabase')
 
-      const { error: deliveredError } = await supabase
-        .from('inbox_message_events')
-        .upsert(deliveredRows, { onConflict: 'user_id,subject_id,event_type', ignoreDuplicates: true })
+      if (deliverable.length) {
+        const subjectIds = deliverable.map((envelope) => envelope.id)
 
-      if (deliveredError) {
-        console.error('Failed to record delivered inbox events', deliveredError)
+        const { data: existing, error: existingError } = await supabase
+          .from('inbox_message_events')
+          .select('subject_id')
+          .eq('user_id', user.id)
+          .eq('event_type', 'delivered')
+          .in('subject_id', subjectIds)
+
+        if (existingError) {
+          console.error('Failed to load existing delivered events', existingError)
+        } else {
+          const existingIds = new Set((existing ?? []).map((row: { subject_id: string }) => row.subject_id))
+          const newRows = deliverable
+            .filter((envelope) => !existingIds.has(envelope.id))
+            .map((envelope) => ({
+              subject_id: envelope.id,
+              user_id: user.id,
+              envelope_type: envelope.type,
+              source_type: envelope.source,
+              event_type: 'delivered' as const,
+              action_value: null,
+              notes: null,
+              attributes: { deliveredAt: new Date().toISOString() },
+            }))
+
+          if (newRows.length) {
+            const { error: deliveredError } = await supabase.from('inbox_message_events').insert(newRows)
+
+            if (deliveredError) {
+              console.error('Failed to record delivered inbox events', deliveredError)
+            }
+          }
+        }
       }
     }
 

@@ -3,6 +3,7 @@ import { getUserClient } from '@/lib/supabase/clients'
 import { errorResponse, HTTP_STATUS } from '@/lib/api/response'
 import { isInboxActionsEnabled, isInboxEnabled } from '@/config/features'
 import type { InboxActionRequest, InboxEventType, InboxEnvelopeSource, InboxMessageType } from '@/types/inbox'
+import { isValidUuid, shouldPersistInboxEvent } from './helpers'
 
 const allowedEventTypes: InboxEventType[] = ['delivered', 'opened', 'actioned']
 
@@ -34,7 +35,11 @@ export async function POST(req: NextRequest) {
   }
 
   const messageType: InboxMessageType = (payload.messageType ?? 'insight_spotlight') as InboxMessageType
-  const source: InboxEnvelopeSource | 'fallback' = payload.source ?? 'supabase'
+  const source: InboxEnvelopeSource | 'fallback' = (payload.source ?? 'supabase') as InboxEnvelopeSource | 'fallback'
+
+  if (!shouldPersistInboxEvent(payload.subjectId, source)) {
+    return new NextResponse(null, { status: HTTP_STATUS.NO_CONTENT })
+  }
 
   const attributes: Record<string, unknown> = {
     ...(payload.attributes ?? {}),
