@@ -1,5 +1,5 @@
 import { Agent } from '@mastra/core'
-import type { createOpenRouter } from '@openrouter/ai-sdk-provider'
+import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { z } from 'zod'
 import { ENV } from '@/config/env'
 import { resolveModel } from '@/config/model'
@@ -22,7 +22,7 @@ export const insightSchema = z.object({
     .array(z.string().uuid())
     .optional()
     .describe('IDs of sessions that informed this insight.'),
-});
+})
 
 export type Insight = z.infer<typeof insightSchema>
 
@@ -54,16 +54,21 @@ After completing your research, analyze your findings to identify opportunities 
 - The insights you generate must be valid JSON objects matching the provided schema.
 `
 
-type OpenRouterProvider = ReturnType<typeof createOpenRouter>
-
 export type InsightGeneratorAgent = Agent<'insightGeneratorAgent', typeof insightResearchTools>
 
-export function createInsightGeneratorAgent(
-  openrouter: OpenRouterProvider,
-  overrides: AgentModelConfig = {},
-): InsightGeneratorAgent {
+export function createInsightGeneratorAgent(overrides: AgentModelConfig = {}): InsightGeneratorAgent {
   const modelId = overrides.modelId ?? resolveModel(ENV.IFS_MODEL)
   const temperature = overrides.temperature ?? ENV.IFS_TEMPERATURE
+  const baseURL =
+    overrides.baseURL ??
+    ENV.IFS_PROVIDER_BASE_URL ??
+    ENV.OPENROUTER_BASE_URL ??
+    'https://openrouter.ai/api/v1'
+
+  const openrouter = createOpenRouter({
+    apiKey: ENV.OPENROUTER_API_KEY,
+    baseURL,
+  })
 
   const modelSettings =
     typeof temperature === 'number'
@@ -81,3 +86,5 @@ export function createInsightGeneratorAgent(
     model: openrouter(modelId, modelSettings),
   })
 }
+
+export const insightGeneratorAgent: InsightGeneratorAgent = createInsightGeneratorAgent()

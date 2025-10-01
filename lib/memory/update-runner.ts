@@ -1,6 +1,7 @@
 import type { CoreMessage } from 'ai'
+import type { Agent } from '@mastra/core'
 import { getMastra } from '@/mastra'
-import { updateDigestSchema, type UpdateDigest, type UpdateSummarizerAgent } from '@/mastra/agents/update-summarizer'
+import { updateDigestSchema, type UpdateDigest } from '@/mastra/agents/update-summarizer'
 import { fetchPendingUpdates, markUpdatesProcessed, type MemoryUpdateRecord } from '@/lib/memory/updates'
 import { ensureOverviewExists } from '@/lib/memory/snapshots/scaffold'
 import { userOverviewPath } from '@/lib/memory/snapshots/fs-helpers'
@@ -46,14 +47,14 @@ export async function summarizePendingUpdatesForUser(
   }
 
   const mastra = getMastra()
-  const summarizer = mastra.getAgent('updateSummarizerAgent') as UpdateSummarizerAgent | undefined
+  const summarizer = mastra.getAgent('updateSummarizerAgent') as Agent | undefined
 
   if (!summarizer) {
     return { userId, processedIds: [], digest: undefined, itemCount: 0, skipped: true, reason: 'summarizer-missing' }
   }
 
-  type SummarizerModel = Awaited<ReturnType<UpdateSummarizerAgent['getModel']>>
-  type SummarizerResult = Awaited<ReturnType<UpdateSummarizerAgent['generate']>>
+  type SummarizerModel = Awaited<ReturnType<Agent['getModel']>>
+  type SummarizerResult = Awaited<ReturnType<Agent['generate']>>
 
   let model: SummarizerModel | undefined
   try {

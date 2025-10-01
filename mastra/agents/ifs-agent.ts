@@ -1,5 +1,5 @@
 import { Agent } from '@mastra/core'
-import type { createOpenRouter } from '@openrouter/ai-sdk-provider'
+import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { ENV } from '@/config/env'
 import { resolveModel } from '@/config/model'
 import { getPartTools } from '../tools/part-tools.mastra'
@@ -9,27 +9,30 @@ import { createEvidenceTools } from '../tools/evidence-tools'
 import { createStubTools } from '../tools/stub-tools'
 import { createMemoryTools } from '../tools/memory-tools'
 import { createUpdateSyncTools } from '../tools/update-sync-tools'
-import { createPendingUpdateTools } from '../tools/update-sync'
-import { createRollbackTools } from '../tools/rollback-tools'
 import { generateSystemPrompt } from './ifs_agent_prompt'
-
-type OpenRouterProvider = ReturnType<typeof createOpenRouter>
 
 export type AgentModelConfig = {
   modelId?: string
+  baseURL?: string
   temperature?: number
 }
 
 type Profile = { name?: string; bio?: string; userId?: string } | null
 
-export function createIfsAgent(
-  profile: Profile,
-  openrouter: OpenRouterProvider,
-  overrides: AgentModelConfig = {},
-) {
+export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {}) {
   const userId = profile?.userId
   const modelId = overrides.modelId ?? resolveModel(ENV.IFS_MODEL)
   const temperature = overrides.temperature ?? ENV.IFS_TEMPERATURE
+  const baseURL =
+    overrides.baseURL ??
+    ENV.IFS_PROVIDER_BASE_URL ??
+    ENV.OPENROUTER_BASE_URL ??
+    'https://openrouter.ai/api/v1'
+
+  const openrouter = createOpenRouter({
+    apiKey: ENV.OPENROUTER_API_KEY,
+    baseURL,
+  })
 
   const modelSettings =
     typeof temperature === 'number'
@@ -51,9 +54,7 @@ export function createIfsAgent(
       ...createEvidenceTools(userId), // Evidence and pattern tools
       ...createStubTools(userId), // Stub creation tools
       ...createMemoryTools(userId), // Memory and conversation search tools
-      ...createUpdateSyncTools(userId), // Unprocessed updates overview
-      ...createPendingUpdateTools(userId), // Pending updates fetcher
-      ...createRollbackTools(userId), // Rollback capabilities
+      ...createUpdateSyncTools(userId), // Sync unprocessed updates from Supabase
     },
   })
 }

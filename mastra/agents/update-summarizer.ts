@@ -1,5 +1,5 @@
 import { Agent } from '@mastra/core'
-import type { createOpenRouter } from '@openrouter/ai-sdk-provider'
+import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { z } from 'zod'
 import { ENV } from '@/config/env'
 import { resolveModel } from '@/config/model'
@@ -48,14 +48,19 @@ Guardrails:
 - Respond with JSON that matches the provided schema exactly—no extra keys or commentary.
 `
 
-type OpenRouterProvider = ReturnType<typeof createOpenRouter>
-
-export function createUpdateSummarizerAgent(
-  openrouter: OpenRouterProvider,
-  overrides: AgentModelConfig = {},
-) {
+export function createUpdateSummarizerAgent(overrides: AgentModelConfig = {}) {
   const modelId = overrides.modelId ?? resolveModel(ENV.IFS_MODEL)
   const temperature = overrides.temperature ?? ENV.IFS_TEMPERATURE
+  const baseURL =
+    overrides.baseURL ??
+    ENV.IFS_PROVIDER_BASE_URL ??
+    ENV.OPENROUTER_BASE_URL ??
+    'https://openrouter.ai/api/v1'
+
+  const openrouter = createOpenRouter({
+    apiKey: ENV.OPENROUTER_API_KEY,
+    baseURL,
+  })
 
   const modelSettings =
     typeof temperature === 'number'
@@ -73,5 +78,3 @@ export function createUpdateSummarizerAgent(
     tools: updateSyncTools as any,
   })
 }
-
-export type UpdateSummarizerAgent = ReturnType<typeof createUpdateSummarizerAgent>
