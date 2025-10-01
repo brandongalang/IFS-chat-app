@@ -3,6 +3,7 @@ import type { InboxEnvelope } from '@/types/inbox'
 export const mockInboxEnvelopes: InboxEnvelope[] = [
   {
     id: 'mock-insight-spotlight-1',
+    sourceId: 'mock-insight-spotlight-1',
     type: 'insight_spotlight',
     createdAt: new Date().toISOString(),
     updatedAt: null,
@@ -12,9 +13,12 @@ export const mockInboxEnvelopes: InboxEnvelope[] = [
     priority: 10,
     tags: ['sample', 'dev'],
     actions: {
-      kind: 'boolean',
-      positiveLabel: 'This resonates',
-      negativeLabel: 'Not today',
+      kind: 'scale4',
+      agreeStrongLabel: 'Agree a lot',
+      agreeLabel: 'Agree a little',
+      disagreeLabel: 'Disagree a little',
+      disagreeStrongLabel: 'Disagree a lot',
+      helperText: 'How true does this feel right now?',
       allowNotes: true,
     },
     payload: {

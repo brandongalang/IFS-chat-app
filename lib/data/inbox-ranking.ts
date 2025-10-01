@@ -6,6 +6,7 @@ export interface RankedInboxItem extends InboxItem {
 
 const STATUS_PRIORITY: Record<string, number> = {
   revealed: 0,
+  queued: 0,
   pending: 1,
   snoozed: 2,
   dismissed: 3,
@@ -13,6 +14,7 @@ const STATUS_PRIORITY: Record<string, number> = {
 
 const SOURCE_PRIORITY: Record<string, number> = {
   insight: 0,
+  observation: 0,
   follow_up: 1,
   part_follow_up: 1,
 }

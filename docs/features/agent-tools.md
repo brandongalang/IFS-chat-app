@@ -20,9 +20,11 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 
 ## How it works
 - Mastra tools implement capabilities (parts, relationships, evidence, assessments, proposals, rollback)
+- Inbox observation tooling now lives in `mastra/tools/inbox-observation-tools.ts`; it exposes search primitives (`searchMarkdown`, `searchSessions`, `searchCheckIns`) that the observation agent invokes during daily queue generation.
 - Tool handlers co-locate Zod input/output schemas; malformed payloads short-circuit before hitting providers/Supabase
 - Session analysis utilities read recent sessions via StorageAdapter snapshots to keep lookback/limit semantics consistent across environments
 - Agent prompt and configuration live under mastra/agents/
+- The inbox observation agent (`mastra/agents/inbox-observation.ts`) wires those search tools and enforces queue-safe prompts for the daily cron job.
 - Insights generator scaffolding exists in lib/insights/generator.ts
 
 ## Data model

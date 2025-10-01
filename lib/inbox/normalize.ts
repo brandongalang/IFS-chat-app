@@ -40,6 +40,7 @@ export function coerceInboxEnvelope(candidate: unknown): InboxEnvelope | null {
   const updatedAt = optionalDate(candidate.updatedAt)
   const expiresAt = optionalDate(candidate.expiresAt)
   const readAt = optionalDate(candidate.readAt)
+  const sourceId = safeString(candidate.sourceId)
   const priority = typeof candidate.priority === 'number' ? candidate.priority : undefined
   const tags = Array.isArray(candidate.tags)
     ? candidate.tags.filter((tag): tag is string => typeof tag === 'string')
@@ -53,8 +54,11 @@ export function coerceInboxEnvelope(candidate: unknown): InboxEnvelope | null {
   const actions = coerceActions(candidate.actions)
   const metadata = isRecord(candidate.metadata) ? candidate.metadata : undefined
 
+  const id = safeString(candidate.id) || `inbox-${type}-${createdAt}`
+
   const base: InboxEnvelopeBase = {
-    id: safeString(candidate.id) || `inbox-${type}-${createdAt}`,
+    id,
+    sourceId: sourceId ?? id,
     type: type as InboxMessageType,
     createdAt,
     updatedAt: updatedAt ?? null,
@@ -187,11 +191,22 @@ function coerceNotificationPayload(candidate: unknown): NotificationMessage | nu
 function coerceActions(candidate: unknown): InboxActionSchema | undefined {
   if (!isRecord(candidate)) return undefined
   const kind = safeString(candidate.kind)
-  if (kind === 'boolean') {
+  if (kind === 'scale4') {
     return {
-      kind: 'boolean',
-      positiveLabel: safeString(candidate.positiveLabel) ?? undefined,
-      negativeLabel: safeString(candidate.negativeLabel) ?? undefined,
+      kind: 'scale4',
+      agreeStrongLabel: safeString(candidate.agreeStrongLabel) ?? undefined,
+      agreeLabel: safeString(candidate.agreeLabel) ?? undefined,
+      disagreeLabel: safeString(candidate.disagreeLabel) ?? undefined,
+      disagreeStrongLabel: safeString(candidate.disagreeStrongLabel) ?? undefined,
+      helperText: safeString(candidate.helperText) ?? undefined,
+      allowNotes: typeof candidate.allowNotes === 'boolean' ? candidate.allowNotes : undefined,
+    }
+  }
+  if (kind === 'acknowledge') {
+    return {
+      kind: 'acknowledge',
+      label: safeString(candidate.label) ?? undefined,
+      helperText: safeString(candidate.helperText) ?? undefined,
       allowNotes: typeof candidate.allowNotes === 'boolean' ? candidate.allowNotes : undefined,
     }
   }

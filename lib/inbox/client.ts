@@ -61,12 +61,18 @@ export async function fetchInboxFeed(
   let resolvedSource: InboxEnvelopeSource | 'fallback' = 'network'
   let generatedAt: string | undefined
   let reason: string | undefined
+  let nextCursor: string | null | undefined
 
   if (!Array.isArray(body)) {
     resolvedVariant = coerceVariant(body.variant, variant)
     resolvedSource = coerceSource(body.source, 'network')
     generatedAt = typeof body.generatedAt === 'string' ? body.generatedAt : undefined
     reason = typeof body.reason === 'string' ? body.reason : undefined
+    if (typeof body.nextCursor === 'string') {
+      nextCursor = body.nextCursor
+    } else if (body.nextCursor === null) {
+      nextCursor = null
+    }
   }
 
   const envelopes = normalizeInboxResponse(payload)
@@ -77,6 +83,7 @@ export async function fetchInboxFeed(
     source: resolvedSource,
     generatedAt,
     reason,
+    nextCursor: nextCursor ?? null,
   }
 }
 

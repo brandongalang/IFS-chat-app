@@ -6,6 +6,7 @@ export function getPragmaticInboxFeed(): InboxEnvelope[] {
   return [
     {
       id: 'pragmatic-insight-spotlight-1',
+      sourceId: 'pragmatic-insight-spotlight-1',
       type: 'insight_spotlight',
       createdAt: issuedAt(),
       updatedAt: null,
@@ -15,9 +16,12 @@ export function getPragmaticInboxFeed(): InboxEnvelope[] {
       priority: 9,
       tags: ['today', 'reflection'],
       actions: {
-        kind: 'boolean',
-        positiveLabel: 'Sounds helpful',
-        negativeLabel: 'Maybe later',
+        kind: 'scale4',
+        agreeStrongLabel: 'Agree a lot',
+        agreeLabel: 'Agree a little',
+        disagreeLabel: 'Disagree a little',
+        disagreeStrongLabel: 'Disagree a lot',
+        helperText: 'How does this land for you today?',
         allowNotes: true,
       },
       payload: {

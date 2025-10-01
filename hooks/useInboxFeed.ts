@@ -19,6 +19,7 @@ export interface InboxFeedState {
   variant: InboxFeedVariant
   reason?: string
   generatedAt?: string
+  nextCursor?: string | null
 }
 
 export interface UseInboxFeedOptions {
@@ -51,6 +52,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
     variant,
     reason: undefined,
     generatedAt: undefined,
+    nextCursor: null,
   })
 
   const runFetch = useCallback(async () => {
@@ -66,6 +68,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
       variant,
       reason: undefined,
       generatedAt: undefined,
+      nextCursor: null,
     })
 
     try {
@@ -82,6 +85,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
           variant: result.variant,
           reason: result.reason,
           generatedAt: result.generatedAt,
+          nextCursor: null,
         })
         return
       }
@@ -94,9 +98,11 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
         variant: result.variant,
         reason: result.reason,
         generatedAt: result.generatedAt,
+        nextCursor: result.nextCursor ?? null,
       })
       emitInboxEvent('inbox_feed_loaded', {
         envelopeId: result.envelopes[0]?.id ?? 'unknown',
+        sourceId: result.envelopes[0]?.sourceId ?? result.envelopes[0]?.id,
         messageType: result.envelopes[0]?.type ?? 'insight_spotlight',
         source: result.source,
         metadata: {
@@ -116,9 +122,11 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
           variant,
           reason: 'client_error',
           generatedAt: undefined,
+          nextCursor: null,
         })
         emitInboxEvent('inbox_feed_loaded', {
           envelopeId: fallbackEnvelopes[0]?.id ?? 'unknown',
+          sourceId: fallbackEnvelopes[0]?.sourceId ?? fallbackEnvelopes[0]?.id,
           messageType: fallbackEnvelopes[0]?.type ?? 'insight_spotlight',
           source: 'fallback',
           metadata: { variant, count: fallbackEnvelopes.length, reason: 'client_error' },
@@ -132,6 +140,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
           variant,
           reason: error instanceof Error ? error.message : 'unknown_error',
           generatedAt: undefined,
+          nextCursor: null,
         })
       }
     }
@@ -149,6 +158,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
   }, [runFetch])
 
   const markAsRead = useCallback((envelopeId: string) => {
+    const envelope = state.envelopes.find((entry) => entry.id === envelopeId)
     setState((prev) => ({
       ...prev,
       envelopes: prev.envelopes.map((envelope) =>
@@ -156,15 +166,21 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
       ),
     }))
 
-    void submitInboxEvent({ subjectId: envelopeId, eventType: 'opened' }).catch((err) => {
+    void submitInboxEvent({
+      subjectId: envelope?.sourceId ?? envelopeId,
+      eventType: 'opened',
+      messageType: envelope?.type,
+      source: envelope?.source ?? state.source,
+    }).catch((err) => {
       if (process.env.NODE_ENV !== 'production') {
         console.warn('[inbox] failed to submit opened event', err)
       }
     })
-  }, [])
+  }, [state.envelopes, state.source])
 
   const submitAction = useCallback(
     async (envelopeId: string, action: InboxQuickActionValue, notes?: string) => {
+      const envelope = state.envelopes.find((entry) => entry.id === envelopeId)
       setState((prev) => ({
         ...prev,
         envelopes: prev.envelopes.map((envelope) =>
@@ -183,7 +199,8 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
 
       emitInboxEvent('inbox_quick_action', {
         envelopeId,
-        messageType: state.envelopes.find((entry) => entry.id === envelopeId)?.type ?? 'insight_spotlight',
+        sourceId: envelope?.sourceId ?? envelopeId,
+        messageType: envelope?.type ?? 'insight_spotlight',
         source: state.source,
         metadata: {
           variant,
@@ -192,16 +209,44 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
       })
 
       try {
+        if (envelope?.source === 'supabase') {
+          const actionResponse = await fetch(`/api/inbox/${envelopeId}/action`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              action,
+              notes,
+            }),
+          })
+
+          if (!actionResponse.ok && actionResponse.status !== 404) {
+            throw new Error(`Failed to persist inbox action (${actionResponse.status})`)
+          }
+        }
+
         await submitInboxEvent({
-          subjectId: envelopeId,
-          eventType: 'cta_clicked',
+          subjectId: envelope?.sourceId ?? envelopeId,
+          eventType: 'actioned',
           action,
           notes,
+          messageType: envelope?.type,
+          source: envelope?.source ?? state.source,
+        })
+        setState((prev) => {
+          const remaining = prev.envelopes.filter((entry) => entry.id !== envelopeId)
+          return {
+            ...prev,
+            envelopes: remaining,
+            status: remaining.length ? prev.status : 'empty',
+          }
         })
         if (notes) {
           emitInboxEvent('inbox_notes_submitted', {
             envelopeId,
-            messageType: state.envelopes.find((entry) => entry.id === envelopeId)?.type ?? 'insight_spotlight',
+            sourceId: envelope?.sourceId ?? envelopeId,
+            messageType: envelope?.type ?? 'insight_spotlight',
             source: state.source,
             metadata: {
               variant,

@@ -2,15 +2,17 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { DatabaseActionLogger } from '@/lib/database/action-logger'
 import { getInboxItemById } from '@/lib/data/inbox-items'
-import type { InboxItem } from '@/types/inbox'
+import type { InboxItem, InboxQuickActionValue } from '@/types/inbox'
 import type { Database, InsightRow, InsightUpdate, PartRow, PartUpdate } from '@/lib/types/database'
 
 export type ConfirmInboxActionPayload = {
   note?: string
+  actionValue: 'agree_strong' | 'agree' | 'ack'
 }
 
 export type DismissInboxActionPayload = {
   reason?: string
+  actionValue: InboxQuickActionValue
 }
 
 export type SnoozeInboxActionPayload = {
@@ -31,74 +33,94 @@ export async function confirmInboxItemAction({
   userId,
   payload,
 }: ActionContext<ConfirmInboxActionPayload>): Promise<InboxItem> {
-  if (item.sourceType !== 'insight') {
-    throw new Error('Confirm action is only supported for insight inbox items')
+  if (item.sourceType === 'insight') {
+    const actionLogger = new DatabaseActionLogger(supabase)
+    const now = new Date().toISOString()
+    const note = payload.note?.trim() || undefined
+
+    const { data: insightRow, error: insightError } = await supabase
+      .from('insights')
+      .select('id,status,meta,revealed_at')
+      .eq('id', item.id)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (insightError) {
+      throw insightError
+    }
+
+    if (!insightRow) {
+      throw new Error('Insight not found for confirmation')
+    }
+
+    const insight = insightRow as Pick<InsightRow, 'id' | 'status' | 'meta' | 'revealed_at'>
+
+    const insightUpdate: Partial<InsightUpdate> = {}
+    insightUpdate.status = 'actioned'
+    insightUpdate.actioned_at = now
+    if (!insight.revealed_at) {
+      insightUpdate.revealed_at = now
+    }
+
+    const metaRecord = toRecord(insight.meta)
+    const confirmationMeta = toRecord(metaRecord.confirmation)
+    confirmationMeta.last_confirmed_at = now
+    confirmationMeta.last_value = payload.actionValue
+    if (note) {
+      confirmationMeta.note = note
+      confirmationMeta.note_updated_at = now
+    }
+
+    const responseMeta = toRecord(metaRecord.inbox_response)
+    responseMeta.last_value = payload.actionValue
+    responseMeta.last_recorded_at = now
+    if (note) {
+      responseMeta.note = note
+    }
+
+    const updatedMeta = {
+      ...metaRecord,
+      confirmation: confirmationMeta,
+      inbox_response: responseMeta,
+    }
+
+    insightUpdate.meta = updatedMeta as InsightUpdate['meta']
+
+    await actionLogger.loggedUpdate<InsightRow>('insights', insight.id, insightUpdate, userId, 'confirm_insight', {
+      changeDescription: 'User confirmed inbox insight',
+      ...(note ? { note } : {}),
+      responseValue: payload.actionValue,
+    })
+
+    if (item.partId) {
+      await touchRelatedPart({
+        supabase,
+        actionLogger,
+        partId: item.partId,
+        userId,
+        note,
+        timestamp: now,
+      })
+    }
+
+    const refreshedItem = await getInboxItemById(supabase, item.id, userId)
+    if (!refreshedItem) {
+      throw new Error('Failed to load updated inbox item')
+    }
+
+    return refreshedItem
   }
 
-  const actionLogger = new DatabaseActionLogger(supabase)
-  const now = new Date().toISOString()
-  const note = payload.note?.trim() || undefined
-
-  const { data: insightRow, error: insightError } = await supabase
-    .from('insights')
-    .select('id,status,meta,revealed_at')
-    .eq('id', item.id)
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (insightError) {
-    throw insightError
-  }
-
-  if (!insightRow) {
-    throw new Error('Insight not found for confirmation')
-  }
-
-  const insight = insightRow as Pick<InsightRow, 'id' | 'status' | 'meta' | 'revealed_at'>
-
-  const insightUpdate: Partial<InsightUpdate> = {}
-  if (insight.status !== 'revealed') {
-    insightUpdate.status = 'revealed'
-    insightUpdate.revealed_at = now
-  }
-
-  const metaRecord = toRecord(insight.meta)
-  const confirmationMeta = toRecord(metaRecord.confirmation)
-  confirmationMeta.last_confirmed_at = now
-  if (note) {
-    confirmationMeta.note = note
-    confirmationMeta.note_updated_at = now
-  }
-
-  const updatedMeta = {
-    ...metaRecord,
-    confirmation: confirmationMeta,
-  }
-
-  insightUpdate.meta = updatedMeta as InsightUpdate['meta']
-
-  await actionLogger.loggedUpdate<InsightRow>('insights', insight.id, insightUpdate, userId, 'confirm_insight', {
-    changeDescription: 'User confirmed inbox insight',
-    ...(note ? { note } : {}),
-  })
-
-  if (item.partId) {
-    await touchRelatedPart({
+  if (item.sourceType === 'observation') {
+    return confirmObservationInboxItem({
       supabase,
-      actionLogger,
-      partId: item.partId,
+      item,
       userId,
-      note,
-      timestamp: now,
+      payload,
     })
   }
 
-  const refreshedItem = await getInboxItemById(supabase, item.id, userId)
-  if (!refreshedItem) {
-    throw new Error('Failed to load updated inbox item')
-  }
-
-  return refreshedItem
+  throw new Error('Confirm action is only supported for insight or observation inbox items')
 }
 
 function toRecord(value: unknown): Record<string, unknown> {
@@ -160,6 +182,83 @@ async function touchRelatedPart({
   })
 }
 
+async function confirmObservationInboxItem({
+  supabase,
+  item,
+  userId,
+  payload,
+}: ActionContext<ConfirmInboxActionPayload>): Promise<InboxItem> {
+  const timestamp = new Date().toISOString()
+  const note = payload.note?.trim() || undefined
+
+  const { data: observationRow, error } = await supabase
+    .from('inbox_observations')
+    .select('id,status,metadata')
+    .eq('id', item.id)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  if (!observationRow) {
+    throw new Error('Observation not found for confirmation')
+  }
+
+  const metaRecord = toRecord(observationRow.metadata)
+  const confirmationMeta = toRecord(metaRecord.confirmation)
+  confirmationMeta.last_confirmed_at = timestamp
+  confirmationMeta.last_value = payload.actionValue
+  if (note) {
+    confirmationMeta.note = note
+  }
+
+  const responseMeta = toRecord(metaRecord.inbox_response)
+  responseMeta.last_value = payload.actionValue
+  responseMeta.recorded_at = timestamp
+  if (note) {
+    responseMeta.note = note
+  }
+
+  const updatedMeta = {
+    ...metaRecord,
+    confirmation: confirmationMeta,
+    inbox_response: responseMeta,
+  }
+
+  const { error: updateError } = await supabase
+    .from('inbox_observations')
+    .update({
+      status: 'confirmed',
+      confirmed_at: timestamp,
+      metadata: updatedMeta,
+    })
+    .eq('id', item.id)
+    .eq('user_id', userId)
+
+  if (updateError) {
+    throw updateError
+  }
+
+  const { error: eventError } = await supabase.from('observation_events').insert({
+    observation_id: item.id,
+    user_id: userId,
+    event_type: 'confirmed',
+    payload: {
+      actionValue: payload.actionValue,
+      note: note ?? null,
+      confirmedAt: timestamp,
+    },
+  })
+
+  if (eventError) {
+    throw eventError
+  }
+
+  return buildConfirmedFallback(item, timestamp, payload.actionValue, note)
+}
+
 export async function dismissInboxItemAction(
   {
     supabase,
@@ -180,13 +279,31 @@ export async function dismissInboxItemAction(
       userId,
       timestamp,
       reason,
+      actionValue: payload.actionValue,
     })
 
     if (updated) {
       return updated
     }
 
-    return buildDismissedFallback(item, timestamp, reason)
+    return buildDismissedFallback(item, timestamp, reason, payload.actionValue)
+  }
+
+  if (item.sourceType === 'observation') {
+    const updated = await dismissObservationInboxItem({
+      supabase,
+      item,
+      userId,
+      timestamp,
+      reason,
+      actionValue: payload.actionValue,
+    })
+
+    if (updated) {
+      return updated
+    }
+
+    return buildDismissedFallback(item, timestamp, reason, payload.actionValue)
   }
 
   if (item.sourceType === 'part_follow_up' || item.sourceType === 'follow_up') {
@@ -197,16 +314,17 @@ export async function dismissInboxItemAction(
       userId,
       timestamp,
       reason,
+      actionValue: payload.actionValue,
     })
 
     if (updated) {
       return updated
     }
 
-    return buildDismissedFallback(item, timestamp, reason)
+    return buildDismissedFallback(item, timestamp, reason, payload.actionValue)
   }
 
-  return buildDismissedFallback(item, timestamp, reason)
+  return buildDismissedFallback(item, timestamp, reason, payload.actionValue)
 }
 
 export async function snoozeInboxItemAction(
@@ -222,6 +340,91 @@ type DismissContext = {
   userId: string
   timestamp: string
   reason?: string
+  actionValue: InboxQuickActionValue
+}
+
+type ObservationDismissContext = {
+  supabase: SupabaseClient<Database>
+  item: InboxItem
+  userId: string
+  timestamp: string
+  reason?: string
+  actionValue: InboxQuickActionValue
+}
+
+async function dismissObservationInboxItem({
+  supabase,
+  item,
+  userId,
+  timestamp,
+  reason,
+  actionValue,
+}: ObservationDismissContext): Promise<InboxItem | null> {
+  const { data: observationRow, error } = await supabase
+    .from('inbox_observations')
+    .select('id,status,metadata')
+    .eq('id', item.id)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  if (!observationRow) {
+    return null
+  }
+
+  const metaRecord = toRecord(observationRow.metadata)
+  const dismissedMeta = toRecord(metaRecord.dismissed)
+  dismissedMeta.dismissed_at = timestamp
+  if (reason) {
+    dismissedMeta.reason = reason
+  }
+
+  const responseMeta = toRecord(metaRecord.inbox_response)
+  responseMeta.last_value = actionValue
+  responseMeta.recorded_at = timestamp
+  if (reason) {
+    responseMeta.reason = reason
+  }
+
+  const updatedMeta = {
+    ...metaRecord,
+    dismissed: dismissedMeta,
+    inbox_response: responseMeta,
+  }
+
+  const { error: updateError } = await supabase
+    .from('inbox_observations')
+    .update({
+      status: 'dismissed',
+      dismissed_at: timestamp,
+      metadata: updatedMeta,
+    })
+    .eq('id', item.id)
+    .eq('user_id', userId)
+
+  if (updateError) {
+    throw updateError
+  }
+
+  const { error: eventError } = await supabase.from('observation_events').insert({
+    observation_id: item.id,
+    user_id: userId,
+    event_type: 'dismissed',
+    payload: {
+      actionValue,
+      reason: reason ?? null,
+      dismissedAt: timestamp,
+    },
+  })
+
+  if (eventError) {
+    throw eventError
+  }
+
+  return buildDismissedFallback(item, timestamp, reason, actionValue)
 }
 
 async function dismissInsightInboxItem({
@@ -231,6 +434,7 @@ async function dismissInsightInboxItem({
   userId,
   timestamp,
   reason,
+  actionValue,
 }: DismissContext): Promise<InboxItem | null> {
   const { data: insightRow, error } = await supabase
     .from('insights')
@@ -261,14 +465,23 @@ async function dismissInsightInboxItem({
     dismissedMeta.reason = reason
   }
 
+  const responseMeta = toRecord(metaRecord.inbox_response)
+  responseMeta.last_value = actionValue
+  responseMeta.last_recorded_at = timestamp
+  if (reason) {
+    responseMeta.reason = reason
+  }
+
   insightUpdate.meta = {
     ...metaRecord,
     dismissed: dismissedMeta,
+    inbox_response: responseMeta,
   } as InsightUpdate['meta']
 
   await actionLogger.loggedUpdate<InsightRow>('insights', insight.id, insightUpdate, userId, 'dismiss_insight', {
     changeDescription: 'User dismissed inbox insight',
     ...(reason ? { reason } : {}),
+    responseValue: actionValue,
   })
 
   return getInboxItemById(supabase, item.id, userId)
@@ -281,6 +494,7 @@ async function dismissPartFollowUpInboxItem({
   userId,
   timestamp,
   reason,
+  actionValue,
 }: DismissContext): Promise<InboxItem | null> {
   if (!item.partId) {
     throw new Error('Part follow-up item missing partId')
@@ -311,21 +525,48 @@ async function dismissPartFollowUpInboxItem({
     partName: part.name,
     changeDescription: 'User dismissed part follow-up reminder',
     ...(reason ? { reason } : {}),
+    responseValue: actionValue,
   })
 
   return getInboxItemById(supabase, item.id, userId)
 }
 
-function buildDismissedFallback(item: InboxItem, timestamp: string, reason?: string): InboxItem {
+function buildDismissedFallback(
+  item: InboxItem,
+  timestamp: string,
+  reason?: string,
+  actionValue?: string,
+): InboxItem {
   const metadata = {
     ...(item.metadata ?? {}),
     dismissedAt: timestamp,
     ...(reason ? { dismissReason: reason } : {}),
+    ...(actionValue ? { lastResponse: actionValue } : {}),
   }
 
   return {
     ...item,
     status: 'dismissed',
+    metadata,
+  }
+}
+
+function buildConfirmedFallback(
+  item: InboxItem,
+  timestamp: string,
+  actionValue: string,
+  note?: string,
+): InboxItem {
+  const metadata = {
+    ...(item.metadata ?? {}),
+    confirmedAt: timestamp,
+    lastResponse: actionValue,
+    ...(note ? { confirmationNote: note } : {}),
+  }
+
+  return {
+    ...item,
+    status: 'revealed',
     metadata,
   }
 }
