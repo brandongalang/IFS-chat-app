@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { updatePart } from '@/lib/data/parts-server'
-import { getUserClient } from '@/lib/supabase/clients'
+import { getUserClient, getServerSupabaseClient } from '@/lib/supabase/clients'
 import { z } from 'zod'
 
 const updateDetailsSchema = z.object({
@@ -48,6 +48,15 @@ export async function updatePartDetails(formData: FormData) {
   }
 
   try {
+    const supabase = await getServerSupabaseClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'You must be signed in to update a part.' }
+    }
+
     const updated = await updatePart({
       partId,
       updates: {
@@ -55,7 +64,7 @@ export async function updatePartDetails(formData: FormData) {
         visualization: newVisualization,
       },
       auditNote: 'Updated name and emoji from Garden UI',
-    })
+    }, { userId: user.id, client: supabase })
 
     // Revalidate the path to ensure the page is updated with the new data
     revalidatePath(`/garden/${partId}`)

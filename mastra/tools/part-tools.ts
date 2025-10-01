@@ -1,7 +1,6 @@
 import { randomUUID } from 'crypto'
 import { createTool } from '@mastra/core'
 import { z } from 'zod'
-import { resolveUserId } from '@/config/dev'
 import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
 import type {
   PartRow,
@@ -17,6 +16,8 @@ import {
   getPartRelationshipsSchema,
   logRelationshipSchema,
 } from './part-schemas'
+
+const STUB_USER_ID = "00000000-0000-0000-0000-000000000000"
 
 function makeStubPart(userId: string, overrides: Partial<PartRow> = {}): PartRow {
   const now = new Date().toISOString()
@@ -73,7 +74,6 @@ function makeStubRelationship(userId: string, partIds: string[]): PartRelationsh
 export async function searchParts(input: z.infer<typeof searchPartsSchema>): Promise<ToolResult<PartRow[]>> {
   try {
     const validated = searchPartsSchema.parse(input)
-    resolveUserId(validated.userId)
     await getStorageAdapter()
     return { success: true, data: [], confidence: 1.0 }
   } catch (error) {
@@ -84,7 +84,6 @@ export async function searchParts(input: z.infer<typeof searchPartsSchema>): Pro
 export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Promise<ToolResult<PartRow | null>> {
   try {
     const validated = getPartByIdSchema.parse(input)
-    resolveUserId(validated.userId)
     await getStorageAdapter()
     return { success: true, data: null, confidence: 1.0 }
   } catch (error) {
@@ -95,7 +94,6 @@ export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Pro
 export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>): Promise<ToolResult<any>> {
   try {
     const validated = getPartDetailSchema.parse(input)
-    resolveUserId(validated.userId)
     await getStorageAdapter()
     return { success: true, data: null, confidence: 1.0 }
   } catch (error) {
@@ -106,7 +104,7 @@ export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>):
 export async function createEmergingPart(input: z.infer<typeof createEmergingPartSchema>): Promise<ToolResult<PartRow>> {
   try {
     const validated = createEmergingPartSchema.parse(input)
-    const userId = resolveUserId(validated.userId)
+    const userId = STUB_USER_ID
     await getStorageAdapter()
     const part = makeStubPart(userId, {
       name: validated.name,
@@ -130,7 +128,7 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
 export async function updatePart(input: z.infer<typeof updatePartSchema>): Promise<ToolResult<PartRow>> {
   try {
     const validated = updatePartSchema.parse(input)
-    const userId = resolveUserId(validated.userId)
+    const userId = STUB_USER_ID
     await getStorageAdapter()
     const base = makeStubPart(userId, { id: validated.partId })
     const updates = validated.updates
@@ -175,7 +173,6 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
 export async function getPartRelationships(input: z.infer<typeof getPartRelationshipsSchema>): Promise<ToolResult<PartRelationshipRow[]>> {
   try {
     const validated = getPartRelationshipsSchema.parse(input)
-    resolveUserId(validated.userId)
     await getStorageAdapter()
     return { success: true, data: [], confidence: 1.0 }
   } catch (error) {
@@ -186,7 +183,7 @@ export async function getPartRelationships(input: z.infer<typeof getPartRelation
 export async function logRelationship(input: z.infer<typeof logRelationshipSchema>): Promise<ToolResult<PartRelationshipRow>> {
   try {
     const validated = logRelationshipSchema.parse(input)
-    const userId = resolveUserId(validated.userId)
+    const userId = STUB_USER_ID
     await getStorageAdapter()
     const relationship = makeStubRelationship(userId, validated.partIds)
     return { success: true, data: relationship, confidence: 0.5 }

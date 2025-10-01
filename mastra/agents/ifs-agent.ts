@@ -3,12 +3,14 @@ import type { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { ENV } from '@/config/env'
 import { resolveModel } from '@/config/model'
 import { getPartTools } from '../tools/part-tools.mastra'
-import { assessmentTools } from '../tools/assessment-tools'
-import { proposalTools } from '../tools/proposal-tools'
-import { evidenceTools } from '../tools/evidence-tools'
-import { stubTools } from '../tools/stub-tools'
-import { memoryTools } from '../tools/memory-tools'
-import { updateSyncTools } from '../tools/update-sync-tools'
+import { createAssessmentTools } from '../tools/assessment-tools'
+import { createProposalTools } from '../tools/proposal-tools'
+import { createEvidenceTools } from '../tools/evidence-tools'
+import { createStubTools } from '../tools/stub-tools'
+import { createMemoryTools } from '../tools/memory-tools'
+import { createUpdateSyncTools } from '../tools/update-sync-tools'
+import { createPendingUpdateTools } from '../tools/update-sync'
+import { createRollbackTools } from '../tools/rollback-tools'
 import { generateSystemPrompt } from './ifs_agent_prompt'
 
 type OpenRouterProvider = ReturnType<typeof createOpenRouter>
@@ -44,12 +46,14 @@ export function createIfsAgent(
     model: openrouter(modelId, modelSettings),
     tools: {
       ...getPartTools(userId), // Part management tools
-      ...assessmentTools, // Confidence assessment tool
-      ...proposalTools, // Split/Merge proposal workflow
-      ...evidenceTools, // Evidence and pattern tools
-      ...stubTools, // Stub creation tools
-      ...memoryTools, // Memory and conversation search tools
-      ...updateSyncTools, // Sync unprocessed updates from Supabase
+      ...createAssessmentTools(userId), // Confidence assessment tool
+      ...createProposalTools(userId), // Split/Merge proposal workflow
+      ...createEvidenceTools(userId), // Evidence and pattern tools
+      ...createStubTools(userId), // Stub creation tools
+      ...createMemoryTools(userId), // Memory and conversation search tools
+      ...createUpdateSyncTools(userId), // Unprocessed updates overview
+      ...createPendingUpdateTools(userId), // Pending updates fetcher
+      ...createRollbackTools(userId), // Rollback capabilities
     },
   })
 }
