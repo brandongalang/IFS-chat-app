@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { updatePart } from '@/lib/data/parts-server'
-import { getUserClient } from '@/lib/supabase/clients'
+import { getUserClient, getServerSupabaseClient } from '@/lib/supabase/clients'
 import { z } from 'zod'
 
 const updateDetailsSchema = z.object({
@@ -48,7 +48,7 @@ export async function updatePartDetails(formData: FormData) {
   }
 
   try {
-    const supabase = await createClient()
+    const supabase = await getServerSupabaseClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
