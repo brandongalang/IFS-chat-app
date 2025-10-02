@@ -36,9 +36,11 @@
 - Ensure queue gating remains intact; persist observation evidence references (markdown path + line, sessionId, checkInId) in observation metadata.
 - Validation: workflow unit tests with mocked tool responses plus golden samples for end-to-end observation generation.
 
-## Phase 5 Plan (Telemetry & Rollout)
+## Phase 5 Progress (Telemetry & Rollout)
 
-- Implement a lightweight telemetry client (initially Supabase table `inbox_observation_telemetry`) recording tool usage counts, durations, and error reasons.
-- Surface dashboards/queries for daily cron runs and add runbook notes for manual triggers (`npm run inbox:generate`).
-- Final QA in staging: dry-run cron, verify queue capacity behavior, audit observation inserts + events.
-- Production rollout: enable cron, monitor telemetry, document go/no-go criteria in this session log.
+- Added Supabase table `inbox_observation_telemetry` plus a resilient telemetry client (`lib/inbox/search/telemetry.ts`) that records tool usage, durations, metadata, and failure reasons for all observation search helpers.
+- `createObservationResearchTools` now wires telemetry automatically and resolves user IDs at execution time; Edge/runtime builds use safe fallbacks while telemetry writes run via service-role credentials.
+- Runbook updates:
+  - Use `npm run inbox:generate` for manual dry-runs; telemetry can be reviewed via `SELECT * FROM inbox_observation_telemetry ORDER BY created_at DESC LIMIT 50;` for quick audits.
+  - Vercel/Supabase dashboards can visualize per-tool counts by grouping on `tool` and `date_trunc('day', created_at)`.
+- Staging checklist: ensure cron dry-run populates telemetry, verify queue capacity behaviour, and monitor `observation_events` alongside telemetry rows before production enablement.

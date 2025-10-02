@@ -13,8 +13,17 @@ import {
   searchMarkdown,
   searchSessions,
 } from '@/lib/inbox/search'
+import { createObservationTelemetryClient } from '@/lib/inbox/search/telemetry'
+import type { ObservationTelemetryClient } from '@/lib/inbox/search/types'
 
 type MarkdownGlob = string | string[] | undefined
+
+type ToolRuntime = { userId?: string }
+
+type ObservationResearchToolOptions = {
+  dependencies?: Partial<ObservationSearchDependencies>
+  telemetry?: ObservationTelemetryClient | null
+}
 
 const markdownGlobSchema = z.union([z.string().min(1), z.array(z.string().min(1))]).optional()
 
@@ -130,19 +139,35 @@ const defaultDependencies: ObservationSearchDependencies = {
   },
 }
 
-type ToolRuntime = { userId?: string }
-
 export function createObservationResearchTools(
   baseUserId: string | null | undefined,
-  overrides: Partial<ObservationSearchDependencies> = {},
+  options: ObservationResearchToolOptions = {},
 ) {
+  const overrides = options.dependencies ?? {}
   const normalizedBaseUserId = typeof baseUserId === 'string' && baseUserId.trim().length ? baseUserId.trim() : null
 
-  const deps: ObservationSearchDependencies = {
-    markdown: { ...defaultDependencies.markdown, ...(overrides.markdown ?? {}) },
-    sessions: { ...defaultDependencies.sessions, ...(overrides.sessions ?? {}) },
-    checkIns: { ...defaultDependencies.checkIns, ...(overrides.checkIns ?? {}) },
+  let telemetryCache: ObservationTelemetryClient | null | undefined
+  const resolveTelemetry = (): ObservationTelemetryClient | null => {
+    if (telemetryCache !== undefined) return telemetryCache
+    if (options.telemetry !== undefined) {
+      telemetryCache = options.telemetry
+    } else {
+      telemetryCache = createDefaultTelemetryClient()
+    }
+    return telemetryCache
   }
+
+  const markdownListImpl = overrides.markdown?.list ?? defaultDependencies.markdown.list
+  const markdownReadImpl = overrides.markdown?.read ?? defaultDependencies.markdown.read
+  const markdownSearchImpl = overrides.markdown?.search ?? defaultDependencies.markdown.search
+
+  const sessionListImpl = overrides.sessions?.list ?? defaultDependencies.sessions.list
+  const sessionSearchImpl = overrides.sessions?.search ?? defaultDependencies.sessions.search
+  const sessionDetailImpl = overrides.sessions?.detail ?? defaultDependencies.sessions.detail
+
+  const checkInListImpl = overrides.checkIns?.list ?? defaultDependencies.checkIns.list
+  const checkInSearchImpl = overrides.checkIns?.search ?? defaultDependencies.checkIns.search
+  const checkInDetailImpl = overrides.checkIns?.detail ?? defaultDependencies.checkIns.detail
 
   const resolveUser = (runtime?: ToolRuntime) => resolveToolUserId(normalizedBaseUserId, runtime)
 
@@ -158,7 +183,7 @@ export function createObservationResearchTools(
       runtime?: ToolRuntime
     }) => {
       const input = markdownListSchema.parse(context)
-      return deps.markdown.list({
+      return markdownListImpl({
         userId: resolveUser(runtime),
         prefix: input.prefix,
         glob: input.glob,
@@ -179,19 +204,22 @@ export function createObservationResearchTools(
       runtime?: ToolRuntime
     }) => {
       const input = markdownSearchSchema.parse(context)
-      return deps.markdown.search({
-        userId: resolveUser(runtime),
-        pattern: input.pattern,
-        prefix: input.prefix,
-        glob: input.glob,
-        regex: input.regex,
-        flags: input.flags,
-        ignoreCase: input.ignoreCase,
-        maxMatches: input.maxMatches,
-        timeoutMs: input.timeoutMs,
-        contextBefore: input.contextBefore,
-        contextAfter: input.contextAfter,
-      })
+      return markdownSearchImpl(
+        {
+          userId: resolveUser(runtime),
+          pattern: input.pattern,
+          prefix: input.prefix,
+          glob: input.glob,
+          regex: input.regex,
+          flags: input.flags,
+          ignoreCase: input.ignoreCase,
+          maxMatches: input.maxMatches,
+          timeoutMs: input.timeoutMs,
+          contextBefore: input.contextBefore,
+          contextAfter: input.contextAfter,
+        },
+        resolveTelemetry(),
+      )
     },
   })
 
@@ -207,7 +235,7 @@ export function createObservationResearchTools(
       runtime?: ToolRuntime
     }) => {
       const input = markdownReadSchema.parse(context)
-      return deps.markdown.read({
+      return markdownReadImpl({
         userId: resolveUser(runtime),
         path: input.path,
         offset: input.offset,
@@ -228,11 +256,14 @@ export function createObservationResearchTools(
       runtime?: ToolRuntime
     }) => {
       const input = sessionListSchema.parse(context)
-      return deps.sessions.list({
-        userId: resolveUser(runtime),
-        lookbackDays: input.lookbackDays,
-        limit: input.limit,
-      })
+      return sessionListImpl(
+        {
+          userId: resolveUser(runtime),
+          lookbackDays: input.lookbackDays,
+          limit: input.limit,
+        },
+        { telemetry: resolveTelemetry() },
+      )
     },
   })
 
@@ -248,13 +279,16 @@ export function createObservationResearchTools(
       runtime?: ToolRuntime
     }) => {
       const input = sessionSearchSchema.parse(context)
-      return deps.sessions.search({
-        userId: resolveUser(runtime),
-        query: input.query,
-        lookbackDays: input.lookbackDays,
-        limit: input.limit,
-        fields: input.fields,
-      })
+      return sessionSearchImpl(
+        {
+          userId: resolveUser(runtime),
+          query: input.query,
+          lookbackDays: input.lookbackDays,
+          limit: input.limit,
+          fields: input.fields,
+        },
+        { telemetry: resolveTelemetry() },
+      )
     },
   })
 
@@ -262,20 +296,17 @@ export function createObservationResearchTools(
     id: 'getSessionDetail',
     description: 'Retrieves paginated session transcript detail for evidence gathering.',
     inputSchema: sessionDetailSchema,
-    execute: async ({
-      context,
-      runtime,
-    }: {
-      context: z.infer<typeof sessionDetailSchema>
-      runtime?: ToolRuntime
-    }) => {
+    execute: async ({ context, runtime }: { context: z.infer<typeof sessionDetailSchema>; runtime?: ToolRuntime }) => {
       const input = sessionDetailSchema.parse(context)
-      return deps.sessions.detail({
-        userId: resolveUser(runtime),
-        sessionId: input.sessionId,
-        page: input.page,
-        pageSize: input.pageSize,
-      })
+      return sessionDetailImpl(
+        {
+          userId: resolveUser(runtime),
+          sessionId: input.sessionId,
+          page: input.page,
+          pageSize: input.pageSize,
+        },
+        { telemetry: resolveTelemetry() },
+      )
     },
   })
 
@@ -283,19 +314,16 @@ export function createObservationResearchTools(
     id: 'listCheckIns',
     description: 'Lists recent check-ins with intention and reflection summaries.',
     inputSchema: checkInListSchema,
-    execute: async ({
-      context,
-      runtime,
-    }: {
-      context: z.infer<typeof checkInListSchema>
-      runtime?: ToolRuntime
-    }) => {
+    execute: async ({ context, runtime }: { context: z.infer<typeof checkInListSchema>; runtime?: ToolRuntime }) => {
       const input = checkInListSchema.parse(context)
-      return deps.checkIns.list({
-        userId: resolveUser(runtime),
-        lookbackDays: input.lookbackDays,
-        limit: input.limit,
-      })
+      return checkInListImpl(
+        {
+          userId: resolveUser(runtime),
+          lookbackDays: input.lookbackDays,
+          limit: input.limit,
+        },
+        { telemetry: resolveTelemetry() },
+      )
     },
   })
 
@@ -303,20 +331,17 @@ export function createObservationResearchTools(
     id: 'searchCheckIns',
     description: 'Searches check-ins for matching reflections or gratitude notes.',
     inputSchema: checkInSearchSchema,
-    execute: async ({
-      context,
-      runtime,
-    }: {
-      context: z.infer<typeof checkInSearchSchema>
-      runtime?: ToolRuntime
-    }) => {
+    execute: async ({ context, runtime }: { context: z.infer<typeof checkInSearchSchema>; runtime?: ToolRuntime }) => {
       const input = checkInSearchSchema.parse(context)
-      return deps.checkIns.search({
-        userId: resolveUser(runtime),
-        query: input.query,
-        lookbackDays: input.lookbackDays,
-        limit: input.limit,
-      })
+      return checkInSearchImpl(
+        {
+          userId: resolveUser(runtime),
+          query: input.query,
+          lookbackDays: input.lookbackDays,
+          limit: input.limit,
+        },
+        { telemetry: resolveTelemetry() },
+      )
     },
   })
 
@@ -324,18 +349,15 @@ export function createObservationResearchTools(
     id: 'getCheckInDetail',
     description: 'Retrieves the full detail for a specific check-in entry.',
     inputSchema: checkInDetailSchema,
-    execute: async ({
-      context,
-      runtime,
-    }: {
-      context: z.infer<typeof checkInDetailSchema>
-      runtime?: ToolRuntime
-    }) => {
+    execute: async ({ context, runtime }: { context: z.infer<typeof checkInDetailSchema>; runtime?: ToolRuntime }) => {
       const input = checkInDetailSchema.parse(context)
-      return deps.checkIns.detail({
-        userId: resolveUser(runtime),
-        checkInId: input.checkInId,
-      })
+      return checkInDetailImpl(
+        {
+          userId: resolveUser(runtime),
+          checkInId: input.checkInId,
+        },
+        { telemetry: resolveTelemetry() },
+      )
     },
   })
 
@@ -356,4 +378,11 @@ export type ObservationResearchTools = ReturnType<typeof createObservationResear
 
 function resolveToolUserId(baseUserId: string | null, runtime?: ToolRuntime): string {
   return resolveUserId(runtime?.userId ?? baseUserId ?? undefined)
+}
+
+function createDefaultTelemetryClient(): ObservationTelemetryClient | null {
+  if (process.env.NODE_ENV === 'test') {
+    return null
+  }
+  return createObservationTelemetryClient()
 }
