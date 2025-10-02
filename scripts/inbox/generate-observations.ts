@@ -70,12 +70,12 @@ async function main() {
     process.exit(1)
   }
 
-  const agent = createInboxObservationAgent()
+  const agentFactory = (userId: string) => createInboxObservationAgent({ userId })
 
   try {
     const { jobRunId, results, startedAt, finishedAt } = await runObservationJob({
       supabase,
-      agent,
+      agentFactory,
       userIds,
       queueLimit,
       dedupeWindowDays,

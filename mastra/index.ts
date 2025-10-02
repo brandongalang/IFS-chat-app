@@ -35,7 +35,7 @@ let mastraInstance: any = null
 
 export function createMastra(profile: Profile = null) {
   const insightGeneratorAgent = createInsightGeneratorAgent(agentConfig)
-  const inboxObservationAgent = createInboxObservationAgent(agentConfig)
+  const inboxObservationAgent = createInboxObservationAgent(profile, agentConfig)
 
   return new Mastra({
     logger: new PinoLogger({

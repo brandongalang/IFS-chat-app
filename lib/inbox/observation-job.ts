@@ -8,7 +8,7 @@ type Supabase = SupabaseClient<Database>
 
 export interface ObservationJobOptions {
   supabase: Supabase
-  agent: InboxObservationAgent
+  agentFactory: (userId: string) => InboxObservationAgent
   userIds: string[]
   queueLimit?: number
   dedupeWindowDays?: number
@@ -31,7 +31,7 @@ export interface ObservationJobRunResult {
 const DEFAULT_JOB_NAME = 'inbox_observation_daily'
 
 export async function runObservationJob(options: ObservationJobOptions): Promise<ObservationJobRunResult> {
-  const { supabase, agent } = options
+  const { supabase } = options
   const userIds = Array.isArray(options.userIds) ? options.userIds : []
   if (!userIds.length) {
     throw new Error('No user IDs provided for observation job')
@@ -58,6 +58,7 @@ export async function runObservationJob(options: ObservationJobOptions): Promise
 
   for (const userId of userIds) {
     try {
+      const agent = options.agentFactory(userId)
       const result = await runObservationEngine({
         supabase,
         agent,
