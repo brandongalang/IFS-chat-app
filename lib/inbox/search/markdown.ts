@@ -13,9 +13,6 @@ import type {
 } from './types'
 import {
   buildGuardedSearchConfig,
-  MARKDOWN_DEFAULT_CONTEXT_AFTER,
-  MARKDOWN_DEFAULT_CONTEXT_BEFORE,
-  MARKDOWN_DEFAULT_TIMEOUT_MS,
   MARKDOWN_MIN_PAGE_SIZE,
   MarkdownSearchValidationError,
   normalizePageSize,
