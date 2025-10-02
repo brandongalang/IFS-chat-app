@@ -15,7 +15,6 @@
 - Regex support excludes `g` flag, auto-adds `i` when `ignoreCase` is true, and limits usable flags to `imsuy` to avoid unexpected backtracking.
 - Telemetry hook `recordTelemetry` swallows failures so tooling never breaks the agent flow; actual destinations will be wired in Phase 5.
 - Unit coverage lives in `scripts/tests/unit/inbox-search-guards.test.ts` and is now part of `npm run test:unit`.
-
 ## Phase 2 Progress (Markdown Finder)
 
 - Implemented `lib/inbox/search/markdown.ts` with `listMarkdownFiles`, `searchMarkdown`, and `readMarkdown`, enforcing user-scoped paths, prefix/glob filters, and timeout-limited scanning.
