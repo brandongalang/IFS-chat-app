@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { setAdminClientOverrideForTests } from '@/lib/supabase/admin'
 import { setServerClientOverrideForTests } from '@/lib/supabase/server'
 
-process.env.NODE_ENV = 'test'
+Object.assign(process.env, { NODE_ENV: 'test' })
 process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://supabase.local'
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'anon-key'
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key'
