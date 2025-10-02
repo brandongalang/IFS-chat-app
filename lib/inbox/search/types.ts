@@ -93,6 +93,12 @@ export interface SessionListItem {
   summary: string | null
 }
 
+export interface SessionListResult {
+  items: SessionListItem[]
+  truncated: boolean
+  runtimeMs: number
+}
+
 export interface SessionDetailParams {
   userId: string
   sessionId: string
@@ -142,6 +148,12 @@ export interface CheckInListItem {
   date: string
   intention: string | null
   reflection: string | null
+}
+
+export interface CheckInListResult {
+  items: CheckInListItem[]
+  truncated: boolean
+  runtimeMs: number
 }
 
 export interface CheckInDetailParams {
