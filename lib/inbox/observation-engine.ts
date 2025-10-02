@@ -3,7 +3,12 @@ import { createHash } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type { Database, InboxObservationStatus } from '@/lib/types/database'
-import { observationBatchSchema, type ObservationBatch, type ObservationCandidate } from './observation-schema'
+import {
+  observationBatchSchema,
+  type ObservationBatch,
+  type ObservationCandidate,
+  type ObservationEvidence,
+} from './observation-schema'
 import type { InboxObservationAgent, InboxObservationAgentRunResult } from '@/mastra/agents/inbox-observation'
 import {
   getInboxQueueSnapshot,
@@ -11,6 +16,13 @@ import {
   type InboxQueueSnapshot,
   type ObservationHistoryEntry,
 } from '@/lib/data/inbox-queue'
+import {
+  getCheckInDetail,
+  getSessionDetail,
+  readMarkdown,
+  type CheckInDetail,
+  type SessionDetail,
+} from '@/lib/inbox/search'
 
 type Supabase = SupabaseClient<Database>
 
@@ -22,6 +34,7 @@ export interface ObservationEngineOptions {
   dedupeWindowDays?: number
   now?: Date
   metadata?: Record<string, unknown>
+  traceResolvers?: Partial<ObservationTraceResolvers>
 }
 
 export interface InsertedObservationSummary {
@@ -45,6 +58,26 @@ export interface ObservationEngineResult {
 
 const DEFAULT_QUEUE_LIMIT = 3
 const DEFAULT_LOOKBACK_DAYS = 14
+
+type ObservationCandidateWithHash = ObservationCandidate & { semanticHash: string }
+
+interface ObservationTrace {
+  markdown?: Array<{ path: string; snippet?: string; hasMore?: boolean; error?: string }>
+  sessions?: Array<{ sessionId: string; summary: string | null; messageCount: number; hasMore: boolean; error?: string }>
+  checkIns?: Array<{ checkInId: string; type: string | null; date: string | null; intention: string | null; reflection: string | null; error?: string }>
+}
+
+interface ObservationTraceResolvers {
+  readMarkdown: typeof readMarkdown
+  getSessionDetail: typeof getSessionDetail
+  getCheckInDetail: typeof getCheckInDetail
+}
+
+const defaultTraceResolvers: ObservationTraceResolvers = {
+  readMarkdown,
+  getSessionDetail,
+  getCheckInDetail,
+}
 
 export async function runObservationEngine(options: ObservationEngineOptions): Promise<ObservationEngineResult> {
   const { supabase, agent, userId } = options
@@ -128,7 +161,22 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
   const candidates = parsed.data.observations
   const filtered = filterObservationCandidates(candidates, historyHashes, remaining)
 
-  if (!filtered.length) {
+  const traceResolvers = resolveTraceResolvers(options.traceResolvers)
+  const augmentedCandidates: ObservationCandidateWithHash[] = await Promise.all(
+    filtered.map(async (candidate) => {
+      const trace = await buildObservationTrace(options.userId, candidate, traceResolvers)
+      if (!trace) {
+        return candidate
+      }
+      const metadata = {
+        ...(candidate.metadata ?? {}),
+        trace,
+      }
+      return { ...candidate, metadata }
+    }),
+  )
+
+  if (!augmentedCandidates.length) {
     return {
       status: 'skipped',
       queue,
@@ -142,7 +190,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
     const inserted = await insertObservations({
       supabase,
       userId,
-      candidates: filtered,
+      candidates: augmentedCandidates,
       now,
       metadata: options.metadata,
     })
@@ -204,9 +252,9 @@ function filterObservationCandidates(
   candidates: ObservationBatch['observations'],
   historyHashes: Set<string>,
   remaining: number,
-): Array<ObservationCandidate & { semanticHash: string }> {
+): ObservationCandidateWithHash[] {
   const seen = new Set<string>()
-  const filtered: Array<ObservationCandidate & { semanticHash: string }> = []
+  const filtered: ObservationCandidateWithHash[] = []
 
   for (const candidate of candidates) {
     if (filtered.length >= remaining) break
@@ -242,7 +290,7 @@ function computeSemanticHash(candidate: ObservationCandidate): string {
 interface InsertObservationsInput {
   supabase: Supabase
   userId: string
-  candidates: Array<ObservationCandidate & { semanticHash: string }>
+  candidates: ObservationCandidateWithHash[]
   now: Date
   metadata?: Record<string, unknown>
 }
@@ -364,3 +412,185 @@ function toRecord(value: unknown): Record<string, unknown> {
 
   return {}
 }
+
+function resolveTraceResolvers(overrides?: Partial<ObservationTraceResolvers>): ObservationTraceResolvers {
+  return {
+    readMarkdown: overrides?.readMarkdown ?? defaultTraceResolvers.readMarkdown,
+    getSessionDetail: overrides?.getSessionDetail ?? defaultTraceResolvers.getSessionDetail,
+    getCheckInDetail: overrides?.getCheckInDetail ?? defaultTraceResolvers.getCheckInDetail,
+  }
+}
+
+export async function buildObservationTrace(
+  userId: string,
+  candidate: ObservationCandidate,
+  resolvers: ObservationTraceResolvers = defaultTraceResolvers,
+): Promise<ObservationTrace | null> {
+  if (!Array.isArray(candidate.evidence) || candidate.evidence.length === 0) {
+    return null
+  }
+
+  const markdownEntries: ObservationTrace['markdown'] = []
+  const sessionEntries: ObservationTrace['sessions'] = []
+  const checkInEntries: ObservationTrace['checkIns'] = []
+
+  const seenMarkdownPaths = new Set<string>()
+  const seenSessions = new Set<string>()
+  const seenCheckIns = new Set<string>()
+
+  const evidenceList = candidate.evidence ?? []
+
+  for (const evidence of evidenceList) {
+    await Promise.all([
+      handleMarkdownEvidence(userId, evidence, resolvers, seenMarkdownPaths, markdownEntries),
+      handleSessionEvidence(userId, evidence, resolvers, seenSessions, sessionEntries),
+      handleCheckInEvidence(userId, evidence, resolvers, seenCheckIns, checkInEntries),
+    ])
+  }
+
+  const trace: ObservationTrace = {}
+  if (markdownEntries.length) trace.markdown = markdownEntries
+  if (sessionEntries.length) trace.sessions = sessionEntries
+  if (checkInEntries.length) trace.checkIns = checkInEntries
+
+  return Object.keys(trace).length ? trace : null
+}
+
+async function handleMarkdownEvidence(
+  userId: string,
+  evidence: ObservationEvidence,
+  resolvers: ObservationTraceResolvers,
+  seen: Set<string>,
+  bucket: NonNullable<ObservationTrace['markdown']>,
+) {
+  const path = extractMarkdownPath(evidence)
+  if (!path || seen.has(path)) return
+  seen.add(path)
+
+  try {
+    const chunk = await resolvers.readMarkdown({ userId, path, offset: 0, limit: 512 })
+    const snippet = chunk.data.length > 400 ? `${chunk.data.slice(0, 400)}…` : chunk.data
+    bucket.push({ path, snippet, hasMore: chunk.hasMore })
+  } catch (error) {
+    bucket.push({
+      path,
+      error: error instanceof Error ? error.message : 'Failed to read markdown snippet',
+    })
+  }
+}
+
+async function handleSessionEvidence(
+  userId: string,
+  evidence: ObservationEvidence,
+  resolvers: ObservationTraceResolvers,
+  seen: Set<string>,
+  bucket: NonNullable<ObservationTrace['sessions']>,
+) {
+  const sessionId = evidence.sessionId
+  if (!sessionId || seen.has(sessionId)) return
+  seen.add(sessionId)
+
+  try {
+    const detail: SessionDetail | null = await resolvers.getSessionDetail({
+      userId,
+      sessionId,
+      page: 1,
+      pageSize: 10,
+    })
+    if (!detail) {
+      bucket.push({
+        sessionId,
+        summary: null,
+        messageCount: 0,
+        hasMore: false,
+      })
+      return
+    }
+    bucket.push({
+      sessionId,
+      summary: detail.summary ?? null,
+      messageCount: detail.messages.length,
+      hasMore: detail.nextPage !== null,
+    })
+  } catch (error) {
+    bucket.push({
+      sessionId,
+      summary: null,
+      messageCount: 0,
+      hasMore: false,
+      error: error instanceof Error ? error.message : 'Failed to load session detail',
+    })
+  }
+}
+
+async function handleCheckInEvidence(
+  userId: string,
+  evidence: ObservationEvidence,
+  resolvers: ObservationTraceResolvers,
+  seen: Set<string>,
+  bucket: NonNullable<ObservationTrace['checkIns']>,
+) {
+  const checkInId = evidence.checkInId
+  if (!checkInId || seen.has(checkInId)) return
+  seen.add(checkInId)
+
+  try {
+    const detail: CheckInDetail | null = await resolvers.getCheckInDetail({ userId, checkInId })
+    if (!detail) {
+      bucket.push({
+        checkInId,
+        type: null,
+        date: null,
+        intention: null,
+        reflection: null,
+      })
+      return
+    }
+    bucket.push({
+      checkInId: detail.checkInId,
+      type: detail.type ?? null,
+      date: detail.date ?? null,
+      intention: detail.intention ?? null,
+      reflection: detail.reflection ?? null,
+    })
+  } catch (error) {
+    bucket.push({
+      checkInId,
+      type: null,
+      date: null,
+      intention: null,
+      reflection: null,
+      error: error instanceof Error ? error.message : 'Failed to load check-in detail',
+    })
+  }
+}
+
+function extractMarkdownPath(evidence: ObservationEvidence): string | null {
+  const metadata = evidence.metadata
+  if (metadata && typeof metadata === 'object') {
+    const record = metadata as Record<string, unknown>
+    const pathCandidate =
+      record.markdownPath ?? record.path ?? record.sourcePath ?? record.markdown_file ?? record.file
+    if (typeof pathCandidate === 'string' && pathCandidate.trim().length) {
+      return sanitizeMarkdownPath(pathCandidate)
+    }
+  }
+
+  if (typeof evidence.source === 'string' && evidence.source.startsWith('markdown:')) {
+    const fragment = evidence.source.slice('markdown:'.length)
+    const path = fragment.split('#')[0]?.trim()
+    if (path) {
+      return sanitizeMarkdownPath(path)
+    }
+  }
+
+  return null
+}
+
+function sanitizeMarkdownPath(path: string): string {
+  const trimmed = path.trim().replace(/^\/+/, '')
+  return trimmed
+}
+
+export type { ObservationTrace, ObservationTraceResolvers }
+

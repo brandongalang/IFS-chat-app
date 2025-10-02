@@ -2,240 +2,358 @@ import { createTool } from '@mastra/core'
 import { z } from 'zod'
 
 import { resolveUserId } from '@/config/dev'
-import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
-import { getServiceClient } from '@/lib/supabase/clients'
-import { readOverviewSections, readPartProfileSections } from '@/lib/memory/read'
+import {
+  getCheckInDetail,
+  getSessionDetail,
+  listCheckIns,
+  listMarkdownFiles,
+  listSessions,
+  readMarkdown,
+  searchCheckIns,
+  searchMarkdown,
+  searchSessions,
+} from '@/lib/inbox/search'
 
-const searchQuerySchema = z
+type MarkdownGlob = string | string[] | undefined
+
+const markdownGlobSchema = z.union([z.string().min(1), z.array(z.string().min(1))]).optional()
+
+const markdownListSchema = z
   .object({
-    userId: z.string().uuid().optional().describe('Target user ID; defaults to the active profile.'),
-    query: z.string().min(2).max(200).describe('Case-insensitive search query.'),
-    limit: z.number().int().min(1).max(20).default(5).describe('Maximum number of matches to return.'),
+    prefix: z.string().min(1).max(256).optional(),
+    glob: markdownGlobSchema,
+    limit: z.number().int().min(1).max(50).optional(),
   })
   .strict()
 
-const timelineSearchSchema = searchQuerySchema
-  .extend({
-    lookbackDays: z.number().int().min(1).max(60).default(14).describe('Number of days to look back when querying.'),
+const markdownSearchSchema = z
+  .object({
+    pattern: z.string().min(2).max(200),
+    prefix: z.string().min(1).max(256).optional(),
+    glob: markdownGlobSchema,
+    regex: z.boolean().optional(),
+    flags: z.string().regex(/^[imsuy]*$/u).optional(),
+    ignoreCase: z.boolean().optional(),
+    maxMatches: z.number().int().min(1).max(50).optional(),
+    timeoutMs: z.number().int().min(50).max(2_000).optional(),
+    contextBefore: z.number().int().min(0).max(5).optional(),
+    contextAfter: z.number().int().min(0).max(5).optional(),
   })
   .strict()
 
-let cachedClient: SupabaseDatabaseClient | null = null
+const markdownReadSchema = z
+  .object({
+    path: z.string().min(1).max(512),
+    offset: z.number().int().min(0).optional(),
+    limit: z.number().int().min(512).max(8192).optional(),
+  })
+  .strict()
 
-function resolveServiceClient(): SupabaseDatabaseClient {
-  if (!cachedClient) {
-    cachedClient = getServiceClient()
+const sessionListSchema = z
+  .object({
+    lookbackDays: z.number().int().min(1).max(60).optional(),
+    limit: z.number().int().min(1).max(50).optional(),
+  })
+  .strict()
+
+const sessionSearchSchema = z
+  .object({
+    query: z.string().min(2).max(200),
+    lookbackDays: z.number().int().min(1).max(60).optional(),
+    limit: z.number().int().min(1).max(50).optional(),
+    fields: z.array(z.enum(['summary', 'messages'])).min(1).max(2).optional(),
+  })
+  .strict()
+
+const sessionDetailSchema = z
+  .object({
+    sessionId: z.string().uuid(),
+    page: z.number().int().min(1).optional(),
+    pageSize: z.number().int().min(5).max(100).optional(),
+  })
+  .strict()
+
+const checkInListSchema = z
+  .object({
+    lookbackDays: z.number().int().min(1).max(60).optional(),
+    limit: z.number().int().min(1).max(50).optional(),
+  })
+  .strict()
+
+const checkInSearchSchema = z
+  .object({
+    query: z.string().min(2).max(200),
+    lookbackDays: z.number().int().min(1).max(60).optional(),
+    limit: z.number().int().min(1).max(50).optional(),
+  })
+  .strict()
+
+const checkInDetailSchema = z
+  .object({
+    checkInId: z.string().uuid(),
+  })
+  .strict()
+
+type ObservationSearchDependencies = {
+  markdown: {
+    list: typeof listMarkdownFiles
+    search: typeof searchMarkdown
+    read: typeof readMarkdown
   }
-  return cachedClient
-}
-
-export const searchMarkdownTool = createTool({
-  id: 'searchMarkdown',
-  description: 'Searches user overview and part markdown files for passages matching the query.',
-  inputSchema: searchQuerySchema,
-  execute: async ({ context }) => {
-    const input = searchQuerySchema.parse(context)
-    const userId = resolveUserId(input.userId)
-    const supabase = resolveServiceClient()
-
-    const query = input.query.trim().toLowerCase()
-    const matches: Array<Record<string, unknown>> = []
-
-    const overviewSections = await readOverviewSections(userId)
-    if (overviewSections) {
-      for (const [anchor, section] of Object.entries(overviewSections)) {
-        const snippet = extractSnippet(section.text, query)
-        if (snippet) {
-          matches.push({
-            source: 'overview',
-            anchor,
-            heading: section.heading,
-            snippet,
-          })
-        }
-      }
-    }
-
-    if (matches.length < input.limit) {
-      const { data: parts, error } = await supabase
-        .from('parts')
-        .select('id,name,updated_at')
-        .eq('user_id', userId)
-        .order('updated_at', { ascending: false })
-        .limit(40)
-
-      if (error) throw error
-
-      for (const part of parts ?? []) {
-        const sections = await readPartProfileSections(userId, part.id)
-        if (!sections) continue
-
-        for (const [anchor, section] of Object.entries(sections)) {
-          const snippet = extractSnippet(section.text, query)
-          if (snippet) {
-            matches.push({
-              source: 'part',
-              partId: part.id,
-              partName: part.name,
-              anchor,
-              heading: section.heading,
-              snippet,
-            })
-          }
-        }
-
-        if (matches.length >= input.limit) break
-      }
-    }
-
-    return {
-      userId,
-      query: input.query,
-      matches: matches.slice(0, input.limit),
-    }
-  },
-})
-
-export const searchSessionsTool = createTool({
-  id: 'searchSessions',
-  description: 'Searches session summaries and transcripts for passages matching the query.',
-  inputSchema: timelineSearchSchema,
-  execute: async ({ context }) => {
-    const input = timelineSearchSchema.parse(context)
-    const userId = resolveUserId(input.userId)
-    const supabase = resolveServiceClient()
-
-    const lookback = new Date()
-    lookback.setDate(lookback.getDate() - input.lookbackDays)
-
-    const { data: sessions, error } = await supabase
-      .from('sessions')
-      .select('id,start_time,summary,messages')
-      .eq('user_id', userId)
-      .gte('start_time', lookback.toISOString())
-      .order('start_time', { ascending: false })
-      .limit(40)
-
-    if (error) throw error
-
-    const query = input.query.trim().toLowerCase()
-    const matches: Array<Record<string, unknown>> = []
-
-    for (const session of sessions ?? []) {
-      const summarySnippet = extractSnippet(session.summary ?? '', query)
-      if (summarySnippet) {
-        matches.push({
-          sessionId: session.id,
-          matchedField: 'summary',
-          snippet: summarySnippet,
-          occurredAt: session.start_time,
-        })
-      }
-
-      const messages = Array.isArray(session.messages) ? session.messages : []
-      for (const message of messages) {
-        if (!message || typeof message.content !== 'string') continue
-        const snippet = extractSnippet(message.content, query)
-        if (snippet) {
-          matches.push({
-            sessionId: session.id,
-            matchedField: message.role ?? 'message',
-            snippet,
-            occurredAt: session.start_time,
-          })
-        }
-        if (matches.length >= input.limit) break
-      }
-
-      if (matches.length >= input.limit) break
-    }
-
-    return {
-      userId,
-      query: input.query,
-      matches: matches.slice(0, input.limit),
-    }
-  },
-})
-
-export const searchCheckInsTool = createTool({
-  id: 'searchCheckIns',
-  description: 'Searches check-in entries for reflections that match the query.',
-  inputSchema: timelineSearchSchema,
-  execute: async ({ context }) => {
-    const input = timelineSearchSchema.parse(context)
-    const userId = resolveUserId(input.userId)
-    const supabase = resolveServiceClient()
-
-    const sinceDate = new Date()
-    sinceDate.setDate(sinceDate.getDate() - input.lookbackDays)
-
-    const { data: checkIns, error } = await supabase
-      .from('check_ins')
-      .select('id,type,check_in_date,intention,reflection,gratitude,parts_data,created_at')
-      .eq('user_id', userId)
-      .gte('check_in_date', sinceDate.toISOString().slice(0, 10))
-      .order('check_in_date', { ascending: false })
-      .limit(60)
-
-    if (error) throw error
-
-    const query = input.query.trim().toLowerCase()
-    const matches: Array<Record<string, unknown>> = []
-
-    for (const entry of checkIns ?? []) {
-      const fields = [entry.intention, entry.reflection, entry.gratitude, stringify(entry.parts_data)]
-      for (const field of fields) {
-        const snippet = extractSnippet(field ?? '', query)
-        if (snippet) {
-          matches.push({
-            checkInId: entry.id,
-            type: entry.type,
-            date: entry.check_in_date,
-            snippet,
-          })
-          break
-        }
-      }
-      if (matches.length >= input.limit) break
-    }
-
-    return {
-      userId,
-      query: input.query,
-      matches: matches.slice(0, input.limit),
-    }
-  },
-})
-
-function extractSnippet(text: string, query: string): string | null {
-  if (!text) return null
-
-  const normalized = text.toLowerCase()
-  const index = normalized.indexOf(query)
-  if (index === -1) return null
-
-  const window = 80
-  const start = Math.max(0, index - window)
-  const end = Math.min(text.length, index + query.length + window)
-  const snippet = text.slice(start, end).trim()
-  return snippet.length ? snippet : text.slice(0, Math.min(text.length, 160)).trim()
-}
-
-function stringify(value: unknown): string {
-  if (value == null) return ''
-  if (typeof value === 'string') return value
-  try {
-    return JSON.stringify(value)
-  } catch {
-    return String(value)
+  sessions: {
+    list: typeof listSessions
+    search: typeof searchSessions
+    detail: typeof getSessionDetail
+  }
+  checkIns: {
+    list: typeof listCheckIns
+    search: typeof searchCheckIns
+    detail: typeof getCheckInDetail
   }
 }
 
-export const observationResearchTools = {
-  searchMarkdown: searchMarkdownTool,
-  searchSessions: searchSessionsTool,
-  searchCheckIns: searchCheckInsTool,
+const defaultDependencies: ObservationSearchDependencies = {
+  markdown: {
+    list: listMarkdownFiles,
+    search: searchMarkdown,
+    read: readMarkdown,
+  },
+  sessions: {
+    list: listSessions,
+    search: searchSessions,
+    detail: getSessionDetail,
+  },
+  checkIns: {
+    list: listCheckIns,
+    search: searchCheckIns,
+    detail: getCheckInDetail,
+  },
 }
 
-export type ObservationResearchTools = typeof observationResearchTools
+type ToolRuntime = { userId?: string }
+
+export function createObservationResearchTools(
+  baseUserId: string | null | undefined,
+  overrides: Partial<ObservationSearchDependencies> = {},
+) {
+  const normalizedBaseUserId = typeof baseUserId === 'string' && baseUserId.trim().length ? baseUserId.trim() : null
+
+  const deps: ObservationSearchDependencies = {
+    markdown: { ...defaultDependencies.markdown, ...(overrides.markdown ?? {}) },
+    sessions: { ...defaultDependencies.sessions, ...(overrides.sessions ?? {}) },
+    checkIns: { ...defaultDependencies.checkIns, ...(overrides.checkIns ?? {}) },
+  }
+
+  const resolveUser = (runtime?: ToolRuntime) => resolveToolUserId(normalizedBaseUserId, runtime)
+
+  const listMarkdownTool = createTool({
+    id: 'listMarkdown',
+    description: 'Lists markdown files scoped to the user memory root.',
+    inputSchema: markdownListSchema,
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof markdownListSchema>
+      runtime?: ToolRuntime
+    }) => {
+      const input = markdownListSchema.parse(context)
+      return deps.markdown.list({
+        userId: resolveUser(runtime),
+        prefix: input.prefix,
+        glob: input.glob,
+        limit: input.limit,
+      })
+    },
+  })
+
+  const searchMarkdownTool = createTool({
+    id: 'searchMarkdown',
+    description: 'Searches user markdown files for a pattern with optional regex and context.',
+    inputSchema: markdownSearchSchema,
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof markdownSearchSchema>
+      runtime?: ToolRuntime
+    }) => {
+      const input = markdownSearchSchema.parse(context)
+      return deps.markdown.search({
+        userId: resolveUser(runtime),
+        pattern: input.pattern,
+        prefix: input.prefix,
+        glob: input.glob,
+        regex: input.regex,
+        flags: input.flags,
+        ignoreCase: input.ignoreCase,
+        maxMatches: input.maxMatches,
+        timeoutMs: input.timeoutMs,
+        contextBefore: input.contextBefore,
+        contextAfter: input.contextAfter,
+      })
+    },
+  })
+
+  const readMarkdownTool = createTool({
+    id: 'readMarkdown',
+    description: 'Reads a slice of a markdown file stored for the user.',
+    inputSchema: markdownReadSchema,
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof markdownReadSchema>
+      runtime?: ToolRuntime
+    }) => {
+      const input = markdownReadSchema.parse(context)
+      return deps.markdown.read({
+        userId: resolveUser(runtime),
+        path: input.path,
+        offset: input.offset,
+        limit: input.limit,
+      })
+    },
+  })
+
+  const listSessionsTool = createTool({
+    id: 'listSessions',
+    description: 'Lists recent therapy sessions ordered by start time.',
+    inputSchema: sessionListSchema,
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof sessionListSchema>
+      runtime?: ToolRuntime
+    }) => {
+      const input = sessionListSchema.parse(context)
+      return deps.sessions.list({
+        userId: resolveUser(runtime),
+        lookbackDays: input.lookbackDays,
+        limit: input.limit,
+      })
+    },
+  })
+
+  const searchSessionsTool = createTool({
+    id: 'searchSessions',
+    description: 'Searches session summaries or transcript messages for a query.',
+    inputSchema: sessionSearchSchema,
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof sessionSearchSchema>
+      runtime?: ToolRuntime
+    }) => {
+      const input = sessionSearchSchema.parse(context)
+      return deps.sessions.search({
+        userId: resolveUser(runtime),
+        query: input.query,
+        lookbackDays: input.lookbackDays,
+        limit: input.limit,
+        fields: input.fields,
+      })
+    },
+  })
+
+  const getSessionDetailTool = createTool({
+    id: 'getSessionDetail',
+    description: 'Retrieves paginated session transcript detail for evidence gathering.',
+    inputSchema: sessionDetailSchema,
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof sessionDetailSchema>
+      runtime?: ToolRuntime
+    }) => {
+      const input = sessionDetailSchema.parse(context)
+      return deps.sessions.detail({
+        userId: resolveUser(runtime),
+        sessionId: input.sessionId,
+        page: input.page,
+        pageSize: input.pageSize,
+      })
+    },
+  })
+
+  const listCheckInsTool = createTool({
+    id: 'listCheckIns',
+    description: 'Lists recent check-ins with intention and reflection summaries.',
+    inputSchema: checkInListSchema,
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof checkInListSchema>
+      runtime?: ToolRuntime
+    }) => {
+      const input = checkInListSchema.parse(context)
+      return deps.checkIns.list({
+        userId: resolveUser(runtime),
+        lookbackDays: input.lookbackDays,
+        limit: input.limit,
+      })
+    },
+  })
+
+  const searchCheckInsTool = createTool({
+    id: 'searchCheckIns',
+    description: 'Searches check-ins for matching reflections or gratitude notes.',
+    inputSchema: checkInSearchSchema,
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof checkInSearchSchema>
+      runtime?: ToolRuntime
+    }) => {
+      const input = checkInSearchSchema.parse(context)
+      return deps.checkIns.search({
+        userId: resolveUser(runtime),
+        query: input.query,
+        lookbackDays: input.lookbackDays,
+        limit: input.limit,
+      })
+    },
+  })
+
+  const getCheckInDetailTool = createTool({
+    id: 'getCheckInDetail',
+    description: 'Retrieves the full detail for a specific check-in entry.',
+    inputSchema: checkInDetailSchema,
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof checkInDetailSchema>
+      runtime?: ToolRuntime
+    }) => {
+      const input = checkInDetailSchema.parse(context)
+      return deps.checkIns.detail({
+        userId: resolveUser(runtime),
+        checkInId: input.checkInId,
+      })
+    },
+  })
+
+  return {
+    listMarkdown: listMarkdownTool,
+    searchMarkdown: searchMarkdownTool,
+    readMarkdown: readMarkdownTool,
+    listSessions: listSessionsTool,
+    searchSessions: searchSessionsTool,
+    getSessionDetail: getSessionDetailTool,
+    listCheckIns: listCheckInsTool,
+    searchCheckIns: searchCheckInsTool,
+    getCheckInDetail: getCheckInDetailTool,
+  }
+}
+
+export type ObservationResearchTools = ReturnType<typeof createObservationResearchTools>
+
+function resolveToolUserId(baseUserId: string | null, runtime?: ToolRuntime): string {
+  return resolveUserId(runtime?.userId ?? baseUserId ?? undefined)
+}
