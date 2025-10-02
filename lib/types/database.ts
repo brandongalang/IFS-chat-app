@@ -52,6 +52,20 @@ export interface Database {
           }
         ]
       }
+      inbox_observation_telemetry: {
+        Row: InboxObservationTelemetryRow
+        Insert: InboxObservationTelemetryInsert
+        Update: InboxObservationTelemetryUpdate
+        Relationships: [
+          {
+            foreignKeyName: "inbox_observation_telemetry_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       part_relationships: {
         Row: PartRelationshipRow
         Insert: PartRelationshipInsert
@@ -541,6 +555,36 @@ export interface CheckInUpdate {
   processed_at?: string | null
   created_at?: string
   updated_at?: string
+}
+
+export interface InboxObservationTelemetryRow {
+  id: string
+  user_id: string
+  tool: string
+  duration_ms: number
+  metadata: Json
+  error: string | null
+  created_at: string
+}
+
+export interface InboxObservationTelemetryInsert {
+  id?: string
+  user_id: string
+  tool: string
+  duration_ms?: number
+  metadata?: Json
+  error?: string | null
+  created_at?: string
+}
+
+export interface InboxObservationTelemetryUpdate {
+  id?: string
+  user_id?: string
+  tool?: string
+  duration_ms?: number
+  metadata?: Json
+  error?: string | null
+  created_at?: string
 }
 
 // Part Relationship Types

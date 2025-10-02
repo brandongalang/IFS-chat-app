@@ -23,6 +23,7 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 - Inbox observation tooling now lives in `mastra/tools/inbox-observation-tools.ts`; it now exposes list/search/read helpers for markdown, sessions, and check-ins (including `listMarkdown`, `readMarkdown`, `listSessions`, `getSessionDetail`, `listCheckIns`, `getCheckInDetail`) so agents can enumerate context before fetching details.
 - Tool factories defer user resolution until execution. `createObservationResearchTools` accepts an optional profile user ID and falls back to the runtime context; this keeps build-time agent instantiation (e.g., cron routes) safe in multi-tenant environments.
 - Trace enrichment in `lib/inbox/observation-engine.ts` pulls snippets for referenced markdown, sessions, and check-ins so persisted observations include verifiable evidence metadata.
+- Observation search helpers emit telemetry via `inbox_observation_telemetry`, capturing tool name, duration, and metadata for monitoring cron health.
 - Tool handlers co-locate Zod input/output schemas; malformed payloads short-circuit before hitting providers/Supabase
 - Session analysis utilities read recent sessions via StorageAdapter snapshots to keep lookback/limit semantics consistent across environments
 - Agent prompt and configuration live under mastra/agents/

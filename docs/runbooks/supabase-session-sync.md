@@ -53,3 +53,4 @@ This runbook covers how to diagnose and recover issues with the client → serve
 - `app/auth/callback/route.ts`
 - `supabase/config.toml`
 - `supabase/migrations/106_inbox_observations.sql` (adds observation/job logging tables; no changes required for session sync but ensure migrations run alongside auth updates)
+- `supabase/migrations/107_inbox_observation_telemetry.sql` (introduces telemetry inserts shared by cron jobs—run with the rest of the Supabase migrations before enabling new observation tooling)
