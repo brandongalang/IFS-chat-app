@@ -1,6 +1,11 @@
+import type { InboxEnvelope, InsightSpotlightEnvelope } from '@/types/inbox'
+
+export {}
+
 async function main() {
   const modulePath = '@/lib/inbox/normalize?test=' + Date.now()
-  const { normalizeInboxResponse, coerceInboxEnvelope } = await import(modulePath)
+  const { normalizeInboxResponse, coerceInboxEnvelope } =
+    (await import(modulePath)) as typeof import('@/lib/inbox/normalize')
 
   const validPayload = {
     id: 'test-1',
@@ -25,7 +30,9 @@ async function main() {
 
   const result = normalizeInboxResponse([validPayload])
   assert(result.length === 1, 'Expected valid payload to pass normalization')
-  assert(result[0]?.payload?.detail?.sources?.[0]?.label === 'Breath log', 'Expected sources to remain intact')
+  const spotlight = result[0]
+  assertIsInsightSpotlight(spotlight, 'Expected normalized payload to remain an insight spotlight message')
+  assert(spotlight.payload.detail?.sources?.[0]?.label === 'Breath log', 'Expected sources to remain intact')
 
   const invalidPayload = {
     id: 'invalid',
@@ -55,7 +62,16 @@ async function main() {
   console.log('Inbox normalization tests passed.')
 }
 
-function assert(condition: unknown, message: string) {
+function assertIsInsightSpotlight(
+  envelope: InboxEnvelope | undefined,
+  message: string,
+): asserts envelope is InsightSpotlightEnvelope {
+  if (!envelope || envelope.type !== 'insight_spotlight') {
+    throw new Error(message)
+  }
+}
+
+function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
     throw new Error(message)
   }

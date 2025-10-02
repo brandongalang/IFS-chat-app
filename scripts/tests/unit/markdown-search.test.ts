@@ -32,7 +32,8 @@ async function setupFixture() {
 async function main() {
   const tempRoot = await setupFixture()
   const modulePath = '@/lib/inbox/search/markdown?test=' + Date.now()
-  const { listMarkdownFiles, searchMarkdown, readMarkdown } = await import(modulePath)
+  const { listMarkdownFiles, searchMarkdown, readMarkdown } =
+    (await import(modulePath)) as typeof import('@/lib/inbox/search/markdown')
 
   const listed = await listMarkdownFiles({ userId: 'user-123' })
 
