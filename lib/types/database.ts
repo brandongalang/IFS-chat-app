@@ -38,6 +38,20 @@ export interface Database {
           }
         ]
       }
+      check_ins: {
+        Row: CheckInRow
+        Insert: CheckInInsert
+        Update: CheckInUpdate
+        Relationships: [
+          {
+            foreignKeyName: "check_ins_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       part_relationships: {
         Row: PartRelationshipRow
         Insert: PartRelationshipInsert
@@ -469,6 +483,60 @@ export interface SessionUpdate {
   new_parts?: string[]
   breakthroughs?: string[]
   emotional_arc?: EmotionalArc
+  processed?: boolean
+  processed_at?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface CheckInRow {
+  id: string
+  user_id: string
+  type: 'morning' | 'evening' | string
+  check_in_date: string
+  mood: number | null
+  energy_level: number | null
+  intention: string | null
+  reflection: string | null
+  gratitude: string | null
+  parts_data: Json | null
+  somatic_markers: string[]
+  processed: boolean
+  processed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CheckInInsert {
+  id?: string
+  user_id: string
+  type: 'morning' | 'evening' | string
+  check_in_date?: string
+  mood?: number | null
+  energy_level?: number | null
+  intention?: string | null
+  reflection?: string | null
+  gratitude?: string | null
+  parts_data?: Json | null
+  somatic_markers?: string[]
+  processed?: boolean
+  processed_at?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface CheckInUpdate {
+  id?: string
+  user_id?: string
+  type?: 'morning' | 'evening' | string
+  check_in_date?: string
+  mood?: number | null
+  energy_level?: number | null
+  intention?: string | null
+  reflection?: string | null
+  gratitude?: string | null
+  parts_data?: Json | null
+  somatic_markers?: string[]
   processed?: boolean
   processed_at?: string | null
   created_at?: string

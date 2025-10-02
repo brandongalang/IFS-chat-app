@@ -1,4 +1,5 @@
 import { getServiceClient, type SupabaseDatabaseClient } from '@/lib/supabase/clients'
+import type { Database } from '@/lib/types/database'
 
 import type {
   CheckInDetail,
@@ -20,18 +21,7 @@ import {
   toLower,
 } from './utils'
 
-type CheckInRow = {
-  id: string
-  user_id: string
-  type: string
-  check_in_date: string
-  intention?: string | null
-  reflection?: string | null
-  gratitude?: string | null
-  parts_data?: unknown
-  created_at: string
-  updated_at: string
-}
+type CheckInRow = Database['public']['Tables']['check_ins']['Row']
 
 const DEFAULT_LIST_LIMIT = 10
 const MAX_CHECKIN_FETCH = 200
