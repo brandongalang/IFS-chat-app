@@ -3,7 +3,6 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 
 import { ENV } from '@/config/env'
 import { resolveModel } from '@/config/model'
-import { resolveUserId } from '@/config/dev'
 import { createObservationResearchTools, type ObservationResearchTools } from '../tools/inbox-observation-tools'
 import type { ObservationBatch } from '@/lib/inbox/observation-schema'
 
@@ -60,8 +59,8 @@ export function createInboxObservationAgent(
     ? ({ extraBody: { temperature } } as const)
     : undefined
 
-  const userId = profile?.userId ?? resolveUserId()
-  const tools = createObservationResearchTools(userId)
+  const baseUserId = profile?.userId
+  const tools = createObservationResearchTools(baseUserId)
 
   const agent = new Agent({
     name: 'inboxObservationAgent',

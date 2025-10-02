@@ -1,6 +1,7 @@
 import { createTool } from '@mastra/core'
 import { z } from 'zod'
 
+import { resolveUserId } from '@/config/dev'
 import {
   getCheckInDetail,
   getSessionDetail,
@@ -129,18 +130,13 @@ const defaultDependencies: ObservationSearchDependencies = {
   },
 }
 
-function ensureUserId(userId?: string | null): string {
-  if (!userId || userId.trim().length === 0) {
-    throw new Error('Observation research tools require a userId. Ensure the agent receives a profile user ID.')
-  }
-  return userId
-}
+type ToolRuntime = { userId?: string }
 
 export function createObservationResearchTools(
   baseUserId: string | null | undefined,
   overrides: Partial<ObservationSearchDependencies> = {},
 ) {
-  const userId = ensureUserId(baseUserId)
+  const normalizedBaseUserId = typeof baseUserId === 'string' && baseUserId.trim().length ? baseUserId.trim() : null
 
   const deps: ObservationSearchDependencies = {
     markdown: { ...defaultDependencies.markdown, ...(overrides.markdown ?? {}) },
@@ -148,14 +144,22 @@ export function createObservationResearchTools(
     checkIns: { ...defaultDependencies.checkIns, ...(overrides.checkIns ?? {}) },
   }
 
+  const resolveUser = (runtime?: ToolRuntime) => resolveToolUserId(normalizedBaseUserId, runtime)
+
   const listMarkdownTool = createTool({
     id: 'listMarkdown',
     description: 'Lists markdown files scoped to the user memory root.',
     inputSchema: markdownListSchema,
-    execute: async ({ context }) => {
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof markdownListSchema>
+      runtime?: ToolRuntime
+    }) => {
       const input = markdownListSchema.parse(context)
       return deps.markdown.list({
-        userId,
+        userId: resolveUser(runtime),
         prefix: input.prefix,
         glob: input.glob,
         limit: input.limit,
@@ -167,10 +171,16 @@ export function createObservationResearchTools(
     id: 'searchMarkdown',
     description: 'Searches user markdown files for a pattern with optional regex and context.',
     inputSchema: markdownSearchSchema,
-    execute: async ({ context }) => {
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof markdownSearchSchema>
+      runtime?: ToolRuntime
+    }) => {
       const input = markdownSearchSchema.parse(context)
       return deps.markdown.search({
-        userId,
+        userId: resolveUser(runtime),
         pattern: input.pattern,
         prefix: input.prefix,
         glob: input.glob,
@@ -189,10 +199,16 @@ export function createObservationResearchTools(
     id: 'readMarkdown',
     description: 'Reads a slice of a markdown file stored for the user.',
     inputSchema: markdownReadSchema,
-    execute: async ({ context }) => {
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof markdownReadSchema>
+      runtime?: ToolRuntime
+    }) => {
       const input = markdownReadSchema.parse(context)
       return deps.markdown.read({
-        userId,
+        userId: resolveUser(runtime),
         path: input.path,
         offset: input.offset,
         limit: input.limit,
@@ -204,10 +220,16 @@ export function createObservationResearchTools(
     id: 'listSessions',
     description: 'Lists recent therapy sessions ordered by start time.',
     inputSchema: sessionListSchema,
-    execute: async ({ context }) => {
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof sessionListSchema>
+      runtime?: ToolRuntime
+    }) => {
       const input = sessionListSchema.parse(context)
       return deps.sessions.list({
-        userId,
+        userId: resolveUser(runtime),
         lookbackDays: input.lookbackDays,
         limit: input.limit,
       })
@@ -218,10 +240,16 @@ export function createObservationResearchTools(
     id: 'searchSessions',
     description: 'Searches session summaries or transcript messages for a query.',
     inputSchema: sessionSearchSchema,
-    execute: async ({ context }) => {
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof sessionSearchSchema>
+      runtime?: ToolRuntime
+    }) => {
       const input = sessionSearchSchema.parse(context)
       return deps.sessions.search({
-        userId,
+        userId: resolveUser(runtime),
         query: input.query,
         lookbackDays: input.lookbackDays,
         limit: input.limit,
@@ -234,10 +262,16 @@ export function createObservationResearchTools(
     id: 'getSessionDetail',
     description: 'Retrieves paginated session transcript detail for evidence gathering.',
     inputSchema: sessionDetailSchema,
-    execute: async ({ context }) => {
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof sessionDetailSchema>
+      runtime?: ToolRuntime
+    }) => {
       const input = sessionDetailSchema.parse(context)
       return deps.sessions.detail({
-        userId,
+        userId: resolveUser(runtime),
         sessionId: input.sessionId,
         page: input.page,
         pageSize: input.pageSize,
@@ -249,10 +283,16 @@ export function createObservationResearchTools(
     id: 'listCheckIns',
     description: 'Lists recent check-ins with intention and reflection summaries.',
     inputSchema: checkInListSchema,
-    execute: async ({ context }) => {
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof checkInListSchema>
+      runtime?: ToolRuntime
+    }) => {
       const input = checkInListSchema.parse(context)
       return deps.checkIns.list({
-        userId,
+        userId: resolveUser(runtime),
         lookbackDays: input.lookbackDays,
         limit: input.limit,
       })
@@ -263,10 +303,16 @@ export function createObservationResearchTools(
     id: 'searchCheckIns',
     description: 'Searches check-ins for matching reflections or gratitude notes.',
     inputSchema: checkInSearchSchema,
-    execute: async ({ context }) => {
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof checkInSearchSchema>
+      runtime?: ToolRuntime
+    }) => {
       const input = checkInSearchSchema.parse(context)
       return deps.checkIns.search({
-        userId,
+        userId: resolveUser(runtime),
         query: input.query,
         lookbackDays: input.lookbackDays,
         limit: input.limit,
@@ -278,10 +324,16 @@ export function createObservationResearchTools(
     id: 'getCheckInDetail',
     description: 'Retrieves the full detail for a specific check-in entry.',
     inputSchema: checkInDetailSchema,
-    execute: async ({ context }) => {
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: z.infer<typeof checkInDetailSchema>
+      runtime?: ToolRuntime
+    }) => {
       const input = checkInDetailSchema.parse(context)
       return deps.checkIns.detail({
-        userId,
+        userId: resolveUser(runtime),
         checkInId: input.checkInId,
       })
     },
@@ -301,3 +353,7 @@ export function createObservationResearchTools(
 }
 
 export type ObservationResearchTools = ReturnType<typeof createObservationResearchTools>
+
+function resolveToolUserId(baseUserId: string | null, runtime?: ToolRuntime): string {
+  return resolveUserId(runtime?.userId ?? baseUserId ?? undefined)
+}
