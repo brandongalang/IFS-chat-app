@@ -5,9 +5,7 @@ const EnvSchema = z.object({
 
   // Providers / Secrets
   OPENROUTER_API_KEY: z.string().optional(),
-  OPENROUTER_BASE_URL: z.string().url().optional(),
   IFS_MODEL: z.string().default('glm-4.5-air'),
-  IFS_PROVIDER_BASE_URL: z.string().url().optional(),
   IFS_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.3),
 
   // Supabase
@@ -35,9 +33,7 @@ const raw = EnvSchema.parse({
 
   // Providers / Secrets
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
-  OPENROUTER_BASE_URL: process.env.OPENROUTER_BASE_URL || undefined,
   IFS_MODEL: process.env.IFS_MODEL || undefined,
-  IFS_PROVIDER_BASE_URL: process.env.IFS_PROVIDER_BASE_URL || undefined,
   IFS_TEMPERATURE: process.env.IFS_TEMPERATURE,
 
   // Supabase
@@ -81,6 +77,7 @@ export const env = {
     !raw.NEXT_PUBLIC_SUPABASE_URL ||
     !raw.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   ifsModel: raw.IFS_MODEL,
-  ifsProviderBaseUrl: raw.IFS_PROVIDER_BASE_URL ?? raw.OPENROUTER_BASE_URL,
   ifsTemperature: raw.IFS_TEMPERATURE,
 }
+
+export const OPENROUTER_API_BASE_URL = 'https://openrouter.ai/api/v1'

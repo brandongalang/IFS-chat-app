@@ -1,6 +1,6 @@
 import { Mastra } from '@mastra/core'
 import { PinoLogger } from '@mastra/loggers'
-import { ENV } from '@/config/env'
+import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
 import { resolveModel } from '@/config/model'
 import { createIfsAgent } from './agents/ifs-agent'
 import { createInsightGeneratorAgent } from './agents/insight-generator'
@@ -19,7 +19,6 @@ type AgentRuntimeConfig = {
 const defaultModelId = resolveModel(ENV.IFS_MODEL)
 const agentConfig: AgentRuntimeConfig = {
   modelId: defaultModelId,
-  baseURL: ENV.IFS_PROVIDER_BASE_URL ?? ENV.OPENROUTER_BASE_URL,
   temperature: ENV.IFS_TEMPERATURE,
 }
 
@@ -27,7 +26,7 @@ if (process.env.NODE_ENV !== 'test') {
   console.info('[Mastra] Agent configuration', {
     modelId: agentConfig.modelId,
     temperature: agentConfig.temperature,
-    baseURL: agentConfig.baseURL ?? 'https://openrouter.ai/api/v1',
+    baseURL: OPENROUTER_API_BASE_URL,
   })
 }
 

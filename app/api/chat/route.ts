@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { dev } from '@/config/dev'
-import { ENV } from '@/config/env'
+import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
 import { errorResponse } from '@/lib/api/response'
 import { getUserIdFromSupabase, provideDevFallbackStream, handleAgentStream } from './logic'
 
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       console.log('[CHAT] Memory maintenance deferred to cron worker', { userId })
     }
 
-    const baseURL = ENV.IFS_PROVIDER_BASE_URL ?? ENV.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1'
+    const baseURL = OPENROUTER_API_BASE_URL
     const hasOpenrouter = typeof ENV.OPENROUTER_API_KEY === 'string' && ENV.OPENROUTER_API_KEY.length > 0
     console.log('[CHAT] OpenRouter env', { hasOpenrouter, baseURL })
     if (!hasOpenrouter) {
