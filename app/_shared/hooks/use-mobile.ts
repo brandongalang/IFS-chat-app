@@ -17,12 +17,12 @@ export function useIsMobile(): boolean {
     setIsMobile(mq.matches)
     mq.addEventListener?.('change', handleChange)
     // Safari fallback
-    // @ts-ignore
+    // @ts-expect-error -- Safari < 14 uses addListener
     mq.addListener?.(handleChange)
 
     return () => {
       mq.removeEventListener?.('change', handleChange)
-      // @ts-ignore
+      // @ts-expect-error -- Safari < 14 uses removeListener
       mq.removeListener?.(handleChange)
     }
   }, [])

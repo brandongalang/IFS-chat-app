@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -96,8 +96,29 @@ export function CheckInExperience({
   const [formError, setFormError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [actionStatus, setActionStatus] = useState<'idle' | 'pending' | 'success'>('idle')
   const [morningState, setMorningState] = useState<MorningState>(MORNING_DEFAULTS)
   const [eveningState, setEveningState] = useState<EveningState>(() => createEveningDefaults(morningContext))
+  const successResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const flashSuccess = useCallback(() => {
+    if (successResetRef.current) {
+      clearTimeout(successResetRef.current)
+    }
+    setActionStatus('success')
+    successResetRef.current = setTimeout(() => {
+      setActionStatus('idle')
+      successResetRef.current = null
+    }, 900)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (successResetRef.current) {
+        clearTimeout(successResetRef.current)
+      }
+    }
+  }, [])
 
   const partLookup = useMemo(() => {
     const map = new Map<string, PartOption>()
@@ -387,25 +408,30 @@ export function CheckInExperience({
   const handleBack = useCallback(() => {
     setFormError(null)
     setSubmitError(null)
+    setActionStatus('idle')
     setStepIndex((prev) => Math.max(prev - 1, 0))
   }, [])
 
   const handleAdvance = useCallback(async () => {
     setFormError(null)
     setSubmitError(null)
+    setActionStatus('pending')
 
     const validationError = currentStep.validate?.()
     if (validationError) {
       setFormError(validationError)
+      setActionStatus('idle')
       return
     }
 
     if (!isLastStep) {
       setStepIndex((prev) => Math.min(prev + 1, steps.length - 1))
+      flashSuccess()
       return
     }
 
     setIsSubmitting(true)
+    let completed = false
     try {
       const payload = variant === 'morning'
         ? {
@@ -450,9 +476,12 @@ export function CheckInExperience({
           description: result.error ?? 'Something went wrong.',
           variant: 'destructive',
         })
+        setActionStatus('idle')
         return
       }
 
+      completed = true
+      flashSuccess()
       toast({
         title: variant === 'morning' ? 'Morning check-in saved' : 'Evening reflection saved',
         description:
@@ -464,6 +493,9 @@ export function CheckInExperience({
       router.push('/')
     } finally {
       setIsSubmitting(false)
+      if (!completed) {
+        setActionStatus('idle')
+      }
     }
   }, [
     currentStep,
@@ -476,6 +508,7 @@ export function CheckInExperience({
     toast,
     clearDraft,
     router,
+    flashSuccess,
   ])
 
   return (
@@ -491,10 +524,10 @@ export function CheckInExperience({
         onBack={stepIndex > 0 ? handleBack : undefined}
         onNext={handleAdvance}
         disableNext={isSubmitting}
-        isSubmitting={isSubmitting}
         isLastStep={isLastStep}
         nextLabel={currentStep.nextLabel}
         submitLabel={currentStep.submitLabel}
+        status={actionStatus}
       >
         {currentStep.render()}
       </CheckInWizard>

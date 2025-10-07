@@ -2,12 +2,15 @@
 title: Feature: Guided Check-ins
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-05
+last_updated: 2025-10-07
 feature_flag: null
 code_paths:
   - app/check-in/morning/page.tsx
   - app/check-in/evening/page.tsx
   - components/check-in/CheckInExperience.tsx
+  - components/check-in/CheckInWizard.tsx
+  - components/check-in/EmojiScale.tsx
+  - components/check-in/PartsPicker.tsx
   - components/home/CheckInSlots.tsx
   - app/check-in/actions.ts
   - app/api/check-ins/overview/route.ts
@@ -24,8 +27,8 @@ Structured morning and evening flows guiding users through self-reflection with 
 Provides a gentle, repeatable practice to capture mood, intentions, and observations.
 
 ## How it works
-- Next.js routes under /check-in/morning and /check-in/evening render a shared `CheckInExperience` wizard; steps vary by variant (arrive, focus, review for morning; arrive, reflect, review for evening).
-- Wizard steps are composed from shared atoms (`EmojiScale`, `PartsPicker`, `MorningSummary`) and wrapped with `CheckInLayout` to provide progress, streaks, and inline error states.
+- Next.js routes under /check-in/morning and /check-in/evening render a shared `CheckInExperience` wizard; steps vary by variant (arrive, focus, review for morning; arrive, reflect, review for evening) and now surface real-time button feedback for navigation and submissions.
+- Wizard steps are composed from shared atoms (`EmojiScale`, `PartsPicker`, `MorningSummary`) and wrapped with `CheckInLayout` to provide progress, streaks, inline error states, and animated tap feedback acknowledging selections.
 - Drafts auto-save to `localStorage` per date/variant so users can resume; dashboard tiles surface draft state via `components/home/CheckInSlots.tsx`.
 - Server helpers in `lib/check-ins/server.ts` centralize Supabase reads/writes, including morning context hydration, prompt generation, and overview aggregation exposed at `/api/check-ins/overview`.
 - Submissions post through `app/check-in/actions.ts` server actions, returning optimistic status/conflict flags for the wizard to handle toasts and redirects.
