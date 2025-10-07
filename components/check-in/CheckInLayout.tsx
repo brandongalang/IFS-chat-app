@@ -35,6 +35,9 @@ export function CheckInLayout({
       ? `${streakDays}-day streak`
       : null
 
+  const progressPercent = Math.max(0, Math.min(100, Math.round(progress * 100)))
+  const visualWidth = Math.max(4, progressPercent)
+
   return (
     <div className="flex min-h-svh w-full items-center justify-center bg-background p-6 md:p-10">
       <div className="w-full max-w-lg">
@@ -48,10 +51,18 @@ export function CheckInLayout({
         <div className="mb-4">
           <div className="text-sm font-medium text-muted-foreground">{stepTitle}</div>
           {stepDescription ? <p className="text-xs text-muted-foreground/80">{stepDescription}</p> : null}
-          <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className="mt-3 h-1 w-full overflow-hidden rounded-full bg-muted"
+            role="progressbar"
+            aria-label={`${stepTitle} progress`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progressPercent}
+          >
             <div
               className={cn('h-full rounded-full bg-primary transition-all duration-300')}
-              style={{ width: `${Math.max(4, Math.min(100, Math.round(progress * 100)))}%` }}
+              style={{ width: `${visualWidth}%` }}
+              aria-hidden="true"
             />
           </div>
         </div>

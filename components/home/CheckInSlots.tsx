@@ -232,12 +232,13 @@ function getStatusDescription(args: StatusDescriptionArgs) {
 
 function formatAvailableTime(time: string | null | undefined, variant: 'morning' | 'evening') {
   if (time) {
-    const parts = time.split(':')
-    const hour = parseInt(parts[0] ?? '0', 10)
-    return formatHourLabel(hour)
+    const [hourString, minuteString] = time.split(':')
+    const hour = parseInt(hourString ?? '0', 10)
+    const minute = parseInt(minuteString ?? '0', 10)
+    return formatTimeLabel(hour, minute)
   }
-  const fallback = variant === 'morning' ? MORNING_START_HOUR : EVENING_START_HOUR
-  return formatHourLabel(fallback)
+  const fallbackHour = variant === 'morning' ? MORNING_START_HOUR : EVENING_START_HOUR
+  return formatTimeLabel(fallbackHour, 0)
 }
 
 function formatDisplayDate(date: Date) {
@@ -248,10 +249,13 @@ function formatDisplayDate(date: Date) {
   })
 }
 
-function formatHourLabel(hour24: number) {
-  const hour12 = hour24 % 12 || 12
-  const suffix = hour24 >= 12 ? 'PM' : 'AM'
-  return `${hour12}:00 ${suffix}`
+function formatTimeLabel(hour24: number, minute: number) {
+  const hour = Number.isFinite(hour24) ? hour24 : 0
+  const minuteClamped = Number.isFinite(minute) ? Math.max(0, Math.min(59, minute)) : 0
+  const hour12 = (hour % 12 + 12) % 12 || 12
+  const suffix = hour >= 12 ? 'PM' : 'AM'
+  const minuteLabel = String(minuteClamped).padStart(2, '0')
+  return `${hour12}:${minuteLabel} ${suffix}`
 }
 
 function CheckInSlotsSkeleton() {
