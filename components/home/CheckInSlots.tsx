@@ -1,7 +1,8 @@
 'use client'
 
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  CheckInSlotState,
+  type CheckInSlotState,
   useDailyCheckIns,
   MORNING_START_HOUR,
   EVENING_START_HOUR,
@@ -9,16 +10,59 @@ import {
 import { Button } from '@/components/ui/button'
 import { GuardedLink } from '@/components/common/GuardedLink'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { CHECK_IN_DRAFT_PREFIX } from '@/lib/check-ins/shared'
 import { cn } from '@/lib/utils'
+
+interface DraftState {
+  morning: boolean
+  evening: boolean
+}
 
 interface CheckInSlotsProps {
   selectedDate?: Date
 }
 
-const SLOT_CARD_BASE_CLASS = 'col-span-2 md:col-span-1 rounded-xl border p-4'
-
 export function CheckInSlots({ selectedDate = new Date() }: CheckInSlotsProps) {
-  const { isLoading, error, refetch, isViewingToday, targetDate, morning, evening } = useDailyCheckIns(selectedDate)
+  const { isLoading, error, refetch, isViewingToday, targetDate, morning, evening, streak } =
+    useDailyCheckIns(selectedDate)
+
+  const targetDateIso = useMemo(() => targetDate.toISOString().slice(0, 10), [targetDate])
+  const [drafts, setDrafts] = useState<DraftState>({ morning: false, evening: false })
+
+  const updateDrafts = useCallback(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const morningKey = `${CHECK_IN_DRAFT_PREFIX}-morning-${targetDateIso}`
+      const eveningKey = `${CHECK_IN_DRAFT_PREFIX}-evening-${targetDateIso}`
+      setDrafts({
+        morning: window.localStorage.getItem(morningKey) !== null,
+        evening: window.localStorage.getItem(eveningKey) !== null,
+      })
+    } catch (storageError) {
+      console.warn('Unable to read check-in drafts', storageError)
+      setDrafts({ morning: false, evening: false })
+    }
+  }, [targetDateIso])
+
+  useEffect(() => {
+    updateDrafts()
+  }, [updateDrafts])
+
+  useEffect(() => {
+    const handler = (event: StorageEvent) => {
+      if (!event.key || !event.key.startsWith(CHECK_IN_DRAFT_PREFIX)) {
+        return
+      }
+      updateDrafts()
+    }
+
+    window.addEventListener('storage', handler)
+    return () => {
+      window.removeEventListener('storage', handler)
+    }
+  }, [updateDrafts])
 
   if (isLoading) {
     return <CheckInSlotsSkeleton />
@@ -26,14 +70,12 @@ export function CheckInSlots({ selectedDate = new Date() }: CheckInSlotsProps) {
 
   if (error) {
     return (
-      <div className="col-span-2 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-destructive">
-        <div className="text-base font-semibold">Unable to load check-ins</div>
-        <div className="mt-1 text-xs text-destructive/80">{error}</div>
-        <Button
-          variant="outline"
-          className="mt-4 border-destructive/40 text-destructive hover:bg-destructive/10"
-          onClick={refetch}
-        >
+      <div className="col-span-2">
+        <Alert variant="destructive">
+          <AlertTitle>Unable to load check-ins</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button variant="outline" className="mt-3" onClick={refetch}>
           Try again
         </Button>
       </div>
@@ -42,200 +84,160 @@ export function CheckInSlots({ selectedDate = new Date() }: CheckInSlotsProps) {
 
   return (
     <>
-      <MorningSlotCard
+      {isViewingToday && streak > 0 ? (
+        <div className="col-span-2">
+          <StreakBanner streak={streak} />
+        </div>
+      ) : null}
+      <SlotCard
+        variant="morning"
         state={morning}
         isViewingToday={isViewingToday}
         targetDate={targetDate}
+        hasDraft={drafts.morning}
       />
-      <EveningSlotCard
+      <SlotCard
+        variant="evening"
         state={evening}
         isViewingToday={isViewingToday}
         targetDate={targetDate}
+        hasDraft={drafts.evening}
       />
-    </>
-  )
-}
-
-function CheckInSlotsSkeleton() {
-  return (
-    <>
-      <div className="col-span-2 md:col-span-1 rounded-xl border border-border bg-muted p-4">
-        <Skeleton className="h-4 w-16" />
-        <Skeleton className="mt-3 h-6 w-2/3" />
-        <Skeleton className="mt-6 h-9 w-24" />
-      </div>
-      <div className="col-span-2 md:col-span-1 rounded-xl border border-border bg-muted p-4">
-        <Skeleton className="h-4 w-16" />
-        <Skeleton className="mt-3 h-6 w-2/3" />
-        <Skeleton className="mt-6 h-9 w-24" />
-      </div>
     </>
   )
 }
 
 interface SlotCardProps {
+  variant: 'morning' | 'evening'
   state: CheckInSlotState
   isViewingToday: boolean
   targetDate: Date
+  hasDraft: boolean
 }
 
-function MorningSlotCard({ state, isViewingToday, targetDate }: SlotCardProps) {
-  if (state.status === 'completed') {
-    return (
-      <div
-        data-testid="check-in-morning-card"
-        data-slot="morning"
-        data-state="completed"
-        className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-emerald-600 text-white')}
-      >
-        <div className="text-xs uppercase tracking-wide opacity-90">Morning</div>
-        <div className="mt-1 text-lg font-semibold">Morning check-in complete</div>
-        <p className="mt-2 text-sm text-emerald-100/90">
-          {isViewingToday ? 'Great work today.' : 'Morning reflection was completed on this day.'}
-        </p>
-      </div>
-    )
-  }
+function SlotCard({ variant, state, isViewingToday, targetDate, hasDraft }: SlotCardProps) {
+  const href = variant === 'morning' ? '/check-in/morning' : '/check-in/evening'
+  const title = variant === 'morning' ? 'Morning check-in' : 'Evening reflection'
 
-  if (state.status === 'available') {
-    return (
-      <div
-        data-testid="check-in-morning-card"
-        data-slot="morning"
-        data-state="available"
-        className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-green-600 text-white')}
-      >
-        <div className="text-xs uppercase tracking-wide opacity-90">Morning</div>
-        <div className="mt-1 text-lg font-semibold">Fresh start</div>
-        <p className="mt-2 text-sm text-green-100/90">Set your intention and ease into the day.</p>
-        <GuardedLink href="/check-in/morning">
-          <Button className="mt-4 bg-white text-black hover:bg-white/90">Begin</Button>
-        </GuardedLink>
-      </div>
-    )
-  }
+  const statusLabel = getStatusLabel(state.status, hasDraft)
+  const statusVariant = getStatusBadgeVariant(state.status, hasDraft)
 
-  if (state.status === 'upcoming') {
-    return (
-      <div
-        data-testid="check-in-morning-card"
-        data-slot="morning"
-        data-state="upcoming"
-        className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-muted')}
-      >
-        <div className="text-xs font-semibold uppercase text-muted-foreground">Morning</div>
-        <div className="mt-1 text-base font-semibold">Opens soon</div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Morning check-in unlocks at {formatHourLabel(MORNING_START_HOUR)}.
-        </p>
-      </div>
-    )
-  }
+  const description = getStatusDescription({
+    variant,
+    state,
+    isViewingToday,
+    targetDate,
+    hasDraft,
+  })
 
-  if (state.status === 'closed') {
-    return (
-      <div
-        data-testid="check-in-morning-card"
-        data-slot="morning"
-        data-state="closed"
-        className={cn(SLOT_CARD_BASE_CLASS, 'border-border/60 border-dashed bg-muted')}
-      >
-        <div className="text-xs font-semibold uppercase text-muted-foreground">Morning</div>
-        <div className="mt-1 text-base font-semibold text-muted-foreground">Morning check-in closed</div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The morning check-in closes at {formatHourLabel(EVENING_START_HOUR)}. Come back tomorrow for a fresh start.
-        </p>
-      </div>
-    )
-  }
+  const showAction = state.status === 'available'
+  const actionLabel = hasDraft ? 'Resume' : 'Begin'
 
   return (
     <div
-      data-testid="check-in-morning-card"
-      data-slot="morning"
-      data-state="empty"
-      className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-muted')}
+      data-slot={variant}
+      className={cn(
+        'col-span-2 md:col-span-1 flex h-full flex-col justify-between rounded-2xl border border-border bg-card/60 p-5 shadow-sm backdrop-blur transition hover:border-border/80',
+      )}
     >
-      <div className="text-xs font-semibold uppercase text-muted-foreground">Morning</div>
-      <div className="mt-1 text-base font-semibold">No morning check-in</div>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {isViewingToday
-          ? 'Start your day with a quick reflection when the window opens.'
-          : `No morning check-in was recorded for ${formatDisplayDate(targetDate)}.`}
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {variant === 'morning' ? 'Morning' : 'Evening'}
+          </p>
+          <h2 className="mt-1 text-lg font-semibold">{title}</h2>
+        </div>
+        <Badge variant={statusVariant}>{statusLabel}</Badge>
+      </div>
+      <p className="mt-3 text-sm text-muted-foreground">{description}</p>
+      {showAction ? (
+        <GuardedLink href={href} className="mt-5 inline-flex">
+          <Button className="w-full" variant={hasDraft ? 'secondary' : 'default'}>
+            {actionLabel}
+          </Button>
+        </GuardedLink>
+      ) : null}
     </div>
   )
 }
 
-function EveningSlotCard({ state, isViewingToday, targetDate }: SlotCardProps) {
-  if (state.status === 'completed') {
-    return (
-      <div
-        data-testid="check-in-evening-card"
-        data-slot="evening"
-        data-state="completed"
-        className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-indigo-600 text-white')}
-      >
-        <div className="text-xs uppercase tracking-wide opacity-90">Evening</div>
-        <div className="mt-1 text-lg font-semibold">Evening reflection complete</div>
-        <p className="mt-2 text-sm text-indigo-100/90">
-          {isViewingToday ? 'You wrapped up the day with care.' : 'Evening reflection was completed on this day.'}
-        </p>
-      </div>
-    )
+function getStatusLabel(status: CheckInSlotState['status'], hasDraft: boolean) {
+  if (status === 'available' && hasDraft) {
+    return 'Draft saved'
   }
-
-  if (state.status === 'available') {
-    return (
-      <div
-        data-testid="check-in-evening-card"
-        data-slot="evening"
-        data-state="available"
-        className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-indigo-600 text-white')}
-      >
-        <div className="text-xs uppercase tracking-wide opacity-90">Evening</div>
-        <div className="mt-1 text-lg font-semibold">Daily review</div>
-        <p className="mt-2 text-sm text-indigo-100/90">Take a moment to wind down your day.</p>
-        <GuardedLink href="/check-in/evening">
-          <Button className="mt-4 bg-white text-black hover:bg-white/90">Begin</Button>
-        </GuardedLink>
-      </div>
-    )
+  switch (status) {
+    case 'completed':
+      return 'Completed'
+    case 'available':
+      return 'Available'
+    case 'locked':
+      return 'Locked'
+    case 'upcoming':
+      return 'Opens soon'
+    case 'closed':
+      return 'Closed'
+    default:
+      return 'Not recorded'
   }
+}
 
-  if (state.status === 'locked') {
-    return (
-      <div
-        data-testid="check-in-evening-card"
-        data-slot="evening"
-        data-state="locked"
-        className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-muted')}
-      >
-        <div className="text-xs font-semibold uppercase text-muted-foreground">Evening</div>
-        <div className="mt-1 text-base font-semibold">Unlocks later today</div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Evening reflection unlocks at {formatHourLabel(EVENING_START_HOUR)}.
-        </p>
-      </div>
-    )
+function getStatusBadgeVariant(
+  status: CheckInSlotState['status'],
+  hasDraft: boolean,
+): 'default' | 'secondary' | 'outline' {
+  if (status === 'completed') return 'default'
+  if (status === 'available' && hasDraft) return 'secondary'
+  if (status === 'available') return 'default'
+  return 'outline'
+}
+
+interface StatusDescriptionArgs {
+  variant: 'morning' | 'evening'
+  state: CheckInSlotState
+  isViewingToday: boolean
+  targetDate: Date
+  hasDraft: boolean
+}
+
+function getStatusDescription(args: StatusDescriptionArgs) {
+  const { variant, state, isViewingToday, targetDate, hasDraft } = args
+
+  switch (state.status) {
+    case 'completed':
+      return isViewingToday
+        ? 'Thanks for checking in today.'
+        : 'This check-in was completed on this date.'
+    case 'available':
+      if (hasDraft) {
+        return 'Pick up where you left off and finish this check-in when you are ready.'
+      }
+      return variant === 'morning'
+        ? 'Ease into the day with a quick reflection.'
+        : 'Wind down the day with a gentle review.'
+    case 'locked':
+      return `Evening reflections open later today at ${formatAvailableTime(state.availableAt, variant)}.`
+    case 'upcoming':
+      return `Morning check-ins open at ${formatAvailableTime(state.availableAt, variant)}.`
+    case 'closed':
+      return 'Come back tomorrow for a fresh start.'
+    default:
+      if (isViewingToday) {
+        return variant === 'morning'
+          ? 'Start your day with a quick reflection once the window opens.'
+          : 'Return this evening to reflect on your day.'
+      }
+      return `No check-in was recorded for ${formatDisplayDate(targetDate)}.`
   }
+}
 
-  return (
-    <div
-      data-testid="check-in-evening-card"
-      data-slot="evening"
-      data-state="empty"
-      className={cn(SLOT_CARD_BASE_CLASS, 'border-border bg-muted')}
-    >
-      <div className="text-xs font-semibold uppercase text-muted-foreground">Evening</div>
-      <div className="mt-1 text-base font-semibold">No evening check-in</div>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {isViewingToday
-          ? 'Come back this evening to reflect on your day.'
-          : `No evening check-in was recorded for ${formatDisplayDate(targetDate)}.`}
-      </p>
-    </div>
-  )
+function formatAvailableTime(time: string | null | undefined, variant: 'morning' | 'evening') {
+  if (time) {
+    const parts = time.split(':')
+    const hour = parseInt(parts[0] ?? '0', 10)
+    return formatHourLabel(hour)
+  }
+  const fallback = variant === 'morning' ? MORNING_START_HOUR : EVENING_START_HOUR
+  return formatHourLabel(fallback)
 }
 
 function formatDisplayDate(date: Date) {
@@ -250,4 +252,42 @@ function formatHourLabel(hour24: number) {
   const hour12 = hour24 % 12 || 12
   const suffix = hour24 >= 12 ? 'PM' : 'AM'
   return `${hour12}:00 ${suffix}`
+}
+
+function CheckInSlotsSkeleton() {
+  return (
+    <>
+      <div className="col-span-2 rounded-2xl border border-border/60 bg-card/40 p-5">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="mt-2 h-6 w-1/2" />
+        <Skeleton className="mt-4 h-9 w-28" />
+      </div>
+      <div className="col-span-2 md:col-span-1 rounded-2xl border border-border/60 bg-card/40 p-5">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="mt-2 h-5 w-3/4" />
+        <Skeleton className="mt-5 h-10 w-full" />
+      </div>
+      <div className="col-span-2 md:col-span-1 rounded-2xl border border-border/60 bg-card/40 p-5">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="mt-2 h-5 w-3/4" />
+        <Skeleton className="mt-5 h-10 w-full" />
+      </div>
+    </>
+  )
+}
+
+function StreakBanner({ streak }: { streak: number }) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/60 p-4 shadow-sm backdrop-blur">
+      <div>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Momentum</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          You are on a {streak}-day check-in streak. Keep the rhythm going.
+        </p>
+      </div>
+      <div className="text-2xl" aria-hidden>
+        🔥
+      </div>
+    </div>
+  )
 }
