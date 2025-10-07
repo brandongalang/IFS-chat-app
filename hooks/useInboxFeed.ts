@@ -27,10 +27,13 @@ export interface UseInboxFeedOptions {
   fallback?: InboxEnvelope[]
 }
 
+type CtaEnvelope = Extract<InboxEnvelope, { type: 'cta' }>
+
 interface UseInboxFeedReturn extends InboxFeedState {
   reload: () => Promise<void>
   markAsRead: (envelopeId: string) => void
   submitAction: (envelopeId: string, action: InboxQuickActionValue, notes?: string) => Promise<void>
+  recordCta: (envelope: CtaEnvelope) => Promise<void>
 }
 
 export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedReturn {
@@ -264,10 +267,66 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
     [state.envelopes, state.source, variant],
   )
 
+  const recordCta = useCallback(
+    async (envelope: CtaEnvelope) => {
+      markAsRead(envelope.id)
+
+      setState((prev) => ({
+        ...prev,
+        envelopes: prev.envelopes.map((entry) =>
+          entry.id === envelope.id
+            ? {
+                ...entry,
+                readAt: entry.readAt ?? new Date().toISOString(),
+                metadata: {
+                  ...(entry.metadata ?? {}),
+                  lastAction: 'cta_clicked',
+                },
+              }
+            : entry,
+        ),
+      }))
+
+      emitInboxEvent('inbox_cta_clicked', {
+        envelopeId: envelope.id,
+        sourceId: envelope.sourceId ?? envelope.id,
+        messageType: envelope.type,
+        source: envelope.source,
+        metadata: {
+          variant,
+          href: envelope.payload.action.href ?? undefined,
+          actionId: envelope.payload.action.actionId ?? undefined,
+          intent: envelope.payload.action.intent ?? undefined,
+        },
+      })
+
+      try {
+        await submitInboxEvent({
+          subjectId: envelope.sourceId ?? envelope.id,
+          eventType: 'actioned',
+          action: 'cta_clicked',
+          messageType: envelope.type,
+          source: envelope.source ?? state.source,
+          attributes: {
+            href: envelope.payload.action.href ?? undefined,
+            actionId: envelope.payload.action.actionId ?? undefined,
+            target: envelope.payload.action.target ?? undefined,
+          },
+        })
+      } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[inbox] CTA action submission failed', error)
+        }
+      }
+    },
+    [markAsRead, state.source, variant],
+  )
+
   return {
     ...state,
     reload,
     markAsRead,
     submitAction,
+    recordCta,
   }
 }

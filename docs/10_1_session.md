@@ -22,19 +22,19 @@
 - New unit coverage in `scripts/tests/unit/markdown-search.test.ts` exercises list, search, and chunked reads against the local storage adapter.
 
 
-## Phase 3 Plan (Sessions & Check-ins Search)
+## Phase 3 Progress (Sessions & Check-ins Search)
 
-- Introduce `lib/inbox/search/sessions.ts` and `lib/inbox/search/checkins.ts` modules exposing `searchSessions`, `listSessions`, `getSessionDetail`, `searchCheckIns`, `listCheckIns`, and `getCheckInDetail`.
-- Add Supabase FTS migrations (or reuse existing indexes) to support ranked search over session summaries/messages and check-in reflections. Ensure 14-day lookback defaults with configurable overrides.
-- Telemetry: emit `sessions.search`, `checkins.search`, `sessions.get`, `checkins.get` events with duration and result counts.
-- Testing: create fixture-based unit tests under `scripts/tests/unit` stubbing Supabase client responses (success, empty, error) and verifying lookback/field filtering.
+- Implemented `lib/inbox/search/sessions.ts` and `lib/inbox/search/checkins.ts` to expose list/search/detail helpers with sane defaults (14-day lookback, result limits, timeout guards).
+- Telemetry client records `sessions.list`, `sessions.search`, `sessions.get`, `checkins.list`, `checkins.search`, and `checkins.get` events with duration + match counts; failures are swallowed so tooling never blocks agents.
+- Added unit coverage: `scripts/tests/unit/inbox-sessions-search.test.ts` and `scripts/tests/unit/inbox-checkins-search.test.ts` exercise happy paths, empty states, and Supabase error propagation.
+- `ObservationTelemetryClient` integrates with the new helpers automatically so CLI jobs and cron runs capture usage without additional wiring.
 
-## Phase 4 Plan (Agent Integration)
+## Phase 4 Progress (Agent Integration)
 
-- Update `mastra/agents/inbox-observation.ts` to register the new search tools and guide prompt usage (list → search → read flow).
-- Extend `lib/inbox/observation-engine.ts` to call markdown/sessions/check-ins helpers and capture trace metadata for dedupe/scoring.
-- Ensure queue gating remains intact; persist observation evidence references (markdown path + line, sessionId, checkInId) in observation metadata.
-- Validation: workflow unit tests with mocked tool responses plus golden samples for end-to-end observation generation.
+- `mastra/agents/inbox-observation.ts` now registers the search toolset, injects the profile `userId`, and updates the prompt to encourage list → search → detail flows.
+- `lib/inbox/observation-engine.ts` wires the search helpers into observation traces, attaches markdown/session/check-in evidence, and enriches metadata before Supabase insertion.
+- Queue capacity + dedupe logic remain enforced via `getInboxQueueSnapshot` and `getRecentObservationHistory`; inserted observations reuse the job logging path (`inbox_job_runs`).
+- CLI job `npm run inbox:generate` instantiates per-user agents with the new toolset and persists results, providing a manual backstop before cron automation.
 
 ## Phase 5 Progress (Telemetry & Rollout)
 

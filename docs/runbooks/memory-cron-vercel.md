@@ -11,10 +11,10 @@ This runbook explains how to operate the daily `/api/cron/memory-update` job now
   - **Enhanced:** Process pending memory updates for all users with queued changes
   - **Background Processing:** Memory maintenance moved from chat requests to this dedicated worker
 
-## Prerequisites (updated 2025-09-26)
+## Prerequisites (updated 2025-10-07)
 - `CRON_SECRET` defined for Production & Preview environments in Vercel project settings.
 - `SUPABASE_SERVICE_ROLE_KEY` available to the app runtime (needed for memory service writes).
-- Shared Mastra provider env (`IFS_MODEL`, `IFS_TEMPERATURE`, `IFS_PROVIDER_BASE_URL`, `OPENROUTER_API_KEY`) configured so the summarizer agents can run.
+- Shared Mastra provider env (`IFS_MODEL`, `IFS_TEMPERATURE`, `OPENROUTER_API_KEY`) configured so the summarizer agents can run (default model is now `x-ai/grok-4-fast`).
 - Vercel project has Cron feature enabled (Billing → Cron Jobs).
 
 ## Operating procedures

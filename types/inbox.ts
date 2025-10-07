@@ -33,6 +33,7 @@ export type InboxQuickActionValue =
   | 'disagree'
   | 'disagree_strong'
   | 'ack'
+  | 'cta_clicked'
 
 export interface InboxCTA {
   label: string
@@ -180,6 +181,7 @@ export type InboxAnalyticsEvent =
   | 'inbox_card_dismissed'
   | 'inbox_quick_action'
   | 'inbox_notes_submitted'
+  | 'inbox_cta_clicked'
 
 export interface InboxAnalyticsPayload {
   envelopeId: string

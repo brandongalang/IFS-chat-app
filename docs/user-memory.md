@@ -23,14 +23,14 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
   - **Enhanced**: Also processes pending memory updates for all users
   - Returns per-user result, latest version if saved, and summary statistics
 
-## Environment variables (updated 2025-09-26)
+## Environment variables (updated 2025-10-07)
 - Required on server:
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `SUPABASE_SERVICE_ROLE_KEY`
   - `CRON_SECRET` (shared secret for the cron endpoint)
 - Optional:
   - `OPENROUTER_API_KEY` (LLM for summarization; falls back if unset)
-  - `IFS_MODEL`, `IFS_TEMPERATURE`, `IFS_PROVIDER_BASE_URL` (shared Mastra provider config)
+  - `IFS_MODEL`, `IFS_TEMPERATURE` (shared Mastra provider config; now defaults to `grok-4-fast` via OpenRouter)
   - `USER_MEMORY_CHECKPOINT_EVERY` (default 50)
 
 ## Scheduling

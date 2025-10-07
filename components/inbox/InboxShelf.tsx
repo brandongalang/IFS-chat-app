@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   Dialog,
@@ -28,6 +28,8 @@ interface InboxShelfProps {
   className?: string
 }
 
+type CtaEnvelope = Extract<InboxEnvelope, { type: 'cta' }>
+
 export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps) {
   const {
     status,
@@ -37,6 +39,7 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
     variant: activeVariant,
     markAsRead,
     submitAction,
+    recordCta,
   } = useInboxFeed({ variant })
   const [activeEnvelope, setActiveEnvelope] = useState<InboxEnvelope | null>(null)
   const [pendingAction, setPendingAction] = useState<{
@@ -44,6 +47,7 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
     action: InboxQuickActionValue
   } | null>(null)
   const [noteDraft, setNoteDraft] = useState('')
+  const skipDismissRef = useRef(false)
 
   const hasPreviewBadge = useMemo(() => source === 'fallback', [source])
 
@@ -59,8 +63,9 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
     })
   }
 
-  const handleClose = () => {
-    if (activeEnvelope) {
+  const closeActiveEnvelope = (options?: { trackDismiss?: boolean }) => {
+    const trackDismiss = options?.trackDismiss ?? true
+    if (trackDismiss && activeEnvelope) {
       emitInboxEvent('inbox_card_dismissed', {
         envelopeId: activeEnvelope.id,
         sourceId: activeEnvelope.sourceId ?? activeEnvelope.id,
@@ -100,6 +105,13 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
       return
     }
     void completeQuickAction(envelope, action)
+  }
+
+  const handleCtaVisit = (envelope: CtaEnvelope, options?: { closeDetail?: boolean }) => {
+    void recordCta(envelope)
+    if (options?.closeDetail) {
+      setActiveEnvelope((current) => (current?.id === envelope.id ? null : current))
+    }
   }
 
   return (
@@ -161,6 +173,7 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
                 {renderInboxCard(envelope, {
                   onOpen: handleOpen,
                   onQuickAction: (entry, action) => handleQuickAction(entry, action),
+                  onCta: (entry) => handleCtaVisit(entry),
                 })}
               </div>
             ))}
@@ -168,11 +181,30 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
         ) : null}
       </div>
 
-      <Dialog open={Boolean(activeEnvelope)} onOpenChange={(isOpen) => (!isOpen ? handleClose() : null)}>
+      <Dialog
+        open={Boolean(activeEnvelope)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            if (skipDismissRef.current) {
+              skipDismissRef.current = false
+              return
+            }
+            closeActiveEnvelope()
+          }
+        }}
+      >
         <DialogContent>
           {activeEnvelope ? renderEnvelopeDetail(activeEnvelope) : null}
           <DialogFooter className="pt-2">
-            {renderEnvelopeFooter(activeEnvelope, handleClose)}
+            {activeEnvelope?.type === 'cta'
+              ? renderCtaFooter(activeEnvelope, {
+                  onClose: () => closeActiveEnvelope({ trackDismiss: false }),
+                  onVisit: (envelope) => {
+                    skipDismissRef.current = true
+                    handleCtaVisit(envelope, { closeDetail: true })
+                  },
+                })
+              : renderEnvelopeFooter(activeEnvelope, () => closeActiveEnvelope())}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -238,6 +270,7 @@ function renderEnvelopeDetail(envelope: InboxEnvelope) {
     case 'notification':
       return renderNotificationDetail(envelope)
     case 'cta':
+      return renderCtaDetail(envelope)
     default:
       return (
         <DialogHeader>
@@ -315,6 +348,21 @@ function renderNotificationDetail(envelope: Extract<InboxEnvelope, { type: 'noti
   )
 }
 
+function renderCtaDetail(envelope: CtaEnvelope) {
+  const { payload } = envelope
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{payload.title}</DialogTitle>
+        <DialogDescription>{payload.description}</DialogDescription>
+      </DialogHeader>
+      {payload.action.helperText ? (
+        <p className="mt-4 text-sm text-foreground/70">{payload.action.helperText}</p>
+      ) : null}
+    </>
+  )
+}
+
 function renderEnvelopeFooter(envelope: InboxEnvelope | null, onClose: () => void) {
   if (!envelope) return null
   if (envelope.type === 'insight_spotlight' && envelope.payload.cta?.href) {
@@ -364,5 +412,41 @@ function renderEnvelopeFooter(envelope: InboxEnvelope | null, onClose: () => voi
     >
       Close
     </button>
+  )
+}
+
+function renderCtaFooter(
+  envelope: CtaEnvelope,
+  handlers: {
+    onClose: () => void
+    onVisit: (envelope: CtaEnvelope) => void
+  },
+) {
+  const { action } = envelope.payload
+  const intent = action.intent === 'secondary' ? 'secondary' : 'default'
+  const href = action.href ?? '#'
+  const target = action.target ?? '_self'
+
+  return (
+    <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+      <button
+        type="button"
+        onClick={handlers.onClose}
+        className="inline-flex items-center justify-center rounded-full border border-border/60 px-4 py-2 text-sm text-foreground/70"
+      >
+        Close
+      </button>
+      <Button
+        asChild
+        variant={intent}
+        size="sm"
+        className="rounded-full px-4"
+        onClick={() => handlers.onVisit(envelope)}
+      >
+        <Link href={href} target={target}>
+          {action.label}
+        </Link>
+      </Button>
+    </div>
   )
 }
