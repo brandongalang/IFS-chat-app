@@ -12,17 +12,17 @@ The Inbox surface ships incrementally: a pragmatic Next.js API route that unbloc
 | Delivery | Static JSON feed via `getPragmaticInboxFeed()` | Edge function joins normalized tables with per-user filters |
 | Latency | Served from Vercel edge/cacheable responses | Close to data, leverages Supabase region locality |
 | Personalization | Manual extension or query params | SQL filters + RLS for full fidelity |
-| Reaction Logging | Session-only (no durable store yet) | `inbox_message_events` table with policy-aligned inserts |
+| Reaction Logging | Durable events for Supabase-backed envelopes written to `inbox_message_events`; fallback feed remains session-only analytics | `inbox_message_events` table with policy-aligned inserts |
 | Effort | ✅ Ready now | 🚧 Requires migration + ops playbook |
 
-## Pragmatic Backend (Next.js API)
-- Ships `/api/inbox` powered by `lib/inbox/pragmaticData`, guaranteeing contract safety even when mocks drive the feed.
-- Mock data lives alongside network logic so card types can be toggled quickly during iteration.
-- Designed to swap in Supabase RPC later by replacing `getPragmaticInboxFeed()`.
+## Next.js API Feed (pragmatic path)
+- `/api/inbox` queries `inbox_items_view` through the authenticated Supabase client, normalizes results, and writes first-delivery rows into `inbox_message_events`.
+- `lib/inbox/pragmaticData` still powers mock/fallback data; when Supabase fails the shelf surfaces a "Preview data" badge and emits analytics with `source: 'fallback'`.
+- Cursor pagination is supported via `after` query param (base64 payload); `useInboxFeed` handles optimistic reloads while keeping the current page visible.
 
 **Open questions**
 - Should the pragmatic feed expose personalization via query params before the clean backend lands?
-- Is dismissal persistence required in this path, or can we keep it session-only?
+- Should we persist dismissals for fallback envelopes or keep them session-only to avoid confusing analytics?
 
 **Verification**
 - `npm run lint`
@@ -52,10 +52,12 @@ The Inbox surface ships incrementally: a pragmatic Next.js API route that unbloc
 ## Frontend Shelf Implementation
 - Today page replaces the meditation card with `InboxShelf`, a reusable surface in `components/inbox/` backed by `useInboxFeed`.
 - Shared typing contracts live in `types/inbox.ts`, with analytics stubs and normalization utilities ensuring resilient rendering.
-- Insight spotlight cards include an accessible modal detail view styled with Tailwind tokens.
+- Insight spotlight and nudge cards include accessible modal detail views styled with Tailwind tokens.
+- CTA envelopes render via `CallToActionCard`, trigger `recordCta` in `useInboxFeed`, fire an `inbox_cta_clicked` analytics event, and persist `actioned` events through `/api/inbox/events`.
+- `useInboxFeed` exposes `markAsRead`, `submitAction`, and `recordCta` helpers so state updates, optimistic UI, and analytics remain consistent across card types.
 
 **Open questions**
-- Do we promote multiple inbox cards on the Today grid or keep a single spotlight for MVP?
+- Should the Today grid ever demote the Inbox shelf when zero unread items exist, or continue showing the latest confirmed CTA/notification?
 - Should `useInboxFeed` expose pagination metadata now or defer until additional card types exist?
 
 **Verification**
