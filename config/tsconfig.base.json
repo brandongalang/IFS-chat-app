@@ -13,26 +13,26 @@
     "jsx": "preserve",
     "incremental": true,
     "plugins": [{ "name": "next" }],
-    "baseUrl": ".",
+    "baseUrl": "..",
     "paths": {
       "@/*": ["./*"],
-      "@/context/*": ["app/_shared/context/*"],
-      "@/hooks/*": ["app/_shared/hooks/*"],
-      "@/types/*": ["app/_shared/types/*"]
+      "@/context/*": ["./app/_shared/context/*"],
+      "@/hooks/*": ["./app/_shared/hooks/*"],
+      "@/types/*": ["./app/_shared/types/*"]
     },
     "target": "ES2017"
   },
   "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
+    "../next-env.d.ts",
+    "../**/*.ts",
+    "../**/*.tsx",
+    "../.next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "scripts/seed-agent-actions.ts",
-    "scripts/seed-check-ins.ts",
-    "scripts/seed-message-feedback.ts",
-    "scripts/seed-onboarding-personas.ts"
+    "../node_modules",
+    "../scripts/seed-agent-actions.ts",
+    "../scripts/seed-check-ins.ts",
+    "../scripts/seed-message-feedback.ts",
+    "../scripts/seed-onboarding-personas.ts"
   ]
 }

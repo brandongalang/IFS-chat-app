@@ -98,8 +98,15 @@ export function CheckInExperience({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [actionStatus, setActionStatus] = useState<'idle' | 'pending' | 'success'>('idle')
   const [morningState, setMorningState] = useState<MorningState>(MORNING_DEFAULTS)
-  const [eveningState, setEveningState] = useState<EveningState>(() => createEveningDefaults(morningContext))
+  const eveningDefaults = useMemo(() => createEveningDefaults(morningContext), [morningContext])
+  const [eveningState, setEveningState] = useState<EveningState>(() => eveningDefaults)
   const successResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (variant === 'evening') {
+      setEveningState((prev) => (isEveningDraftDirty(prev, eveningDefaults) ? prev : eveningDefaults))
+    }
+  }, [eveningDefaults, variant])
 
   const flashSuccess = useCallback(() => {
     if (successResetRef.current) {
@@ -144,12 +151,12 @@ export function CheckInExperience({
       if (variant === 'morning') {
         setMorningState({ ...MORNING_DEFAULTS, ...(parsed.state as MorningState) })
       } else {
-        setEveningState({ ...createEveningDefaults(morningContext), ...(parsed.state as EveningState) })
+        setEveningState({ ...eveningDefaults, ...(parsed.state as EveningState) })
       }
     } catch (error) {
       console.warn('Failed to parse check-in draft', error)
     }
-  }, [draftKey, variant, morningContext])
+  }, [draftKey, variant, eveningDefaults])
 
   // Persist draft when state changes
   useEffect(() => {
@@ -169,7 +176,7 @@ export function CheckInExperience({
       return
     }
 
-    if (!isEveningDraftDirty(eveningState)) {
+    if (!isEveningDraftDirty(eveningState, eveningDefaults)) {
       localStorage.removeItem(draftKey)
       return
     }
@@ -181,7 +188,7 @@ export function CheckInExperience({
     } catch (error) {
       console.warn('Failed to persist check-in draft', error)
     }
-  }, [draftKey, variant, morningState, eveningState])
+  }, [draftKey, variant, morningState, eveningState, eveningDefaults])
 
   const clearDraft = useCallback(() => {
     if (typeof window === 'undefined') return
@@ -455,7 +462,9 @@ export function CheckInExperience({
             parts: eveningState.parts,
           }
 
-      const result = await submitCheckInAction(payload)
+      const payloadWithDate = { ...payload, targetDateIso }
+
+      const result = await submitCheckInAction(payloadWithDate)
 
       if (!result.ok) {
         if (result.conflict) {
@@ -509,6 +518,7 @@ export function CheckInExperience({
     clearDraft,
     router,
     flashSuccess,
+    targetDateIso,
   ])
 
   return (
@@ -665,8 +675,7 @@ function isMorningDraftDirty(state: MorningState): boolean {
   )
 }
 
-function isEveningDraftDirty(state: EveningState): boolean {
-  const defaults = createEveningDefaults(null)
+function isEveningDraftDirty(state: EveningState, defaults: EveningState): boolean {
   return (
     state.mood !== defaults.mood ||
     state.energy !== defaults.energy ||

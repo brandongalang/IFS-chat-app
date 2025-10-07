@@ -1,4 +1,5 @@
 import { FlatCompat } from '@eslint/eslintrc';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -15,6 +16,10 @@ export default [
   { ignores: ['lib/data/**'] },
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
   {
+    files: ['**/*.{ts,tsx}'],
+    plugins: {
+      '@typescript-eslint': tsPlugin
+    },
     rules: {
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn'

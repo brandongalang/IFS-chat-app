@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   MORNING_START_HOUR as SHARED_MORNING_START_HOUR,
   EVENING_START_HOUR as SHARED_EVENING_START_HOUR,
+  toLocalDateIso,
   type CheckInOverviewPayload,
   type CheckInOverviewSlot,
 } from '@/lib/check-ins/shared'
@@ -53,8 +54,8 @@ export function useDailyCheckIns(selectedDate: Date = new Date()): UseDailyCheck
   const [overview, setOverview] = useState<CheckInOverviewPayload | null>(null)
 
   const targetDate = useMemo(() => new Date(selectedDate), [selectedDate])
-  const targetDateString = targetDate.toISOString().slice(0, 10)
-  const todayString = new Date().toISOString().slice(0, 10)
+  const targetDateString = useMemo(() => toLocalDateIso(targetDate), [targetDate])
+  const todayString = toLocalDateIso(new Date())
   const isViewingToday = targetDateString === todayString
 
   const fetchOverview = useCallback(async () => {

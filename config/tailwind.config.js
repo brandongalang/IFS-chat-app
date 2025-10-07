@@ -6,7 +6,6 @@ const projectRoot = path.resolve(__dirname, '..');
 module.exports = {
   darkMode: ['class'],
   content: [
-    path.join(projectRoot, 'pages/**/*.{js,ts,jsx,tsx,mdx}'),
     path.join(projectRoot, 'components/**/*.{js,ts,jsx,tsx,mdx}'),
     path.join(projectRoot, 'app/**/*.{js,ts,jsx,tsx,mdx}'),
     path.join(projectRoot, 'app/_shared/**/*.{js,ts,jsx,tsx,mdx}')
