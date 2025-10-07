@@ -82,7 +82,7 @@ async function callOpenRouter(openrouterKey: string, systemPrompt: string, userP
       'X-Title': 'IFS Mock Session Seeder'
     },
     body: JSON.stringify({
-      model: 'z-ai/glm-4.5-air',
+      model: 'x-ai/grok-4-fast',
       temperature: 0.8,
       max_tokens: 1400,
       messages: [

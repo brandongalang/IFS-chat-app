@@ -21,7 +21,7 @@ Understanding the flow of data from user input to AI response is key to understa
 1.  **User Input:** The user types a message in the React-based chat interface.
 2.  **API Call:** The frontend sends the entire message history, along with the user's profile, to the backend via a `POST` request to the `/api/chat` endpoint.
 3.  **Agent Invocation:** The `/api/chat` route handler receives the request. It dynamically imports and instantiates the **IFS Agent** from `mastra/agents/ifs-agent.ts`, passing the user's profile to the agent's system prompt for personalization.
-4.  **LLM Processing:** The agent sends the conversation history and its system prompt (including the list of available tools) to the `z-ai/glm-4.5` model via the OpenRouter API.
+4.  **LLM Processing:** The agent sends the conversation history and its system prompt (including the list of available tools) to the `x-ai/grok-4-fast` model via the OpenRouter API.
 5.  **Tool Use:** The LLM decides if it needs to use one of its tools. If so, it returns a "tool call" object. The Mastra framework executes the corresponding tool function (e.g., `searchParts` from `part-tools.ts`). The tool function then directly queries the Supabase database.
 6.  **Action Logging:** If the tool performs a write operation (e.g., `createEmergingPart`), it uses the `actionLogger` service to record the change in the `agent_actions` table before committing it. This ensures the action is reversible.
 7.  **Response Generation:** The result of the tool call is sent back to the LLM, which then uses this new information to generate its final text response to the user.
@@ -39,7 +39,7 @@ Understanding the flow of data from user input to AI response is key to understa
 
 - **Agent Framework:** The core logic is built on **Mastra** (`@mastra/core`), an open-source TypeScript framework for creating stateful, production-ready AI agents. It orchestrates the interaction between the LLM, the tools, and the application state.
 - **LLM Provider:** The agent connects to Large Language Models via [OpenRouter](https://openrouter.ai/).
-- **LLM Model:** The primary model in use is **`z-ai/glm-4.5`**. This is a powerful, modern Mixture-of-Experts (MoE) model from Z.ai, which was likely chosen for its strong performance in agentic tasks and tool use, as noted in its technical documentation.
+- **LLM Model:** The primary model in use is **`x-ai/grok-4-fast`**, an OpenRouter-hosted Grok variant tuned for fast agentic interactions while still providing strong reasoning and tool-use performance.
 - **Core Components:**
     - **IFS Agent (`ifs-agent.ts`):** The central agent responsible for processing user input.
     - **System Prompt (`ifs_agent_prompt.ts`):** A detailed set of instructions that defines the agent's personality, goals, and rules for tool use.
