@@ -1,11 +1,19 @@
-import { DailyCheckInForm } from '@/components/check-in/DailyCheckInForm'
+import { CheckInExperience } from '@/components/check-in/CheckInExperience'
+import { loadAvailableParts, loadCheckInOverview } from '@/lib/check-ins/server'
 
-export default function Page() {
+export default async function Page() {
+  const targetDateIso = new Date().toISOString().slice(0, 10)
+  const [parts, overview] = await Promise.all([
+    loadAvailableParts(),
+    loadCheckInOverview(targetDateIso),
+  ])
+
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <DailyCheckInForm variant="morning" />
-      </div>
-    </div>
+    <CheckInExperience
+      variant="morning"
+      parts={parts}
+      targetDateIso={targetDateIso}
+      streakDays={overview.streak}
+    />
   )
 }

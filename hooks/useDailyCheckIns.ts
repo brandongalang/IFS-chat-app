@@ -1,21 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import {
+  MORNING_START_HOUR as SHARED_MORNING_START_HOUR,
+  EVENING_START_HOUR as SHARED_EVENING_START_HOUR,
+  type CheckInOverviewPayload,
+  type CheckInOverviewSlot,
+} from '@/lib/check-ins/shared'
 
 type CheckInType = 'morning' | 'evening'
 
-interface TodayCheckInRow {
+export interface CheckInSlotState extends CheckInOverviewSlot {
   type: CheckInType
-}
-
-type MorningStatus = 'completed' | 'available' | 'closed' | 'upcoming' | 'not_recorded'
-type EveningStatus = 'completed' | 'available' | 'locked' | 'not_recorded'
-
-export interface CheckInSlotState {
-  type: CheckInType
-  status: MorningStatus | EveningStatus
-  completed: boolean
   canStart: boolean
 }
 
@@ -27,91 +23,73 @@ export interface UseDailyCheckInsResult {
   targetDate: Date
   morning: CheckInSlotState
   evening: CheckInSlotState
+  streak: number
 }
 
-export const MORNING_START_HOUR = 4
-export const EVENING_START_HOUR = 18
+export const MORNING_START_HOUR = SHARED_MORNING_START_HOUR
+export const EVENING_START_HOUR = SHARED_EVENING_START_HOUR
 
-function computeStatuses(
-  args: {
-    hasMorning: boolean
-    hasEvening: boolean
-    isViewingToday: boolean
-    now: Date
+const EMPTY_SLOT: CheckInOverviewSlot = {
+  status: 'not_recorded',
+  completed: false,
+  completedAt: null,
+  availableAt: null,
+}
+
+function toSlotState(type: CheckInType, slot: CheckInOverviewSlot | null | undefined): CheckInSlotState {
+  const base = slot ?? EMPTY_SLOT
+  return {
+    ...base,
+    type,
+    canStart: base.status === 'available',
   }
-) {
-  const { hasMorning, hasEvening, isViewingToday, now } = args
-  const hour = now.getHours()
-
-  const morningStatus: MorningStatus = (() => {
-    if (hasMorning) return 'completed'
-    if (!isViewingToday) return 'not_recorded'
-    if (hour < MORNING_START_HOUR) return 'upcoming'
-    if (hour >= EVENING_START_HOUR) return 'closed'
-    return 'available'
-  })()
-
-  const eveningStatus: EveningStatus = (() => {
-    if (hasEvening) return 'completed'
-    if (!isViewingToday) return 'not_recorded'
-    if (hour < EVENING_START_HOUR) return 'locked'
-    return 'available'
-  })()
-
-  return { morningStatus, eveningStatus }
 }
 
 export function useDailyCheckIns(selectedDate: Date = new Date()): UseDailyCheckInsResult {
+  const isMountedRef = useRef(true)
+  const requestRef = useRef<AbortController | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [hasMorning, setHasMorning] = useState(false)
-  const [hasEvening, setHasEvening] = useState(false)
-  const isMountedRef = useRef(true)
+  const [overview, setOverview] = useState<CheckInOverviewPayload | null>(null)
 
   const targetDate = useMemo(() => new Date(selectedDate), [selectedDate])
   const targetDateString = targetDate.toISOString().slice(0, 10)
   const todayString = new Date().toISOString().slice(0, 10)
   const isViewingToday = targetDateString === todayString
 
-  const fetchSelectedDateCheckIns = useCallback(async () => {
+  const fetchOverview = useCallback(async () => {
+    requestRef.current?.abort()
+    const controller = new AbortController()
+    requestRef.current = controller
     setIsLoading(true)
     setError(null)
-    const supabase = createClient()
 
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
+      const response = await fetch(`/api/check-ins/overview?date=${targetDateString}`, {
+        signal: controller.signal,
+      })
 
-      if (userError) throw userError
-
-      if (!user) {
-        if (!isMountedRef.current) return
-        setHasMorning(false)
-        setHasEvening(false)
-        return
+      if (!response.ok) {
+        throw new Error(`Failed to load check-ins: ${response.status}`)
       }
 
-      const { data, error } = await supabase
-        .from('check_ins')
-        .select('type')
-        .eq('user_id', user.id)
-        .eq('check_in_date', targetDateString)
+      const payload = (await response.json()) as CheckInOverviewPayload
 
-      if (error) throw error
-
-      if (!isMountedRef.current) return
-
-      const entries = (data as TodayCheckInRow[] | null) ?? []
-      setHasMorning(entries.some((entry) => entry.type === 'morning'))
-      setHasEvening(entries.some((entry) => entry.type === 'evening'))
+      if (!isMountedRef.current || controller.signal.aborted) return
+      setOverview(payload)
     } catch (err) {
-      console.error('Failed to load check-ins', err)
-      if (!isMountedRef.current) return
+      if ((err as Error | undefined)?.name === 'AbortError') {
+        return
+      }
+      console.error('Failed to load check-in overview', err)
+      if (!isMountedRef.current || controller.signal.aborted) return
       setError('We couldn’t load your check-ins. Please try again.')
+      setOverview(null)
     } finally {
-      if (isMountedRef.current) {
+      if (requestRef.current === controller) {
+        requestRef.current = null
+      }
+      if (isMountedRef.current && !controller.signal.aborted) {
         setIsLoading(false)
       }
     }
@@ -121,38 +99,23 @@ export function useDailyCheckIns(selectedDate: Date = new Date()): UseDailyCheck
     isMountedRef.current = true
     return () => {
       isMountedRef.current = false
+      requestRef.current?.abort()
     }
   }, [])
 
   useEffect(() => {
-    fetchSelectedDateCheckIns()
-  }, [fetchSelectedDateCheckIns])
+    fetchOverview()
+    return () => {
+      requestRef.current?.abort()
+    }
+  }, [fetchOverview])
 
-  const now = new Date()
-  const { morningStatus, eveningStatus } = computeStatuses({
-    hasMorning,
-    hasEvening,
-    isViewingToday,
-    now,
-  })
-
-  const morning: CheckInSlotState = {
-    type: 'morning',
-    status: morningStatus,
-    completed: hasMorning,
-    canStart: morningStatus === 'available',
-  }
-
-  const evening: CheckInSlotState = {
-    type: 'evening',
-    status: eveningStatus,
-    completed: hasEvening,
-    canStart: eveningStatus === 'available',
-  }
+  const morning = toSlotState('morning', overview?.morning)
+  const evening = toSlotState('evening', overview?.evening)
 
   const refetch = useCallback(async () => {
-    await fetchSelectedDateCheckIns()
-  }, [fetchSelectedDateCheckIns])
+    await fetchOverview()
+  }, [fetchOverview])
 
   return {
     isLoading,
@@ -162,5 +125,6 @@ export function useDailyCheckIns(selectedDate: Date = new Date()): UseDailyCheck
     targetDate,
     morning,
     evening,
+    streak: overview?.streak ?? 0,
   }
 }

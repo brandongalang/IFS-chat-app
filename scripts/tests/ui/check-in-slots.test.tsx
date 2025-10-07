@@ -4,8 +4,6 @@ import { JSDOM } from 'jsdom'
 import React from 'react'
 
 Object.assign(process.env, { NODE_ENV: 'test' })
-process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://supabase.local'
-process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'anon-key'
 
 const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http://localhost' })
 const { window } = dom
@@ -55,128 +53,64 @@ if (!(globalThis as any).requestAnimationFrame) {
 }
 
 const { cleanup, renderHook, waitFor } = await import('@testing-library/react')
-const { setBrowserClientOverrideForTests } = await import('@/lib/supabase/client')
 const { useDailyCheckIns } = await import('@/hooks/useDailyCheckIns')
 
-type TableData = {
-  check_ins: Array<Record<string, unknown>>
+type CheckInOverviewSlot = {
+  status: 'completed' | 'available' | 'locked' | 'upcoming' | 'closed' | 'not_recorded'
+  completed: boolean
+  completedAt?: string | null
+  availableAt?: string | null
 }
 
-const tableData: TableData = {
-  check_ins: [],
+type CheckInOverviewPayload = {
+  morning: CheckInOverviewSlot
+  evening: CheckInOverviewSlot
+  streak: number
 }
 
-const TEST_USER_ID = 'user-auth-id'
+const baseSlot: CheckInOverviewSlot = {
+  status: 'not_recorded',
+  completed: false,
+  completedAt: null,
+  availableAt: null,
+}
 
-function setTableData(data: Partial<TableData>) {
-  if (data.check_ins) {
-    tableData.check_ins = data.check_ins
+let currentPayload: CheckInOverviewPayload = {
+  morning: { ...baseSlot },
+  evening: { ...baseSlot },
+  streak: 0,
+}
+
+const originalFetch = globalThis.fetch
+
+globalThis.fetch = async () => ({
+  ok: true,
+  status: 200,
+  json: async () => currentPayload,
+}) as unknown as Response
+
+function setOverview(partial: Partial<CheckInOverviewPayload>) {
+  currentPayload = {
+    morning: { ...baseSlot, ...(partial.morning ?? {}) },
+    evening: { ...baseSlot, ...(partial.evening ?? {}) },
+    streak: partial.streak ?? 0,
   }
-}
-
-function resetTableData() {
-  tableData.check_ins = []
-}
-
-function pickColumns(row: Record<string, unknown>, columns?: string) {
-  if (!columns || columns === '*' ) return row
-  const names = columns.split(',').map((name) => name.trim())
-  const picked: Record<string, unknown> = {}
-  for (const name of names) {
-    if (name in row) {
-      picked[name] = row[name]
-    }
-  }
-  return picked
-}
-
-function createQuery(columns?: string) {
-  const filters = new Map<string, unknown>()
-  const builder: any = {
-    eq(column: string, value: unknown) {
-      filters.set(column, value)
-      return builder
-    },
-    // biome-ignore lint/suspicious/noThenProperty: test stub mimics Supabase thenable builders
-    then(resolve: (value: unknown) => unknown, reject?: (reason?: unknown) => unknown) {
-      const filtered = tableData.check_ins.filter((row) => {
-        for (const [column, value] of filters.entries()) {
-          if ((row as Record<string, unknown>)[column] !== value) return false
-        }
-        return true
-      })
-      const projected = filtered.map((row) => pickColumns(row as Record<string, unknown>, columns))
-      return Promise.resolve({ data: projected, error: null }).then(resolve, reject)
-    },
-    catch(reject: (reason?: unknown) => unknown) {
-      return Promise.resolve({ data: null, error: null }).catch(reject)
-    },
-  }
-
-  return builder
-}
-
-const supabaseStub = {
-  auth: {
-    async getUser() {
-      return { data: { user: { id: TEST_USER_ID } }, error: null }
-    },
-  },
-  from() {
-    return {
-      select(columns?: string) {
-        return createQuery(columns)
-      },
-    }
-  },
-}
-
-setBrowserClientOverrideForTests(supabaseStub as any)
-
-const RealDate = Date
-
-function localDateString(d = new Date()) {
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-function mockDateAtHour(hour: number) {
-  const isoHour = String(hour).padStart(2, '0')
-  const isoString = `2024-07-01T${isoHour}:00:00`
-  class MockDate extends RealDate {
-    constructor(...args: any[]) {
-      if (args.length === 0) {
-        super(isoString)
-      } else {
-        super(...(args as [any]))
-      }
-    }
-    static now() {
-      return new RealDate(isoString).getTime()
-    }
-  }
-  ;(globalThis as any).Date = MockDate as unknown as DateConstructor
-}
-
-function restoreDate() {
-  ;(globalThis as any).Date = RealDate
 }
 
 process.on('exit', () => {
-  setBrowserClientOverrideForTests(null)
+  cleanup()
+  globalThis.fetch = originalFetch
 })
 
-test('returns morning available and evening locked during morning hours', async (t) => {
-  mockDateAtHour(9)
-  t.after(() => {
-    cleanup()
-    restoreDate()
-    resetTableData()
+test('returns morning available and evening locked when overview reports it', async (t) => {
+  setOverview({
+    morning: { status: 'available', completed: false },
+    evening: { status: 'locked', completed: false, availableAt: '18:00' },
   })
 
-  setTableData({ check_ins: [] })
+  t.after(() => {
+    cleanup()
+  })
 
   const { result } = renderHook(() => useDailyCheckIns())
 
@@ -185,21 +119,20 @@ test('returns morning available and evening locked during morning hours', async 
   })
 
   assert.equal(result.current.morning.status, 'available')
+  assert.equal(result.current.morning.canStart, true)
   assert.equal(result.current.evening.status, 'locked')
+  assert.equal(result.current.streak, 0)
 })
 
-test('marks evening as available after 6pm when morning is complete', async (t) => {
-  mockDateAtHour(18)
-  t.after(() => {
-    cleanup()
-    restoreDate()
-    resetTableData()
+test('marks evening as available when morning is completed', async (t) => {
+  setOverview({
+    morning: { status: 'completed', completed: true },
+    evening: { status: 'available', completed: false },
+    streak: 3,
   })
 
-  setTableData({
-    check_ins: [
-      { type: 'morning', user_id: TEST_USER_ID, check_in_date: localDateString(new Date()) },
-    ],
+  t.after(() => {
+    cleanup()
   })
 
   const { result } = renderHook(() => useDailyCheckIns())
@@ -209,18 +142,20 @@ test('marks evening as available after 6pm when morning is complete', async (t) 
   })
 
   assert.equal(result.current.morning.status, 'completed')
+  assert.equal(result.current.morning.canStart, false)
   assert.equal(result.current.evening.status, 'available')
+  assert.equal(result.current.streak, 3)
 })
 
-test('closes the morning slot after 6pm when no entry exists', async (t) => {
-  mockDateAtHour(19)
-  t.after(() => {
-    cleanup()
-    restoreDate()
-    resetTableData()
+test('closes the morning slot when overview reports closed status', async (t) => {
+  setOverview({
+    morning: { status: 'closed', completed: false },
+    evening: { status: 'available', completed: false },
   })
 
-  setTableData({ check_ins: [] })
+  t.after(() => {
+    cleanup()
+  })
 
   const { result } = renderHook(() => useDailyCheckIns())
 
