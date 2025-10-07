@@ -133,16 +133,28 @@ export function CheckInExperience({
   // Persist draft when state changes
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const state = variant === 'morning' ? morningState : eveningState
-    const shouldPersist = variant === 'morning' ? isMorningDraftDirty(state) : isEveningDraftDirty(state)
+    if (variant === 'morning') {
+      if (!isMorningDraftDirty(morningState)) {
+        localStorage.removeItem(draftKey)
+        return
+      }
+      try {
+        const serialized = JSON.stringify({ variant, state: morningState })
+        localStorage.setItem(draftKey, serialized)
+        window.dispatchEvent(new StorageEvent('storage', { key: draftKey, newValue: serialized }))
+      } catch (error) {
+        console.warn('Failed to persist check-in draft', error)
+      }
+      return
+    }
 
-    if (!shouldPersist) {
+    if (!isEveningDraftDirty(eveningState)) {
       localStorage.removeItem(draftKey)
       return
     }
 
     try {
-      const serialized = JSON.stringify({ variant, state })
+      const serialized = JSON.stringify({ variant, state: eveningState })
       localStorage.setItem(draftKey, serialized)
       window.dispatchEvent(new StorageEvent('storage', { key: draftKey, newValue: serialized }))
     } catch (error) {
