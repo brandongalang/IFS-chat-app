@@ -264,10 +264,10 @@ Then restart your Next.js dev server so env changes apply.
 **Sanity check the proxy:**
 
 ```bash
-# For GLM-4.5-Air model (via /v1/chat/completions endpoint)
+# For Grok-4-Fast model (via /v1/chat/completions endpoint)
 curl -s -X POST http://127.0.0.1:4000/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{"model":"openrouter/z-ai/glm-4.5-air","messages":[{"role":"user","content":"hello"}]}'
+  -d '{"model":"openrouter/x-ai/grok-4-fast","messages":[{"role":"user","content":"hello"}]}'
 
 # Alternative: Standard endpoint (if /v1 doesn't work)
 curl -s -X POST http://127.0.0.1:4000/chat/completions \

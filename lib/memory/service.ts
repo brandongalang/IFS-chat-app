@@ -196,7 +196,7 @@ Output constraints:
     ].join('\n')
 
     const { object } = await generateObject({
-      model: provider('z-ai/glm-4.5'),
+      model: provider('x-ai/grok-4-fast'),
       system,
       prompt,
       schema: userMemorySchema,
