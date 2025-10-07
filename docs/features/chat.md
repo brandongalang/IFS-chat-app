@@ -2,7 +2,7 @@
 title: Feature: Chat
 owner: @brandongalang
 status: shipped
-last_updated: 2025-09-26
+last_updated: 2025-10-07
 feature_flag: null
 code_paths:
   - app/chat/page.tsx
@@ -21,7 +21,7 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
 
 ## How it works
 - UI at app/chat/page.tsx with streaming responses
-- `useChat` consumes AI SDK UI message parts (text/tool/data) and streams via `TextStreamChatTransport`
+- `useChat` consumes AI SDK UI message parts (text/tool/data) and streams via `DefaultChatTransport`, yielding a single assistant response per turn while preserving token-by-token rendering
 - Client data access uses `@/lib/data/parts-lite` (browser-safe)
 - Server routes/actions use `@/lib/data/parts-server` for writes, logging, and snapshots
 - Agent actions are logged via lib/database/action-logger.ts (server-only); task updates arrive via `data-taskUpdate` parts
