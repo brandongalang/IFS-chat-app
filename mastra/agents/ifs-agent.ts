@@ -1,6 +1,6 @@
 import { Agent } from '@mastra/core'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
-import { ENV } from '@/config/env'
+import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
 import { resolveModel } from '@/config/model'
 import { getPartTools } from '../tools/part-tools.mastra'
 import { createAssessmentTools } from '../tools/assessment-tools'
@@ -23,11 +23,7 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
   const userId = profile?.userId
   const modelId = overrides.modelId ?? resolveModel(ENV.IFS_MODEL)
   const temperature = overrides.temperature ?? ENV.IFS_TEMPERATURE
-  const baseURL =
-    overrides.baseURL ??
-    ENV.IFS_PROVIDER_BASE_URL ??
-    ENV.OPENROUTER_BASE_URL ??
-    'https://openrouter.ai/api/v1'
+  const baseURL = overrides.baseURL ?? OPENROUTER_API_BASE_URL
 
   const openrouter = createOpenRouter({
     apiKey: ENV.OPENROUTER_API_KEY,
