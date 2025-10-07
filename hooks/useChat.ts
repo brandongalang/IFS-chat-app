@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
-import { TextStreamChatTransport, isToolOrDynamicToolUIPart, type UIMessage } from 'ai'
+import { DefaultChatTransport, isToolOrDynamicToolUIPart, type UIMessage } from 'ai'
 import { useChat as useAiChat } from '@ai-sdk/react'
 import { useSearchParams } from 'next/navigation'
 
@@ -127,7 +127,7 @@ export function useChat(): ChatHookReturn {
   const [sessionId, setSessionId] = useState<string | null>(getSessionId())
   const [tasksByMessage, setTasksByMessage] = useState<Record<string, TaskEvent[]>>({})
 
-  const transport = useMemo(() => new TextStreamChatTransport({ api: '/api/chat' }), [])
+  const transport = useMemo(() => new DefaultChatTransport({ api: '/api/chat' }), [])
 
   const {
     messages: uiMessages,
