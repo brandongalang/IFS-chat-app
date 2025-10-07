@@ -35,7 +35,7 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 
 ## Configuration
 - Provider configuration centralized in `config/model.ts` and `mastra/index.ts`
-- Override defaults with `IFS_MODEL`, `IFS_TEMPERATURE`, and `IFS_PROVIDER_BASE_URL` env vars (fallback to `OPENROUTER_BASE_URL`)
+- Agents default to the hard-coded `OPENROUTER_API_BASE_URL` (`https://openrouter.ai/api/v1`); only `IFS_MODEL` and `IFS_TEMPERATURE` remain configurable via env vars
 - Agents share the single `openrouter` provider created during Mastra bootstrap
 
 ## Testing
