@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -96,8 +96,36 @@ export function CheckInExperience({
   const [formError, setFormError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [actionStatus, setActionStatus] = useState<'idle' | 'pending' | 'success'>('idle')
   const [morningState, setMorningState] = useState<MorningState>(MORNING_DEFAULTS)
-  const [eveningState, setEveningState] = useState<EveningState>(() => createEveningDefaults(morningContext))
+  const eveningDefaults = useMemo(() => createEveningDefaults(morningContext), [morningContext])
+  const [eveningState, setEveningState] = useState<EveningState>(() => eveningDefaults)
+  const successResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (variant === 'evening') {
+      setEveningState((prev) => (isEveningDraftDirty(prev, eveningDefaults) ? prev : eveningDefaults))
+    }
+  }, [eveningDefaults, variant])
+
+  const flashSuccess = useCallback(() => {
+    if (successResetRef.current) {
+      clearTimeout(successResetRef.current)
+    }
+    setActionStatus('success')
+    successResetRef.current = setTimeout(() => {
+      setActionStatus('idle')
+      successResetRef.current = null
+    }, 900)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (successResetRef.current) {
+        clearTimeout(successResetRef.current)
+      }
+    }
+  }, [])
 
   const partLookup = useMemo(() => {
     const map = new Map<string, PartOption>()
@@ -109,7 +137,6 @@ export function CheckInExperience({
 
   const draftKey = `${CHECK_IN_DRAFT_PREFIX}-${variant}-${targetDateIso}`
 
-  // Load draft on mount
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
@@ -123,14 +150,13 @@ export function CheckInExperience({
       if (variant === 'morning') {
         setMorningState({ ...MORNING_DEFAULTS, ...(parsed.state as MorningState) })
       } else {
-        setEveningState({ ...createEveningDefaults(morningContext), ...(parsed.state as EveningState) })
+        setEveningState({ ...eveningDefaults, ...(parsed.state as EveningState) })
       }
     } catch (error) {
       console.warn('Failed to parse check-in draft', error)
     }
-  }, [draftKey, variant, morningContext])
+  }, [draftKey, variant, eveningDefaults])
 
-  // Persist draft when state changes
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (variant === 'morning') {
@@ -148,7 +174,7 @@ export function CheckInExperience({
       return
     }
 
-    if (!isEveningDraftDirty(eveningState)) {
+    if (!isEveningDraftDirty(eveningState, eveningDefaults)) {
       localStorage.removeItem(draftKey)
       return
     }
@@ -160,7 +186,7 @@ export function CheckInExperience({
     } catch (error) {
       console.warn('Failed to persist check-in draft', error)
     }
-  }, [draftKey, variant, morningState, eveningState])
+  }, [draftKey, variant, morningState, eveningState, eveningDefaults])
 
   const clearDraft = useCallback(() => {
     if (typeof window === 'undefined') return
@@ -260,9 +286,7 @@ export function CheckInExperience({
           title: 'Take a breath and confirm',
           description: 'Make sure this reflects what you want to carry forward.',
           submitLabel: 'Complete check-in',
-          render: () => (
-            <MorningReview state={morningState} partLookup={partLookup} />
-          ),
+          render: () => <MorningReview state={morningState} partLookup={partLookup} />,
         },
       ]
     }
@@ -387,25 +411,30 @@ export function CheckInExperience({
   const handleBack = useCallback(() => {
     setFormError(null)
     setSubmitError(null)
+    setActionStatus('idle')
     setStepIndex((prev) => Math.max(prev - 1, 0))
   }, [])
 
   const handleAdvance = useCallback(async () => {
     setFormError(null)
     setSubmitError(null)
+    setActionStatus('pending')
 
     const validationError = currentStep.validate?.()
     if (validationError) {
       setFormError(validationError)
+      setActionStatus('idle')
       return
     }
 
     if (!isLastStep) {
       setStepIndex((prev) => Math.min(prev + 1, steps.length - 1))
+      flashSuccess()
       return
     }
 
     setIsSubmitting(true)
+    let completed = false
     try {
       const payload = variant === 'morning'
         ? {
@@ -429,7 +458,8 @@ export function CheckInExperience({
             parts: eveningState.parts,
           }
 
-      const result = await submitCheckInAction(payload)
+      const payloadWithDate = { ...payload, targetDateIso }
+      const result = await submitCheckInAction(payloadWithDate)
 
       if (!result.ok) {
         if (result.conflict) {
@@ -450,9 +480,12 @@ export function CheckInExperience({
           description: result.error ?? 'Something went wrong.',
           variant: 'destructive',
         })
+        setActionStatus('idle')
         return
       }
 
+      completed = true
+      flashSuccess()
       toast({
         title: variant === 'morning' ? 'Morning check-in saved' : 'Evening reflection saved',
         description:
@@ -464,6 +497,9 @@ export function CheckInExperience({
       router.push('/')
     } finally {
       setIsSubmitting(false)
+      if (!completed) {
+        setActionStatus('idle')
+      }
     }
   }, [
     currentStep,
@@ -476,6 +512,8 @@ export function CheckInExperience({
     toast,
     clearDraft,
     router,
+    flashSuccess,
+    targetDateIso,
   ])
 
   return (
@@ -491,10 +529,10 @@ export function CheckInExperience({
         onBack={stepIndex > 0 ? handleBack : undefined}
         onNext={handleAdvance}
         disableNext={isSubmitting}
-        isSubmitting={isSubmitting}
         isLastStep={isLastStep}
         nextLabel={currentStep.nextLabel}
         submitLabel={currentStep.submitLabel}
+        status={actionStatus}
       >
         {currentStep.render()}
       </CheckInWizard>
@@ -632,8 +670,7 @@ function isMorningDraftDirty(state: MorningState): boolean {
   )
 }
 
-function isEveningDraftDirty(state: EveningState): boolean {
-  const defaults = createEveningDefaults(null)
+function isEveningDraftDirty(state: EveningState, defaults: EveningState): boolean {
   return (
     state.mood !== defaults.mood ||
     state.energy !== defaults.energy ||

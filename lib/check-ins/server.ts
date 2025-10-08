@@ -19,28 +19,35 @@ import {
   MORNING_START_HOUR,
   EVENING_START_HOUR,
   startHourLabel,
+  toLocalDateIso,
+  parseIsoDate,
+  shiftIsoDate,
 } from './shared'
 
-export interface MorningSubmissionPayload {
+interface SubmissionBase {
+  targetDateIso?: string
+}
+
+export interface MorningSubmissionPayload extends SubmissionBase {
   type: 'morning'
   mood: string
   energy: string
   intentionFocus: string
-  mindForToday: string
+  mindForToday?: string
   intention: string
-  parts: string[]
+  parts?: string[]
 }
 
-export interface EveningSubmissionPayload {
+export interface EveningSubmissionPayload extends SubmissionBase {
   type: 'evening'
   mood: string
   energy: string
   intentionFocus: string
   reflectionPrompt: string
   reflection: string
-  gratitude: string
-  moreNotes: string
-  parts: string[]
+  gratitude?: string
+  moreNotes?: string
+  parts?: string[]
 }
 
 export type CheckInSubmissionPayload = MorningSubmissionPayload | EveningSubmissionPayload
@@ -50,6 +57,8 @@ export interface SubmissionResult {
   conflict: boolean
 }
 
+const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+
 const morningSchema = z.object({
   type: z.literal('morning'),
   mood: z.string(),
@@ -58,6 +67,7 @@ const morningSchema = z.object({
   mindForToday: z.string().optional(),
   intention: z.string().min(1, 'Intention is required'),
   parts: z.array(z.string()).optional(),
+  targetDateIso: isoDateSchema.optional(),
 })
 
 const eveningSchema = z.object({
@@ -70,6 +80,7 @@ const eveningSchema = z.object({
   gratitude: z.string().optional(),
   moreNotes: z.string().optional(),
   parts: z.array(z.string()).optional(),
+  targetDateIso: isoDateSchema.optional(),
 })
 
 function buildEmojiSnapshot(payload: {
@@ -248,15 +259,15 @@ export async function loadMorningContext(targetDateIso: string): Promise<Morning
 
   const moodSelection =
     emojiRecord && typeof (emojiRecord.mood as { id?: unknown } | undefined)?.id === 'string'
-      ? ((emojiRecord.mood as { id: string }).id)
+      ? (emojiRecord.mood as { id: string }).id
       : MOOD_OPTIONS[Math.floor(MOOD_OPTIONS.length / 2)].id
   const energySelection =
     emojiRecord && typeof (emojiRecord.energy as { id?: unknown } | undefined)?.id === 'string'
-      ? ((emojiRecord.energy as { id: string }).id)
+      ? (emojiRecord.energy as { id: string }).id
       : ENERGY_OPTIONS[Math.floor(ENERGY_OPTIONS.length / 2)].id
   const intentionFocusSelection =
     emojiRecord && typeof (emojiRecord.intentionFocus as { id?: unknown } | undefined)?.id === 'string'
-      ? ((emojiRecord.intentionFocus as { id: string }).id)
+      ? (emojiRecord.intentionFocus as { id: string }).id
       : INTENTION_FOCUS_OPTIONS[Math.floor(INTENTION_FOCUS_OPTIONS.length / 2)].id
 
   const moodOption = findEmojiOption('mood', moodSelection)
@@ -279,7 +290,6 @@ export async function loadMorningContext(targetDateIso: string): Promise<Morning
 
 export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<SubmissionResult> {
   const { supabase, userId } = await resolveContextClient()
-  const todayIso = new Date().toISOString().slice(0, 10)
 
   if (payload.type === 'morning') {
     const parsed = morningSchema.safeParse(payload)
@@ -288,6 +298,7 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
     }
 
     const data = parsed.data
+    const targetDateIso = resolveTargetDate(data.targetDateIso)
     const mood = findEmojiOption('mood', data.mood)
     const energy = findEmojiOption('energy', data.energy)
     const intentionFocus = findEmojiOption('intentionFocus', data.intentionFocus)
@@ -324,13 +335,13 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
       .insert({
         user_id: userId,
         type: 'morning',
-        check_in_date: todayIso,
+        check_in_date: targetDateIso,
         mood: mood.score,
         energy_level: energy.score,
         intention: data.intention,
         gratitude: null,
         reflection: null,
-        somatic_markers: null,
+        somatic_markers: [],
         parts_data: partsData,
       })
       .select()
@@ -353,6 +364,7 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
   }
 
   const data = parsed.data
+  const targetDateIso = resolveTargetDate(data.targetDateIso)
   const mood = findEmojiOption('mood', data.mood)
   const energy = findEmojiOption('energy', data.energy)
   const intentionFocus = findEmojiOption('intentionFocus', data.intentionFocus)
@@ -366,7 +378,7 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
     .select('id, parts_data')
     .eq('user_id', userId)
     .eq('type', 'morning')
-    .eq('check_in_date', todayIso)
+    .eq('check_in_date', targetDateIso)
     .order('created_at', { ascending: false })
     .limit(1)
 
@@ -391,14 +403,14 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
     .insert({
       user_id: userId,
       type: 'evening',
-      check_in_date: todayIso,
+      check_in_date: targetDateIso,
       mood: mood.score,
       energy_level: energy.score,
       reflection: data.reflection.trim(),
       gratitude: gratitude.length > 0 ? gratitude : null,
       intention: null,
       parts_data: partsData,
-      somatic_markers: null,
+      somatic_markers: [],
     })
     .select()
 
@@ -412,38 +424,38 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
   }
 
   if (morningRecord) {
-    try {
-      const existingPartsData = (morningRecord.parts_data as Record<string, unknown> | null) ?? {}
-      const existingDaily =
-        existingPartsData && typeof existingPartsData === 'object'
-          ? ((existingPartsData as { daily_responses?: unknown }).daily_responses as
-              | Record<string, unknown>
-              | undefined)
-          : undefined
+    const existingPartsData = (morningRecord.parts_data as Record<string, unknown> | null) ?? {}
+    const existingDaily =
+      existingPartsData && typeof existingPartsData === 'object'
+        ? ((existingPartsData as { daily_responses?: unknown }).daily_responses as
+            | Record<string, unknown>
+            | undefined)
+        : undefined
 
-      const existingPrompt =
-        existingDaily && typeof existingDaily === 'object' && existingDaily !== null
-          ? ((existingDaily as { generatedEveningPrompt?: unknown }).generatedEveningPrompt as
-              | Record<string, unknown>
-              | undefined)
-          : undefined
+    const existingPrompt =
+      existingDaily && typeof existingDaily === 'object' && existingDaily !== null
+        ? ((existingDaily as { generatedEveningPrompt?: unknown }).generatedEveningPrompt as
+            | Record<string, unknown>
+            | undefined)
+        : undefined
 
-      const updatedMorningPartsData = {
-        ...existingPartsData,
-        daily_responses: {
-          ...(existingDaily ?? {}),
-          generatedEveningPrompt: {
-            ...(existingPrompt ?? {}),
-            responded_at: new Date().toISOString(),
-          },
+    const updatedMorningPartsData = {
+      ...existingPartsData,
+      daily_responses: {
+        ...(existingDaily ?? {}),
+        generatedEveningPrompt: {
+          ...(existingPrompt ?? {}),
+          responded_at: new Date().toISOString(),
         },
-      }
+      },
+    }
 
-      await supabase
-        .from('check_ins')
-        .update({ parts_data: updatedMorningPartsData })
-        .eq('id', morningRecord.id as string)
-    } catch (updateError) {
+    const { error: updateError } = await supabase
+      .from('check_ins')
+      .update({ parts_data: updatedMorningPartsData })
+      .eq('id', morningRecord.id as string)
+
+    if (updateError) {
       console.error('Failed to update morning check-in with evening status', updateError)
     }
   }
@@ -453,13 +465,14 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
 
 export async function loadCheckInOverview(targetDateIso: string): Promise<CheckInOverviewPayload> {
   const { supabase, userId } = await resolveContextClient()
+  const normalizedTargetIso = toLocalDateIso(parseIsoDate(targetDateIso))
 
   const { data, error } = await supabase
     .from('check_ins')
     .select('type, created_at, check_in_date')
     .eq('user_id', userId)
-    .gte('check_in_date', subtractDaysIso(targetDateIso, 10))
-    .lte('check_in_date', targetDateIso)
+    .gte('check_in_date', shiftIsoDate(normalizedTargetIso, -60))
+    .lte('check_in_date', normalizedTargetIso)
     .order('check_in_date', { ascending: false })
     .order('created_at', { ascending: false })
 
@@ -472,8 +485,8 @@ export async function loadCheckInOverview(targetDateIso: string): Promise<CheckI
     }
   }
 
-  const targetDate = targetDateIso
-  const todayIso = new Date().toISOString().slice(0, 10)
+  const targetDate = normalizedTargetIso
+  const todayIso = toLocalDateIso(new Date())
   const isViewingToday = targetDate === todayIso
   const now = new Date()
   const hour = now.getHours()
@@ -497,7 +510,7 @@ export async function loadCheckInOverview(targetDateIso: string): Promise<CheckI
     return 'available'
   })()
 
-  const streak = computeStreak(entries)
+  const streak = computeStreak(entries, normalizedTargetIso)
 
   return {
     morning: {
@@ -514,38 +527,31 @@ export async function loadCheckInOverview(targetDateIso: string): Promise<CheckI
   }
 }
 
-function subtractDaysIso(targetIso: string, days: number): string {
-  const date = new Date(targetIso)
-  date.setDate(date.getDate() - days)
-  return date.toISOString().slice(0, 10)
-}
-
-function computeStreak(entries: Array<{ check_in_date: string }>): number {
+function computeStreak(entries: Array<{ check_in_date: string }>, targetDateIso: string): number {
   if (!entries.length) return 0
 
-  const uniqueDates = Array.from(new Set(entries.map((entry) => entry.check_in_date))).sort((a, b) =>
-    a < b ? 1 : a > b ? -1 : 0,
-  )
-
+  const dates = new Set(entries.map((entry) => entry.check_in_date))
   let streak = 0
-  let cursor = new Date().toISOString().slice(0, 10)
+  let cursor = targetDateIso
 
-  for (const dateIso of uniqueDates) {
-    if (dateIso !== cursor) {
-      const cursorDate = new Date(cursor)
-      cursorDate.setDate(cursorDate.getDate() - 1)
-      cursor = cursorDate.toISOString().slice(0, 10)
-      if (dateIso !== cursor) {
-        break
-      }
-    }
+  while (dates.has(cursor)) {
     streak += 1
-    const next = new Date(cursor)
-    next.setDate(next.getDate() - 1)
-    cursor = next.toISOString().slice(0, 10)
+    cursor = shiftIsoDate(cursor, -1)
   }
 
   return streak
+}
+
+function resolveTargetDate(value?: string): string {
+  if (!value) {
+    return toLocalDateIso(new Date())
+  }
+
+  try {
+    return toLocalDateIso(parseIsoDate(value))
+  } catch {
+    return toLocalDateIso(new Date())
+  }
 }
 
 export {

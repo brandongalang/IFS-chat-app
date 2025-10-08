@@ -45,6 +45,26 @@ export function startHourLabel(hour: number): string {
   return `${String(hour).padStart(2, '0')}:00`
 }
 
+export function toLocalDateIso(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+export function parseIsoDate(value: string): Date {
+  const [year, month, day] = value.split('-').map((segment) => Number.parseInt(segment, 10))
+  if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) {
+    throw new Error(`Invalid ISO date: ${value}`)
+  }
+  return new Date(year, month - 1, day)
+}
+
+export function shiftIsoDate(value: string, amount: number): string {
+  const date = parseIsoDate(value)
+  date.setDate(date.getDate() + amount)
+  return toLocalDateIso(date)
+}
 const emojiGroups = {
   mood: MOOD_OPTIONS,
   energy: ENERGY_OPTIONS,
