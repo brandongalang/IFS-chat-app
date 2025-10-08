@@ -65,7 +65,6 @@ export function shiftIsoDate(value: string, amount: number): string {
   date.setDate(date.getDate() + amount)
   return toLocalDateIso(date)
 }
-
 const emojiGroups = {
   mood: MOOD_OPTIONS,
   energy: ENERGY_OPTIONS,

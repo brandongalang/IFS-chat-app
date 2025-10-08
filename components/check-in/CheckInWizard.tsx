@@ -35,6 +35,7 @@ export function CheckInWizard({
 }: CheckInWizardProps) {
   const isPending = status === 'pending'
   const isSuccess = status === 'success'
+
   const actionLabel = useMemo(() => {
     if (isPending) {
       return isLastStep ? 'Saving…' : 'Working…'

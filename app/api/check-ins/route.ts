@@ -4,7 +4,6 @@ import { submitCheckIn } from '@/lib/check-ins/server'
 import { parseIsoDate, toLocalDateIso } from '@/lib/check-ins/shared'
 
 export async function POST(req: NextRequest) {
-
   try {
     const json = await req.json()
 

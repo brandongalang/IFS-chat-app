@@ -137,7 +137,6 @@ export function CheckInExperience({
 
   const draftKey = `${CHECK_IN_DRAFT_PREFIX}-${variant}-${targetDateIso}`
 
-  // Load draft on mount
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
@@ -158,7 +157,6 @@ export function CheckInExperience({
     }
   }, [draftKey, variant, eveningDefaults])
 
-  // Persist draft when state changes
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (variant === 'morning') {
@@ -288,9 +286,7 @@ export function CheckInExperience({
           title: 'Take a breath and confirm',
           description: 'Make sure this reflects what you want to carry forward.',
           submitLabel: 'Complete check-in',
-          render: () => (
-            <MorningReview state={morningState} partLookup={partLookup} />
-          ),
+          render: () => <MorningReview state={morningState} partLookup={partLookup} />,
         },
       ]
     }
@@ -463,7 +459,6 @@ export function CheckInExperience({
           }
 
       const payloadWithDate = { ...payload, targetDateIso }
-
       const result = await submitCheckInAction(payloadWithDate)
 
       if (!result.ok) {

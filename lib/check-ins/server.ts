@@ -259,15 +259,15 @@ export async function loadMorningContext(targetDateIso: string): Promise<Morning
 
   const moodSelection =
     emojiRecord && typeof (emojiRecord.mood as { id?: unknown } | undefined)?.id === 'string'
-      ? ((emojiRecord.mood as { id: string }).id)
+      ? (emojiRecord.mood as { id: string }).id
       : MOOD_OPTIONS[Math.floor(MOOD_OPTIONS.length / 2)].id
   const energySelection =
     emojiRecord && typeof (emojiRecord.energy as { id?: unknown } | undefined)?.id === 'string'
-      ? ((emojiRecord.energy as { id: string }).id)
+      ? (emojiRecord.energy as { id: string }).id
       : ENERGY_OPTIONS[Math.floor(ENERGY_OPTIONS.length / 2)].id
   const intentionFocusSelection =
     emojiRecord && typeof (emojiRecord.intentionFocus as { id?: unknown } | undefined)?.id === 'string'
-      ? ((emojiRecord.intentionFocus as { id: string }).id)
+      ? (emojiRecord.intentionFocus as { id: string }).id
       : INTENTION_FOCUS_OPTIONS[Math.floor(INTENTION_FOCUS_OPTIONS.length / 2)].id
 
   const moodOption = findEmojiOption('mood', moodSelection)
@@ -403,14 +403,14 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
     .insert({
       user_id: userId,
       type: 'evening',
-        check_in_date: targetDateIso,
+      check_in_date: targetDateIso,
       mood: mood.score,
       energy_level: energy.score,
       reflection: data.reflection.trim(),
       gratitude: gratitude.length > 0 ? gratitude : null,
       intention: null,
       parts_data: partsData,
-        somatic_markers: [],
+      somatic_markers: [],
     })
     .select()
 
