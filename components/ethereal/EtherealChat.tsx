@@ -1,22 +1,58 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { motion } from "framer-motion"
+import { isToolOrDynamicToolUIPart } from "ai"
 import { useChat } from "@/hooks/useChat"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import type { Message as ChatMessage } from "@/types/chat"
 import { useRouter } from "next/navigation"
-import { StreamingText } from "./StreamingText"
-import { TaskList } from "@/components/tasks/TaskList"
 import { ActiveTaskOverlay } from "./ActiveTaskOverlay"
 import { PageContainer } from "@/components/common/PageContainer"
+import { EtherealMessageList } from "./EtherealMessageList"
+
+interface ActiveToolStatus {
+  id: string
+  label: string
+  state: string
+  isMemory: boolean
+}
+
+function toolStatusLabel(state: string, isMemory: boolean): string {
+  switch (state) {
+    case "input-streaming":
+    case "input-available":
+      return isMemory ? "reviewing your notes" : "gathering context"
+    case "output-streaming":
+      return isMemory ? "writing notes" : "preparing results"
+    case "output-available":
+      return isMemory ? "notes captured" : "result ready"
+    case "output-error":
+      return "tool error"
+    default:
+      return "processing"
+  }
+}
+
+function ToolStatusBadge({ tool }: { tool: ActiveToolStatus }) {
+  return (
+    <div className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-white/70 backdrop-blur-md">
+      <span className="relative flex size-2">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/50" />
+        <span className="relative inline-flex size-2 rounded-full bg-white" />
+      </span>
+      <span className="text-white/80">{tool.isMemory ? "notes" : tool.label}</span>
+      <span className="text-white/90">{toolStatusLabel(tool.state, tool.isMemory)}</span>
+    </div>
+  )
+}
 
 // Minimal, bubble-less chat presentation
 export function EtherealChat() {
   const {
     messages,
+    uiMessages,
     input,
     setInput,
     handleSubmit,
@@ -30,14 +66,6 @@ export function EtherealChat() {
     authLoading,
   } = useChat()
   const router = useRouter()
-  const taskListStyles: CSSProperties = {
-    '--muted-foreground': '0 0% 80%',
-    '--foreground': '0 0% 100%',
-    '--secondary': '0 0% 100% / 0.1',
-    '--secondary-foreground': '0 0% 100%',
-    '--border': '0 0% 100% / 0.2',
-  } as CSSProperties
-
   // UI state
   const [confirmOpen, setConfirmOpen] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -89,6 +117,39 @@ export function EtherealChat() {
 
   const currentTasks = currentStreamingId ? tasksByMessage?.[currentStreamingId] : undefined
 
+  const activeTool = useMemo<ActiveToolStatus | undefined>(() => {
+    for (let i = uiMessages.length - 1; i >= 0; i -= 1) {
+      const message = uiMessages[i]
+      if (!Array.isArray(message.parts)) continue
+      for (let j = message.parts.length - 1; j >= 0; j -= 1) {
+        const part = message.parts[j]
+        if (!isToolOrDynamicToolUIPart(part)) continue
+
+        const toolPart = part as typeof part & {
+          toolName?: string
+          toolCallId?: string
+          state?: string
+        }
+
+        const state = toolPart.state ?? "unknown"
+        if (state === "output-available" || state === "output-error") continue
+
+        const rawName = toolPart.toolName ?? toolPart.type ?? "tool"
+        const label = rawName.replace(/^tool[-:]/i, "").replace(/[-_]/g, " ").trim() || "tool"
+        const isMemory = /memory|note/i.test(`${toolPart.toolName ?? ""} ${toolPart.type ?? ""}`)
+
+        return {
+          id: toolPart.toolCallId ?? `${message.id}-${j}`,
+          label,
+          state,
+          isMemory,
+        }
+      }
+    }
+
+    return undefined
+  }, [uiMessages])
+
   if (!authLoading && needsAuth) {
     return null
   }
@@ -119,43 +180,12 @@ export function EtherealChat() {
       {/* Messages area */}
       <div className="relative z-10 flex-1 overflow-y-auto pb-[120px] pt-[calc(env(safe-area-inset-top)+16px)]">
         <PageContainer className="flex flex-col gap-6">
-          {(messages as ChatMessage[]).map((m) => (
-            <motion.div
-              key={m.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={[
-                  "max-w-[84%] whitespace-pre-wrap leading-7",
-                  m.role === "assistant"
-                    ? "text-3xl sm:text-4xl leading-snug lowercase font-thin italic drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]"
-                    : "text-[15px] sm:text-[16px] font-thin lowercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]",
-                ].join(" ")}
-                style={{
-                  letterSpacing: m.role === 'assistant' ? 'var(--eth-letter-spacing-assistant)' : 'var(--eth-letter-spacing-user)',
-                  color: m.role === 'assistant'
-                    ? (m.id === currentStreamingId
-                      ? 'rgba(255,255,255,1)'
-                      : 'rgba(255,255,255,var(--eth-assistant-opacity))')
-                    : 'rgba(255,255,255,var(--eth-assistant-opacity))',
-                  opacity: m.role === 'assistant' ? undefined : (Number(getComputedStyle(document.documentElement).getPropertyValue('--eth-user-opacity').trim()) || 0.8),
-                }}
-              >
-                {m.id === "ethereal-welcome" && (
-                  <p className="mb-2 text-sm text-white/60">dive back in.</p>
-                )}
-                {m.role === 'assistant' && (
-                  <div className="mb-2 text-base" style={taskListStyles}>
-                    <TaskList tasks={tasksByMessage?.[m.id]} data-testid="task-list" />
-                  </div>
-                )}
-                <StreamingText text={m.content} />
-              </div>
-            </motion.div>
-          ))}
+          <EtherealMessageList
+            messages={messages}
+            uiMessages={uiMessages}
+            tasksByMessage={tasksByMessage}
+            currentStreamingId={currentStreamingId}
+          />
           <div ref={messagesEndRef} />
         </PageContainer>
       </div>
@@ -172,15 +202,16 @@ export function EtherealChat() {
       {/* Translucent input bar (always visible) */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pb-[calc(12px+env(safe-area-inset-bottom))]">
         <PageContainer className="pointer-events-auto">
-          <div className="rounded-2xl border border-white/15 bg-white/10 p-2 backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.25)]">
-            <form onSubmit={handleSubmit} className="space-y-2">
+          <div className="rounded-[30px] border border-white/15 bg-white/10 p-3 backdrop-blur-2xl shadow-[0_12px_42px_rgba(0,0,0,0.28)]">
+            <form onSubmit={handleSubmit} className="space-y-3">
+              {activeTool ? <ToolStatusBadge tool={activeTool} /> : null}
               <Textarea
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={onKeyDown}
                 placeholder="type your thought…"
-                className="min-h-[44px] max-h-[132px] w-full resize-none border-0 bg-transparent p-3 text-[16px] text-white/90 placeholder:text-white/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 focus:border-0 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.15)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.1)] transition-shadow duration-200"
+                className="min-h-[48px] max-h-[132px] w-full resize-none border-0 bg-transparent px-3 py-2.5 text-[16px] text-white/90 placeholder:text-white/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 focus:border-0 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.18)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.12)] transition-shadow duration-200"
                 data-testid="ethereal-input"
                 aria-label="Message"
                 disabled={isLoading}
@@ -190,9 +221,19 @@ export function EtherealChat() {
                   size="sm"
                   type="submit"
                   disabled={!input.trim() || isLoading}
-                  className="h-8 rounded-full bg-white/20 px-4 text-white hover:bg-white/30"
+                  className="h-9 rounded-full bg-white/18 px-5 text-white hover:bg-white/28"
                 >
-                  send
+                  {isLoading ? (
+                    <span className="flex items-center gap-2 text-[13px] uppercase tracking-[0.2em]">
+                      <span className="relative flex size-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/50" />
+                        <span className="relative inline-flex size-2 rounded-full bg-white" />
+                      </span>
+                      sending
+                    </span>
+                  ) : (
+                    <span className="text-[13px] uppercase tracking-[0.2em]">send</span>
+                  )}
                 </Button>
               </div>
             </form>

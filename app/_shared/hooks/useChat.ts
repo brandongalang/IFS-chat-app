@@ -27,6 +27,7 @@ function getToolOutput(part: UIPart): string {
 
 interface ChatHookReturn {
   messages: Message[]
+  uiMessages: UIMessage[]
   input: string
   setInput: Dispatch<SetStateAction<string>>
   handleSubmit: (event?: FormEvent<HTMLFormElement> | { preventDefault?: () => void }) => void
@@ -392,6 +393,7 @@ export function useChat(): ChatHookReturn {
 
   return {
     messages: derivedMessages,
+    uiMessages,
     input,
     setInput,
     handleSubmit,
