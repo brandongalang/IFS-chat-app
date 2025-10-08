@@ -2,7 +2,7 @@
 title: Feature: Guided Check-ins
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-07
+last_updated: 2025-10-08
 feature_flag: null
 code_paths:
   - app/check-in/morning/page.tsx
@@ -12,9 +12,11 @@ code_paths:
   - components/check-in/EmojiScale.tsx
   - components/check-in/PartsPicker.tsx
   - components/home/CheckInSlots.tsx
+  - app/_shared/hooks/useDailyCheckIns.ts
   - app/check-in/actions.ts
   - app/api/check-ins/overview/route.ts
   - lib/check-ins/server.ts
+  - lib/check-ins/shared.ts
 related_prs:
   - #36
   - #275
