@@ -44,13 +44,16 @@ export function PartsPicker({
                 <MotionButton
                   key={part.id}
                   type="button"
-                  variant={selected ? 'default' : 'outline'}
+                  variant="outline"
                   className={cn(
-                    'h-auto rounded-full px-3 py-1 text-sm transition',
-                    selected && 'shadow-sm ring-1 ring-primary/30',
+                    'h-auto rounded-full border px-3 py-1 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                    selected
+                      ? 'border-primary/60 bg-primary/15 text-primary shadow-[0_10px_24px_-18px_rgba(79,70,229,0.5)] ring-2 ring-primary/40'
+                      : 'border-border/70 text-foreground hover:border-primary/40 hover:bg-primary/5',
                   )}
                   onClick={() => onToggle(part.id)}
                   aria-pressed={selected}
+                  data-selected={selected ? '' : undefined}
                   whileTap={{ scale: 0.92 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 >

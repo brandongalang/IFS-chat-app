@@ -465,7 +465,7 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
 
 export async function loadCheckInOverview(targetDateIso: string): Promise<CheckInOverviewPayload> {
   const { supabase, userId } = await resolveContextClient()
-  const normalizedTargetIso = toLocalDateIso(parseIsoDate(targetDateIso))
+  const normalizedTargetIso = resolveTargetDate(targetDateIso)
 
   const { data, error } = await supabase
     .from('check_ins')
