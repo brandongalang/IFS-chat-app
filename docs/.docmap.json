@@ -9,10 +9,17 @@
       "docs": ["docs/features/check-ins.md"]
     },
     {
-      "paths": ["components/auth/**", "app/auth/**", "supabase/migrations/**"],
+      "paths": ["components/auth/**", "app/auth/**"],
       "docs": [
         "docs/features/authentication-google.md",
         "docs/runbooks/supabase-session-sync.md"
+      ]
+    },
+    {
+      "paths": ["supabase/migrations/**"],
+      "docs": [
+        "docs/user-memory.md",
+        "docs/runbooks/memory-cron-vercel.md"
       ]
     },
     {
