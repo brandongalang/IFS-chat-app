@@ -10,6 +10,7 @@ import { createStubTools } from '../tools/stub-tools'
 import { createMemoryTools } from '../tools/memory-tools'
 import { createMarkdownTools } from '../tools/markdown-tools'
 import { createMarkdownWriteTools } from '../tools/markdown-write-tools'
+import { createMemoryMarkdownTools } from '../tools/memory-markdown-tools'
 import { generateSystemPrompt, type IFSAgentProfile } from './ifs_agent_prompt'
 
 export type AgentModelConfig = {
@@ -42,6 +43,7 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
 
   const markdownTools = env.ifsMarkdownContextEnabled ? createMarkdownTools(userId ?? null) : null
   const markdownWriteTools = env.ifsMarkdownContextEnabled ? createMarkdownWriteTools(userId ?? null) : null
+  const memoryMarkdownTools = env.ifsMarkdownContextEnabled ? createMemoryMarkdownTools(userId ?? null) : null
 
   return new Agent({
     name: 'ifs-companion',
@@ -56,6 +58,7 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
       ...createMemoryTools(userId), // Memory and conversation search tools
       ...(markdownTools ?? {}),
       ...(markdownWriteTools ?? {}),
+      ...(memoryMarkdownTools ?? {}),
     },
   })
 }

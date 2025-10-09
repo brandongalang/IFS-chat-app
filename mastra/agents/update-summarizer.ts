@@ -5,6 +5,7 @@ import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
 import { resolveModel } from '@/config/model'
 import type { AgentModelConfig } from './ifs-agent'
 import { updateSyncTools } from '../tools/update-sync'
+import { createMemoryMarkdownTools } from '../tools/memory-markdown-tools'
 
 export const updateDigestSchema = z.object({
   digest: z.string().min(3).max(400).describe('One or two sentences to append to the user change log.'),
@@ -67,10 +68,15 @@ export function createUpdateSummarizerAgent(overrides: AgentModelConfig = {}) {
         } as const)
       : undefined
 
+  const memoryMarkdownTools = createMemoryMarkdownTools()
+
   return new Agent({
     name: 'update-summarizer',
     instructions: systemPrompt,
     model: openrouter(modelId, modelSettings),
-    tools: updateSyncTools as any,
+    tools: {
+      ...updateSyncTools,
+      ...memoryMarkdownTools,
+    } as any,
   })
 }

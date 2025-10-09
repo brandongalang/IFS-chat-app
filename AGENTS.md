@@ -4,6 +4,7 @@
 - Document any deviations from standard workflows in this file so future agents stay aligned.
 - Before opening a PR, update the mapped docs for any changed modules (run `npm run lint` and check `docs/features/**`, `docs/user-memory.md`, runbooks, etc.) so the `docs` CI check passes without manual retries.
 - Every task wrap-up (including “done” messages and PR creation) must explicitly confirm that relevant docs/runbooks were updated in the same branch before shipping. If no docs change is needed, call that out in the PR description and add the `docs:skip` label.
+- Only skip docs when the change is purely non-functional (e.g., formatting or lint fixes). Any update that affects behavior, data flow, or system design requires accompanying documentation.
 - Mastra tool modules now export factory helpers (e.g., `createAssessmentTools`) that require passing the server-derived user ID; inject the profile's user ID when wiring agents.
 - 2025-09-26: Remaining stacked PRs (#262, #263) diverge significantly from the new Supabase/bootstrap architecture. Prefer Option 2 — cut fresh branches from `main`, cherry-pick essential tool/schema updates, and drop legacy dependency injection patterns.
 - 2025-10-01: Part-related Zod schemas are `.strict()` and expect the server to inject user identity; keep `userId` out of tool payloads/tests (updated `scripts/tests/unit/part-schemas.test.ts`).
