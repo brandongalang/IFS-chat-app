@@ -162,6 +162,7 @@ export function EtherealMessageList({ messages, uiMessages, tasksByMessage, curr
         const tasks = isAssistant ? tasksByMessage?.[message.id] : undefined
         const uiMessage = uiById.get(message.id)
         const toolActivities = isAssistant ? extractToolActivities(uiMessage) : []
+        const showToolActivities = isAssistant && toolActivities.length > 0 && (!tasks || tasks.length === 0)
 
         return (
           <motion.div
@@ -193,7 +194,7 @@ export function EtherealMessageList({ messages, uiMessages, tasksByMessage, curr
                   </p>
                 )}
 
-                {isAssistant && toolActivities.length
+                {showToolActivities
                   ? (
                       <div className="space-y-3">
                         {toolActivities.map((activity) => (
