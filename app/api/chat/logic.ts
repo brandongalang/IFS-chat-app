@@ -110,6 +110,41 @@ const STREAM_RESOLVERS: StreamResolver[] = [
   responseFromAsyncIterable,
 ]
 
+type Method = (...args: unknown[]) => unknown
+
+function getMethod(candidate: unknown, methodName: string): Method | undefined {
+  if (!candidate || (typeof candidate !== 'object' && typeof candidate !== 'function')) {
+    return undefined
+  }
+  const value = (candidate as Record<string, unknown>)[methodName]
+  return typeof value === 'function' ? (value as Method) : undefined
+}
+
+function invokeMethod(candidate: unknown, methodName: string, args: unknown[] = []): unknown | undefined {
+  const method = getMethod(candidate, methodName)
+  return method ? method.apply(candidate, args) : undefined
+}
+
+function asResponse(candidate: unknown): Response | undefined {
+  if (!candidate) return undefined
+  if (candidate instanceof Response) {
+    return candidate
+  }
+  if (typeof candidate === 'object' && 'body' in candidate && 'headers' in candidate) {
+    return candidate as Response
+  }
+  return undefined
+}
+
+function responseFromMethod(
+  candidate: unknown,
+  methodName: string,
+  args: unknown[] = [],
+): Response | undefined {
+  const result = invokeMethod(candidate, methodName, args)
+  return asResponse(result)
+}
+
 export function resolveStreamResponse(candidate: unknown): Response | undefined {
   for (const resolver of STREAM_RESOLVERS) {
     const response = resolver(candidate)
@@ -119,52 +154,32 @@ export function resolveStreamResponse(candidate: unknown): Response | undefined 
 }
 
 export function responseFromUIMessageStream(candidate: unknown): Response | undefined {
-  if (!candidate || typeof candidate !== 'object') return undefined
-  const method = (candidate as { toUIMessageStreamResponse?: unknown }).toUIMessageStreamResponse
-  if (typeof method !== 'function') return undefined
-  return method.call(candidate, { sendReasoning: false })
+  return responseFromMethod(candidate, 'toUIMessageStreamResponse', [{ sendReasoning: false }])
 }
 
 export function responseFromDataStreamResponse(candidate: unknown): Response | undefined {
-  if (!candidate || typeof candidate !== 'object') return undefined
-  const method = (candidate as { toDataStreamResponse?: unknown }).toDataStreamResponse
-  if (typeof method !== 'function') return undefined
-  return method.call(candidate)
+  return responseFromMethod(candidate, 'toDataStreamResponse')
 }
 
 export function responseFromReadableStream(candidate: unknown): Response | undefined {
-  if (!candidate || typeof candidate !== 'object') return undefined
-  const method = (candidate as { toReadableStream?: unknown }).toReadableStream
-  if (typeof method !== 'function') return undefined
-  const readable = method.call(candidate) as ReadableStream<Uint8Array>
+  const readable = invokeMethod(candidate, 'toReadableStream') as ReadableStream<Uint8Array> | undefined
+  if (!readable) return undefined
   return new Response(readable, { headers: NO_STORE_HEADERS })
 }
 
 export function responseFromToResponse(candidate: unknown): Response | undefined {
-  if (!candidate || typeof candidate !== 'object') return undefined
-  const method = (candidate as { toResponse?: unknown }).toResponse
-  if (typeof method !== 'function') return undefined
-  return method.call(candidate)
+  return responseFromMethod(candidate, 'toResponse')
 }
 
 export function responseFromToStreamResponse(candidate: unknown): Response | undefined {
-  if (!candidate || typeof candidate !== 'object') return undefined
-  const method = (candidate as { toStreamResponse?: unknown }).toStreamResponse
-  if (typeof method !== 'function') return undefined
-  return method.call(candidate)
+  return responseFromMethod(candidate, 'toStreamResponse')
 }
 
 export function responseFromResponseLike(candidate: unknown): Response | undefined {
   if (!candidate || (typeof candidate !== 'object' && typeof candidate !== 'function')) {
     return undefined
   }
-  if (candidate instanceof Response) {
-    return candidate
-  }
-  if ('body' in candidate && 'headers' in candidate) {
-    return candidate as Response
-  }
-  return undefined
+  return asResponse(candidate)
 }
 
 export function responseFromAsyncIterable(candidate: unknown): Response | undefined {

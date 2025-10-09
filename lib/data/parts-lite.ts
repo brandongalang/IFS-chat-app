@@ -24,11 +24,23 @@ function resolveClient(deps?: PartsLiteDependencies): SupabaseDatabaseClient {
   return deps?.client ?? createBrowserSupabaseClient()
 }
 
-export async function searchParts(input: SearchPartsInput, deps: PartsLiteDependencies = {}): Promise<SearchPartsResult> {
+async function runWithClient<TInput, TResult>(
+  schema: { parse: (input: unknown) => TInput },
+  input: TInput,
+  deps: PartsLiteDependencies,
+  handler: (validated: TInput, client: SupabaseDatabaseClient) => Promise<TResult>,
+): Promise<TResult> {
   try {
-    const validated = searchPartsSchema.parse(input)
+    const validated = schema.parse(input)
     const supabase = resolveClient(deps)
+    return await handler(validated, supabase)
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('Unknown error occurred')
+  }
+}
 
+export async function searchParts(input: SearchPartsInput, deps: PartsLiteDependencies = {}): Promise<SearchPartsResult> {
+  return runWithClient(searchPartsSchema, input, deps, async (validated, supabase) => {
     const filters: PartQueryFilters = {
       name: validated.query,
       status: validated.status,
@@ -40,16 +52,11 @@ export async function searchParts(input: SearchPartsInput, deps: PartsLiteDepend
     if (error) throw new Error(`Database error: ${error.message}`)
 
     return (data || []) as SearchPartsResult
-  } catch (error) {
-    throw error instanceof Error ? error : new Error('Unknown error occurred')
-  }
+  })
 }
 
 export async function getPartById(input: GetPartByIdInput, deps: PartsLiteDependencies = {}): Promise<GetPartByIdResult> {
-  try {
-    const validated = getPartByIdSchema.parse(input)
-    const supabase = resolveClient(deps)
-
+  return runWithClient(getPartByIdSchema, input, deps, async (validated, supabase) => {
     const { data, error } = await supabase
       .from('parts')
       .select('*')
@@ -64,19 +71,14 @@ export async function getPartById(input: GetPartByIdInput, deps: PartsLiteDepend
     }
 
     return (data as PartRow | null) as GetPartByIdResult
-  } catch (error) {
-    throw error instanceof Error ? error : new Error('Unknown error occurred')
-  }
+  })
 }
 
 export async function getPartRelationships(
   input: GetPartRelationshipsInput,
   deps: PartsLiteDependencies = {}
 ): Promise<GetPartRelationshipsResult> {
-  try {
-    const validated = getPartRelationshipsSchema.parse(input)
-    const supabase = resolveClient(deps)
-
+  return runWithClient(getPartRelationshipsSchema, input, deps, async (validated, supabase) => {
     let query = supabase
       .from('part_relationships')
       .select('*')
@@ -99,10 +101,9 @@ export async function getPartRelationships(
 
     if (validated.partId) {
       const pid = validated.partId
-      filtered = relationships.filter(rel => Array.isArray(rel.parts) && rel.parts.includes(pid))
+      filtered = relationships.filter((rel) => Array.isArray(rel.parts) && rel.parts.includes(pid))
     }
 
-    // Optionally fetch basic part details
     let partsDetails: Record<string, { name: string; status: string }> = {}
     if (validated.includePartDetails) {
       const allPartIds = filtered.reduce((acc, rel) => {
@@ -124,7 +125,7 @@ export async function getPartRelationships(
       }
     }
 
-    const formatted: GetPartRelationshipsResult = filtered.map(rel => {
+    return filtered.map((rel) => {
       const partIds = Array.isArray(rel.parts) ? rel.parts : []
       return {
         id: rel.id,
@@ -137,16 +138,14 @@ export async function getPartRelationships(
         dynamics: rel.dynamics || [],
         parts: partIds.map((partId: string) => ({
           id: partId,
-          ...(validated.includePartDetails && partsDetails[partId] ? { name: partsDetails[partId].name, status: partsDetails[partId].status } : {})
+          ...(validated.includePartDetails && partsDetails[partId]
+            ? { name: partsDetails[partId].name, status: partsDetails[partId].status }
+            : {}),
         })),
         last_addressed: rel.last_addressed,
         created_at: rel.created_at,
         updated_at: rel.updated_at,
       }
-    })
-
-    return formatted
-  } catch (error) {
-    throw error instanceof Error ? error : new Error('Unknown error occurred')
-  }
+    }) as GetPartRelationshipsResult
+  })
 }

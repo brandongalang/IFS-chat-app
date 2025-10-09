@@ -33,9 +33,11 @@ export class ChatSessionService {
   async startSession(): Promise<string> {
     await this.ensureUserRecord()
 
+    const startTime = new Date().toISOString()
+
     const session: SessionInsert = {
       user_id: this.userId,
-      start_time: new Date().toISOString(),
+      start_time: startTime,
       messages: [],
       parts_involved: {},
       new_parts: [],
@@ -59,18 +61,12 @@ export class ChatSessionService {
       },
     )
 
-    const storage = await getStorageAdapter()
-    const transcriptPath = sessionTranscriptPath(this.userId, data.id)
-    const transcript = {
-      id: data.id,
+    await this.writeTranscript(data.id, {
       user_id: this.userId,
-      start_time: session.start_time,
-      end_time: null as string | null,
-      duration: null as number | null,
+      start_time: startTime,
+      end_time: null,
+      duration: null,
       messages: [] as SessionMessage[],
-    }
-    await storage.putText(transcriptPath, JSON.stringify(transcript), {
-      contentType: 'application/json',
     })
 
     return data.id
@@ -194,36 +190,12 @@ export class ChatSessionService {
       throw new Error(`Failed to add message: ${updateError.message}`)
     }
 
-    const storage = await getStorageAdapter()
-    const transcriptUserId = session.user_id || this.userId
-    const transcriptPath = sessionTranscriptPath(transcriptUserId, sessionId)
-    let transcript
-    try {
-      const existing = await storage.getText(transcriptPath)
-      transcript = existing
-        ? JSON.parse(existing)
-        : {
-            id: sessionId,
-            user_id: transcriptUserId,
-            start_time: session.start_time,
-            end_time: session.end_time,
-            duration: session.duration,
-            messages: [] as SessionMessage[],
-          }
-    } catch {
-      transcript = {
-        id: sessionId,
-        user_id: transcriptUserId,
-        start_time: session.start_time,
-        end_time: session.end_time,
-        duration: session.duration,
-        messages: [] as SessionMessage[],
-      }
-    }
-
-    transcript.messages = updatedMessages
-    await storage.putText(transcriptPath, JSON.stringify(transcript), {
-      contentType: 'application/json',
+    await this.writeTranscript(sessionId, {
+      user_id: session.user_id,
+      start_time: session.start_time,
+      end_time: session.end_time,
+      duration: session.duration,
+      messages: updatedMessages,
     })
   }
 
@@ -259,37 +231,12 @@ export class ChatSessionService {
       throw new Error(`Failed to end session: ${error.message}`)
     }
 
-    const storage = await getStorageAdapter()
-    const transcriptUserId = session.user_id || this.userId
-    const transcriptPath = sessionTranscriptPath(transcriptUserId, sessionId)
-    let transcript
-    try {
-      const existing = await storage.getText(transcriptPath)
-      transcript = existing
-        ? JSON.parse(existing)
-        : {
-            id: sessionId,
-            user_id: transcriptUserId,
-            start_time: session.start_time,
-            end_time: null as string | null,
-            duration: null as number | null,
-            messages: session.messages || [],
-          }
-    } catch {
-      transcript = {
-        id: sessionId,
-        user_id: transcriptUserId,
-        start_time: session.start_time,
-        end_time: null as string | null,
-        duration: null as number | null,
-        messages: session.messages || [],
-      }
-    }
-
-    transcript.end_time = endTime
-    transcript.duration = duration
-    await storage.putText(transcriptPath, JSON.stringify(transcript), {
-      contentType: 'application/json',
+    await this.writeTranscript(sessionId, {
+      user_id: session.user_id,
+      start_time: session.start_time,
+      end_time: endTime,
+      duration,
+      messages: session.messages || [],
     })
   }
 
@@ -368,10 +315,68 @@ export class ChatSessionService {
     }
   }
 
-  private resolveUserId(userId?: string): string {
-    if (userId) return userId
-    if (this.userId) return this.userId
-    throw new Error('User ID is required to perform session operations')
+  private async writeTranscript(
+    sessionId: string,
+    session: {
+      user_id?: string | null
+      start_time: string
+      end_time?: string | null
+      duration?: number | null
+      messages?: SessionMessage[] | null
+    },
+  ): Promise<void> {
+    const storage = await getStorageAdapter()
+    const transcriptUserId = session.user_id ?? this.userId
+    const transcriptPath = sessionTranscriptPath(transcriptUserId, sessionId)
+
+    type StoredTranscript = {
+      start_time?: string
+      end_time?: string | null
+      duration?: number | null
+      messages?: SessionMessage[]
+    }
+
+    let parsed: StoredTranscript | undefined
+
+    try {
+      const existing = await storage.getText(transcriptPath)
+      if (existing) {
+        const parsedValue = JSON.parse(existing) as StoredTranscript
+        if (parsedValue && typeof parsedValue === 'object') {
+          parsed = parsedValue
+        }
+      }
+    } catch {
+      parsed = undefined
+    }
+
+    const storedMessages = parsed?.messages
+    const parsedMessages = Array.isArray(storedMessages)
+      ? (storedMessages as SessionMessage[])
+      : undefined
+
+    const transcript = {
+      id: sessionId,
+      user_id: transcriptUserId,
+      start_time: typeof parsed?.start_time === 'string' ? parsed.start_time : session.start_time,
+      end_time:
+        session.end_time !== undefined
+          ? session.end_time ?? null
+          : parsed?.end_time ?? null,
+      duration:
+        session.duration !== undefined
+          ? session.duration ?? null
+          : typeof parsed?.duration === 'number'
+          ? parsed.duration
+          : null,
+      messages: Array.isArray(session.messages)
+        ? (session.messages as SessionMessage[])
+        : parsedMessages ?? [],
+    }
+
+    await storage.putText(transcriptPath, JSON.stringify(transcript), {
+      contentType: 'application/json',
+    })
   }
 }
 
