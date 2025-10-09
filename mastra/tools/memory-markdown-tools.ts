@@ -54,7 +54,7 @@ function formatFingerprintTag(fingerprint?: string): string {
 
 function includesFingerprint(text: string | undefined, fingerprint: string | undefined): boolean {
   if (!text || !fingerprint) return false
-  const pattern = new RegExp(`\\[fp:${escapeRegExp(fingerprint)}\\](?:\s|$)`) // matches embedded fingerprint tag
+  const pattern = new RegExp(`\\[fp:${escapeRegExp(fingerprint)}\\](?:\\s|$)`) // matches embedded fingerprint tag
   return pattern.test(text)
 }
 

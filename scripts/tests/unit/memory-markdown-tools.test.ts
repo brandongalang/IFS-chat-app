@@ -22,6 +22,7 @@ async function main() {
 
   const { createMemoryMarkdownTools } = await import('../../../mastra/tools/memory-markdown-tools')
   const { getStorageAdapter, userOverviewPath, partProfilePath } = await import('../../../lib/memory/snapshots/fs-helpers')
+  const { readPartProfileSections } = await import('../../../lib/memory/read')
 
   const tools = createMemoryMarkdownTools(userId)
 
@@ -104,11 +105,17 @@ async function main() {
   const overviewPath = userOverviewPath(userId)
   const rawOverview = (await storage.getText(overviewPath)) ?? ''
   assert(rawOverview.includes('[fp:focus-1]'), 'Overview section should include fingerprint tag')
+  const overviewFingerprintCount = (rawOverview.match(/\[fp:digest-1\]/g) ?? []).length
+  assert.equal(overviewFingerprintCount, 1, 'Overview change log should only include one digest fingerprint')
 
   const partPath = partProfilePath(userId, partId)
   const partText = (await storage.getText(partPath)) ?? ''
   assert(partText.includes('[fp:part-1]'), 'Part profile should include fingerprint tag')
   assert(partText.includes('Observed steady breathing'), 'Evidence entry should be recorded')
+  const partSections = await readPartProfileSections(userId, partId)
+  const partChangeLog = partSections?.['change_log v1']?.text ?? ''
+  const partChangeLogFingerprintCount = (partChangeLog.match(/\[fp:part-1\]/g) ?? []).length
+  assert.equal(partChangeLogFingerprintCount, 1, 'Part change log should only include one fingerprint entry')
 
   await fs.rm(tempRoot, { recursive: true, force: true })
 

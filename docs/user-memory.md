@@ -67,7 +67,7 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - `supabase start` (if needed)
 - `supabase db push --local`
 
-## Implementation (updated 2025-10-09)
+## Implementation (updated 2025-10-10)
 - **Background Services**: `lib/services/memory.ts`
   - `scaffoldUserMemory({ userId })` - ensures memory scaffolding exists
   - `summarizePendingUpdates({ userId?, limit? })` - processes pending updates for users
