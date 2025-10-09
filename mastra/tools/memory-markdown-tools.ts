@@ -1,0 +1,220 @@
+import { createTool } from '@mastra/core'
+import { z } from 'zod'
+
+import { resolveUserId } from '@/config/dev'
+import { ensureOverviewExists } from '@/lib/memory/snapshots/scaffold'
+import { readOverviewSections, readPartProfileSections } from '@/lib/memory/read'
+import { userOverviewPath } from '@/lib/memory/snapshots/fs-helpers'
+import { appendChangeLogWithEvent, ensurePartProfileExists } from '@/lib/memory/snapshots/updater'
+import { editMarkdownSection } from '@/lib/memory/markdown/editor'
+
+const CHANGE_LOG_ANCHOR = 'change_log v1'
+const ROLE_ANCHOR = 'role v1'
+
+const readOverviewSchema = z
+  .object({
+    changeLogLimit: z.number().int().min(1).max(25).default(5),
+  })
+  .strict()
+
+const appendChangeLogSchema = z
+  .object({
+    digest: z.string().min(3).max(400),
+    source: z.string().min(1).max(80).default('memory-update'),
+    fingerprint: z.string().min(3).max(120).optional(),
+  })
+  .strict()
+
+const upsertPartNoteSchema = z
+  .object({
+    partId: z.string().uuid(),
+    name: z.string().min(1).max(120),
+    summary: z.string().min(3).max(400),
+    evidence: z.array(z.string().min(1)).max(5).optional(),
+    status: z.string().min(1).max(80).optional(),
+    category: z.string().min(1).max(80).optional(),
+    fingerprint: z.string().min(3).max(120).optional(),
+  })
+  .strict()
+
+const overviewSectionSchema = z
+  .object({
+    section: z.enum(['identity', 'current_focus', 'confirmed_parts']),
+    lines: z.array(z.string().min(1)).min(1),
+    mode: z.enum(['replace', 'append']).default('append'),
+    fingerprint: z.string().min(3).max(120).optional(),
+  })
+  .strict()
+
+type ToolRuntime = { userId?: string }
+
+function formatFingerprintTag(fingerprint?: string): string {
+  return fingerprint ? ` [fp:${fingerprint}]` : ''
+}
+
+function includesFingerprint(text: string | undefined, fingerprint: string | undefined): boolean {
+  if (!text || !fingerprint) return false
+  return text.includes(`[fp:${fingerprint}]`)
+}
+
+function toBulletList(lines: string[], fingerprint?: string) {
+  return lines.map((line, index) => {
+    const trimmed = line.trim()
+    const suffix = fingerprint && index === lines.length - 1 ? formatFingerprintTag(fingerprint) : ''
+    return trimmed.startsWith('-') ? `${trimmed}${suffix}` : `- ${trimmed}${suffix}`
+  })
+}
+
+export function createMemoryMarkdownTools(defaultUserId?: string | null) {
+  const readOverviewTool = createTool({
+    id: 'readOverviewSnapshot',
+    description: 'Reads the user overview markdown and returns the key sections with recent change log entries.',
+    inputSchema: readOverviewSchema,
+    execute: async ({ context, runtime }: { context: z.infer<typeof readOverviewSchema>; runtime?: ToolRuntime }) => {
+      const resolvedUserId = resolveUserId(runtime?.userId ?? defaultUserId ?? undefined)
+      await ensureOverviewExists(resolvedUserId)
+
+      const sections = await readOverviewSections(resolvedUserId)
+      if (!sections) {
+        return { success: false as const, reason: 'overview_missing' as const }
+      }
+
+      const changeLogRaw = sections[CHANGE_LOG_ANCHOR]?.text ?? ''
+      const changeEntries = changeLogRaw
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.startsWith('- '))
+        .map((line) => line.slice(2))
+        .slice(-context.changeLogLimit)
+
+      const { [CHANGE_LOG_ANCHOR]: _omit, ...otherSections } = sections
+
+      return {
+        success: true as const,
+        sections: otherSections,
+        changeLog: changeEntries,
+      }
+    },
+  })
+
+  const appendChangeLogTool = createTool({
+    id: 'appendOverviewChangeLog',
+    description: 'Appends a concise digest entry to the user overview change log with optional fingerprint dedupe.',
+    inputSchema: appendChangeLogSchema,
+    execute: async ({ context, runtime }: { context: z.infer<typeof appendChangeLogSchema>; runtime?: ToolRuntime }) => {
+      const resolvedUserId = resolveUserId(runtime?.userId ?? defaultUserId ?? undefined)
+      await ensureOverviewExists(resolvedUserId)
+
+      const overviewPath = userOverviewPath(resolvedUserId)
+      const sections = await readOverviewSections(resolvedUserId)
+      const existingLog = sections?.[CHANGE_LOG_ANCHOR]?.text ?? ''
+
+      if (includesFingerprint(existingLog, context.fingerprint)) {
+        return { appended: false as const, reason: 'duplicate' as const }
+      }
+
+      const line = `${context.source}: ${context.digest}${formatFingerprintTag(context.fingerprint)}`
+      await appendChangeLogWithEvent({
+        userId: resolvedUserId,
+        entityType: 'user',
+        entityId: resolvedUserId,
+        filePath: overviewPath,
+        line,
+      })
+
+      return { appended: true as const }
+    },
+  })
+
+  const upsertPartNoteTool = createTool({
+    id: 'upsertPartNote',
+    description: 'Ensures a part profile exists and appends a summary entry with optional fingerprint dedupe.',
+    inputSchema: upsertPartNoteSchema,
+    execute: async ({ context, runtime }: { context: z.infer<typeof upsertPartNoteSchema>; runtime?: ToolRuntime }) => {
+      const resolvedUserId = resolveUserId(runtime?.userId ?? defaultUserId ?? undefined)
+      const profilePath = await ensurePartProfileExists({
+        userId: resolvedUserId,
+        partId: context.partId,
+        name: context.name,
+        status: context.status ?? 'unknown',
+        category: context.category ?? 'unspecified',
+      })
+
+      const sections = await readPartProfileSections(resolvedUserId, context.partId)
+      const changeLog = sections?.[CHANGE_LOG_ANCHOR]?.text ?? ''
+      if (includesFingerprint(changeLog, context.fingerprint)) {
+        return { updated: false as const, reason: 'duplicate' as const }
+      }
+
+      const summaryLine = `${context.summary}${formatFingerprintTag(context.fingerprint)}`
+      await appendChangeLogWithEvent({
+        userId: resolvedUserId,
+        entityType: 'part',
+        entityId: context.partId,
+        filePath: profilePath,
+        line: summaryLine,
+      })
+
+      const roleSection = sections?.[ROLE_ANCHOR]?.text ?? ''
+      if (!includesFingerprint(roleSection, context.fingerprint)) {
+        const bullets = toBulletList([context.summary], context.fingerprint).join('\n')
+        const nextRole = roleSection ? `${roleSection}\n${bullets}` : bullets
+        await editMarkdownSection(profilePath, ROLE_ANCHOR, { replace: `${nextRole}\n` })
+      }
+
+      if (context.evidence && context.evidence.length > 0) {
+        const evidenceSection = sections?.['evidence v1']?.text ?? ''
+        const combined = evidenceSection ? `${evidenceSection}\n${context.evidence.map((item) => `- ${item}`).join('\n')}` : context.evidence.map((item) => `- ${item}`).join('\n')
+        await editMarkdownSection(profilePath, 'evidence v1', { replace: `${combined}\n` })
+      }
+
+      return { updated: true as const }
+    },
+  })
+
+  const writeOverviewSectionTool = createTool({
+    id: 'writeOverviewSection',
+    description: 'Writes or appends bullet entries to key overview sections with optional dedupe fingerprint.',
+    inputSchema: overviewSectionSchema,
+    execute: async ({ context, runtime }: { context: z.infer<typeof overviewSectionSchema>; runtime?: ToolRuntime }) => {
+      const resolvedUserId = resolveUserId(runtime?.userId ?? defaultUserId ?? undefined)
+      await ensureOverviewExists(resolvedUserId)
+
+      const anchorMap: Record<typeof context.section, string> = {
+        identity: 'identity v1',
+        current_focus: 'current_focus v1',
+        confirmed_parts: 'confirmed_parts v1',
+      }
+
+      const anchor = anchorMap[context.section]
+      const overviewPath = userOverviewPath(resolvedUserId)
+      const sections = await readOverviewSections(resolvedUserId)
+      const existing = sections?.[anchor]?.text ?? ''
+
+      if (includesFingerprint(existing, context.fingerprint)) {
+        return { updated: false as const, reason: 'duplicate' as const }
+      }
+
+      const existingLines = existing
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+
+      const normalizedNew = toBulletList(context.lines, context.fingerprint)
+      const nextLines = context.mode === 'replace' ? normalizedNew : existingLines.concat(normalizedNew)
+      const deduped = Array.from(new Set(nextLines))
+
+      await editMarkdownSection(overviewPath, anchor, { replace: `${deduped.join('\n')}\n` })
+      return { updated: true as const }
+    },
+  })
+
+  return {
+    readOverviewSnapshot: readOverviewTool,
+    appendOverviewChangeLog: appendChangeLogTool,
+    upsertPartNote: upsertPartNoteTool,
+    writeOverviewSection: writeOverviewSectionTool,
+  }
+}
+
+export type MemoryMarkdownTools = ReturnType<typeof createMemoryMarkdownTools>
