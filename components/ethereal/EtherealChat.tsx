@@ -1,51 +1,23 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import { isToolOrDynamicToolUIPart } from "ai"
 import { useChat } from "@/hooks/useChat"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { useRouter } from "next/navigation"
 import { ActiveTaskOverlay } from "./ActiveTaskOverlay"
 import { PageContainer } from "@/components/common/PageContainer"
 import { EtherealMessageList } from "./EtherealMessageList"
+import { Tool, ToolHeader } from "@/components/ai-elements/tool"
+import { Loader } from "@/components/ai-elements/loader"
+import { useRouter } from "next/navigation"
 
-interface ActiveToolStatus {
+interface ActiveTool {
   id: string
-  label: string
+  type: string
+  label?: string
   state: string
-  isMemory: boolean
-}
-
-function toolStatusLabel(state: string, isMemory: boolean): string {
-  switch (state) {
-    case "input-streaming":
-    case "input-available":
-      return isMemory ? "reviewing your notes" : "gathering context"
-    case "output-streaming":
-      return isMemory ? "writing notes" : "preparing results"
-    case "output-available":
-      return isMemory ? "notes captured" : "result ready"
-    case "output-error":
-      return "tool error"
-    default:
-      return "processing"
-  }
-}
-
-function ToolStatusBadge({ tool }: { tool: ActiveToolStatus }) {
-  return (
-    <div className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-white/70 backdrop-blur-md">
-      <span className="relative flex size-2">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/50" />
-        <span className="relative inline-flex size-2 rounded-full bg-white" />
-      </span>
-      <span className="text-white/80">{tool.isMemory ? "notes" : tool.label}</span>
-      <span className="text-white/90">{toolStatusLabel(tool.state, tool.isMemory)}</span>
-    </div>
-  )
 }
 
 // Minimal, bubble-less chat presentation
@@ -64,17 +36,22 @@ export function EtherealChat() {
     currentStreamingId,
     needsAuth,
     authLoading,
+    sendMessage,
   } = useChat()
-  const router = useRouter()
+  const { push } = useRouter()
   // UI state
-  const [confirmOpen, setConfirmOpen] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [sessionClosed, setSessionClosed] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
+  const [pendingCleanup, setPendingCleanup] = useState(false)
 
   // redirect to login if auth required
   useEffect(() => {
-    if (!authLoading && needsAuth) router.push('/auth/login')
-  }, [authLoading, needsAuth, router])
+    if (!authLoading && needsAuth) {
+      push('/auth/login')
+    }
+  }, [authLoading, needsAuth, push])
 
   // End any active session when this component unmounts
   useEffect(() => {
@@ -98,6 +75,10 @@ export function EtherealChat() {
   }, [messages, isLoading])
 
   const onKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
+    if (sessionClosed || isClosing) {
+      e.preventDefault()
+      return
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSubmit()
@@ -117,7 +98,7 @@ export function EtherealChat() {
 
   const currentTasks = currentStreamingId ? tasksByMessage?.[currentStreamingId] : undefined
 
-  const activeTool = useMemo<ActiveToolStatus | undefined>(() => {
+  const activeTool = useMemo<ActiveTool | undefined>(() => {
     for (let i = uiMessages.length - 1; i >= 0; i -= 1) {
       const message = uiMessages[i]
       if (!Array.isArray(message.parts)) continue
@@ -135,20 +116,75 @@ export function EtherealChat() {
         if (state === "output-available" || state === "output-error") continue
 
         const rawName = toolPart.toolName ?? toolPart.type ?? "tool"
-        const label = rawName.replace(/^tool[-:]/i, "").replace(/[-_]/g, " ").trim() || "tool"
-        const isMemory = /memory|note/i.test(`${toolPart.toolName ?? ""} ${toolPart.type ?? ""}`)
+        const label = deriveToolLabel(rawName)
 
         return {
           id: toolPart.toolCallId ?? `${message.id}-${j}`,
+          type: rawName,
           label,
           state,
-          isMemory,
         }
       }
     }
 
     return undefined
   }, [uiMessages])
+
+  const handleEndSessionRequest = useCallback(async () => {
+    if (sessionClosed || isClosing) return
+    setIsClosing(true)
+    setInput("")
+    let locked = false
+    try {
+      const dispatched = await sendMessage(END_SESSION_PROMPT)
+      if (!dispatched) return
+      locked = true
+      setSessionClosed(true)
+      setPendingCleanup(true)
+    } catch (error) {
+      console.error("Failed to send end-session prompt", error)
+    } finally {
+      if (!locked) {
+        setIsClosing(false)
+      }
+    }
+  }, [sessionClosed, isClosing, sendMessage, setInput])
+
+  useEffect(() => {
+    if (!pendingCleanup) return
+    if (isLoading || currentStreamingId) return
+
+    let cancelled = false
+    setPendingCleanup(false)
+
+    const finalize = async () => {
+      try {
+        seededRef.current = false
+        await endSession()
+      } catch (error) {
+        console.error("Failed to finalize session cleanup", error)
+      } finally {
+        if (!cancelled) {
+          setSessionClosed(false)
+          setIsClosing(false)
+        }
+      }
+    }
+
+    void finalize()
+
+    return () => {
+      cancelled = true
+    }
+  }, [pendingCleanup, isLoading, currentStreamingId, endSession])
+
+  const onSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
+    if (sessionClosed || isClosing) {
+      event.preventDefault()
+      return
+    }
+    handleSubmit(event)
+  }
 
   if (!authLoading && needsAuth) {
     return null
@@ -162,20 +198,6 @@ export function EtherealChat() {
       {/* Subtle vignette to improve contrast over bright areas */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.10)_0%,rgba(0,0,0,0.22)_55%,rgba(0,0,0,0.38)_100%)]" />
 
-      {/* Top bar with translucent End button (only when a session exists) */}
-      <div className="pointer-events-none absolute top-[calc(env(safe-area-inset-top)+8px)] right-3 z-20">
-        <div className="flex items-center gap-2">
-          {hasActiveSession && (
-            <button
-              onClick={() => setConfirmOpen(true)}
-              className="pointer-events-auto rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs text-white/90 backdrop-blur-sm hover:bg-white/15 active:scale-[0.98] transition"
-              aria-label="End session"
-            >
-              end
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* Messages area */}
       <div className="relative z-10 flex-1 overflow-y-auto pb-[120px] pt-[calc(env(safe-area-inset-top)+16px)]">
@@ -199,8 +221,17 @@ export function EtherealChat() {
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pb-[calc(12px+env(safe-area-inset-bottom))]">
         <PageContainer className="pointer-events-auto">
           <div className="rounded-[30px] border border-white/15 bg-white/10 p-3 backdrop-blur-2xl shadow-[0_12px_42px_rgba(0,0,0,0.28)]">
-            <form onSubmit={handleSubmit} className="space-y-3">
-              {activeTool ? <ToolStatusBadge tool={activeTool} /> : null}
+            <form onSubmit={onSubmit} className="space-y-3">
+              {activeTool ? (
+                <Tool className="border-white/15 bg-white/10 text-white">
+                  <div className="flex items-center gap-3">
+                    <ToolHeader type={activeTool.type} state={activeTool.state} label={activeTool.label} className="text-white" />
+                    {shouldShowToolLoader(activeTool.state) ? (
+                      <Loader size={14} className="text-white" aria-label="Tool running" />
+                    ) : null}
+                  </div>
+                </Tool>
+              ) : null}
               <Textarea
                 ref={inputRef}
                 value={input}
@@ -210,58 +241,67 @@ export function EtherealChat() {
                 className="min-h-[48px] max-h-[132px] w-full resize-none border-0 bg-transparent px-3 py-2.5 text-[16px] text-white/90 placeholder:text-white/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 focus:border-0 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.18)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.12)] transition-shadow duration-200"
                 data-testid="ethereal-input"
                 aria-label="Message"
-                disabled={isLoading}
+                disabled={isLoading || sessionClosed || isClosing}
               />
+              {sessionClosed ? (
+                <div className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-center text-[11px] uppercase tracking-[0.22em] text-white/60">
+                  ending session…
+                </div>
+              ) : null}
               <div className="flex items-center justify-end px-2 pb-1">
-                <Button
-                  size="sm"
-                  type="submit"
-                  disabled={!input.trim() || isLoading}
-                  className="h-9 rounded-full bg-white/18 px-5 text-white hover:bg-white/28"
-                >
-                  {isLoading ? (
-                    <span className="flex items-center gap-2 text-[13px] uppercase tracking-[0.2em]">
-                      <span className="relative flex size-2">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/50" />
-                        <span className="relative inline-flex size-2 rounded-full bg-white" />
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEndSessionRequest}
+                    disabled={sessionClosed || isLoading || isClosing}
+                    className="h-9 rounded-full bg-white/5 text-white hover:bg-white/10"
+                  >
+                    <span className="text-[11px] uppercase tracking-[0.2em]">end session</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    type="submit"
+                    disabled={!input.trim() || isLoading || sessionClosed || isClosing}
+                    className="h-9 rounded-full bg-white/18 px-5 text-white hover:bg-white/28"
+                  >
+                    {isLoading ? (
+                      <span className="flex items-center gap-2 text-[13px] uppercase tracking-[0.2em]">
+                        <span className="relative flex size-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/50" />
+                          <span className="relative inline-flex size-2 rounded-full bg-white" />
+                        </span>
+                        sending
                       </span>
-                      sending
-                    </span>
-                  ) : (
-                    <span className="text-[13px] uppercase tracking-[0.2em]">send</span>
-                  )}
-                </Button>
+                    ) : (
+                      <span className="text-[13px] uppercase tracking-[0.2em]">send</span>
+                    )}
+                  </Button>
+                </div>
               </div>
             </form>
           </div>
         </PageContainer>
       </div>
-
-      {/* Confirm end session dialog */}
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>End current session?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Ending will clear the current conversation flow. You can start a new one anytime.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Stay</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                await endSession()
-                setConfirmOpen(false)
-                router.push('/')
-              }}
-            >
-              End session
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
+}
+
+const END_SESSION_PROMPT = "I want to end this session. Can you close out and take any notes from this conversation?"
+
+function deriveToolLabel(rawName: string) {
+  if (/memory|note/i.test(rawName)) return "Notes"
+  if (/search|retrieve|query/i.test(rawName)) return "Searching…"
+  if (/rag|context/i.test(rawName)) return "Gathering context…"
+  if (/write|generate|respond/i.test(rawName)) return "Composing…"
+  const cleaned = rawName.replace(/^tool[-:]/i, "").replace(/[-_]/g, " ").trim()
+  if (!cleaned) return "Tool"
+  return cleaned
+}
+
+function shouldShowToolLoader(state: string) {
+  return state !== "output-available" && state !== "output-error"
 }
 
 function GradientBackdrop() {
