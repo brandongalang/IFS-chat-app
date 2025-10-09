@@ -1,9 +1,8 @@
 "use client"
 
-import { useMemo, type CSSProperties } from "react"
+import { type CSSProperties } from "react"
 import { motion } from "framer-motion"
 import type { UIMessage } from "ai"
-import { isToolOrDynamicToolUIPart } from "ai"
 
 import type { Message, TaskEvent } from "@/app/_shared/types/chat"
 import { TaskList } from "@/components/tasks/TaskList"
@@ -17,95 +16,6 @@ interface EtherealMessageListProps {
   currentStreamingId?: string
 }
 
-interface ToolActivity {
-  key: string
-  name: string
-  displayName: string
-  state: string
-  inputPreview?: string
-  outputPreview?: string
-  errorText?: string
-  isMemory: boolean
-}
-
-function formatPreview(value: unknown): string | undefined {
-  if (value === null || value === undefined) return undefined
-  if (typeof value === "string") return value
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value)
-  }
-  try {
-    return JSON.stringify(value, null, 2)
-  } catch {
-    return undefined
-  }
-}
-
-function truncate(text: string | undefined, limit = 160): string | undefined {
-  if (!text) return undefined
-  if (text.length <= limit) return text
-  return `${text.slice(0, limit - 1).trimEnd()}…`
-}
-
-function extractToolActivities(message: UIMessage | undefined): ToolActivity[] {
-  if (!message?.parts) return []
-
-  const activities: ToolActivity[] = []
-
-  message.parts.forEach((part, index) => {
-    if (!isToolOrDynamicToolUIPart(part)) return
-
-    const toolPart = part as typeof part & {
-      toolName?: string
-      toolCallId?: string
-      state?: string
-      input?: unknown
-      output?: unknown
-      errorText?: string
-    }
-
-    const rawName = toolPart.toolName ?? toolPart.toolCallId ?? toolPart.type ?? `tool-${index}`
-    const normalized = rawName.replace(/^tool[-:]/i, "")
-    const displayName = normalized.replace(/[-_]/g, " ").trim() || "tool"
-    const state = toolPart.state ?? "unknown"
-
-    const inputPreview = truncate(formatPreview(toolPart.input))
-    const outputPreview = truncate(formatPreview(toolPart.output), 220)
-    const errorText = truncate(toolPart.errorText)
-
-    const isMemory = /memory|note/i.test(`${toolPart.toolName ?? ""} ${part.type ?? ""}`)
-
-    activities.push({
-      key: `${message.id}-${toolPart.toolCallId ?? index}`,
-      name: rawName,
-      displayName,
-      state,
-      inputPreview,
-      outputPreview,
-      errorText,
-      isMemory,
-    })
-  })
-
-  return activities
-}
-
-function statusLabel(state: string, isMemory: boolean): string {
-  switch (state) {
-    case "input-streaming":
-    case "input-available":
-      return isMemory ? "reviewing your notes" : "gathering context"
-    case "output-streaming":
-      return isMemory ? "writing new notes" : "preparing results"
-    case "output-available":
-      return isMemory ? "notes ready" : "result available"
-    case "output-error":
-      return "tool error"
-    default:
-      return "processing"
-  }
-}
-
 const taskListCustomVariables = {
   '--muted-foreground': '0 0% 80%',
   '--foreground': '0 0% 100%',
@@ -116,35 +26,7 @@ const taskListCustomVariables = {
 
 const taskListStyleVariables = taskListCustomVariables as unknown as CSSProperties
 
-function ToolActivityCard({ activity }: { activity: ToolActivity }) {
-  return (
-    <div className="rounded-2xl border border-white/12 bg-white/6 p-4 text-white/80 shadow-[0_12px_32px_rgba(0,0,0,0.25)]">
-      <div className="flex items-baseline justify-between gap-3 text-[11px] uppercase tracking-[0.2em] text-white/60">
-        <span>{activity.isMemory ? "memory" : activity.displayName}</span>
-        <span className="text-white/70">{statusLabel(activity.state, activity.isMemory)}</span>
-      </div>
-      {activity.inputPreview ? (
-        <p className="mt-3 whitespace-pre-wrap text-xs/relaxed text-white/70">
-          {activity.inputPreview}
-        </p>
-      ) : null}
-      {activity.outputPreview ? (
-        <p className="mt-3 whitespace-pre-wrap text-sm/relaxed text-white/85">
-          {activity.outputPreview}
-        </p>
-      ) : null}
-      {activity.errorText ? (
-        <p className="mt-3 rounded-md border border-red-300/40 bg-red-400/15 px-3 py-2 text-xs text-red-100/90">
-          {activity.errorText}
-        </p>
-      ) : null}
-    </div>
-  )
-}
-
-export function EtherealMessageList({ messages, uiMessages, tasksByMessage, currentStreamingId }: EtherealMessageListProps) {
-  const uiById = useMemo(() => new Map(uiMessages.map((msg) => [msg.id, msg])), [uiMessages])
-
+export function EtherealMessageList({ messages, tasksByMessage, currentStreamingId }: EtherealMessageListProps) {
   return (
     <div className="flex flex-col gap-6">
       {messages.map((message) => {
@@ -160,9 +42,6 @@ export function EtherealMessageList({ messages, uiMessages, tasksByMessage, curr
         )
 
         const tasks = isAssistant ? tasksByMessage?.[message.id] : undefined
-        const uiMessage = uiById.get(message.id)
-        const toolActivities = isAssistant ? extractToolActivities(uiMessage) : []
-        const showToolActivities = isAssistant && toolActivities.length > 0 && (!tasks || tasks.length === 0)
 
         return (
           <motion.div
@@ -193,16 +72,6 @@ export function EtherealMessageList({ messages, uiMessages, tasksByMessage, curr
                     {message.content}
                   </p>
                 )}
-
-                {showToolActivities
-                  ? (
-                      <div className="space-y-3">
-                        {toolActivities.map((activity) => (
-                          <ToolActivityCard key={activity.key} activity={activity} />
-                        ))}
-                      </div>
-                    )
-                  : null}
               </div>
             </div>
           </motion.div>

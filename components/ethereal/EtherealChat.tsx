@@ -16,7 +16,6 @@ import { useRouter } from "next/navigation"
 interface ActiveTool {
   id: string
   type: string
-  label?: string
   state: string
 }
 
@@ -116,12 +115,10 @@ export function EtherealChat() {
         if (state === "output-available" || state === "output-error") continue
 
         const rawName = toolPart.toolName ?? toolPart.type ?? "tool"
-        const label = deriveToolLabel(rawName)
 
         return {
           id: toolPart.toolCallId ?? `${message.id}-${j}`,
           type: rawName,
-          label,
           state,
         }
       }
@@ -224,12 +221,11 @@ export function EtherealChat() {
             <form onSubmit={onSubmit} className="space-y-3">
               {activeTool ? (
                 <Tool className="border-white/15 bg-white/10 text-white">
-                  <div className="flex items-center gap-3">
-                    <ToolHeader type={activeTool.type} state={activeTool.state} label={activeTool.label} className="text-white" />
-                    {shouldShowToolLoader(activeTool.state) ? (
-                      <Loader size={14} className="text-white" aria-label="Tool running" />
-                    ) : null}
-                  </div>
+                  <ToolHeader
+                    type={activeTool.type}
+                    state={activeTool.state}
+                    className="text-white"
+                  />
                 </Tool>
               ) : null}
               <Textarea
@@ -289,20 +285,6 @@ export function EtherealChat() {
 }
 
 const END_SESSION_PROMPT = "I want to end this session. Can you close out and take any notes from this conversation?"
-
-function deriveToolLabel(rawName: string) {
-  if (/memory|note/i.test(rawName)) return "Notes"
-  if (/search|retrieve|query/i.test(rawName)) return "Searching…"
-  if (/rag|context/i.test(rawName)) return "Gathering context…"
-  if (/write|generate|respond/i.test(rawName)) return "Composing…"
-  const cleaned = rawName.replace(/^tool[-:]/i, "").replace(/[-_]/g, " ").trim()
-  if (!cleaned) return "Tool"
-  return cleaned
-}
-
-function shouldShowToolLoader(state: string) {
-  return state !== "output-available" && state !== "output-error"
-}
 
 function GradientBackdrop() {
   // animated blurred blobs using framer-motion; colors tuned to teal-gray ambiance
