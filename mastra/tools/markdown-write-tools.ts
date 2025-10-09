@@ -197,18 +197,19 @@ async function createMarkdown(userId: string, input: z.infer<typeof createSchema
   }
 }
 
-function resolveToolUserId(baseUserId: string | undefined, runtime?: ToolRuntime): string {
-  return resolveUserId(runtime?.userId ?? baseUserId)
+function resolveToolUserId(baseUserId: string | null | undefined, runtime?: ToolRuntime): string {
+  const candidate = runtime?.userId ?? baseUserId ?? undefined
+  return resolveUserId(candidate)
 }
 
-export function createMarkdownWriteTools(userId?: string) {
+export function createMarkdownWriteTools(baseUserId: string | null | undefined) {
   const previewTool = createTool({
     id: 'previewMarkdownSectionPatch',
     description: 'Preview a change to a markdown section by anchor without writing it back.',
     inputSchema: previewSchema,
     execute: async ({ context, runtime }: { context: z.infer<typeof previewSchema>; runtime?: ToolRuntime }) => {
       const input = previewSchema.parse(context)
-      const resolvedUser = resolveToolUserId(userId, runtime)
+      const resolvedUser = resolveToolUserId(baseUserId, runtime)
       return previewSectionPatch(resolvedUser, input)
     },
   })
@@ -219,7 +220,7 @@ export function createMarkdownWriteTools(userId?: string) {
     inputSchema: writeSchema,
     execute: async ({ context, runtime }: { context: z.infer<typeof writeSchema>; runtime?: ToolRuntime }) => {
       const input = writeSchema.parse(context)
-      const resolvedUser = resolveToolUserId(userId, runtime)
+      const resolvedUser = resolveToolUserId(baseUserId, runtime)
       return writeSectionPatch(resolvedUser, input)
     },
   })
@@ -230,7 +231,7 @@ export function createMarkdownWriteTools(userId?: string) {
     inputSchema: createSchema,
     execute: async ({ context, runtime }: { context: z.infer<typeof createSchema>; runtime?: ToolRuntime }) => {
       const input = createSchema.parse(context)
-      const resolvedUser = resolveToolUserId(userId, runtime)
+      const resolvedUser = resolveToolUserId(baseUserId, runtime)
       return createMarkdown(resolvedUser, input)
     },
   })
