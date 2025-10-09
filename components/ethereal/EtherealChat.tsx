@@ -42,9 +42,9 @@ export function EtherealChat() {
   // UI state
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [sessionClosed, setSessionClosed] = useState(false)
-  const [isClosing, setIsClosing] = useState(false)
-  const [pendingCleanup, setPendingCleanup] = useState(false)
+  const [sessionState, setSessionState] = useState<'idle' | 'closing' | 'cleanup'>('idle')
+  const sessionClosed = sessionState !== 'idle'
+  const isClosing = sessionState === 'closing'
 
   // redirect to login if auth required
   useEffect(() => {
@@ -131,42 +131,33 @@ export function EtherealChat() {
   }, [uiMessages])
 
   const handleEndSessionRequest = useCallback(async () => {
-    if (sessionClosed || isClosing) return
-    setIsClosing(true)
-    setInput("")
-    let locked = false
+    if (sessionState !== 'idle') return
+    setSessionState('closing')
+    setInput('')
     try {
       const dispatched = await sendMessage(END_SESSION_PROMPT)
-      if (!dispatched) return
-      locked = true
-      setSessionClosed(true)
-      setPendingCleanup(true)
+      setSessionState(dispatched ? 'cleanup' : 'idle')
     } catch (error) {
-      console.error("Failed to send end-session prompt", error)
-    } finally {
-      if (!locked) {
-        setIsClosing(false)
-      }
+      console.error('Failed to send end-session prompt', error)
+      setSessionState('idle')
     }
-  }, [sessionClosed, isClosing, sendMessage, setInput])
+  }, [sessionState, sendMessage, setInput])
 
   useEffect(() => {
-    if (!pendingCleanup) return
+    if (sessionState !== 'cleanup') return
     if (isLoading || currentStreamingId) return
 
     let cancelled = false
-    setPendingCleanup(false)
 
     const finalize = async () => {
       try {
         seededRef.current = false
         await endSession()
       } catch (error) {
-        console.error("Failed to finalize session cleanup", error)
+        console.error('Failed to finalize session cleanup', error)
       } finally {
         if (!cancelled) {
-          setSessionClosed(false)
-          setIsClosing(false)
+          setSessionState('idle')
         }
       }
     }
@@ -176,7 +167,7 @@ export function EtherealChat() {
     return () => {
       cancelled = true
     }
-  }, [pendingCleanup, isLoading, currentStreamingId, endSession])
+  }, [sessionState, isLoading, currentStreamingId, endSession])
 
   const onSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
     if (sessionClosed || isClosing) {
