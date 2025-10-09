@@ -2,13 +2,15 @@
 title: Feature: Chat
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-07
+last_updated: 2025-10-09
 feature_flag: null
 code_paths:
   - app/chat/page.tsx
-  - hooks/useChat.ts
-  - lib/database/action-logger.ts
-  - lib/database/validate.ts
+  - app/api/chat/route.ts
+  - app/_shared/hooks/useChat.ts
+  - components/ethereal/EtherealChat.tsx
+  - components/ethereal/EtherealMessageList.tsx
+  - components/tasks/TaskList.tsx
 related_prs:
   - #34
 ---
@@ -21,10 +23,11 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
 
 ## How it works
 - UI at app/chat/page.tsx with streaming responses
-- `useChat` consumes AI SDK UI message parts (text/tool/data) and streams via `DefaultChatTransport`, yielding a single assistant response per turn while preserving token-by-token rendering
+- `useChat` consumes AI SDK UI message parts (text/tool/data) and streams via `DefaultChatTransport`, yielding a single assistant response per turn while preserving token-by-token rendering; tool/dynamic parts now map into Task events keyed by tool call, with simplified status copy (`Looking through my notes…`, `Writing notes…`) and previews sourced from tool input/output.
 - Client data access uses `@/lib/data/parts-lite` (browser-safe)
 - Server routes/actions use `@/lib/data/parts-server` for writes, logging, and snapshots
-- Agent actions are logged via lib/database/action-logger.ts (server-only); task updates arrive via `data-taskUpdate` parts
+- Agent actions are logged via lib/database/action-logger.ts (server-only); task updates arrive via `data-taskUpdate` parts and tool event streams.
+- The active task overlay now anchors above the streaming assistant message, hiding raw tool cards when task metadata is present so Tasks become the primary representation.
 
 ## Data model
 - sessions, messages, agent_actions tables

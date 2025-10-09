@@ -6,7 +6,9 @@ import { getUserIdFromSupabase, provideDevFallbackStream, handleAgentStream } fr
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, profile } = await req.json()
+    const payload = await req.json()
+    const messages = payload?.messages
+    const rawProfile = payload?.profile
 
     if (!messages || !Array.isArray(messages)) {
       return errorResponse('Messages array is required', 400)
@@ -14,11 +16,42 @@ export async function POST(req: NextRequest) {
 
     const userId = await getUserIdFromSupabase()
 
+    const profileIsObject = rawProfile && typeof rawProfile === 'object'
+    const sanitizedProfile = profileIsObject ? { ...(rawProfile as Record<string, unknown>) } : {}
+    const profileUserId =
+      typeof sanitizedProfile.userId === 'string' && sanitizedProfile.userId.length > 0
+        ? sanitizedProfile.userId
+        : undefined
+    const profileId =
+      typeof (sanitizedProfile as { id?: unknown }).id === 'string' &&
+      String((sanitizedProfile as { id?: unknown }).id).length > 0
+        ? String((sanitizedProfile as { id?: unknown }).id)
+        : undefined
+
     if (!userId && !dev.enabled) {
       return errorResponse('Unauthorized', 401)
     }
 
-    const secureProfile = { ...profile, userId }
+    if (userId && profileUserId && profileUserId !== userId) {
+      console.warn('[CHAT] Overriding mismatched profile userId', {
+        profileUserId,
+        sessionUserId: userId,
+      })
+    }
+
+    const derivedUserId = userId ?? profileUserId ?? profileId
+    if (!derivedUserId) {
+      console.warn('[CHAT] Missing userId for secureProfile payload', {
+        devMode: dev.enabled,
+        hasSupabaseSession: Boolean(userId),
+        profileProvided: Boolean(profileIsObject),
+      })
+    }
+
+    const secureProfile = {
+      ...sanitizedProfile,
+      userId: derivedUserId,
+    }
 
     if (userId) {
       console.log('[CHAT] Memory maintenance deferred to cron worker', { userId })

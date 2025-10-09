@@ -2,7 +2,7 @@
 title: Feature: Agent Tools
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-02
+last_updated: 2025-10-09
 feature_flag: null
 code_paths:
   - mastra/tools/*.ts
@@ -22,6 +22,7 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 - Mastra tools implement capabilities (parts, relationships, evidence, assessments, proposals, rollback)
 - Inbox observation tooling now lives in `mastra/tools/inbox-observation-tools.ts`; it now exposes list/search/read helpers for markdown, sessions, and check-ins (including `listMarkdown`, `readMarkdown`, `listSessions`, `getSessionDetail`, `listCheckIns`, `getCheckInDetail`) so agents can enumerate context before fetching details.
 - Tool factories defer user resolution until execution. `createObservationResearchTools` accepts an optional profile user ID and falls back to the runtime context; this keeps build-time agent instantiation (e.g., cron routes) safe in multi-tenant environments.
+- Memory sync tooling (`mastra/tools/update-sync-tools.ts`) now returns a `success` flag with friendly error strings when Supabase queries fail or no user is resolved; structured logging in `lib/memory/service.ts` captures Supabase codes/messages for monitoring.
 - Trace enrichment in `lib/inbox/observation-engine.ts` pulls snippets for referenced markdown, sessions, and check-ins so persisted observations include verifiable evidence metadata.
 - Observation search helpers emit telemetry via `inbox_observation_telemetry`, capturing tool name, duration, and metadata for monitoring cron health.
 - Tool handlers co-locate Zod input/output schemas; malformed payloads short-circuit before hitting providers/Supabase

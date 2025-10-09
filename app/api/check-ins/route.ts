@@ -30,6 +30,9 @@ export async function POST(req: NextRequest) {
       if (error.message === 'Unauthorized') {
         return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
       }
+      if (error.message === 'Invalid check-in payload') {
+        return errorResponse(error.message, HTTP_STATUS.BAD_REQUEST)
+      }
       if (error.message.includes('Dev user not configured')) {
         return errorResponse(error.message, HTTP_STATUS.BAD_REQUEST)
       }
