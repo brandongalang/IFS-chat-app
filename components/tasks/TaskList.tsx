@@ -35,11 +35,14 @@ export function TaskList({
       {tasks.map((t) => {
         const { value: progressValue, label: progressLabel } = getProgressData(t.progress)
         const statusLabel = t.status ?? "working"
-        const triggerPieces = [t.title ?? "Task"]
-
-        if (progressLabel) triggerPieces.push(`· ${progressLabel}`)
-
-        const triggerTitle = `${triggerPieces.join(" ")} (${statusLabel})`
+        const statusCopy = typeof t.meta?.statusCopy === "string" ? t.meta.statusCopy : undefined
+        const descriptorPieces: string[] = []
+        if (statusCopy) descriptorPieces.push(statusCopy)
+        if (progressLabel) descriptorPieces.push(progressLabel)
+        const triggerLabel = descriptorPieces.length
+          ? `${t.title ?? "Task"} · ${descriptorPieces.join(" · ")}`
+          : `${t.title ?? "Task"}`
+        const triggerTitle = `${triggerLabel} (${statusLabel})`
         const hasDetails = Array.isArray(t.details) ? t.details.length > 0 : Boolean(t.details)
         const hasFiles = Array.isArray(t.meta?.files) && t.meta.files.length > 0
         const showContent = hasDetails || hasFiles || progressValue !== undefined
@@ -92,4 +95,3 @@ export function TaskList({
     </div>
   )
 }
-

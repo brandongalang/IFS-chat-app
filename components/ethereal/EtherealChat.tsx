@@ -180,6 +180,11 @@ export function EtherealChat() {
       {/* Messages area */}
       <div className="relative z-10 flex-1 overflow-y-auto pb-[120px] pt-[calc(env(safe-area-inset-top)+16px)]">
         <PageContainer className="flex flex-col gap-6">
+          {currentTasks?.length ? (
+            <div className="sticky top-[calc(env(safe-area-inset-top)+12px)] z-20 mb-4">
+              <ActiveTaskOverlay tasks={currentTasks} />
+            </div>
+          ) : null}
           <EtherealMessageList
             messages={messages}
             uiMessages={uiMessages}
@@ -189,15 +194,6 @@ export function EtherealChat() {
           <div ref={messagesEndRef} />
         </PageContainer>
       </div>
-
-      {/* Task overlay for current streaming message */}
-      {currentTasks?.length ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(100px+env(safe-area-inset-bottom))] z-20">
-          <PageContainer className="pointer-events-auto">
-            <ActiveTaskOverlay tasks={currentTasks} />
-          </PageContainer>
-        </div>
-      ) : null}
 
       {/* Translucent input bar (always visible) */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pb-[calc(12px+env(safe-area-inset-bottom))]">

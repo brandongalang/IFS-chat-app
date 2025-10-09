@@ -63,7 +63,7 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - `supabase start` (if needed)
 - `supabase db push --local`
 
-## Implementation (updated 2025-09-26)
+## Implementation (updated 2025-10-09)
 - **Background Services**: `lib/services/memory.ts`
   - `scaffoldUserMemory({ userId })` - ensures memory scaffolding exists
   - `summarizePendingUpdates({ userId?, limit? })` - processes pending updates for users
@@ -72,6 +72,7 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
   - `generateMemoryUpdate({ userId, oldMemory, todayData })` (LLM-backed, Zod-validated)
   - `saveNewSnapshot({ userId, previous, next })`
   - `listActiveUsersSince(isoISO)` and `loadTodayData(userId, isoISO)`
+  - `listUnprocessedUpdates(userId)` now logs Supabase error metadata and throws friendly messages so tool output surfaces readable failures
 - Types: `lib/memory/types.ts`
 - Cron route: `app/api/cron/memory-update/route.ts`
 - **Chat Integration**: Memory maintenance removed from `app/api/chat/route.ts` - now handled by background workers

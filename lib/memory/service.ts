@@ -5,6 +5,7 @@ import type { UserMemory } from './types'
 import { INITIAL_USER_MEMORY } from './types'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { generateObject } from 'ai'
+import type { PostgrestError } from '@supabase/supabase-js'
 
 const CHECKPOINT_FREQUENCY = Number(process.env.USER_MEMORY_CHECKPOINT_EVERY || 50)
 
@@ -285,40 +286,85 @@ export async function loadTodayData(userId: string, isoCutoff: string): Promise<
   return { sessions: sessions || [], insights: insights || [], checkIns: checkIns || [] }
 }
 
+type UnprocessedTable = 'sessions' | 'insights' | 'check_ins'
+
+function logUnprocessedQueryError(table: UnprocessedTable, userId: string, error: PostgrestError) {
+  try {
+    console.error(
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        tag: 'memory_updates',
+        event: 'list_unprocessed_error',
+        table,
+        user_id: userId,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+        message: error.message,
+      })
+    )
+  } catch {
+    console.error('[memory_updates] list_unprocessed_error', { table, userId, error })
+  }
+}
+
+function formatUnprocessedError(table: UnprocessedTable, error: PostgrestError): Error {
+  const code = error.code ? ` (${error.code})` : ''
+  const message = error.message?.trim()
+  const details = error.details?.trim()
+  const parts = [
+    `Supabase error while fetching ${table}${code}.`,
+    message ? message : null,
+    details ? `Details: ${details}` : null,
+  ].filter(Boolean)
+  const friendly = parts.join(' ')
+  const err = new Error(friendly || `Supabase error while fetching ${table}.`)
+  err.name = 'ListUnprocessedUpdatesError'
+  return err
+}
+
+async function fetchUnprocessedTable(
+  supabase: ReturnType<typeof createAdminClient>,
+  table: UnprocessedTable,
+  userId: string
+) {
+  const { data, error } = await supabase
+    .from(table)
+    .select('*')
+    .eq('user_id', userId)
+    .eq('processed', false)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    logUnprocessedQueryError(table, userId, error)
+    throw formatUnprocessedError(table, error)
+  }
+
+  return data || []
+}
+
 export async function listUnprocessedUpdates(userId: string): Promise<TodayData> {
   const supabase = createAdminClient()
 
-  const { data: sessions, error: sessionError } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('processed', false)
-    .order('created_at', { ascending: true })
+  try {
+    const [sessions, insights, checkIns] = await Promise.all([
+      fetchUnprocessedTable(supabase, 'sessions', userId),
+      fetchUnprocessedTable(supabase, 'insights', userId),
+      fetchUnprocessedTable(supabase, 'check_ins', userId),
+    ])
 
-  if (sessionError) throw sessionError
-
-  const { data: insights, error: insightError } = await supabase
-    .from('insights')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('processed', false)
-    .order('created_at', { ascending: true })
-
-  if (insightError) throw insightError
-
-  const { data: checkIns, error: checkInError } = await supabase
-    .from('check_ins')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('processed', false)
-    .order('created_at', { ascending: true })
-
-  if (checkInError) throw checkInError
-
-  return {
-    sessions: sessions || [],
-    insights: insights || [],
-    checkIns: checkIns || [],
+    return {
+      sessions,
+      insights,
+      checkIns,
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error
+    }
+    const err = new Error('Unexpected error while listing unprocessed updates.')
+    err.name = 'ListUnprocessedUpdatesError'
+    throw err
   }
 }
 

@@ -1,8 +1,9 @@
 import { CheckInExperience } from '@/components/check-in/CheckInExperience'
 import { loadAvailableParts, loadCheckInOverview } from '@/lib/check-ins/server'
+import { toLocalDateIso } from '@/lib/check-ins/shared'
 
 export default async function Page() {
-  const targetDateIso = new Date().toISOString().slice(0, 10)
+  const targetDateIso = toLocalDateIso(new Date())
   const [parts, overview] = await Promise.all([
     loadAvailableParts(),
     loadCheckInOverview(targetDateIso),
