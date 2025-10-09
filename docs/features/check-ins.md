@@ -2,11 +2,12 @@
 title: Feature: Guided Check-ins
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-08
+last_updated: 2025-10-09
 feature_flag: null
 code_paths:
   - app/check-in/morning/page.tsx
   - app/check-in/evening/page.tsx
+  - app/api/check-ins/route.ts
   - components/check-in/CheckInExperience.tsx
   - components/check-in/CheckInWizard.tsx
   - components/check-in/EmojiScale.tsx
@@ -34,7 +35,7 @@ Provides a gentle, repeatable practice to capture mood, intentions, and observat
 - Local-date helpers keep drafts, submissions, and server streak calculations aligned with the user’s timezone (no UTC drift) and broaden the overview lookback window for accurate streaks.
 - Drafts auto-save to `localStorage` per date/variant so users can resume; dashboard tiles surface draft state via `components/home/CheckInSlots.tsx`.
 - Server helpers in `lib/check-ins/server.ts` centralize Supabase reads/writes, including morning context hydration, prompt generation, and overview aggregation exposed at `/api/check-ins/overview`.
-- Submissions post through `app/check-in/actions.ts` server actions, returning optimistic status/conflict flags for the wizard to handle toasts and redirects.
+- Submissions post through `app/check-in/actions.ts` server actions, returning optimistic status/conflict flags for the wizard to handle toasts and redirects, while `/api/check-ins` normalizes payloads and returns precise 4xx errors (e.g., `Invalid check-in payload`) for schema violations.
 - Evening flow replays morning context (intention, parts, generated prompt) and persists reflections with link backs to the morning entry via `parts_data`.
 
 ## Data model
