@@ -8,8 +8,8 @@ import { createProposalTools } from '../tools/proposal-tools'
 import { createEvidenceTools } from '../tools/evidence-tools'
 import { createStubTools } from '../tools/stub-tools'
 import { createMemoryTools } from '../tools/memory-tools'
-import { createUpdateSyncTools } from '../tools/update-sync-tools'
 import { createMarkdownTools } from '../tools/markdown-tools'
+import { createMarkdownWriteTools } from '../tools/markdown-write-tools'
 import { generateSystemPrompt, type IFSAgentProfile } from './ifs_agent_prompt'
 
 export type AgentModelConfig = {
@@ -41,6 +41,7 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
       : undefined
 
   const markdownTools = env.ifsMarkdownContextEnabled ? createMarkdownTools(userId ?? null) : null
+  const markdownWriteTools = env.ifsMarkdownContextEnabled ? createMarkdownWriteTools(userId ?? null) : null
 
   return new Agent({
     name: 'ifs-companion',
@@ -53,8 +54,8 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
       ...createEvidenceTools(userId), // Evidence and pattern tools
       ...createStubTools(userId), // Stub creation tools
       ...createMemoryTools(userId), // Memory and conversation search tools
-      ...createUpdateSyncTools(userId), // Sync unprocessed updates from Supabase
       ...(markdownTools ?? {}),
+      ...(markdownWriteTools ?? {}),
     },
   })
 }
