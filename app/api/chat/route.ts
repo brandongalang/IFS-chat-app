@@ -4,6 +4,46 @@ import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
 import { errorResponse } from '@/lib/api/response'
 import { getUserIdFromSupabase, provideDevFallbackStream, handleAgentStream } from './logic'
 
+function normalizeProfile(
+  rawProfile: unknown,
+  sessionUserId: string | undefined,
+): {
+  profile: Record<string, unknown>
+  derivedUserId?: string
+  profileProvided: boolean
+} {
+  const coerceString = (value: unknown): string | undefined => {
+    if (typeof value !== 'string') return undefined
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : undefined
+  }
+
+  if (!rawProfile || typeof rawProfile !== 'object') {
+    return { profile: {}, derivedUserId: sessionUserId, profileProvided: false }
+  }
+
+  const profile = { ...(rawProfile as Record<string, unknown>) }
+  const profileUserId = coerceString(profile.userId)
+  const profileId = coerceString((profile as { id?: unknown }).id)
+
+  if (sessionUserId && profileUserId && profileUserId !== sessionUserId) {
+    console.warn('[CHAT] Overriding mismatched profile userId', {
+      profileUserId,
+      sessionUserId,
+    })
+  }
+
+  const derivedUserId = sessionUserId ?? profileUserId ?? profileId
+
+  if (derivedUserId) {
+    profile.userId = derivedUserId
+  } else {
+    delete profile.userId
+  }
+
+  return { profile, derivedUserId, profileProvided: true }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const payload = await req.json()
@@ -15,42 +55,18 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = await getUserIdFromSupabase()
-
-    const profileIsObject = rawProfile && typeof rawProfile === 'object'
-    const sanitizedProfile = profileIsObject ? { ...(rawProfile as Record<string, unknown>) } : {}
-    const profileUserId =
-      typeof sanitizedProfile.userId === 'string' && sanitizedProfile.userId.length > 0
-        ? sanitizedProfile.userId
-        : undefined
-    const profileId =
-      typeof (sanitizedProfile as { id?: unknown }).id === 'string' &&
-      String((sanitizedProfile as { id?: unknown }).id).length > 0
-        ? String((sanitizedProfile as { id?: unknown }).id)
-        : undefined
+    const { profile: secureProfile, derivedUserId, profileProvided } = normalizeProfile(rawProfile, userId)
 
     if (!userId && !dev.enabled) {
       return errorResponse('Unauthorized', 401)
     }
 
-    if (userId && profileUserId && profileUserId !== userId) {
-      console.warn('[CHAT] Overriding mismatched profile userId', {
-        profileUserId,
-        sessionUserId: userId,
-      })
-    }
-
-    const derivedUserId = userId ?? profileUserId ?? profileId
     if (!derivedUserId) {
       console.warn('[CHAT] Missing userId for secureProfile payload', {
         devMode: dev.enabled,
         hasSupabaseSession: Boolean(userId),
-        profileProvided: Boolean(profileIsObject),
+        profileProvided,
       })
-    }
-
-    const secureProfile = {
-      ...sanitizedProfile,
-      userId: derivedUserId,
     }
 
     if (userId) {
