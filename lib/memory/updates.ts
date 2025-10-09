@@ -8,6 +8,7 @@ const pendingUpdateRowSchema = z.object({
   payload: z.unknown(),
   summary: z.string().nullable(),
   created_at: z.string(),
+  ref_id: z.string().nullable().optional(),
   metadata: z.record(z.unknown()).optional(),
 })
 
@@ -19,13 +20,14 @@ export type MemoryUpdateRecord = {
   createdAt: string
   payload: unknown
   metadata: Record<string, unknown>
+  refId: string | null
 }
 
 export async function fetchPendingUpdates(userId: string, limit = 25): Promise<MemoryUpdateRecord[]> {
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('memory_updates')
-    .select('id, user_id, kind, payload, summary, created_at, metadata')
+    .select('id, user_id, kind, payload, summary, created_at, metadata, ref_id')
     .eq('user_id', userId)
     .is('processed_at', null)
     .order('created_at', { ascending: true })
@@ -44,6 +46,7 @@ export async function fetchPendingUpdates(userId: string, limit = 25): Promise<M
       summary: parsed.summary ?? null,
       createdAt: parsed.created_at,
       payload: parsed.payload,
+      refId: typeof parsed.ref_id === 'string' ? parsed.ref_id : null,
       metadata: typeof parsed.metadata === 'object' && parsed.metadata !== null && !Array.isArray(parsed.metadata)
         ? (parsed.metadata as Record<string, unknown>)
         : {},

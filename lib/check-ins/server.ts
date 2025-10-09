@@ -3,6 +3,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { generateObject } from 'ai'
 import { dev, resolveUserId } from '@/config/dev'
 import { getServiceClient, getUserClient } from '@/lib/supabase/clients'
+import { enqueueMemoryUpdate } from '@/lib/memory/queue'
 import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
 import type { CheckInRow } from '@/lib/types/database'
 import {
@@ -355,6 +356,28 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
       throw new Error('Failed to save check-in')
     }
 
+    const record = Array.isArray(inserted) && inserted.length > 0 ? (inserted[0] as CheckInRow) : null
+    if (record?.id) {
+      const enqueueResult = await enqueueMemoryUpdate({
+        userId,
+        kind: 'check_in',
+        refId: record.id,
+        payload: {
+          checkInId: record.id,
+          variant: 'morning',
+          date: targetDateIso,
+        },
+        metadata: { source: 'check_in', variant: 'morning' },
+      })
+      if (!enqueueResult.inserted && enqueueResult.error) {
+        console.warn('[check-ins] failed to enqueue morning memory update', {
+          userId,
+          checkInId: record.id,
+          error: enqueueResult.error,
+        })
+      }
+    }
+
     return { data: inserted ?? [], conflict: false }
   }
 
@@ -421,6 +444,28 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
     }
     console.error('Error inserting evening check-in:', error)
     throw new Error('Failed to save check-in')
+  }
+
+  const eveningRecord = Array.isArray(inserted) && inserted.length > 0 ? (inserted[0] as CheckInRow) : null
+  if (eveningRecord?.id) {
+    const enqueueResult = await enqueueMemoryUpdate({
+      userId,
+      kind: 'check_in',
+      refId: eveningRecord.id,
+      payload: {
+        checkInId: eveningRecord.id,
+        variant: 'evening',
+        date: targetDateIso,
+      },
+      metadata: { source: 'check_in', variant: 'evening' },
+    })
+    if (!enqueueResult.inserted && enqueueResult.error) {
+      console.warn('[check-ins] failed to enqueue evening memory update', {
+        userId,
+        checkInId: eveningRecord.id,
+        error: enqueueResult.error,
+      })
+    }
   }
 
   if (morningRecord) {

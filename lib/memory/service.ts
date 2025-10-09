@@ -6,8 +6,10 @@ import { INITIAL_USER_MEMORY } from './types'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { generateObject } from 'ai'
 import type { PostgrestError } from '@supabase/supabase-js'
+import { enqueueMemoryUpdate } from './queue'
 
 const CHECKPOINT_FREQUENCY = Number(process.env.USER_MEMORY_CHECKPOINT_EVERY || 50)
+const DEFAULT_IDLE_MINUTES = Number(process.env.MEMORY_SESSION_IDLE_MINUTES || 30)
 
 // Zod schema aligning to our MVP memory
 const userMemorySchema = z.object({
@@ -402,4 +404,96 @@ export async function markUpdatesProcessed(userId: string, items: TodayData): Pr
     updateTable('insights', insightIds),
     updateTable('check_ins', checkInIds),
   ])
+}
+
+export async function finalizeStaleSessions(options: { idleMinutes?: number } = {}): Promise<{
+  closed: number
+  enqueued: number
+  sessionIds: string[]
+}> {
+  const idleMinutes = options.idleMinutes ?? DEFAULT_IDLE_MINUTES
+  const supabase = createAdminClient()
+  const cutoffIso = new Date(Date.now() - idleMinutes * 60 * 1000).toISOString()
+
+  const { data: staleSessions, error } = await supabase
+    .from('sessions')
+    .select('id, user_id, start_time, updated_at')
+    .is('end_time', null)
+    .lte('updated_at', cutoffIso)
+
+  if (error) {
+    throw error
+  }
+
+  if (!staleSessions || staleSessions.length === 0) {
+    return { closed: 0, enqueued: 0, sessionIds: [] }
+  }
+
+  let closed = 0
+  let enqueued = 0
+  const sessionIds: string[] = []
+
+  for (const row of staleSessions) {
+    const sessionId = typeof row.id === 'string' ? row.id : null
+    const userId = typeof row.user_id === 'string' ? row.user_id : null
+    if (!sessionId || !userId) continue
+
+    const endTime = row.updated_at ?? new Date().toISOString()
+    const startTime = row.start_time ?? endTime
+    const durationSeconds = Math.max(
+      0,
+      Math.floor((new Date(endTime).getTime() - new Date(startTime).getTime()) / 1000),
+    )
+
+    const { data: updated, error: updateError } = await supabase
+      .from('sessions')
+      .update({
+        end_time: endTime,
+        duration: durationSeconds,
+        updated_at: endTime,
+      })
+      .eq('id', sessionId)
+      .is('end_time', null)
+      .select('id')
+
+    if (updateError) {
+      console.warn('[memory] finalizeStaleSessions: failed to update session', {
+        sessionId,
+        userId,
+        error: updateError.message,
+      })
+      continue
+    }
+
+    if (!updated || updated.length === 0) {
+      continue
+    }
+
+    closed += 1
+    sessionIds.push(sessionId)
+
+    const enqueueResult = await enqueueMemoryUpdate({
+      userId,
+      kind: 'session',
+      refId: sessionId,
+      payload: {
+        sessionId,
+        endedAt: endTime,
+        source: 'cron_finalize',
+      },
+      metadata: { source: 'cron_finalize' },
+    })
+
+    if (enqueueResult.inserted) {
+      enqueued += 1
+    } else if (enqueueResult.error) {
+      console.warn('[memory] finalizeStaleSessions: failed to enqueue update', {
+        sessionId,
+        userId,
+        error: enqueueResult.error,
+      })
+    }
+  }
+
+  return { closed, enqueued, sessionIds }
 }

@@ -9,19 +9,23 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - Reconstruction: Start from last full snapshot, apply patches forward
 
 ## Data flow
-1. **Background Processing**: Memory maintenance runs in scheduled background workers, not during chat requests
-2. Daily (active users only): reconstruct current memory
-3. Gather new data from last 24h (sessions, insights)
-4. Summarizer generates the next memory JSON (schema-validated)
-5. Compute a JSON Patch diff and insert a new snapshot (checkpoint every N)
-6. **Pending Updates**: Background service also processes pending memory updates for all users with queued changes
+1. **Event-time enqueue**: When chats end, check-ins submit, or onboarding completes, we upsert lightweight rows into `memory_updates` using `(user_id, kind, ref_id)` uniqueness for idempotency.
+2. **Chat preflight**: On chat open we call `POST /api/memory/preflight` to summarize pending queue items immediately so the agent starts with fresh context.
+3. **Nightly finalize**: The daily cron closes stale sessions (idle beyond the configured window), enqueues any missing updates, and gathers 24h activity for legacy `processed` fallbacks.
+4. **Summarizer**: `summarizePendingUpdates` consumes the queue (all users or a single user), generates changelog entries, and marks processed rows.
+5. **Snapshot generation**: For active users we reconstruct memory, feed new data to the LLM, compute a JSON Patch diff, and insert a new snapshot (checkpoint every N).
+6. **Queue cleanup**: `markUpdatesProcessed` remains during the transition to keep legacy flags in sync while the queue-driven flow stabilizes.
 
 ## API
 - `POST /api/cron/memory-update`
   - Header: `Authorization: Bearer <CRON_SECRET>`
   - Finds users active in last 24h, runs the update pipeline for each
-  - **Enhanced**: Also processes pending memory updates for all users
-  - Returns per-user result, latest version if saved, and summary statistics
+  - **Enhanced**: Finalizes stale sessions, enqueues queue entries, and processes pending memory updates for all users
+  - Returns per-user result, latest version if saved, queue summary, and change-log stats
+- `POST /api/memory/preflight`
+  - Authenticated user endpoint invoked before chat agent boot
+  - Checks for pending queue items and, if present, runs a scoped `summarizePendingUpdates({ userId })`
+  - Returns `{ ok, processed, pending }` so the UI can warn if preflight failed
 
 ## Environment variables (updated 2025-10-07)
 - Required on server:
@@ -67,6 +71,7 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - **Background Services**: `lib/services/memory.ts`
   - `scaffoldUserMemory({ userId })` - ensures memory scaffolding exists
   - `summarizePendingUpdates({ userId?, limit? })` - processes pending updates for users
+  - `finalizeStaleSessions({ idleMinutes? })` - closes idle sessions and enqueues queue items before snapshotting
 - **Overview Snapshot Loader**: `lib/memory/overview.ts`
   - `loadOverviewSnapshot(userId)` calls `ensureOverviewExists` and plucks curated anchors for prompt hydration
   - `formatOverviewFragments(fragments)` renders anchored markdown sections, ensuring empty bodies degrade gracefully
@@ -76,6 +81,9 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
   - `saveNewSnapshot({ userId, previous, next })`
   - `listActiveUsersSince(isoISO)` and `loadTodayData(userId, isoISO)`
   - `listUnprocessedUpdates(userId)` now logs Supabase error metadata and throws friendly messages so tool output surfaces readable failures
+- **Queue utilities**: `lib/memory/queue.ts` (`enqueueMemoryUpdate`) and the `memory_updates` schema (now with `ref_id` unique index) handle idempotent event-time ingestion.
+- **Chat preflight**: `app/api/memory/preflight/route.ts` powers the immediate summarize-on-open flow used by `useChatSession`.
+- **Agent tooling**: `mastra/tools/memory-markdown-tools.ts` exposes read + scoped write helpers (overview changelog, sections, part notes) shared by chat and background agents.
 - Types: `lib/memory/types.ts`
 - Cron route: `app/api/cron/memory-update/route.ts`
 - **Chat Integration**: Memory maintenance removed from `app/api/chat/route.ts` - now handled by background workers
