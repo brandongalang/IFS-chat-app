@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isSupabaseConfigured } from '@/lib/supabase/noop-client'
 
 export type MemoryUpdateKind = 'session' | 'check_in' | 'onboarding' | 'inbox_action' | 'manual'
 
@@ -32,6 +33,17 @@ export async function enqueueMemoryUpdate(
   if (!parsed.success) {
     const issues = parsed.error.issues?.map((issue) => issue.message).join(', ') ?? 'invalid input'
     return { inserted: false, error: issues }
+  }
+
+  if (!isSupabaseConfigured()) {
+    const message = 'Supabase is not configured; skipping memory update enqueue.'
+    console.warn('[memory_updates] enqueue skipped', {
+      userId: parsed.data.userId,
+      kind: parsed.data.kind,
+      refId: parsed.data.refId,
+      error: message,
+    })
+    return { inserted: false, error: message }
   }
 
   const supabase = createAdminClient()
@@ -71,5 +83,32 @@ export async function enqueueMemoryUpdate(
   }
 
   const insertedId = Array.isArray(data) && data.length > 0 ? data[0]?.id : undefined
-  return { inserted: Boolean(insertedId), id: insertedId }
+  if (insertedId) {
+    return { inserted: true, id: insertedId }
+  }
+
+  const { data: existing, error: fetchError } = await supabase
+    .from('memory_updates')
+    .select('id')
+    .eq('user_id', parsed.data.userId)
+    .eq('kind', parsed.data.kind)
+    .eq('ref_id', parsed.data.refId)
+    .limit(1)
+    .maybeSingle()
+
+  if (fetchError) {
+    console.warn('[memory_updates] enqueue lookup failed', {
+      userId: parsed.data.userId,
+      kind: parsed.data.kind,
+      refId: parsed.data.refId,
+      error: fetchError.message,
+    })
+    return { inserted: false, error: fetchError.message }
+  }
+
+  if (existing?.id) {
+    return { inserted: false, id: existing.id }
+  }
+
+  return { inserted: false }
 }

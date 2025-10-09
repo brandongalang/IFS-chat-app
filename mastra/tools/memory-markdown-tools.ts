@@ -54,7 +54,12 @@ function formatFingerprintTag(fingerprint?: string): string {
 
 function includesFingerprint(text: string | undefined, fingerprint: string | undefined): boolean {
   if (!text || !fingerprint) return false
-  return text.includes(`[fp:${fingerprint}]`)
+  const pattern = new RegExp(`\\[fp:${escapeRegExp(fingerprint)}\\](?:\s|$)`) // matches embedded fingerprint tag
+  return pattern.test(text)
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function toBulletList(lines: string[], fingerprint?: string) {

@@ -5,6 +5,14 @@ import { summarizePendingUpdates } from '@/lib/services/memory'
 
 export const dynamic = 'force-dynamic'
 
+// Bounded number of queue items summarized during chat preflight.
+const PREFLIGHT_SUMMARY_LIMIT = (() => {
+  const raw = process.env.MEMORY_PREFLIGHT_SUMMARY_LIMIT
+  const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN
+  if (Number.isFinite(parsed) && parsed >= 1) return parsed
+  return 25
+})()
+
 export async function POST() {
   try {
     const supabase = getUserClient()
@@ -27,7 +35,7 @@ export async function POST() {
         return jsonResponse({ ok: true, processed: 0, pending: false })
       }
 
-      const outcome = await summarizePendingUpdates({ userId: user.id, limit: 25 })
+      const outcome = await summarizePendingUpdates({ userId: user.id, limit: PREFLIGHT_SUMMARY_LIMIT })
       return jsonResponse({ ok: true, processed: outcome.processed, pending: true })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown-error'
