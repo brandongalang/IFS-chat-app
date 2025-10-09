@@ -34,7 +34,7 @@ interface ChatHookReturn {
   currentStreamingId?: string
   hasActiveSession: boolean
   tasksByMessage: Record<string, TaskEvent[]>
-  sendMessage: (content: string) => Promise<void>
+  sendMessage: (content: string) => Promise<boolean>
   addAssistantMessage: (content: string, opts?: { persist?: boolean; id?: string; persona?: 'claude' | 'default' }) => Promise<void>
   clearChat: () => void
   endSession: () => Promise<void>
@@ -197,7 +197,7 @@ export function useChat(): ChatHookReturn {
   const sendMessage = useCallback<ChatHookReturn['sendMessage']>(
     async (content) => {
       const trimmed = content.trim()
-      if (!trimmed || authLoading || needsAuth) return
+      if (!trimmed || authLoading || needsAuth) return false
 
       if (status === 'streaming') {
         await stop()
@@ -208,7 +208,7 @@ export function useChat(): ChatHookReturn {
         id = await ensureSession()
       } catch (error) {
         console.error('Failed to start session:', error)
-        return
+        return false
       }
 
       if (id) {
@@ -228,6 +228,7 @@ export function useChat(): ChatHookReturn {
           },
         },
       )
+      return true
     },
     [authLoading, ensureSession, needsAuth, persistMessage, profile, sdkSendMessage, sessionId, status, stop],
   )
