@@ -13,6 +13,7 @@ code_paths:
   - app/api/chat/logic.ts
 related_prs:
   - #35
+  - #285
 ---
 
 ## What
