@@ -6,7 +6,6 @@ import { getPartTools } from '../tools/part-tools.mastra'
 import { createAssessmentTools } from '../tools/assessment-tools'
 import { createProposalTools } from '../tools/proposal-tools'
 import { createEvidenceTools } from '../tools/evidence-tools'
-import { createStubTools } from '../tools/stub-tools'
 import { createMemoryTools } from '../tools/memory-tools'
 import { createMarkdownTools } from '../tools/markdown-tools'
 import { createMarkdownWriteTools } from '../tools/markdown-write-tools'
@@ -54,7 +53,6 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
       ...createAssessmentTools(userId), // Confidence assessment tool
       ...createProposalTools(userId), // Split/Merge proposal workflow
       ...createEvidenceTools(userId), // Evidence and pattern tools
-      ...createStubTools(userId), // Stub creation tools
       ...createMemoryTools(userId), // Memory and conversation search tools
       ...(markdownTools ?? {}),
       ...(markdownWriteTools ?? {}),

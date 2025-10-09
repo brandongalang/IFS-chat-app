@@ -23,7 +23,13 @@
       ]
     },
     {
-      "paths": ["app/chat/**", "hooks/useChat.ts", "lib/database/**"],
+      "paths": [
+        "app/chat/**",
+        "app/_shared/hooks/**",
+        "app/api/chat/**",
+        "components/ethereal/**",
+        "lib/database/**"
+      ],
       "docs": ["docs/features/chat.md"]
     },
     {
@@ -37,6 +43,10 @@
     {
       "paths": ["app/onboarding/**", "components/onboarding/**", "lib/onboarding/**"],
       "docs": ["docs/features/onboarding.md"]
+    },
+    {
+      "paths": ["lib/inbox/**", "scripts/inbox/**"],
+      "docs": ["docs/runbooks/inbox-observation-job.md"]
     },
     {
       "paths": [
