@@ -32,7 +32,12 @@
       "docs": ["docs/features/onboarding.md"]
     },
     {
-      "paths": ["app/api/cron/memory-update/**", "lib/memory/**", "lib/api/cron-auth.ts"],
+      "paths": [
+        "app/api/cron/memory-update/**",
+        "app/api/memory/**",
+        "lib/memory/**",
+        "lib/api/cron-auth.ts"
+      ],
       "docs": [
         "docs/user-memory.md",
         "docs/runbooks/memory-cron-vercel.md"
