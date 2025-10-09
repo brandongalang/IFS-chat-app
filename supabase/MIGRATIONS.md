@@ -26,6 +26,7 @@ Current migration files (in recommended apply order):
 20. 022_add_avatar_url_to_users.sql
 21. 104_inbox_items_view.sql
 22. 105_inbox_message_events.sql
+23. 108_memory_updates_ref_id.sql
 
 Inbox notes
 - `inbox_items_view` intentionally exposes `source_id` (no synthetic `id`). API handlers map this value to `id`/`sourceId` in responses. Keep the view schema as-is unless we introduce a new identifier story.
