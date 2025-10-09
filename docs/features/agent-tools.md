@@ -2,12 +2,14 @@
 title: Feature: Agent Tools
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-09
+last_updated: 2025-10-10
 feature_flag: null
 code_paths:
   - mastra/tools/*.ts
   - mastra/agents/*.ts
   - lib/insights/generator.ts
+  - lib/memory/overview.ts
+  - app/api/chat/logic.ts
 related_prs:
   - #35
 ---
@@ -21,6 +23,7 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 ## How it works
 - Mastra tools implement capabilities (parts, relationships, evidence, assessments, proposals, rollback)
 - Inbox observation tooling now lives in `mastra/tools/inbox-observation-tools.ts`; it now exposes list/search/read helpers for markdown, sessions, and check-ins (including `listMarkdown`, `readMarkdown`, `listSessions`, `getSessionDetail`, `listCheckIns`, `getCheckInDetail`) so agents can enumerate context before fetching details.
+- The primary IFS chat agent now hydrates markdown context when `IFS_ENABLE_MARKDOWN_CONTEXT` is enabled. During agent bootstrap we resolve an overview snapshot via `lib/memory/overview.ts`, append selected anchors (`identity v1`, `current_focus v1`, `change_log v1`) to the system prompt, and expose read-only `listMarkdown`, `searchMarkdown`, and `readMarkdown` tools via `mastra/tools/markdown-tools.ts`.
 - Tool factories defer user resolution until execution. `createObservationResearchTools` accepts an optional profile user ID and falls back to the runtime context; this keeps build-time agent instantiation (e.g., cron routes) safe in multi-tenant environments.
 - Memory sync tooling (`mastra/tools/update-sync-tools.ts`) now returns a `success` flag with friendly error strings when Supabase queries fail or no user is resolved; structured logging in `lib/memory/service.ts` captures Supabase codes/messages for monitoring.
 - Trace enrichment in `lib/inbox/observation-engine.ts` pulls snippets for referenced markdown, sessions, and check-ins so persisted observations include verifiable evidence metadata.
@@ -38,6 +41,7 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 - Provider configuration centralized in `config/model.ts` and `mastra/index.ts`
 - Agents default to the hard-coded `OPENROUTER_API_BASE_URL` (`https://openrouter.ai/api/v1`); only `IFS_MODEL` and `IFS_TEMPERATURE` remain configurable via env vars
 - Agents share the single `openrouter` provider created during Mastra bootstrap
+- `IFS_ENABLE_MARKDOWN_CONTEXT` (default `true`) gates overview hydration and markdown tooling for the chat agent; disable when diagnosing storage issues or runaway token budgets.
 
 ## Testing
 - Unit tests for tool logic; integration tests via smoke scripts (scripts/smoke-*)

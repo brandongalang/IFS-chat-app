@@ -1,6 +1,6 @@
 import { Agent } from '@mastra/core'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
-import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
+import { ENV, OPENROUTER_API_BASE_URL, env } from '@/config/env'
 import { resolveModel } from '@/config/model'
 import { getPartTools } from '../tools/part-tools.mastra'
 import { createAssessmentTools } from '../tools/assessment-tools'
@@ -9,7 +9,8 @@ import { createEvidenceTools } from '../tools/evidence-tools'
 import { createStubTools } from '../tools/stub-tools'
 import { createMemoryTools } from '../tools/memory-tools'
 import { createUpdateSyncTools } from '../tools/update-sync-tools'
-import { generateSystemPrompt } from './ifs_agent_prompt'
+import { createMarkdownTools } from '../tools/markdown-tools'
+import { generateSystemPrompt, type IFSAgentProfile } from './ifs_agent_prompt'
 
 export type AgentModelConfig = {
   modelId?: string
@@ -17,7 +18,7 @@ export type AgentModelConfig = {
   temperature?: number
 }
 
-type Profile = { name?: string; bio?: string; userId?: string } | null
+type Profile = IFSAgentProfile
 
 export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {}) {
   const userId = profile?.userId
@@ -39,6 +40,8 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
         } as const)
       : undefined
 
+  const markdownTools = env.ifsMarkdownContextEnabled ? createMarkdownTools(userId ?? null) : null
+
   return new Agent({
     name: 'ifs-companion',
     instructions: generateSystemPrompt(profile),
@@ -51,6 +54,7 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
       ...createStubTools(userId), // Stub creation tools
       ...createMemoryTools(userId), // Memory and conversation search tools
       ...createUpdateSyncTools(userId), // Sync unprocessed updates from Supabase
+      ...(markdownTools ?? {}),
     },
   })
 }

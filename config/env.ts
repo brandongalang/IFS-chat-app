@@ -21,6 +21,7 @@ const EnvSchema = z.object({
   IFS_DEFAULT_USER_ID: z.string().uuid().optional(),
   IFS_VERBOSE: z.string().optional(),
   IFS_DISABLE_POLARIZATION_UPDATE: z.string().optional(),
+  IFS_ENABLE_MARKDOWN_CONTEXT: z.string().optional(),
   // Dev overrides
   IFS_DEV_FORCE_NO_SUPABASE: z.string().optional(),
 })
@@ -49,6 +50,7 @@ const raw = EnvSchema.parse({
   IFS_DEFAULT_USER_ID: process.env.IFS_DEFAULT_USER_ID,
   IFS_VERBOSE: process.env.IFS_VERBOSE,
   IFS_DISABLE_POLARIZATION_UPDATE: process.env.IFS_DISABLE_POLARIZATION_UPDATE,
+  IFS_ENABLE_MARKDOWN_CONTEXT: process.env.IFS_ENABLE_MARKDOWN_CONTEXT,
   // Dev overrides
   IFS_DEV_FORCE_NO_SUPABASE: process.env.IFS_DEV_FORCE_NO_SUPABASE,
 })
@@ -72,6 +74,10 @@ export const env = {
     toBool(raw.NEXT_PUBLIC_IFS_DEV_MODE),
   ifsVerbose: toBool(raw.IFS_VERBOSE),
   ifsDisablePolarizationUpdate: toBool(raw.IFS_DISABLE_POLARIZATION_UPDATE),
+  ifsMarkdownContextEnabled:
+    raw.IFS_ENABLE_MARKDOWN_CONTEXT === undefined
+      ? true
+      : toBool(raw.IFS_ENABLE_MARKDOWN_CONTEXT),
   ifsForceNoSupabase:
     toBool(raw.IFS_DEV_FORCE_NO_SUPABASE) ||
     !raw.NEXT_PUBLIC_SUPABASE_URL ||
