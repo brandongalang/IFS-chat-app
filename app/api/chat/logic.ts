@@ -1,3 +1,5 @@
+import { env } from '@/config/env'
+import { loadOverviewSnapshot } from '@/lib/memory/overview'
 import { getUserClient } from '@/lib/supabase/clients'
 import { getSupabaseKey, getSupabaseUrl } from '@/lib/supabase/config'
 
@@ -49,7 +51,16 @@ export async function handleAgentStream(
 ): Promise<Response> {
   try {
     const { createMastra } = await import('@/mastra')
-    const mastra = createMastra(profile)
+    const profileUserId = typeof profile?.userId === 'string' ? profile.userId : undefined
+    const overviewSnapshot =
+      env.ifsMarkdownContextEnabled && profileUserId ? await loadOverviewSnapshot(profileUserId) : null
+
+    const mastraProfile = {
+      ...profile,
+      ...(overviewSnapshot ? { overviewSnapshot } : {}),
+    }
+
+    const mastra = createMastra(mastraProfile)
     const ifsAgent = mastra.getAgent('ifsAgent')
 
     const agent = ifsAgent as unknown as Partial<{

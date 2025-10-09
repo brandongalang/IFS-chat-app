@@ -26,6 +26,27 @@ async function main() {
   const expectedBioString = `- Bio: \`\`\`${maliciousProfile.bio}\`\`\``;
   assert(prompt.includes(expectedBioString), `Prompt should contain the sanitized user bio. Got: ${prompt}`);
 
+  const overviewPrompt = generateSystemPrompt({
+    name: 'Test User',
+    bio: 'Curious explorer',
+    overviewSnapshot: {
+      created: false,
+      fragments: [
+        { anchor: 'identity v1', heading: 'Identity', text: '- User ID: test-user' },
+        { anchor: 'current_focus v1', heading: 'Current Focus', text: '- Exploring new tools' }
+      ]
+    }
+  });
+
+  assert(
+    overviewPrompt.includes('## User Overview Snapshot:'),
+    `Prompt should include the overview snapshot header. Got: ${overviewPrompt}`
+  );
+  assert(
+    overviewPrompt.includes('[//]: # (anchor: identity v1)'),
+    `Prompt should preserve overview anchors. Got: ${overviewPrompt}`
+  );
+
   console.log('Prompt injection unit test passed.');
 }
 
