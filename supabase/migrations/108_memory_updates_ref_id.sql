@@ -10,9 +10,11 @@ update public.memory_updates
   set ref_id = coalesce(ref_id, id::text)
   where ref_id is null;
 
+alter table if exists public.memory_updates
+  alter column ref_id set not null;
+
 create unique index if not exists idx_memory_updates_user_kind_ref
-  on public.memory_updates(user_id, kind, ref_id)
-  where ref_id is not null;
+  on public.memory_updates(user_id, kind, ref_id);
 
 create index if not exists idx_memory_updates_pending_user_kind
   on public.memory_updates(user_id, kind)

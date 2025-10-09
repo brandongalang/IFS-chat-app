@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { DatabaseActionLogger } from './database/action-logger'
+import { enqueueMemoryUpdate } from './memory/queue'
 import type {
   Database,
   SessionInsert,
@@ -238,6 +239,25 @@ export class ChatSessionService {
       duration,
       messages: session.messages || [],
     })
+
+    const enqueueResult = await enqueueMemoryUpdate({
+      userId: session.user_id,
+      kind: 'session',
+      refId: sessionId,
+      payload: {
+        sessionId,
+        endedAt: endTime,
+        duration,
+      },
+      metadata: { source: 'session_service' },
+    })
+    if (!enqueueResult.inserted && enqueueResult.error) {
+      console.warn('[sessions] failed to enqueue memory update', {
+        userId: session.user_id,
+        sessionId,
+        error: enqueueResult.error,
+      })
+    }
   }
 
   /**

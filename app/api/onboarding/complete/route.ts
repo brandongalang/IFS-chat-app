@@ -7,6 +7,7 @@ import { completeOnboardingState } from '@/lib/onboarding/complete-state';
 import { synthesizeOnboardingMemories } from '@/lib/onboarding/synthesize-memories';
 import { buildCompletionResponse } from '@/lib/onboarding/build-completion-response';
 import { buildOnboardingSummary } from '@/lib/onboarding/summary';
+import { enqueueMemoryUpdate } from '@/lib/memory/queue';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/types/database';
 
@@ -90,6 +91,25 @@ export async function POST(request: NextRequest) {
     if (!completionResult.success) {
       console.error('Error completing onboarding:', completionResult.error);
       return errorResponse('Failed to complete onboarding', HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    }
+
+    const onboardingRefId = typeof userState.id === 'string' ? userState.id : user.id;
+    const enqueueResult = await enqueueMemoryUpdate({
+      userId: user.id,
+      kind: 'onboarding',
+      refId: onboardingRefId,
+      payload: {
+        onboardingId: onboardingRefId,
+        completedAt: completionResult.completedAt,
+      },
+      metadata: { source: 'onboarding_complete' },
+    });
+    if (!enqueueResult.inserted && enqueueResult.error) {
+      console.warn('[onboarding] failed to enqueue memory update', {
+        userId: user.id,
+        onboardingId: onboardingRefId,
+        error: enqueueResult.error,
+      });
     }
 
     // Trigger user memory synthesis
