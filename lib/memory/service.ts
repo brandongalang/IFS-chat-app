@@ -137,6 +137,11 @@ export async function generateMemoryUpdate(params: {
   oldMemory: UserMemory
   todayData: TodayData
 }): Promise<UserMemory> {
+  const hasNewData = Boolean(params.todayData.sessions.length || params.todayData.insights.length || params.todayData.checkIns.length)
+  if (!hasNewData) {
+    return params.oldMemory
+  }
+
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) return fallbackUpdate(params.oldMemory)
 

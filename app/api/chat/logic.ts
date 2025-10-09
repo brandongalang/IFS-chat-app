@@ -98,18 +98,6 @@ export async function handleAgentStream(
   }
 }
 
-type StreamResolver = (candidate: unknown) => Response | undefined
-
-const STREAM_RESOLVERS: StreamResolver[] = [
-  responseFromUIMessageStream,
-  responseFromDataStreamResponse,
-  responseFromReadableStream,
-  responseFromToResponse,
-  responseFromToStreamResponse,
-  responseFromResponseLike,
-  responseFromAsyncIterable,
-]
-
 type Method = (...args: unknown[]) => unknown
 
 function getMethod(candidate: unknown, methodName: string): Method | undefined {
@@ -136,53 +124,45 @@ function asResponse(candidate: unknown): Response | undefined {
   return undefined
 }
 
-function responseFromMethod(
-  candidate: unknown,
-  methodName: string,
-  args: unknown[] = [],
-): Response | undefined {
-  const result = invokeMethod(candidate, methodName, args)
-  return asResponse(result)
+export function resolveStreamResponse(candidate: unknown): Response | undefined {
+  if (!candidate) return undefined
+
+  const uiMessageStream = tryInvokeResponse(candidate, 'toUIMessageStreamResponse', [{ sendReasoning: false }])
+  if (uiMessageStream) return uiMessageStream
+
+  const dataStream = tryInvokeResponse(candidate, 'toDataStreamResponse')
+  if (dataStream) return dataStream
+
+  const readable = tryInvokeReadable(candidate)
+  if (readable) return readable
+
+  const response = tryInvokeResponse(candidate, 'toResponse') ?? tryInvokeResponse(candidate, 'toStreamResponse')
+  if (response) return response
+
+  const direct = asResponse(candidate)
+  if (direct) return direct
+
+  return responseFromAsyncIterable(candidate)
 }
 
-export function resolveStreamResponse(candidate: unknown): Response | undefined {
-  for (const resolver of STREAM_RESOLVERS) {
-    const response = resolver(candidate)
-    if (response) return response
+function tryInvokeReadable(candidate: unknown): Response | undefined {
+  const stream = invokeMethod(candidate, 'toReadableStream') as ReadableStream<Uint8Array> | undefined
+  if (stream) {
+    return new Response(stream, { headers: NO_STORE_HEADERS })
+  }
+
+  if (candidate instanceof ReadableStream) {
+    return new Response(candidate, { headers: NO_STORE_HEADERS })
   }
   return undefined
 }
 
-export function responseFromUIMessageStream(candidate: unknown): Response | undefined {
-  return responseFromMethod(candidate, 'toUIMessageStreamResponse', [{ sendReasoning: false }])
+function tryInvokeResponse(candidate: unknown, methodName: string, args: unknown[] = []): Response | undefined {
+  const result = invokeMethod(candidate, methodName, args)
+  return asResponse(result)
 }
 
-export function responseFromDataStreamResponse(candidate: unknown): Response | undefined {
-  return responseFromMethod(candidate, 'toDataStreamResponse')
-}
-
-export function responseFromReadableStream(candidate: unknown): Response | undefined {
-  const readable = invokeMethod(candidate, 'toReadableStream') as ReadableStream<Uint8Array> | undefined
-  if (!readable) return undefined
-  return new Response(readable, { headers: NO_STORE_HEADERS })
-}
-
-export function responseFromToResponse(candidate: unknown): Response | undefined {
-  return responseFromMethod(candidate, 'toResponse')
-}
-
-export function responseFromToStreamResponse(candidate: unknown): Response | undefined {
-  return responseFromMethod(candidate, 'toStreamResponse')
-}
-
-export function responseFromResponseLike(candidate: unknown): Response | undefined {
-  if (!candidate || (typeof candidate !== 'object' && typeof candidate !== 'function')) {
-    return undefined
-  }
-  return asResponse(candidate)
-}
-
-export function responseFromAsyncIterable(candidate: unknown): Response | undefined {
+function responseFromAsyncIterable(candidate: unknown): Response | undefined {
   if (!candidate || (typeof candidate !== 'object' && typeof candidate !== 'function')) {
     return undefined
   }
@@ -191,7 +171,7 @@ export function responseFromAsyncIterable(candidate: unknown): Response | undefi
   }
   const encoder = new TextEncoder()
   const asyncIterable = candidate as AsyncIterable<unknown>
-  const readable = new ReadableStream<Uint8Array>({
+  const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       for await (const chunk of asyncIterable) {
         const text = typeof chunk === 'string' ? chunk : JSON.stringify(chunk)
@@ -200,5 +180,5 @@ export function responseFromAsyncIterable(candidate: unknown): Response | undefi
       controller.close()
     },
   })
-  return new Response(readable, { headers: NO_STORE_HEADERS })
+  return new Response(stream, { headers: NO_STORE_HEADERS })
 }

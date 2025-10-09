@@ -10,6 +10,7 @@ This runbook captures how to execute and monitor the inbox observation generatio
   - Delivery + confirmation/dismissal events in `observation_events`
   - Job metadata in `inbox_job_runs`
   - Tool telemetry in `inbox_observation_telemetry`
+  - Trace enrichment is optional; the engine now skips markdown/session lookups when the job passes `traceResolvers: null` (useful for dry runs or rate-limited environments).
 
 ## Prerequisites
 - Environment variables loaded (e.g., `.env.local`):

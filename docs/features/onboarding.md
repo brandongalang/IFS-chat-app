@@ -2,7 +2,7 @@
 title: Feature: Onboarding Flow
 owner: @brandongalang
 status: shipped
-last_updated: 2025-09-20
+last_updated: 2025-10-11
 feature_flag: null
 code_paths:
   - app/onboarding/page.tsx
@@ -26,7 +26,7 @@ A staged onboarding experience that gathers core context, adapts follow-up quest
 1. **Stage 1 – Baseline**: Five required questions scored via `computeStage1Scores`. Once complete, the API selects Stage 2 questions tailored to the user.
 2. **Stage 2 – Adaptive deep dive**: Question bank curated in Supabase; selection driven by `selectStage2Questions`. Autosave enforces optimistic concurrency via the `version` field on `user_onboarding`.
 3. **Stage 3 – Integration**: Reflection prompts and somatic check-ins to balance the summary.
-4. **Completion**: `/api/onboarding/complete` validates required responses, marks the state `completed`, triggers `buildOnboardingSummary`, and returns a redirect payload plus summary data for the client.
+4. **Completion**: `/api/onboarding/complete` validates required responses, marks the state `completed`, triggers `buildOnboardingSummary`, emits an `onboarding_completed` analytics event, and returns a redirect payload plus summary data for the client.
 
 ## Key components
 - `OnboardingWizard`: handles autosave, stage progression, optimistic versioning, and local analytics events.
