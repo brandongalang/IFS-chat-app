@@ -101,7 +101,7 @@ export function isGardenGridViewEnabled(): boolean {
 export function isInboxEnabled(): boolean {
   if (devMode) return true
   if (typeof window !== 'undefined' && clientDevOverride()) return true
-  return inboxFlag === undefined ? false : isTrue(inboxFlag)
+  return inboxFlag === undefined ? true : isTrue(inboxFlag)
 }
 
 export function isInboxActionsEnabled(): boolean {
