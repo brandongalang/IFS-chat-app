@@ -71,7 +71,6 @@ export function EtherealChat() {
     handleSubmit,
     isLoading,
     hasActiveSession,
-    sessionEnded,
     endSession,
     addAssistantMessage,
     tasksByMessage,
