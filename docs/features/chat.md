@@ -47,3 +47,7 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
 
 ## Operational notes
 - Ensure action logging remains enabled for auditability
+
+## UI/UX notes
+- Messages area top padding increased from 16px to 40px (2025-01-11) to prevent first message from being cut off at viewport edge
+- Active task overlay position adjusted proportionally to align with new padding
