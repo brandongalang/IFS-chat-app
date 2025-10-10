@@ -99,10 +99,11 @@ export const CodeBlock = ({
   </CodeBlockContext.Provider>
 );
 
-export type CodeBlockCopyButtonProps = ComponentProps<typeof Button> & {
+export type CodeBlockCopyButtonProps = Omit<ComponentProps<typeof Button>, "aria-label"> & {
   onCopy?: () => void;
   onError?: (error: Error) => void;
   timeout?: number;
+  "aria-label"?: string;
 };
 
 export const CodeBlockCopyButton = ({
@@ -111,13 +112,17 @@ export const CodeBlockCopyButton = ({
   timeout = 2000,
   children,
   className,
+  "aria-label": ariaLabelProp,
   ...props
 }: CodeBlockCopyButtonProps) => {
   const [isCopied, setIsCopied] = useState(false);
   const { code } = useContext(CodeBlockContext);
 
   const copyToClipboard = async () => {
-    if (typeof window === "undefined" || !navigator.clipboard.writeText) {
+    if (
+      typeof window === "undefined" ||
+      typeof navigator.clipboard?.writeText !== "function"
+    ) {
       onError?.(new Error("Clipboard API not available"));
       return;
     }
@@ -140,6 +145,7 @@ export const CodeBlockCopyButton = ({
       onClick={copyToClipboard}
       size="icon"
       variant="ghost"
+      aria-label={ariaLabelProp ?? (isCopied ? "Copied to clipboard" : "Copy code to clipboard")}
       {...props}
     >
       {children ?? <Icon size={14} />}
