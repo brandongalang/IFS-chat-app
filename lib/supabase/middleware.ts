@@ -3,6 +3,15 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { dev } from '@/config/dev'
 import { getSupabaseKey, getSupabaseUrl } from './config'
 
+interface SupabaseSessionPayload {
+  access_token?: string
+  user?: {
+    id?: string
+  }
+}
+
+const ONBOARDING_COOKIE = 'ifs_onb'
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -20,39 +29,37 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  const supabase = createServerClient(
-    url,
-    key,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
       },
-    }
-  )
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        supabaseResponse = NextResponse.next({
+          request,
+        })
+        cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options))
+      },
+    },
+  })
 
-  // Do not run code between createServerClient and any auth calls.
-  // A simple mistake could make it very hard to debug issues with sessions.
+  const {
+    data: { session: supabaseSession },
+  } = await supabase.auth.getSession()
+
+  const session =
+    supabaseSession?.access_token && supabaseSession.user?.id
+      ? {
+          access_token: supabaseSession.access_token,
+          user: { id: supabaseSession.user.id },
+        }
+      : undefined
 
   // Auth check
   // In development persona mode, do not force login redirect for unauthenticated users,
   // but still allow onboarding redirects for authenticated users below.
   const isDevPersona = dev.enabled === true
-
-  // Use session to reliably get the user id
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
 
   const path = request.nextUrl.pathname
 
@@ -80,24 +87,28 @@ export async function updateSession(request: NextRequest) {
     const isAsset = path.startsWith('/_next') || /\.(?:svg|png|jpg|jpeg|gif|webp|ico)$/.test(path)
     if (!isApi && !isAsset) {
       // First, honor the lightweight cookie hint if present
-      const onbCookie = request.cookies.get('ifs_onb')?.value
+      const onbCookie = request.cookies.get(ONBOARDING_COOKIE)?.value
       // Determine if path is in the "allowed" zone (auth/onboarding)
       const isAllowed = path.startsWith('/onboarding') || path.startsWith('/auth')
 
-      // If cookie is present and no redirect was needed above, skip DB lookup for perf
-      if (onbCookie === '0' || onbCookie === '1') {
-        return supabaseResponse
+      let status: 'completed' | 'incomplete' | undefined
+
+      if (onbCookie === '1') {
+        status = 'completed'
+      } else if (onbCookie === '0') {
+        status = 'incomplete'
+      } else {
+        status = await fetchOnboardingStatus(url, key, session)
+        if (status) {
+          const maxAge = 60 * 60 * 6 // 6 hours
+          supabaseResponse.cookies.set(ONBOARDING_COOKIE, status === 'completed' ? '1' : '0', {
+            path: '/',
+            maxAge,
+            sameSite: 'lax',
+          })
+        }
       }
 
-      // Cookie missing — perform authoritative check
-      // Lightweight onboarding status lookup
-      const { data: onboarding } = await supabase
-        .from('user_onboarding')
-        .select('status')
-        .eq('user_id', session.user.id)
-        .maybeSingle()
-
-      const status = onboarding?.status || 'incomplete'
       const isCompleted = status === 'completed'
 
       // Prevent loop: if user completed but hits /onboarding, send to home
@@ -122,4 +133,45 @@ export async function updateSession(request: NextRequest) {
 
   // IMPORTANT: You must return the supabaseResponse object as it is for pass-through.
   return supabaseResponse
+}
+
+async function fetchOnboardingStatus(
+  supabaseUrl: string,
+  anonKey: string,
+  session: SupabaseSessionPayload
+): Promise<'completed' | 'incomplete' | undefined> {
+  const userId = session.user?.id
+  const accessToken = session.access_token
+  if (!userId || !accessToken) return undefined
+
+  try {
+    const searchParams = new URLSearchParams({
+      select: 'status',
+      user_id: `eq.${userId}`,
+      limit: '1',
+    })
+    const response = await fetch(`${supabaseUrl}/rest/v1/user_onboarding?${searchParams.toString()}`, {
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+    })
+
+    if (!response.ok) {
+      console.warn('Failed to fetch onboarding status', response.status, response.statusText)
+      return undefined
+    }
+
+    const data = (await response.json()) as Array<{ status?: string }>
+    const status = data[0]?.status
+    if (status === 'completed' || status === 'incomplete') {
+      return status
+    }
+  } catch (error) {
+    console.warn('Error querying onboarding status', error)
+  }
+
+  return undefined
 }
