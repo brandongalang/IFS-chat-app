@@ -33,6 +33,7 @@ interface ChatHookReturn {
   isLoading: boolean
   currentStreamingId?: string
   hasActiveSession: boolean
+  sessionEnded: boolean
   tasksByMessage: Record<string, TaskEvent[]>
   sendMessage: (content: string) => Promise<boolean>
   addAssistantMessage: (content: string, opts?: { persist?: boolean; id?: string; persona?: 'claude' | 'default' }) => Promise<void>
@@ -59,6 +60,7 @@ export function useChat(): ChatHookReturn {
 
   const [hasActiveSession, setHasActiveSession] = useState<boolean>(Boolean(getSessionId()))
   const [sessionId, setSessionId] = useState<string | null>(getSessionId())
+  const [sessionEnded, setSessionEnded] = useState(false)
   const [tasksByMessage, setTasksByMessage] = useState<Record<string, TaskEvent[]>>({})
 
   const transport = useMemo(() => new DefaultChatTransport({ api: '/api/chat' }), [])
@@ -101,6 +103,7 @@ export function useChat(): ChatHookReturn {
       const id = await ensureSessionRaw()
       setSessionId(id)
       setHasActiveSession(true)
+      setSessionEnded(false)
       return id
     } catch (error: unknown) {
       throw error
@@ -239,6 +242,7 @@ export function useChat(): ChatHookReturn {
     setTasksByMessage({})
     processedTaskParts.current = {}
     resetMessageTimestamps()
+    setSessionEnded(false)
   }, [setMessages, stop])
 
   const endSession = useCallback(async () => {
@@ -247,18 +251,20 @@ export function useChat(): ChatHookReturn {
       setSessionId(null)
       setHasActiveSession(false)
       clearSession()
+      setSessionEnded(true)
       return
     }
 
     try {
       await endSessionRaw()
+      setSessionEnded(true)
     } finally {
-      clearChat()
+      void stop()
       setSessionId(null)
       setHasActiveSession(false)
       clearSession()
     }
-  }, [clearChat, clearSession, endSessionRaw, needsAuth])
+  }, [clearChat, clearSession, endSessionRaw, needsAuth, stop])
 
   const sendFeedback = useCallback<ChatHookReturn['sendFeedback']>(
     async (messageId, rating, explanation) => {
@@ -365,6 +371,7 @@ export function useChat(): ChatHookReturn {
     isLoading,
     currentStreamingId,
     hasActiveSession,
+    sessionEnded,
     tasksByMessage,
     sendMessage,
     addAssistantMessage,

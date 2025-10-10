@@ -6,11 +6,11 @@ import { getPartTools } from '../tools/part-tools.mastra'
 import { createAssessmentTools } from '../tools/assessment-tools'
 import { createProposalTools } from '../tools/proposal-tools'
 import { createEvidenceTools } from '../tools/evidence-tools'
-import { createStubTools } from '../tools/stub-tools'
 import { createMemoryTools } from '../tools/memory-tools'
 import { createMarkdownTools } from '../tools/markdown-tools'
 import { createMarkdownWriteTools } from '../tools/markdown-write-tools'
 import { createMemoryMarkdownTools } from '../tools/memory-markdown-tools'
+import { createUpdateSyncTools } from '../tools/update-sync-tools'
 import { generateSystemPrompt, type IFSAgentProfile } from './ifs_agent_prompt'
 
 export type AgentModelConfig = {
@@ -44,6 +44,7 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
   const markdownTools = env.ifsMarkdownContextEnabled ? createMarkdownTools(userId ?? null) : null
   const markdownWriteTools = env.ifsMarkdownContextEnabled ? createMarkdownWriteTools(userId ?? null) : null
   const memoryMarkdownTools = env.ifsMarkdownContextEnabled ? createMemoryMarkdownTools(userId ?? null) : null
+  const updateSyncTools = createUpdateSyncTools(userId)
 
   return new Agent({
     name: 'ifs-companion',
@@ -54,8 +55,8 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
       ...createAssessmentTools(userId), // Confidence assessment tool
       ...createProposalTools(userId), // Split/Merge proposal workflow
       ...createEvidenceTools(userId), // Evidence and pattern tools
-      ...createStubTools(userId), // Stub creation tools
       ...createMemoryTools(userId), // Memory and conversation search tools
+      ...updateSyncTools, // Update sync workflow tools
       ...(markdownTools ?? {}),
       ...(markdownWriteTools ?? {}),
       ...(memoryMarkdownTools ?? {}),

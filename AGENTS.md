@@ -1,5 +1,11 @@
 # Agent Guidelines
 
+## Branch Management
+- **IMPORTANT**: Before starting any new work, verify you're on a clean branch appropriate for the task:
+  1. Check current branch with `git branch --show-current`
+  2. If the current branch was used for a different PR or feature, create a new branch from `main`
+  3. Never build new work onto a branch that already has an open/merged PR
+  4. Use descriptive branch names: `feature/description`, `fix/description`, or `refactor/description`
 - Prefer GitHub CLI (`gh`) for creating and updating pull requests from this repository.
 - Document any deviations from standard workflows in this file so future agents stay aligned.
 - Before opening a PR, update the mapped docs for any changed modules (run `npm run lint` and check `docs/features/**`, `docs/user-memory.md`, runbooks, etc.) so the `docs` CI check passes without manual retries.

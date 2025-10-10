@@ -67,7 +67,7 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - `supabase start` (if needed)
 - `supabase db push --local`
 
-## Implementation (updated 2025-10-10)
+## Implementation (updated 2025-01-11)
 - **Background Services**: `lib/services/memory.ts`
   - `scaffoldUserMemory({ userId })` - ensures memory scaffolding exists
   - `summarizePendingUpdates({ userId?, limit? })` - processes pending updates for users
@@ -75,15 +75,22 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - **Overview Snapshot Loader**: `lib/memory/overview.ts`
   - `loadOverviewSnapshot(userId)` calls `ensureOverviewExists` and plucks curated anchors for prompt hydration
   - `formatOverviewFragments(fragments)` renders anchored markdown sections, ensuring empty bodies degrade gracefully
+- **Markdown Logging**: `lib/memory/markdown/logging.ts` (added 2025-01-11)
+  - `computeMarkdownHash(text)` - computes SHA-256 hashes for integrity tracking
+  - `inferEntityContext(filePath, userId)` - extracts entity type/ID from file paths, strips .md extensions
+  - `logMarkdownMutation({ userId, filePath, mode, text, beforeHash, afterHash, warnings })` - logs all markdown write operations with non-fatal error handling
+  - All markdown writes (append/replace/create) emit `profile_update` events with integrity metadata for reconstruction
 - Core Service: `lib/memory/service.ts`
   - `reconstructMemory(userId)`
   - `generateMemoryUpdate({ userId, oldMemory, todayData })` (LLM-backed, Zod-validated)
   - `saveNewSnapshot({ userId, previous, next })`
   - `listActiveUsersSince(isoISO)` and `loadTodayData(userId, isoISO)`
   - `listUnprocessedUpdates(userId)` now logs Supabase error metadata and throws friendly messages so tool output surfaces readable failures
+  - `markUpdatesProcessed({ userId, sessions, insights, checkIns })` - marks items as processed after memory updates are written
 - **Queue utilities**: `lib/memory/queue.ts` (`enqueueMemoryUpdate`) and the `memory_updates` schema (now with `ref_id` unique index) handle idempotent event-time ingestion.
 - **Chat preflight**: `app/api/memory/preflight/route.ts` powers the immediate summarize-on-open flow used by `useChatSession`.
-- **Agent tooling**: `mastra/tools/memory-markdown-tools.ts` exposes read + scoped write helpers (overview changelog, sections, part notes) shared by chat and background agents.
+- **Agent tooling**: `mastra/tools/memory-markdown-tools.ts` exposes read + scoped write helpers (overview changelog, sections, part notes, part profile creation) shared by chat and background agents.
+  - `lib/memory/snapshots/updater.ts` provides `ensurePartProfileExists` which returns `{ path, created }` atomically to eliminate TOCTOU races (updated 2025-01-11)
 - Types: `lib/memory/types.ts`
 - Cron route: `app/api/cron/memory-update/route.ts`
 - **Chat Integration**: Memory maintenance removed from `app/api/chat/route.ts` - now handled by background workers

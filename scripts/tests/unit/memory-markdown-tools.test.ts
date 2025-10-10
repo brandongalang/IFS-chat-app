@@ -117,6 +117,34 @@ async function main() {
   const partChangeLogFingerprintCount = (partChangeLog.match(/\[fp:part-1\]/g) ?? []).length
   assert.equal(partChangeLogFingerprintCount, 1, 'Part change log should only include one fingerprint entry')
 
+  // Test createPartProfileMarkdown tool
+  const newPartId = 'c6c6d2c2-1f1f-5555-b2ce-abcdef234567'
+  const createResult1 = await tools.createPartProfileMarkdown.execute({
+    context: {
+      partId: newPartId,
+      name: 'Anxious Planner',
+      status: 'emerging',
+      category: 'firefighter',
+    },
+    runtime: { userId },
+  })
+  assert.equal(createResult1.created, true, 'First createPartProfileMarkdown should report created: true')
+  assert(createResult1.path.includes(newPartId), 'Created path should include partId')
+
+  const createResult2 = await tools.createPartProfileMarkdown.execute({
+    context: {
+      partId: newPartId,
+      name: 'Anxious Planner',
+    },
+    runtime: { userId },
+  })
+  assert.equal(createResult2.created, false, 'Second createPartProfileMarkdown should report created: false')
+  assert.equal(createResult2.path, createResult1.path, 'Path should be consistent')
+
+  const newPartPath = partProfilePath(userId, newPartId)
+  const newPartExists = await storage.exists(newPartPath)
+  assert.equal(newPartExists, true, 'New part profile file should exist')
+
   await fs.rm(tempRoot, { recursive: true, force: true })
 
   console.log('Memory markdown tools unit test passed.')

@@ -9,15 +9,56 @@ import { Button } from "@/components/ui/button"
 import { ActiveTaskOverlay } from "./ActiveTaskOverlay"
 import { PageContainer } from "@/components/common/PageContainer"
 import { EtherealMessageList } from "./EtherealMessageList"
-import { Tool, ToolHeader } from "@/components/ai-elements/tool"
-import { Loader } from "@/components/ai-elements/loader"
+import { Tool, ToolHeader, friendlyToolLabel } from "@/components/ai-elements/tool"
+import type { ToolHeaderProps } from "@/components/ai-elements/tool"
 import { useRouter } from "next/navigation"
+import type { ToolUIPart } from "@/app/_shared/hooks/useChat.helpers"
+
+type ActiveToolState = ToolHeaderProps["state"]
+type ActiveToolType = ToolHeaderProps["type"]
 
 interface ActiveTool {
   id: string
-  type: string
-  label?: string
-  state: string
+  type: ActiveToolType
+  state: ActiveToolState
+  title?: string
+}
+
+const ACTIVE_TOOL_STATES: readonly ActiveToolState[] = ["input-streaming", "input-available"] as const
+
+function normalizeToolState(state?: string): ActiveToolState {
+  if (!state) return "input-available"
+  const lower = state.toLowerCase()
+  if (lower === "output-error" || lower.startsWith("error")) return "output-error"
+  if (lower === "output-available") return "output-available"
+  if (lower.startsWith("output")) return "input-streaming"
+  if (lower === "input-available") return "input-available"
+  if (lower === "input-streaming" || lower.startsWith("input")) return "input-streaming"
+  return "input-available"
+}
+
+function slugifyToolSegment(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
+function normalizeToolType(part: ToolUIPart, index: number): ActiveToolType {
+  const rawType = typeof part.type === "string" ? part.type : undefined
+  if (rawType && rawType.startsWith("tool-")) {
+    return rawType as ActiveToolType
+  }
+
+  const rawName = typeof part.toolName === "string" && part.toolName.trim().length > 0
+    ? part.toolName
+    : rawType
+  if (rawName) {
+    const segment = slugifyToolSegment(rawName)
+    return (`tool-${segment || index}`) as ActiveToolType
+  }
+
+  return (`tool-${index}`) as ActiveToolType
 }
 
 // Minimal, bubble-less chat presentation
@@ -42,9 +83,9 @@ export function EtherealChat() {
   // UI state
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [sessionClosed, setSessionClosed] = useState(false)
-  const [isClosing, setIsClosing] = useState(false)
-  const [pendingCleanup, setPendingCleanup] = useState(false)
+  const [sessionState, setSessionState] = useState<'idle' | 'closing' | 'cleanup' | 'ended'>('idle')
+  const sessionClosed = sessionState !== 'idle'
+  const isClosing = sessionState === 'closing'
 
   // redirect to login if auth required
   useEffect(() => {
@@ -106,23 +147,22 @@ export function EtherealChat() {
         const part = message.parts[j]
         if (!isToolOrDynamicToolUIPart(part)) continue
 
-        const toolPart = part as typeof part & {
-          toolName?: string
-          toolCallId?: string
-          state?: string
+        const toolPart = part as ToolUIPart
+        const normalizedState = normalizeToolState(typeof toolPart.state === "string" ? toolPart.state : undefined)
+        if (!ACTIVE_TOOL_STATES.includes(normalizedState)) {
+          continue
         }
 
-        const state = toolPart.state ?? "unknown"
-        if (state === "output-available" || state === "output-error") continue
-
-        const rawName = toolPart.toolName ?? toolPart.type ?? "tool"
-        const label = deriveToolLabel(rawName)
+        const type = normalizeToolType(toolPart, j)
+        const explicitTitle = typeof toolPart.toolName === "string" ? toolPart.toolName.trim() : ""
+        const fallbackTitle = friendlyToolLabel(type)
+        const title = explicitTitle || (/^\d+$/.test(fallbackTitle) ? "Tool" : fallbackTitle)
 
         return {
           id: toolPart.toolCallId ?? `${message.id}-${j}`,
-          type: rawName,
-          label,
-          state,
+          type,
+          state: normalizedState,
+          title,
         }
       }
     }
@@ -131,42 +171,35 @@ export function EtherealChat() {
   }, [uiMessages])
 
   const handleEndSessionRequest = useCallback(async () => {
-    if (sessionClosed || isClosing) return
-    setIsClosing(true)
-    setInput("")
-    let locked = false
+    if (sessionState !== 'idle') return
+    setSessionState('closing')
+    setInput('')
     try {
       const dispatched = await sendMessage(END_SESSION_PROMPT)
-      if (!dispatched) return
-      locked = true
-      setSessionClosed(true)
-      setPendingCleanup(true)
+      setSessionState(dispatched ? 'cleanup' : 'idle')
     } catch (error) {
-      console.error("Failed to send end-session prompt", error)
-    } finally {
-      if (!locked) {
-        setIsClosing(false)
-      }
+      console.error('Failed to send end-session prompt', error)
+      setSessionState('idle')
     }
-  }, [sessionClosed, isClosing, sendMessage, setInput])
+  }, [sessionState, sendMessage, setInput])
 
   useEffect(() => {
-    if (!pendingCleanup) return
+    if (sessionState !== 'cleanup') return
     if (isLoading || currentStreamingId) return
 
     let cancelled = false
-    setPendingCleanup(false)
 
     const finalize = async () => {
       try {
         seededRef.current = false
         await endSession()
-      } catch (error) {
-        console.error("Failed to finalize session cleanup", error)
-      } finally {
         if (!cancelled) {
-          setSessionClosed(false)
-          setIsClosing(false)
+          setSessionState('ended')
+        }
+      } catch (error) {
+        console.error('Failed to finalize session cleanup', error)
+        if (!cancelled) {
+          setSessionState('idle')
         }
       }
     }
@@ -176,7 +209,20 @@ export function EtherealChat() {
     return () => {
       cancelled = true
     }
-  }, [pendingCleanup, isLoading, currentStreamingId, endSession])
+  }, [sessionState, isLoading, currentStreamingId, endSession])
+
+  // Separate effect to handle the 'ended' -> 'idle' transition
+  useEffect(() => {
+    if (sessionState !== 'ended') return
+
+    const timer = setTimeout(() => {
+      setSessionState('idle')
+    }, 1500)
+
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [sessionState])
 
   const onSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
     if (sessionClosed || isClosing) {
@@ -200,10 +246,10 @@ export function EtherealChat() {
 
 
       {/* Messages area */}
-      <div className="relative z-10 flex-1 overflow-y-auto pb-[120px] pt-[calc(env(safe-area-inset-top)+16px)]">
+      <div className="relative z-10 flex-1 overflow-y-auto pb-[120px] pt-[calc(env(safe-area-inset-top)+40px)]">
         <PageContainer className="flex flex-col gap-6">
           {currentTasks?.length ? (
-            <div className="sticky top-[calc(env(safe-area-inset-top)+12px)] z-20 mb-4">
+            <div className="sticky top-[calc(env(safe-area-inset-top)+32px)] z-20 mb-4">
               <ActiveTaskOverlay tasks={currentTasks} />
             </div>
           ) : null}
@@ -224,12 +270,12 @@ export function EtherealChat() {
             <form onSubmit={onSubmit} className="space-y-3">
               {activeTool ? (
                 <Tool className="border-white/15 bg-white/10 text-white">
-                  <div className="flex items-center gap-3">
-                    <ToolHeader type={activeTool.type} state={activeTool.state} label={activeTool.label} className="text-white" />
-                    {shouldShowToolLoader(activeTool.state) ? (
-                      <Loader size={14} className="text-white" aria-label="Tool running" />
-                    ) : null}
-                  </div>
+                  <ToolHeader
+                    type={activeTool.type}
+                    state={activeTool.state}
+                    title={activeTool.title}
+                    className="text-white"
+                  />
                 </Tool>
               ) : null}
               <Textarea
@@ -243,8 +289,14 @@ export function EtherealChat() {
                 aria-label="Message"
                 disabled={isLoading || sessionClosed || isClosing}
               />
-              {sessionClosed ? (
-                <div className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-center text-[11px] uppercase tracking-[0.22em] text-white/60">
+              {sessionClosed && sessionState !== 'ended' ? (
+                <div 
+                  className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-center text-[11px] uppercase tracking-[0.22em] text-white/60"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  data-testid="end-session-status"
+                >
                   ending session…
                 </div>
               ) : null}
@@ -289,20 +341,6 @@ export function EtherealChat() {
 }
 
 const END_SESSION_PROMPT = "I want to end this session. Can you close out and take any notes from this conversation?"
-
-function deriveToolLabel(rawName: string) {
-  if (/memory|note/i.test(rawName)) return "Notes"
-  if (/search|retrieve|query/i.test(rawName)) return "Searching…"
-  if (/rag|context/i.test(rawName)) return "Gathering context…"
-  if (/write|generate|respond/i.test(rawName)) return "Composing…"
-  const cleaned = rawName.replace(/^tool[-:]/i, "").replace(/[-_]/g, " ").trim()
-  if (!cleaned) return "Tool"
-  return cleaned
-}
-
-function shouldShowToolLoader(state: string) {
-  return state !== "output-available" && state !== "output-error"
-}
 
 function GradientBackdrop() {
   // animated blurred blobs using framer-motion; colors tuned to teal-gray ambiance

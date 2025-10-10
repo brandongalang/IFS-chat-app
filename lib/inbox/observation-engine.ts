@@ -34,7 +34,7 @@ export interface ObservationEngineOptions {
   dedupeWindowDays?: number
   now?: Date
   metadata?: Record<string, unknown>
-  traceResolvers?: Partial<ObservationTraceResolvers>
+  traceResolvers?: Partial<ObservationTraceResolvers> | null
 }
 
 export interface InsertedObservationSummary {
@@ -161,7 +161,9 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
   const candidates = parsed.data.observations
   const filtered = filterObservationCandidates(candidates, historyHashes, remaining)
 
-  const traceResolvers = resolveTraceResolvers(options.traceResolvers)
+  const traceResolvers = options.traceResolvers === null
+    ? null
+    : resolveTraceResolvers(options.traceResolvers)
   const augmentedCandidates: ObservationCandidateWithHash[] = await Promise.all(
     filtered.map(async (candidate) => {
       const trace = await buildObservationTrace(options.userId, candidate, traceResolvers)
@@ -424,9 +426,13 @@ function resolveTraceResolvers(overrides?: Partial<ObservationTraceResolvers>): 
 export async function buildObservationTrace(
   userId: string,
   candidate: ObservationCandidate,
-  resolvers: ObservationTraceResolvers = defaultTraceResolvers,
+  resolvers: ObservationTraceResolvers | null = defaultTraceResolvers,
 ): Promise<ObservationTrace | null> {
   if (!Array.isArray(candidate.evidence) || candidate.evidence.length === 0) {
+    return null
+  }
+
+  if (!resolvers) {
     return null
   }
 

@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { resolveUserId } from '@/config/dev'
 import { lintMarkdown, listSections, patchSectionByAnchor } from '@/lib/memory/markdown/md'
+import { computeMarkdownHash, logMarkdownMutation } from '@/lib/memory/markdown/logging'
 import { buildUserOverviewMarkdown } from '@/lib/memory/snapshots/grammar'
 import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
 
@@ -159,6 +160,18 @@ async function writeSectionPatch(userId: string, input: z.infer<typeof writeSche
   })
   const lint = lintMarkdown(change.text)
 
+  // Log the mutation (non-fatal)
+  await logMarkdownMutation({
+    userId,
+    filePath: absolute,
+    anchor: input.anchor,
+    mode: input.mode,
+    text: input.text,
+    beforeHash: change.beforeHash,
+    afterHash: change.afterHash,
+    warnings: lint.warnings,
+  })
+
   return {
     success: true as const,
     beforeHash: change.beforeHash,
@@ -189,6 +202,17 @@ async function createMarkdown(userId: string, input: z.infer<typeof createSchema
   validateWriteSize(content)
   await storage.putText(absolute, content, {
     contentType: 'text/markdown; charset=utf-8',
+  })
+
+  // Log the creation (non-fatal)
+  const afterHash = computeMarkdownHash(content)
+  await logMarkdownMutation({
+    userId,
+    filePath: absolute,
+    mode: 'create',
+    text: content,
+    afterHash,
+    warnings: [],
   })
 
   return {
