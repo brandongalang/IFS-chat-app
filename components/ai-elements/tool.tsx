@@ -1,88 +1,80 @@
-"use client"
+"use client";
 
-import { cn } from "@/lib/utils"
-import { CircleAlert, CircleCheck, Loader2 } from "lucide-react"
-import type { ComponentProps } from "react"
+import { cn } from "@/lib/utils";
+import type { ToolUIPart } from "@/app/_shared/hooks/useChat.helpers";
+import { CheckCircleIcon, Loader2, XCircleIcon } from "lucide-react";
+import type { ComponentProps } from "react";
 
-export type ToolState = "input-streaming" | "input-available" | "output-available" | "output-error" | string
+// Simplified Tool to be a simple div wrapper
+export type ToolProps = ComponentProps<"div">;
 
-export type ToolProps = ComponentProps<"div">
+export const Tool = ({ className, ...props }: ToolProps) => (
+  <div
+    className={cn("not-prose w-full rounded-md border", className)}
+    {...props}
+  />
+);
 
-export function Tool({ className, ...props }: ToolProps) {
-  return (
-    <div
-      className={cn(
-        "rounded-xl border border-border/40 bg-background/70 px-3 py-2 text-sm text-muted-foreground shadow-sm backdrop-blur",
-        className,
-      )}
-      {...props}
-    />
-  )
-}
+// Header props remain the same for type safety
+export type ToolHeaderProps = {
+  title?: string;
+  type: ToolUIPart["type"];
+  state: ToolUIPart["state"];
+  className?: string;
+};
 
-export interface ToolHeaderProps extends ComponentProps<"div"> {
-  type: string
-  state: ToolState
-  label?: string
-}
+// Simplified icon logic based on user request
+export function iconForToolState(state: ToolHeaderProps["state"]) {
+  if (typeof state === "string" && state.startsWith("error")) {
+    return <XCircleIcon className="size-4 text-red-500" />;
+  }
 
-const STATE_COPY: Record<Extract<ToolState, string>, string> = {
-  "input-streaming": "Preparing…",
-  "input-available": "Running…",
-  "output-available": "Done",
-  "output-error": "Failed",
-}
-
-function iconForState(state: ToolState) {
   switch (state) {
     case "input-streaming":
     case "input-available":
-      return <Loader2 className="size-3.5 animate-spin" />
+      return <Loader2 className="size-4 animate-spin" />;
     case "output-available":
-      return <CircleCheck className="size-3.5" />
+      return <CheckCircleIcon className="size-4 text-green-500" />;
     case "output-error":
-      return <CircleAlert className="size-3.5" />
+      return <XCircleIcon className="size-4 text-red-500" />;
     default:
-      return <Loader2 className="size-3.5 animate-spin" />
+      return <Loader2 className="size-4 animate-spin" />;
   }
 }
 
-function statusForState(state: ToolState) {
-  return STATE_COPY[state] ?? "Working…"
-}
-
-export function ToolHeader({ type, state, label, className, ...props }: ToolHeaderProps) {
-  const text = label ?? friendlyLabel(type)
-
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-muted-foreground",
-        className,
-      )}
-      {...props}
-    >
-      <span className="inline-flex items-center justify-center text-foreground/80">
-        {iconForState(state)}
-      </span>
-      <span className="text-foreground/95">{text}</span>
-      <span className="text-foreground/70">{statusForState(state)}</span>
-    </div>
-  )
-}
-
+// User-requested friendly labels
 const FRIENDLY_LABELS: Array<{ match: RegExp; label: string }> = [
+  { match: /read/i, label: "Looking through notes…" },
+  { match: /write/i, label: "Writing notes…" },
   { match: /search|retrieve|query/i, label: "Searching…" },
   { match: /rag|context|memory/i, label: "Gathering context…" },
-  { match: /write|generate|respond/i, label: "Composing…" },
-  { match: /note/i, label: "Reviewing notes…" },
-]
+  { match: /generate|respond/i, label: "Composing…" },
+  { match: /note/i, label: "Reviewing notes…" }, // Fallback for 'note' if not read/write
+];
 
-function friendlyLabel(type: string) {
-  const cleaned = type.replace(/^tool[-:]/i, "").replace(/[-_]/g, " ").trim()
+export function friendlyToolLabel(type: ToolHeaderProps["type"]): string {
+  const normalized = String(type);
   for (const entry of FRIENDLY_LABELS) {
-    if (entry.match.test(type)) return entry.label
+    if (entry.match.test(normalized)) return entry.label;
   }
-  if (cleaned.length === 0) return "Tool"
-  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
+  const cleaned = normalized.replace(/^tool[-:]/i, "").replace(/[-_]/g, " ").trim();
+  if (cleaned.length === 0) return "Tool";
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
+
+// Simplified ToolHeader, no longer a collapsible trigger
+export const ToolHeader = ({
+  className,
+  title,
+  type,
+  state,
+  ...props
+}: ToolHeaderProps) => (
+  <div
+    className={cn("flex w-full items-center gap-2 p-3 text-sm", className)}
+    {...props}
+  >
+    {iconForToolState(state)}
+    <span className="font-medium">{title ?? friendlyToolLabel(type)}</span>
+  </div>
+);
