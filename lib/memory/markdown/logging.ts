@@ -15,7 +15,7 @@ interface MarkdownMutationLog {
   rationale?: string
 }
 
-function inferEntityContext(filePath: string, userId: string): {
+export function inferEntityContext(filePath: string, userId: string): {
   entityType: EventEntityType
   entityId: string | null
 } {
@@ -29,12 +29,22 @@ function inferEntityContext(filePath: string, userId: string): {
     return { entityType: 'note', entityId: null }
   }
 
+  // For parts and relationships, targetId might be just the UUID or UUID/profile.md
+  // Strip any file extension and handle nested paths
+  const cleanEntityId = (id: string): string => {
+    // Remove .md extension if present
+    const withoutExt = id.replace(/\.md$/, '')
+    // If it's a nested path like "uuid/profile", return just the UUID
+    const parts = withoutExt.split('/')
+    return parts[0]
+  }
+
   if (scope === 'parts' && targetId) {
-    return { entityType: 'part', entityId: targetId }
+    return { entityType: 'part', entityId: cleanEntityId(targetId) }
   }
 
   if (scope === 'relationships' && targetId) {
-    return { entityType: 'relationship', entityId: targetId }
+    return { entityType: 'relationship', entityId: cleanEntityId(targetId) }
   }
 
   return { entityType: 'user', entityId: userId }
