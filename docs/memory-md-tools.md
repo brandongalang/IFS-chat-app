@@ -17,6 +17,7 @@ MEMORY_STORAGE_ADAPTER=supabase NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_RO
 ```
 
 Notes
-- These helpers do not write events; they prepare before/after and lint data to be logged by the higher-level events-logger when integrated.
+- **Updated**: Markdown write operations now log via `lib/memory/markdown/logging.ts`, which computes SHA-256 hashes, infers entity context, and emits `profile_update` events. Logging is non-fatal (errors are swallowed) to ensure writes always succeed.
 - Section targeting relies on canonical anchors (e.g., `<!-- @anchor: current_focus v1 -->`).
+- `patchSectionByAnchor` returns `{ text, beforeHash, afterHash }` which are now used by the logging instrumentation to track integrity.
 

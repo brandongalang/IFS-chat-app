@@ -2,15 +2,19 @@
 title: Feature: Agent Tools
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-10
+last_updated: 2025-01-11
 feature_flag: null
 code_paths:
   - mastra/tools/*.ts
   - mastra/tools/memory-markdown-tools.ts
+  - mastra/tools/markdown-write-tools.ts
+  - mastra/tools/update-sync-tools.ts
   - mastra/agents/*.ts
+  - lib/memory/markdown/logging.ts
   - lib/insights/generator.ts
   - lib/memory/overview.ts
   - app/api/chat/logic.ts
+  - components/ethereal/EtherealChat.tsx
 related_prs:
   - #35
   - #285
@@ -27,7 +31,9 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 - Inbox observation tooling now lives in `mastra/tools/inbox-observation-tools.ts`; it now exposes list/search/read helpers for markdown, sessions, and check-ins (including `listMarkdown`, `readMarkdown`, `listSessions`, `getSessionDetail`, `listCheckIns`, `getCheckInDetail`) so agents can enumerate context before fetching details.
 - The primary IFS chat agent now hydrates markdown context when `IFS_ENABLE_MARKDOWN_CONTEXT` is enabled. During agent bootstrap we resolve an overview snapshot via `lib/memory/overview.ts`, append selected anchors (`identity v1`, `current_focus v1`, `change_log v1`) to the system prompt, and expose read-only `listMarkdown`, `searchMarkdown`, and `readMarkdown` tools via `mastra/tools/markdown-tools.ts`.
 - Chat now also exposes scoped write helpers (`previewMarkdownSectionPatch`, `writeMarkdownSection`, `createMarkdownFile`) from `mastra/tools/markdown-write-tools.ts`, enabling the agent to diff or persist updates while respecting per-user storage namespaces and section anchors.
-- Memory markdown tooling (`mastra/tools/memory-markdown-tools.ts`) exposes shared helpers for reading overview sections, appending changelog entries, and updating part notes. Both the chat agent and the background summarizer load the same factory so they operate on identical capabilities.
+- **Markdown logging instrumentation**: All markdown write operations (append/replace/create) are logged via `lib/memory/markdown/logging.ts`, which computes SHA-256 hashes (before/after), infers entity context (user/part/relationship) from file paths, and emits `profile_update` events with integrity metadata. Logging failures are swallowed (non-fatal) to ensure writes always succeed.
+- Memory markdown tooling (`mastra/tools/memory-markdown-tools.ts`) exposes shared helpers for reading overview sections, appending changelog entries, and updating part notes. Both the chat agent and the background summarizer load the same factory so they operate on identical capabilities. The new `createPartProfileMarkdown` tool scaffolds part profile files (idempotent), triggering change-log entries on first create via `onPartCreated`.
+- **Update sync workflow**: The agent prompt is now markdown-first, emphasizing the markdown tooling (list/search/read/write) over legacy Supabase tools. The prompt guides the agent to use `listUnprocessedUpdates` to fetch pending sessions/insights/check-ins, write notes to markdown, then call `markUpdatesProcessed` to mark them as processed, closing the ingest loop.
 - Stub creation tooling remains in `mastra/tools/stub-tools.ts` for dev scaffolding but is no longer wired into the production chat agent, preventing dummy part responses at runtime.
 - Update sync tooling (`mastra/tools/update-sync-tools.ts`) is registered with the IFS chat agent, exposing `listUnprocessedUpdates` to fetch pending sessions/insights/check-ins and `markUpdatesProcessed` to mark them as processed after memory updates are written, enabling agent-driven sync workflows.
 - Tool factories defer user resolution until execution. `createObservationResearchTools` accepts an optional profile user ID and falls back to the runtime context; this keeps build-time agent instantiation (e.g., cron routes) safe in multi-tenant environments.
@@ -54,3 +60,5 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 
 ## Operational notes
 - Ensure rollback tooling remains functional; log all mutations
+- **UI Tool Display**: The `EtherealChat` component now uses `friendlyToolLabel` as a fallback when `toolName` is not provided, ensuring all active tools display user-friendly titles (e.g., "Searching notes…" instead of raw tool IDs)
+- Markdown write logging is non-fatal by design; if Supabase is unreachable, writes still succeed and warnings are logged for monitoring

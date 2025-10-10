@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { ActiveTaskOverlay } from "./ActiveTaskOverlay"
 import { PageContainer } from "@/components/common/PageContainer"
 import { EtherealMessageList } from "./EtherealMessageList"
-import { Tool, ToolHeader } from "@/components/ai-elements/tool"
+import { Tool, ToolHeader, friendlyToolLabel } from "@/components/ai-elements/tool"
 import type { ToolHeaderProps } from "@/components/ai-elements/tool"
 import { useRouter } from "next/navigation"
 import type { ToolUIPart } from "@/app/_shared/hooks/useChat.helpers"
@@ -156,9 +156,7 @@ export function EtherealChat() {
         const type = normalizeToolType(toolPart, j)
         const title = typeof toolPart.toolName === "string" && toolPart.toolName.trim().length > 0
           ? toolPart.toolName.trim()
-          : typeof toolPart.type === "string" && toolPart.type.length > 0
-          ? toolPart.type
-          : "tool"
+          : friendlyToolLabel(type)
 
         return {
           id: toolPart.toolCallId ?? `${message.id}-${j}`,
@@ -197,12 +195,6 @@ export function EtherealChat() {
         await endSession()
         if (!cancelled) {
           setSessionState('ended')
-          // After a brief moment, reset to idle to allow starting a new session
-          setTimeout(() => {
-            if (!cancelled) {
-              setSessionState('idle')
-            }
-          }, 1500)
         }
       } catch (error) {
         console.error('Failed to finalize session cleanup', error)
@@ -218,6 +210,19 @@ export function EtherealChat() {
       cancelled = true
     }
   }, [sessionState, isLoading, currentStreamingId, endSession])
+
+  // Separate effect to handle the 'ended' -> 'idle' transition
+  useEffect(() => {
+    if (sessionState !== 'ended') return
+
+    const timer = setTimeout(() => {
+      setSessionState('idle')
+    }, 1500)
+
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [sessionState])
 
   const onSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
     if (sessionClosed || isClosing) {
@@ -285,7 +290,11 @@ export function EtherealChat() {
                 disabled={isLoading || sessionClosed || isClosing}
               />
               {sessionClosed && sessionState !== 'ended' ? (
-                <div className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-center text-[11px] uppercase tracking-[0.22em] text-white/60">
+                <div 
+                  className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-center text-[11px] uppercase tracking-[0.22em] text-white/60"
+                  role="status"
+                  aria-live="polite"
+                >
                   ending session…
                 </div>
               ) : null}

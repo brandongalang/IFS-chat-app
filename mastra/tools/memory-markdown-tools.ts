@@ -4,9 +4,10 @@ import { z } from 'zod'
 import { resolveUserId } from '@/config/dev'
 import { ensureOverviewExists } from '@/lib/memory/snapshots/scaffold'
 import { readOverviewSections, readPartProfileSections } from '@/lib/memory/read'
-import { userOverviewPath } from '@/lib/memory/snapshots/fs-helpers'
-import { appendChangeLogWithEvent, ensurePartProfileExists } from '@/lib/memory/snapshots/updater'
+import { userOverviewPath, partProfilePath, getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
+import { appendChangeLogWithEvent, ensurePartProfileExists, onPartCreated } from '@/lib/memory/snapshots/updater'
 import { editMarkdownSection } from '@/lib/memory/markdown/editor'
+import { logMarkdownMutation } from '@/lib/memory/markdown/logging'
 
 const CHANGE_LOG_ANCHOR = 'change_log v1'
 const ROLE_ANCHOR = 'role v1'
@@ -43,6 +44,15 @@ const overviewSectionSchema = z
     lines: z.array(z.string().min(1)).min(1),
     mode: z.enum(['replace', 'append']).default('append'),
     fingerprint: z.string().min(3).max(120).optional(),
+  })
+  .strict()
+
+const createPartProfileSchema = z
+  .object({
+    partId: z.string().uuid(),
+    name: z.string().min(1).max(120),
+    status: z.string().min(1).max(80).default('unknown'),
+    category: z.string().min(1).max(80).default('unspecified'),
   })
   .strict()
 
@@ -164,13 +174,37 @@ export function createMemoryMarkdownTools(defaultUserId?: string | null) {
       if (!includesFingerprint(roleSection, context.fingerprint)) {
         const bullets = toBulletList([context.summary], context.fingerprint).join('\n')
         const nextRole = roleSection ? `${roleSection}\n${bullets}` : bullets
-        await editMarkdownSection(profilePath, ROLE_ANCHOR, { replace: `${nextRole}\n` })
+        const result = await editMarkdownSection(profilePath, ROLE_ANCHOR, { replace: `${nextRole}\n` })
+        
+        // Log the mutation (non-fatal)
+        await logMarkdownMutation({
+          userId: resolvedUserId,
+          filePath: profilePath,
+          anchor: ROLE_ANCHOR,
+          mode: 'replace',
+          text: `${nextRole}\n`,
+          beforeHash: result.beforeHash,
+          afterHash: result.afterHash,
+          warnings: result.lint.warnings,
+        })
       }
 
       if (context.evidence && context.evidence.length > 0) {
         const evidenceSection = sections?.['evidence v1']?.text ?? ''
         const combined = evidenceSection ? `${evidenceSection}\n${context.evidence.map((item) => `- ${item}`).join('\n')}` : context.evidence.map((item) => `- ${item}`).join('\n')
-        await editMarkdownSection(profilePath, 'evidence v1', { replace: `${combined}\n` })
+        const result = await editMarkdownSection(profilePath, 'evidence v1', { replace: `${combined}\n` })
+        
+        // Log the mutation (non-fatal)
+        await logMarkdownMutation({
+          userId: resolvedUserId,
+          filePath: profilePath,
+          anchor: 'evidence v1',
+          mode: 'replace',
+          text: `${combined}\n`,
+          beforeHash: result.beforeHash,
+          afterHash: result.afterHash,
+          warnings: result.lint.warnings,
+        })
       }
 
       return { updated: true as const }
@@ -209,8 +243,60 @@ export function createMemoryMarkdownTools(defaultUserId?: string | null) {
       const nextLines = context.mode === 'replace' ? normalizedNew : existingLines.concat(normalizedNew)
       const deduped = Array.from(new Set(nextLines))
 
-      await editMarkdownSection(overviewPath, anchor, { replace: `${deduped.join('\n')}\n` })
+      const result = await editMarkdownSection(overviewPath, anchor, { replace: `${deduped.join('\n')}\n` })
+      
+      // Log the mutation (non-fatal)
+      await logMarkdownMutation({
+        userId: resolvedUserId,
+        filePath: overviewPath,
+        anchor,
+        mode: 'replace',
+        text: `${deduped.join('\n')}\n`,
+        beforeHash: result.beforeHash,
+        afterHash: result.afterHash,
+        warnings: result.lint.warnings,
+      })
+      
       return { updated: true as const }
+    },
+  })
+
+  const createPartProfileTool = createTool({
+    id: 'createPartProfileMarkdown',
+    description: 'Creates a new part profile markdown file (idempotent); triggers change-log entry on first creation.',
+    inputSchema: createPartProfileSchema,
+    execute: async ({ context, runtime }: { context: z.infer<typeof createPartProfileSchema>; runtime?: ToolRuntime }) => {
+      const resolvedUserId = resolveUserId(runtime?.userId ?? defaultUserId ?? undefined)
+      const storage = await getStorageAdapter()
+      
+      // Check if file already exists before calling ensurePartProfileExists
+      const profilePath = partProfilePath(resolvedUserId, context.partId)
+      const existedBefore = await storage.exists(profilePath)
+      
+      // Ensure the profile exists (creates if needed)
+      await ensurePartProfileExists({
+        userId: resolvedUserId,
+        partId: context.partId,
+        name: context.name,
+        status: context.status,
+        category: context.category,
+      })
+      
+      // If newly created, trigger the onPartCreated event
+      if (!existedBefore) {
+        await onPartCreated({
+          userId: resolvedUserId,
+          partId: context.partId,
+          name: context.name,
+          status: context.status,
+          category: context.category,
+        })
+      }
+      
+      return {
+        created: !existedBefore,
+        path: profilePath,
+      }
     },
   })
 
@@ -219,6 +305,7 @@ export function createMemoryMarkdownTools(defaultUserId?: string | null) {
     appendOverviewChangeLog: appendChangeLogTool,
     upsertPartNote: upsertPartNoteTool,
     writeOverviewSection: writeOverviewSectionTool,
+    createPartProfileMarkdown: createPartProfileTool,
   }
 }
 

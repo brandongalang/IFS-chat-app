@@ -71,5 +71,6 @@ curl -X POST https://<preview-host>/api/cron/memory-update \
 - `lib/memory/service.ts`
 - **`lib/services/memory.ts`** - Background memory service functions
 - `lib/memory/queue.ts`
+- `lib/memory/markdown/logging.ts` - Markdown write logging with integrity tracking (added 2025-01-11)
 - `app/api/memory/preflight/route.ts`
 - `docs/user-memory.md`
