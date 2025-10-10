@@ -3,10 +3,61 @@
 import type { HTMLAttributes } from "react"
 
 import { Tool, ToolHeader } from "@/components/ai-elements/tool"
+import type { ToolHeaderProps } from "@/components/ai-elements/tool"
 import { cn } from "@/lib/utils"
 import type { TaskEvent } from "@/types/chat"
 
-type ToolState = `input-${string}` | `output-${string}` | `error-${string}` | string
+type ToolState = ToolHeaderProps["state"]
+type ToolType = ToolHeaderProps["type"]
+
+const TOOL_STATE_VALUES: { readonly [K in TaskEvent["status"]]: ToolState } = {
+  completed: "output-available",
+  failed: "output-error",
+  canceled: "output-error",
+  pending: "input-available",
+  working: "input-streaming",
+}
+
+function normalizeToolState(rawState: unknown, fallbackStatus: TaskEvent["status"]): ToolState {
+  if (typeof rawState === "string") {
+    const normalized = rawState.toLowerCase()
+    if (normalized === "output-error" || normalized.startsWith("error")) {
+      return "output-error"
+    }
+    if (normalized === "output-available") {
+      return "output-available"
+    }
+    if (normalized.startsWith("output")) {
+      return "input-streaming"
+    }
+    if (normalized === "input-available") {
+      return "input-available"
+    }
+    if (normalized === "input-streaming" || normalized.startsWith("input")) {
+      return "input-streaming"
+    }
+  }
+
+  return TOOL_STATE_VALUES[fallbackStatus] ?? "input-streaming"
+}
+
+function slugifyToolSegment(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
+function typeForTask(task: TaskEvent): ToolType {
+  const metaType = typeof task.meta?.toolType === "string" ? task.meta.toolType : undefined
+  if (metaType && metaType.startsWith("tool-")) {
+    return metaType as ToolType
+  }
+
+  const baseTitle = typeof task.title === "string" && task.title.trim().length > 0 ? task.title : "task"
+  const segment = slugifyToolSegment(baseTitle)
+  return (`tool-${segment || "task"}`) as ToolType
+}
 
 function getProgressData(progress?: number): { value?: number; label?: string } {
   if (typeof progress !== "number" || !Number.isFinite(progress)) {
@@ -18,20 +69,8 @@ function getProgressData(progress?: number): { value?: number; label?: string } 
 }
 
 function toolStateForTask(task: TaskEvent): ToolState {
-  const metaState = typeof task.meta?.toolState === "string" ? task.meta.toolState : undefined
-  if (metaState) return metaState
-  switch (task.status) {
-    case "completed":
-      return "output-available"
-    case "failed":
-      return "output-error"
-    case "canceled":
-      return "output-error"
-    case "pending":
-      return "input-available"
-    default:
-      return "input-streaming"
-  }
+  const metaState = task.meta?.toolState
+  return normalizeToolState(metaState, task.status)
 }
 
 function statusLabelForTask(task: TaskEvent): string {
@@ -72,6 +111,7 @@ export function TaskList({
     <div className={cn("flex flex-col gap-2", className)} {...props}>
       {tasks.map((task) => {
         const toolState = toolStateForTask(task)
+        const toolType = typeForTask(task)
         const statusLabel = statusLabelForTask(task)
         const { value: progressValue, label: progressLabel } = getProgressData(task.progress)
         const statusCopy = typeof task.meta?.statusCopy === "string" ? task.meta.statusCopy : undefined
@@ -97,7 +137,7 @@ export function TaskList({
           >
             <div className="flex items-center gap-3 px-3 pt-3">
               <ToolHeader
-                type="tool"
+                type={toolType}
                 state={toolState}
                 title={task.title ?? "Tool"}
                 className="flex-1 p-0 text-white"

@@ -58,7 +58,9 @@ export function EtherealMessageList({ messages, tasksByMessage, currentStreaming
                 {isAssistant && tasks?.length ? (
                   <TaskList
                     tasks={tasks}
-                    className="mb-3 space-y-2 rounded-2xl border border-white/15 bg-white/6 p-3 text-white"
+                    className="mb-3 rounded-2xl border border-white/15 bg-white/6 p-3 text-white"
+                    itemClassName="border-white/20 bg-white/12"
+                    statusClassName="text-white/75"
                     progressTrackClassName="bg-white/20"
                     progressBarClassName="bg-white"
                     style={taskListStyleVariables}

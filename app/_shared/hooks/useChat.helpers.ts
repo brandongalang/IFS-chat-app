@@ -4,10 +4,13 @@ import type { Message, TaskEvent, TaskEventUpdate } from '@/types/chat'
 
 export type UIPart = UIMessage['parts'][number]
 
+type ToolState = 'input-streaming' | 'input-available' | 'output-available' | 'output-error'
+type ToolType = `tool-${string}`
+
 export type ToolUIPart = UIPart & {
   toolName?: string
   toolCallId?: string
-  state?: string
+  state?: ToolState | string
   input?: unknown
   output?: unknown
   errorText?: string
@@ -58,24 +61,64 @@ function previewValue(value: unknown, limit = 280): string | undefined {
   }
 }
 
+function normalizeToolState(state?: string): ToolState {
+  if (!state) return 'input-streaming'
+  const lower = state.toLowerCase()
+  if (lower === 'output-error' || lower.startsWith('error')) return 'output-error'
+  if (lower === 'output-available') return 'output-available'
+  if (lower.startsWith('output')) return 'input-streaming'
+  if (lower === 'input-available') return 'input-available'
+  if (lower === 'input-streaming' || lower.startsWith('input')) return 'input-streaming'
+  return 'input-streaming'
+}
+
 function toolStateToStatus(state?: string): TaskEvent['status'] {
   if (!state) return 'working'
-  if (state.startsWith('input')) return 'working'
-  if (state === 'output-available') return 'completed'
-  if (state === 'output-error' || state.startsWith('error')) return 'failed'
-  if (state.startsWith('output')) return 'working'
-  return 'working'
+  const normalized = normalizeToolState(state)
+  switch (normalized) {
+    case 'output-available':
+      return 'completed'
+    case 'output-error':
+      return 'failed'
+    default:
+      return 'working'
+  }
 }
 
 function statusCopyForState(state?: string): string | undefined {
   if (!state) return undefined
-  if (state.startsWith('input')) {
+  const lower = state.toLowerCase()
+  if (lower.startsWith('input')) {
     return 'Looking through my notes…'
   }
-  if (state.startsWith('output')) {
+  if (lower.startsWith('output') && lower !== 'output-error') {
     return 'Writing notes…'
   }
   return undefined
+}
+
+function slugifyToolSegment(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function normalizeToolType(part: ToolUIPart, index: number): ToolType {
+  const rawType = typeof part.type === 'string' ? part.type : undefined
+  if (rawType && rawType.startsWith('tool-')) {
+    return rawType as ToolType
+  }
+
+  const rawName = typeof part.toolName === 'string' && part.toolName.trim().length > 0
+    ? part.toolName
+    : rawType
+  if (rawName) {
+    const segment = slugifyToolSegment(rawName)
+    return (`tool-${segment || index}`) as ToolType
+  }
+
+  return (`tool-${index}`) as ToolType
 }
 
 export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: number): TaskEventUpdate {
@@ -87,12 +130,14 @@ export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: 
 
   let status = toolStateToStatus(part.state)
   const title = humanizeToolName(rawName)
-  let toolState = typeof part.state === 'string' ? part.state : undefined
+  const rawState = typeof part.state === 'string' ? part.state : undefined
+  let toolState = rawState ? normalizeToolState(rawState) : undefined
+  const toolType = normalizeToolType(part, index)
 
   const inputPreview = previewValue(part.input)
   const outputPreview = previewValue(part.output, 320)
   let errorText = typeof part.errorText === 'string' ? part.errorText : undefined
-  let statusCopy = statusCopyForState(toolState)
+  let statusCopy = statusCopyForState(rawState)
 
   if (!errorText && part.output && typeof part.output === 'object') {
     const outputObj = part.output as Record<string, unknown>
@@ -106,7 +151,7 @@ export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: 
     }
   }
 
-  if (status === 'failed' && (!toolState || (toolState !== 'output-error' && !toolState.startsWith('error')))) {
+  if (status === 'failed' && toolState !== 'output-error') {
     toolState = 'output-error'
   }
   if (status === 'failed') {
@@ -137,6 +182,7 @@ export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: 
 
   const meta: TaskEvent['meta'] = {}
   if (toolState) meta.toolState = toolState
+  meta.toolType = toolType
   if (statusCopy) meta.statusCopy = statusCopy
   if (inputPreview) meta.inputPreview = inputPreview
   if (outputPreview) meta.outputPreview = outputPreview
@@ -165,13 +211,15 @@ export function signatureForToolUpdate(part: ToolUIPart, update: TaskEventUpdate
     typeof update.meta?.inputPreview === 'string' ? update.meta.inputPreview : ''
   const outputPreview =
     typeof update.meta?.outputPreview === 'string' ? update.meta.outputPreview : ''
+  const metaType =
+    typeof update.meta?.toolType === 'string' ? update.meta.toolType : ''
   const error =
     typeof part.errorText === 'string'
       ? part.errorText
       : typeof update.meta?.error === 'string'
       ? (update.meta.error as string)
       : ''
-  return [state, status, details, metaState, statusCopy, inputPreview, outputPreview, error].join('|')
+  return [state, status, details, metaState, statusCopy, inputPreview, outputPreview, error, metaType].join('|')
 }
 
 export function signatureForTaskUpdate(update: TaskEventUpdate): string {

@@ -10,13 +10,55 @@ import { ActiveTaskOverlay } from "./ActiveTaskOverlay"
 import { PageContainer } from "@/components/common/PageContainer"
 import { EtherealMessageList } from "./EtherealMessageList"
 import { Tool, ToolHeader } from "@/components/ai-elements/tool"
-import { Loader } from "@/components/ai-elements/loader"
+import type { ToolHeaderProps } from "@/components/ai-elements/tool"
 import { useRouter } from "next/navigation"
+import type { ToolUIPart } from "@/app/_shared/hooks/useChat.helpers"
+
+type ActiveToolState = ToolHeaderProps["state"]
+type ActiveToolType = ToolHeaderProps["type"]
 
 interface ActiveTool {
   id: string
-  type: string
-  state: string
+  type: ActiveToolType
+  state: ActiveToolState
+  title?: string
+}
+
+const ACTIVE_TOOL_STATES: readonly ActiveToolState[] = ["input-streaming", "input-available"] as const
+
+function normalizeToolState(state?: string): ActiveToolState {
+  if (!state) return "input-available"
+  const lower = state.toLowerCase()
+  if (lower === "output-error" || lower.startsWith("error")) return "output-error"
+  if (lower === "output-available") return "output-available"
+  if (lower.startsWith("output")) return "input-streaming"
+  if (lower === "input-available") return "input-available"
+  if (lower === "input-streaming" || lower.startsWith("input")) return "input-streaming"
+  return "input-available"
+}
+
+function slugifyToolSegment(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
+function normalizeToolType(part: ToolUIPart, index: number): ActiveToolType {
+  const rawType = typeof part.type === "string" ? part.type : undefined
+  if (rawType && rawType.startsWith("tool-")) {
+    return rawType as ActiveToolType
+  }
+
+  const rawName = typeof part.toolName === "string" && part.toolName.trim().length > 0
+    ? part.toolName
+    : rawType
+  if (rawName) {
+    const segment = slugifyToolSegment(rawName)
+    return (`tool-${segment || index}`) as ActiveToolType
+  }
+
+  return (`tool-${index}`) as ActiveToolType
 }
 
 // Minimal, bubble-less chat presentation
@@ -105,21 +147,24 @@ export function EtherealChat() {
         const part = message.parts[j]
         if (!isToolOrDynamicToolUIPart(part)) continue
 
-        const toolPart = part as typeof part & {
-          toolName?: string
-          toolCallId?: string
-          state?: string
+        const toolPart = part as ToolUIPart
+        const normalizedState = normalizeToolState(typeof toolPart.state === "string" ? toolPart.state : undefined)
+        if (!ACTIVE_TOOL_STATES.includes(normalizedState)) {
+          continue
         }
 
-        const state = toolPart.state ?? "unknown"
-        if (state === "output-available" || state === "output-error") continue
-
-        const rawName = toolPart.toolName ?? toolPart.type ?? "tool"
+        const type = normalizeToolType(toolPart, j)
+        const title = typeof toolPart.toolName === "string" && toolPart.toolName.trim().length > 0
+          ? toolPart.toolName.trim()
+          : typeof toolPart.type === "string" && toolPart.type.length > 0
+          ? toolPart.type
+          : "tool"
 
         return {
           id: toolPart.toolCallId ?? `${message.id}-${j}`,
-          type: rawName,
-          state,
+          type,
+          state: normalizedState,
+          title,
         }
       }
     }
@@ -215,6 +260,7 @@ export function EtherealChat() {
                   <ToolHeader
                     type={activeTool.type}
                     state={activeTool.state}
+                    title={activeTool.title}
                     className="text-white"
                   />
                 </Tool>
