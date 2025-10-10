@@ -71,6 +71,7 @@ export function EtherealChat() {
     handleSubmit,
     isLoading,
     hasActiveSession,
+    sessionEnded,
     endSession,
     addAssistantMessage,
     tasksByMessage,
@@ -83,9 +84,17 @@ export function EtherealChat() {
   // UI state
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [sessionState, setSessionState] = useState<'idle' | 'closing' | 'cleanup'>('idle')
+  const [sessionState, setSessionState] = useState<'idle' | 'closing' | 'cleanup' | 'ended'>('idle')
   const sessionClosed = sessionState !== 'idle'
   const isClosing = sessionState === 'closing'
+
+  useEffect(() => {
+    if (sessionEnded) {
+      setSessionState((prev) => (prev === 'ended' ? prev : 'ended'))
+    } else if (sessionState === 'ended') {
+      setSessionState('idle')
+    }
+  }, [sessionEnded, sessionState])
 
   // redirect to login if auth required
   useEffect(() => {
@@ -195,9 +204,11 @@ export function EtherealChat() {
       try {
         seededRef.current = false
         await endSession()
+        if (!cancelled) {
+          setSessionState('ended')
+        }
       } catch (error) {
         console.error('Failed to finalize session cleanup', error)
-      } finally {
         if (!cancelled) {
           setSessionState('idle')
         }
@@ -278,7 +289,7 @@ export function EtherealChat() {
               />
               {sessionClosed ? (
                 <div className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-center text-[11px] uppercase tracking-[0.22em] text-white/60">
-                  ending session…
+                  {sessionState === 'ended' || sessionEnded ? 'session ended' : 'ending session…'}
                 </div>
               ) : null}
               <div className="flex items-center justify-end px-2 pb-1">
