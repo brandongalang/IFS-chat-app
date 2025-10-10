@@ -67,6 +67,17 @@ function toolStateToStatus(state?: string): TaskEvent['status'] {
   return 'working'
 }
 
+function statusCopyForState(state?: string): string | undefined {
+  if (!state) return undefined
+  if (state.startsWith('input')) {
+    return 'Looking through my notes…'
+  }
+  if (state.startsWith('output')) {
+    return 'Writing notes…'
+  }
+  return undefined
+}
+
 export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: number): TaskEventUpdate {
   const rawName = part.toolName ?? part.type ?? `tool-${index}`
   const id =
@@ -76,11 +87,12 @@ export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: 
 
   let status = toolStateToStatus(part.state)
   const title = humanizeToolName(rawName)
-  const toolState = typeof part.state === 'string' ? part.state : undefined
+  let toolState = typeof part.state === 'string' ? part.state : undefined
 
   const inputPreview = previewValue(part.input)
   const outputPreview = previewValue(part.output, 320)
   let errorText = typeof part.errorText === 'string' ? part.errorText : undefined
+  let statusCopy = statusCopyForState(toolState)
 
   if (!errorText && part.output && typeof part.output === 'object') {
     const outputObj = part.output as Record<string, unknown>
@@ -92,6 +104,13 @@ export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: 
         errorText = outputError.trim()
       }
     }
+  }
+
+  if (status === 'failed' && (!toolState || (toolState !== 'output-error' && !toolState.startsWith('error')))) {
+    toolState = 'output-error'
+  }
+  if (status === 'failed') {
+    statusCopy = undefined
   }
 
   const update: TaskEventUpdate = {
@@ -118,6 +137,7 @@ export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: 
 
   const meta: TaskEvent['meta'] = {}
   if (toolState) meta.toolState = toolState
+  if (statusCopy) meta.statusCopy = statusCopy
   if (inputPreview) meta.inputPreview = inputPreview
   if (outputPreview) meta.outputPreview = outputPreview
   if (typeof part.providerExecuted !== 'undefined') {
@@ -139,6 +159,8 @@ export function signatureForToolUpdate(part: ToolUIPart, update: TaskEventUpdate
     Array.isArray(update.details) ? update.details.join('||') : update.details ?? ''
   const metaState =
     typeof update.meta?.toolState === 'string' ? update.meta.toolState : ''
+  const statusCopy =
+    typeof update.meta?.statusCopy === 'string' ? update.meta.statusCopy : ''
   const inputPreview =
     typeof update.meta?.inputPreview === 'string' ? update.meta.inputPreview : ''
   const outputPreview =
@@ -149,7 +171,7 @@ export function signatureForToolUpdate(part: ToolUIPart, update: TaskEventUpdate
       : typeof update.meta?.error === 'string'
       ? (update.meta.error as string)
       : ''
-  return [state, status, details, metaState, inputPreview, outputPreview, error].join('|')
+  return [state, status, details, metaState, statusCopy, inputPreview, outputPreview, error].join('|')
 }
 
 export function signatureForTaskUpdate(update: TaskEventUpdate): string {
