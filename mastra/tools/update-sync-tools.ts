@@ -1,13 +1,21 @@
 import { createTool } from '@mastra/core'
 import { z } from 'zod'
 import { resolveUserId } from '@/config/dev'
-import { listUnprocessedUpdates } from '@/lib/memory/service'
+import { listUnprocessedUpdates, markUpdatesProcessed } from '@/lib/memory/service'
 
 const listUnprocessedUpdatesSchema = z
   .object({})
   .strict()
 
 export type ListUnprocessedUpdatesInput = z.infer<typeof listUnprocessedUpdatesSchema>
+
+const markUpdatesProcessedSchema = z
+  .object({
+    sessionIds: z.array(z.string().uuid()).default([]),
+    insightIds: z.array(z.string().uuid()).default([]),
+    checkInIds: z.array(z.string().uuid()).default([]),
+  })
+  .strict()
 
 type UnprocessedUpdates = Awaited<ReturnType<typeof listUnprocessedUpdates>>
 
@@ -98,8 +106,67 @@ export function createUpdateSyncTools(userId?: string) {
     },
   })
 
+  const markUpdatesProcessedTool = createTool({
+    id: 'markUpdatesProcessed',
+    description: 'Marks sessions, insights, and check-ins as processed after memory updates are written.',
+    inputSchema: markUpdatesProcessedSchema,
+    execute: async ({ context, runtime }: { context: z.infer<typeof markUpdatesProcessedSchema>; runtime?: { userId?: string } }) => {
+      const input = markUpdatesProcessedSchema.parse(context)
+      let resolvedUserId: string
+      try {
+        resolvedUserId = resolveUserId(runtime?.userId ?? userId)
+      } catch (error) {
+        const message = toUserFacingMessage(
+          error,
+          'Could not determine which user profile to mark processed.'
+        )
+        console.warn('[UpdateSyncTools] Missing userId for markUpdatesProcessed', {
+          providedUserId: userId,
+          runtimeUserId: runtime?.userId,
+          error: message,
+        })
+        return {
+          success: false as const,
+          error: message,
+        }
+      }
+
+      try {
+        await markUpdatesProcessed(resolvedUserId, {
+          sessions: input.sessionIds.map((id) => ({ id })),
+          insights: input.insightIds.map((id) => ({ id })),
+          checkIns: input.checkInIds.map((id) => ({ id })),
+        })
+
+        return {
+          success: true as const,
+          processed: {
+            sessions: input.sessionIds.length,
+            insights: input.insightIds.length,
+            checkIns: input.checkInIds.length,
+            overall: input.sessionIds.length + input.insightIds.length + input.checkInIds.length,
+          },
+        }
+      } catch (error) {
+        const message = toUserFacingMessage(
+          error,
+          'Unable to mark updates as processed right now.'
+        )
+        console.error('[UpdateSyncTools] markUpdatesProcessed failed', {
+          userId: resolvedUserId,
+          error: message,
+        })
+        return {
+          success: false as const,
+          error: message,
+        }
+      }
+    },
+  })
+
   return {
     listUnprocessedUpdates: listUnprocessedUpdatesTool,
+    markUpdatesProcessed: markUpdatesProcessedTool,
   }
 }
 
