@@ -88,14 +88,6 @@ export function EtherealChat() {
   const sessionClosed = sessionState !== 'idle'
   const isClosing = sessionState === 'closing'
 
-  useEffect(() => {
-    if (sessionEnded) {
-      setSessionState((prev) => (prev === 'ended' ? prev : 'ended'))
-    } else if (sessionState === 'ended') {
-      setSessionState('idle')
-    }
-  }, [sessionEnded, sessionState])
-
   // redirect to login if auth required
   useEffect(() => {
     if (!authLoading && needsAuth) {
@@ -206,6 +198,12 @@ export function EtherealChat() {
         await endSession()
         if (!cancelled) {
           setSessionState('ended')
+          // After a brief moment, reset to idle to allow starting a new session
+          setTimeout(() => {
+            if (!cancelled) {
+              setSessionState('idle')
+            }
+          }, 1500)
         }
       } catch (error) {
         console.error('Failed to finalize session cleanup', error)
@@ -287,9 +285,9 @@ export function EtherealChat() {
                 aria-label="Message"
                 disabled={isLoading || sessionClosed || isClosing}
               />
-              {sessionClosed ? (
+              {sessionClosed && sessionState !== 'ended' ? (
                 <div className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-center text-[11px] uppercase tracking-[0.22em] text-white/60">
-                  {sessionState === 'ended' || sessionEnded ? 'session ended' : 'ending session…'}
+                  ending session…
                 </div>
               ) : null}
               <div className="flex items-center justify-end px-2 pb-1">
