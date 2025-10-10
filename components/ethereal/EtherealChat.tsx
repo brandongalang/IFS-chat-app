@@ -154,9 +154,9 @@ export function EtherealChat() {
         }
 
         const type = normalizeToolType(toolPart, j)
-        const title = typeof toolPart.toolName === "string" && toolPart.toolName.trim().length > 0
-          ? toolPart.toolName.trim()
-          : friendlyToolLabel(type)
+        const explicitTitle = typeof toolPart.toolName === "string" ? toolPart.toolName.trim() : ""
+        const fallbackTitle = friendlyToolLabel(type)
+        const title = explicitTitle || (/^\d+$/.test(fallbackTitle) ? "Tool" : fallbackTitle)
 
         return {
           id: toolPart.toolCallId ?? `${message.id}-${j}`,
@@ -246,10 +246,10 @@ export function EtherealChat() {
 
 
       {/* Messages area */}
-      <div className="relative z-10 flex-1 overflow-y-auto pb-[120px] pt-[calc(env(safe-area-inset-top)+16px)]">
+      <div className="relative z-10 flex-1 overflow-y-auto pb-[120px] pt-[calc(env(safe-area-inset-top)+40px)]">
         <PageContainer className="flex flex-col gap-6">
           {currentTasks?.length ? (
-            <div className="sticky top-[calc(env(safe-area-inset-top)+12px)] z-20 mb-4">
+            <div className="sticky top-[calc(env(safe-area-inset-top)+32px)] z-20 mb-4">
               <ActiveTaskOverlay tasks={currentTasks} />
             </div>
           ) : null}
@@ -294,6 +294,8 @@ export function EtherealChat() {
                   className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-center text-[11px] uppercase tracking-[0.22em] text-white/60"
                   role="status"
                   aria-live="polite"
+                  aria-atomic="true"
+                  data-testid="end-session-status"
                 >
                   ending session…
                 </div>

@@ -90,6 +90,7 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - **Queue utilities**: `lib/memory/queue.ts` (`enqueueMemoryUpdate`) and the `memory_updates` schema (now with `ref_id` unique index) handle idempotent event-time ingestion.
 - **Chat preflight**: `app/api/memory/preflight/route.ts` powers the immediate summarize-on-open flow used by `useChatSession`.
 - **Agent tooling**: `mastra/tools/memory-markdown-tools.ts` exposes read + scoped write helpers (overview changelog, sections, part notes, part profile creation) shared by chat and background agents.
+  - `lib/memory/snapshots/updater.ts` provides `ensurePartProfileExists` which returns `{ path, created }` atomically to eliminate TOCTOU races (updated 2025-01-11)
 - Types: `lib/memory/types.ts`
 - Cron route: `app/api/cron/memory-update/route.ts`
 - **Chat Integration**: Memory maintenance removed from `app/api/chat/route.ts` - now handled by background workers
