@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { ActiveTaskOverlay } from "./ActiveTaskOverlay"
 import { PageContainer } from "@/components/common/PageContainer"
 import { EtherealMessageList } from "./EtherealMessageList"
-import { Tool, ToolHeader } from "@/components/ai-elements/tool"
+import { Tool, ToolHeader, friendlyToolLabel } from "@/components/ai-elements/tool"
 import type { ToolHeaderProps } from "@/components/ai-elements/tool"
 import { useRouter } from "next/navigation"
 import type { ToolUIPart } from "@/app/_shared/hooks/useChat.helpers"
@@ -156,9 +156,7 @@ export function EtherealChat() {
         const type = normalizeToolType(toolPart, j)
         const title = typeof toolPart.toolName === "string" && toolPart.toolName.trim().length > 0
           ? toolPart.toolName.trim()
-          : typeof toolPart.type === "string" && toolPart.type.length > 0
-          ? toolPart.type
-          : "tool"
+          : friendlyToolLabel(type)
 
         return {
           id: toolPart.toolCallId ?? `${message.id}-${j}`,
