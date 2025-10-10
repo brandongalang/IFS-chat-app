@@ -195,12 +195,6 @@ export function EtherealChat() {
         await endSession()
         if (!cancelled) {
           setSessionState('ended')
-          // After a brief moment, reset to idle to allow starting a new session
-          setTimeout(() => {
-            if (!cancelled) {
-              setSessionState('idle')
-            }
-          }, 1500)
         }
       } catch (error) {
         console.error('Failed to finalize session cleanup', error)
@@ -216,6 +210,19 @@ export function EtherealChat() {
       cancelled = true
     }
   }, [sessionState, isLoading, currentStreamingId, endSession])
+
+  // Separate effect to handle the 'ended' -> 'idle' transition
+  useEffect(() => {
+    if (sessionState !== 'ended') return
+
+    const timer = setTimeout(() => {
+      setSessionState('idle')
+    }, 1500)
+
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [sessionState])
 
   const onSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
     if (sessionClosed || isClosing) {
