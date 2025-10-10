@@ -11,6 +11,7 @@ This runbook explains how to operate the daily `/api/cron/memory-update` job now
   - Finalize idle sessions (no `end_time`) and enqueue any missing `memory_updates` before summarizing
   - **Enhanced:** Process pending memory updates for all users with queued changes (cron and chat preflight share this queue)
   - **Background Processing:** Memory maintenance moved from chat requests to this dedicated worker
+  - **No-op guard:** Summarizer skips mutation when no new sessions, insights, or check-ins are present to avoid empty version bumps.
 
 ## Prerequisites (updated 2025-10-07)
 - `CRON_SECRET` defined for Production & Preview environments in Vercel project settings.

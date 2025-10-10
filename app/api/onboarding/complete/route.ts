@@ -8,6 +8,7 @@ import { synthesizeOnboardingMemories } from '@/lib/onboarding/synthesize-memori
 import { buildCompletionResponse } from '@/lib/onboarding/build-completion-response';
 import { buildOnboardingSummary } from '@/lib/onboarding/summary';
 import { enqueueMemoryUpdate } from '@/lib/memory/queue';
+import { track } from '@/lib/analytics';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/types/database';
 
@@ -122,8 +123,11 @@ export async function POST(request: NextRequest) {
       // Don't fail the completion for memory synthesis issues
     }
 
-    // TODO: Track analytics event
-    // await trackEvent('onboarding_completed', { userId: user.id, duration: ... });
+    track('onboarding_completed', {
+      userId: user.id,
+      onboardingId: onboardingRefId,
+      stageVersion: version,
+    });
 
     const summary = await buildOnboardingSummary(supabase, user.id);
 

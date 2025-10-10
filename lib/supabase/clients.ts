@@ -12,6 +12,24 @@ import {
 import { createClient as createBrowserClient } from './client'
 import { createNoopSupabaseClient, isSupabaseConfigured } from './noop-client'
 
+type SupabaseConfig = {
+  url: string
+  key: string
+}
+
+function resolveSupabaseConfig(keyType: 'anon' | 'service'): SupabaseConfig | null {
+  const url = getSupabaseUrl()
+  if (!url) return null
+
+  if (keyType === 'anon') {
+    const key = getSupabaseKey()
+    return key ? { url, key } : null
+  }
+
+  const serviceKey = getSupabaseServiceRoleKey()
+  return serviceKey ? { url, key: serviceKey } : null
+}
+
 export type SupabaseDatabaseClient = SupabaseClient<Database>
 
 type CookieAdapter = {
@@ -68,16 +86,15 @@ export function getUserClient(adapter?: CookieAdapter): SupabaseDatabaseClient {
     return createNoopSupabaseClient()
   }
 
-  const url = getSupabaseUrl()
-  const anonKey = getSupabaseKey()
-
-  if (!url || !anonKey) {
+  const config = resolveSupabaseConfig('anon')
+  if (!config) {
     return createNoopSupabaseClient()
   }
 
   const cookieAdapter = adapter ?? resolveCookieAdapter()
+  const { url, key } = config
 
-  return createServerClient<Database>(url, anonKey, {
+  return createServerClient<Database>(url, key, {
     cookies: {
       get: (name) => cookieAdapter.get(name),
       set: (name, value, options) => cookieAdapter.set(name, value, options),
@@ -95,20 +112,18 @@ export function getServiceClient(): SupabaseDatabaseClient {
     return createNoopSupabaseClient()
   }
 
-  const url = getSupabaseUrl()
-  const serviceKey = getSupabaseServiceRoleKey()
-
-  if (!url || !serviceKey) {
+  const config = resolveSupabaseConfig('service')
+  if (!config) {
     return createNoopSupabaseClient()
   }
 
-  return createSupabaseClient<Database>(url, serviceKey, {
+  return createSupabaseClient<Database>(config.url, config.key, {
     auth: {
       persistSession: false,
     },
     global: {
       headers: {
-        Authorization: `Bearer ${serviceKey}`,
+        Authorization: `Bearer ${config.key}`,
       },
     },
   })
@@ -130,8 +145,8 @@ export async function getServerSupabaseClient(options: { useServiceRole?: boolea
 }
 
 export async function getServiceRoleSupabaseClient(): Promise<SupabaseDatabaseClient> {
-  const serviceRoleKey = getSupabaseServiceRoleKey()
-  if (!serviceRoleKey) {
+  const config = resolveSupabaseConfig('service')
+  if (!config) {
     throw new Error('Supabase service role key is not configured')
   }
   return getServiceClient()
