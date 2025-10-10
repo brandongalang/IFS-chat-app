@@ -7,7 +7,8 @@ import { readOverviewSections, readPartProfileSections } from '@/lib/memory/read
 import { userOverviewPath, partProfilePath, getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
 import { appendChangeLogWithEvent, ensurePartProfileExists, onPartCreated } from '@/lib/memory/snapshots/updater'
 import { editMarkdownSection } from '@/lib/memory/markdown/editor'
-import { logMarkdownMutation } from '@/lib/memory/markdown/logging'
+import { logMarkdownMutation, computeMarkdownHash } from '@/lib/memory/markdown/logging'
+import { buildPartProfileMarkdown } from '@/lib/memory/snapshots/grammar'
 
 const CHANGE_LOG_ANCHOR = 'change_log v1'
 const ROLE_ANCHOR = 'role v1'
@@ -147,7 +148,7 @@ export function createMemoryMarkdownTools(defaultUserId?: string | null) {
     inputSchema: upsertPartNoteSchema,
     execute: async ({ context, runtime }: { context: z.infer<typeof upsertPartNoteSchema>; runtime?: ToolRuntime }) => {
       const resolvedUserId = resolveUserId(runtime?.userId ?? defaultUserId ?? undefined)
-      const profilePath = await ensurePartProfileExists({
+      const { path: profilePath } = await ensurePartProfileExists({
         userId: resolvedUserId,
         partId: context.partId,
         name: context.name,
@@ -267,14 +268,9 @@ export function createMemoryMarkdownTools(defaultUserId?: string | null) {
     inputSchema: createPartProfileSchema,
     execute: async ({ context, runtime }: { context: z.infer<typeof createPartProfileSchema>; runtime?: ToolRuntime }) => {
       const resolvedUserId = resolveUserId(runtime?.userId ?? defaultUserId ?? undefined)
-      const storage = await getStorageAdapter()
       
-      // Check if file already exists before calling ensurePartProfileExists
-      const profilePath = partProfilePath(resolvedUserId, context.partId)
-      const existedBefore = await storage.exists(profilePath)
-      
-      // Ensure the profile exists (creates if needed)
-      await ensurePartProfileExists({
+      // Atomically ensure profile exists and get creation flag
+      const { path: profilePath, created } = await ensurePartProfileExists({
         userId: resolvedUserId,
         partId: context.partId,
         name: context.name,
@@ -282,8 +278,27 @@ export function createMemoryMarkdownTools(defaultUserId?: string | null) {
         category: context.category,
       })
       
-      // If newly created, trigger the onPartCreated event
-      if (!existedBefore) {
+      // Log creation if newly created
+      if (created) {
+        const content = buildPartProfileMarkdown({
+          userId: resolvedUserId,
+          partId: context.partId,
+          name: context.name,
+          status: context.status,
+          category: context.category,
+        })
+        const afterHash = computeMarkdownHash(content)
+        
+        await logMarkdownMutation({
+          userId: resolvedUserId,
+          filePath: profilePath,
+          mode: 'create',
+          text: content,
+          afterHash,
+          warnings: [],
+        })
+        
+        // Trigger onPartCreated for change-log entry
         await onPartCreated({
           userId: resolvedUserId,
           partId: context.partId,
@@ -294,7 +309,7 @@ export function createMemoryMarkdownTools(defaultUserId?: string | null) {
       }
       
       return {
-        created: !existedBefore,
+        created,
         path: profilePath,
       }
     },

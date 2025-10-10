@@ -39,15 +39,16 @@ export async function ensureUserOverviewExists(userId: string): Promise<string> 
   return path
 }
 
-export async function ensurePartProfileExists(params: { userId: string; partId: string; name: string; status: string; category: string }): Promise<string> {
+export async function ensurePartProfileExists(params: { userId: string; partId: string; name: string; status: string; category: string }): Promise<{ path: string; created: boolean }> {
   const storage = await getStorageAdapter()
   const path = partProfilePath(params.userId, params.partId)
   const exists = await storage.exists(path)
   if (!exists) {
     const md = buildPartProfileMarkdown(params)
     await storage.putText(path, md, { contentType: 'text/markdown; charset=utf-8' })
+    return { path, created: true }
   }
-  return path
+  return { path, created: false }
 }
 
 export async function appendChangeLogWithEvent(params: { userId: string; entityType: 'user' | 'part' | 'relationship'; entityId: string; filePath: string; line: string }) {
@@ -74,7 +75,7 @@ export async function appendChangeLogWithEvent(params: { userId: string; entityT
 }
 
 export async function onPartCreated(params: { userId: string; partId: string; name: string; status: string; category: string }) {
-  const path = await ensurePartProfileExists(params)
+  const { path } = await ensurePartProfileExists(params)
   await appendChangeLogWithEvent({
     userId: params.userId,
     entityType: 'part',
@@ -85,7 +86,7 @@ export async function onPartCreated(params: { userId: string; partId: string; na
 }
 
 export async function onPartUpdated(params: { userId: string; partId: string; name: string; change: string }) {
-  const path = await ensurePartProfileExists({ userId: params.userId, partId: params.partId, name: params.name, status: 'unknown', category: 'unknown' })
+  const { path } = await ensurePartProfileExists({ userId: params.userId, partId: params.partId, name: params.name, status: 'unknown', category: 'unknown' })
   await appendChangeLogWithEvent({
     userId: params.userId,
     entityType: 'part',

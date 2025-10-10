@@ -294,6 +294,7 @@ export function EtherealChat() {
                   className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-center text-[11px] uppercase tracking-[0.22em] text-white/60"
                   role="status"
                   aria-live="polite"
+                  aria-atomic="true"
                 >
                   ending session…
                 </div>
