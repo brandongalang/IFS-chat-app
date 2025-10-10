@@ -154,9 +154,9 @@ export function EtherealChat() {
         }
 
         const type = normalizeToolType(toolPart, j)
-        const title = typeof toolPart.toolName === "string" && toolPart.toolName.trim().length > 0
-          ? toolPart.toolName.trim()
-          : friendlyToolLabel(type)
+        const explicitTitle = typeof toolPart.toolName === "string" ? toolPart.toolName.trim() : ""
+        const fallbackTitle = friendlyToolLabel(type)
+        const title = explicitTitle || (/^\d+$/.test(fallbackTitle) ? "Tool" : fallbackTitle)
 
         return {
           id: toolPart.toolCallId ?? `${message.id}-${j}`,
@@ -295,6 +295,7 @@ export function EtherealChat() {
                   role="status"
                   aria-live="polite"
                   aria-atomic="true"
+                  data-testid="end-session-status"
                 >
                   ending session…
                 </div>
