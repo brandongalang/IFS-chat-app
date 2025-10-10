@@ -1,6 +1,5 @@
 import { isToolOrDynamicToolUIPart, type UIMessage } from 'ai'
 
-import { friendlyToolLabel } from '@/components/ai-elements/tool'
 import type { Message, TaskEvent, TaskEventUpdate } from '@/types/chat'
 
 export type UIPart = UIMessage['parts'][number]
@@ -26,6 +25,20 @@ export function getToolOutput(part: UIPart): string {
   return typeof output === 'string' ? output : ''
 }
 
+function humanizeToolName(rawName?: string | null): string {
+  if (!rawName) return 'Tool'
+  const normalized = rawName
+    .replace(/^tool[-:]/i, '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!normalized) return 'Tool'
+  return normalized
+    .split(' ')
+    .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : ''))
+    .join(' ')
+}
 function previewValue(value: unknown, limit = 280): string | undefined {
   if (value === null || value === undefined) return undefined
   if (typeof value === 'string') {
@@ -62,7 +75,7 @@ export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: 
       : `${messageId}-tool-${index}`
 
   let status = toolStateToStatus(part.state)
-  const title = friendlyToolLabel(rawName)
+  const title = humanizeToolName(rawName)
   const toolState = typeof part.state === 'string' ? part.state : undefined
 
   const inputPreview = previewValue(part.input)
