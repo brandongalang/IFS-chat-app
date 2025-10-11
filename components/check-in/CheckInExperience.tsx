@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Textarea } from '@/components/ui/textarea'
@@ -87,21 +87,20 @@ export function CheckInExperience({
   const [morningState, setMorningState] = useState<MorningState>(MORNING_DEFAULTS)
   const eveningDefaults = useMemo(() => createEveningDefaults(morningContext), [morningContext])
   const [eveningState, setEveningState] = useState<EveningState>(() => eveningDefaults)
-  const successResetRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   useEffect(() => {
     if (variant === 'evening') {
       setEveningState((prev) => (isEveningDraftDirty(prev, eveningDefaults) ? prev : eveningDefaults))
     }
   }, [eveningDefaults, variant])
 
+  // When a save succeeds, briefly show success state then reset back to idle
   useEffect(() => {
-    return () => {
-      if (successResetRef.current) {
-        clearTimeout(successResetRef.current)
-      }
-    }
-  }, [])
+    if (actionStatus !== 'success') return
+    const timer = setTimeout(() => {
+      setActionStatus('idle')
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [actionStatus])
 
   const partLookup = useMemo(() => {
     const map = new Map<string, PartOption>()
