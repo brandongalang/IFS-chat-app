@@ -24,7 +24,9 @@ related_prs:
   - #36
   - #275
   - #267
+  - #297
   - #298
+  - #299
   - #300
 ---
 
@@ -69,7 +71,7 @@ Provides a gentle, repeatable practice to capture mood, intentions, and observat
 - Visual design: Minimal — no per-score text is shown near the slider (no tick labels or inline selected labels); clean track and thumb with subtle focus states
 - Backward compatibility: `EmojiScale` preserved as a wrapper around `SliderScale`, maintaining existing component contracts
 
-## Mobile Responsiveness (PR #267, PR #298)
+## Mobile Responsiveness (PR #267, PR #298, PR #299, PR #300)
 - Dashboard slots (`CheckInSlots.tsx`): Buttons increased to 52px height with 18px font size and 16px icon size for comfortable thumb tapping on mobile devices
 - Slider scales (`SliderScale.tsx`): Mobile-first responsive design with a minimal presentation:
   - Mobile (<768px) and Desktop (≥768px): No tick labels and no inline selected label; only the track and thumb are visible
