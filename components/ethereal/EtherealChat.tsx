@@ -287,7 +287,7 @@ export function EtherealChat() {
                 className="min-h-[48px] max-h-[132px] w-full resize-none border-0 bg-transparent px-3 py-2.5 text-[16px] text-white/90 placeholder:text-white/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 focus:border-0 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.18)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.12)] transition-shadow duration-200"
                 data-testid="ethereal-input"
                 aria-label="Message"
-                disabled={isLoading || sessionClosed || isClosing}
+                disabled={isLoading || sessionClosed}
               />
               {sessionClosed && sessionState !== 'ended' ? (
                 <div 
@@ -307,7 +307,7 @@ export function EtherealChat() {
                     variant="ghost"
                     size="sm"
                     onClick={handleEndSessionRequest}
-                    disabled={sessionClosed || isLoading || isClosing}
+                    disabled={sessionClosed || isLoading}
                     className="min-h-11 h-11 px-4 rounded-full bg-white/5 text-white hover:bg-white/10 active:scale-95 transition-transform"
                   >
                     <span className="text-xs uppercase tracking-[0.2em]">end session</span>
@@ -315,7 +315,7 @@ export function EtherealChat() {
                   <Button
                     size="sm"
                     type="submit"
-                    disabled={!input.trim() || isLoading || sessionClosed || isClosing}
+                    disabled={!input.trim() || isLoading || sessionClosed}
                     className="min-h-11 h-11 min-w-11 px-6 rounded-full bg-white/18 text-white hover:bg-white/28 active:scale-95 transition-transform"
                   >
                     {isLoading ? (
