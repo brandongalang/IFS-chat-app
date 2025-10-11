@@ -116,7 +116,7 @@ export function EtherealChat() {
   }, [messages, isLoading])
 
   const onKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
-    if (sessionClosed || isClosing) {
+    if (sessionClosed) {
       e.preventDefault()
       return
     }
@@ -246,7 +246,7 @@ export function EtherealChat() {
 
 
       {/* Messages area */}
-      <div className="relative z-10 flex-1 overflow-y-auto pb-[120px] pt-[calc(env(safe-area-inset-top)+40px)]">
+      <div className="relative z-10 flex-1 overflow-y-auto overscroll-contain pb-[140px] pt-[calc(env(safe-area-inset-top)+40px)]">
         <PageContainer className="flex flex-col gap-6">
           {currentTasks?.length ? (
             <div className="sticky top-[calc(env(safe-area-inset-top)+32px)] z-20 mb-4">
@@ -287,7 +287,7 @@ export function EtherealChat() {
                 className="min-h-[48px] max-h-[132px] w-full resize-none border-0 bg-transparent px-3 py-2.5 text-[16px] text-white/90 placeholder:text-white/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 focus:border-0 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.18)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.12)] transition-shadow duration-200"
                 data-testid="ethereal-input"
                 aria-label="Message"
-                disabled={isLoading || sessionClosed || isClosing}
+                disabled={isLoading || sessionClosed}
               />
               {sessionClosed && sessionState !== 'ended' ? (
                 <div 
@@ -300,23 +300,23 @@ export function EtherealChat() {
                   ending session…
                 </div>
               ) : null}
-              <div className="flex items-center justify-end px-2 pb-1">
+              <div className="flex items-center justify-end px-1 pb-1">
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={handleEndSessionRequest}
-                    disabled={sessionClosed || isLoading || isClosing}
-                    className="h-9 rounded-full bg-white/5 text-white hover:bg-white/10"
+                    disabled={sessionClosed || isLoading}
+                    className="min-h-11 h-11 px-4 rounded-full bg-white/5 text-white hover:bg-white/10 active:scale-95 transition-transform"
                   >
-                    <span className="text-[11px] uppercase tracking-[0.2em]">end session</span>
+                    <span className="text-xs uppercase tracking-[0.2em]">end session</span>
                   </Button>
                   <Button
                     size="sm"
                     type="submit"
-                    disabled={!input.trim() || isLoading || sessionClosed || isClosing}
-                    className="h-9 rounded-full bg-white/18 px-5 text-white hover:bg-white/28"
+                    disabled={!input.trim() || isLoading || sessionClosed}
+                    className="min-h-11 h-11 min-w-11 px-6 rounded-full bg-white/18 text-white hover:bg-white/28 active:scale-95 transition-transform"
                   >
                     {isLoading ? (
                       <span className="flex items-center gap-2 text-[13px] uppercase tracking-[0.2em]">

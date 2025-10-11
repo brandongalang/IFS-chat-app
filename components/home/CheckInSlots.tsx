@@ -151,8 +151,8 @@ function SlotCard({ variant, state, isViewingToday, targetDate, hasDraft }: Slot
       </div>
       <p className="mt-3 text-sm text-muted-foreground">{description}</p>
       {showAction ? (
-        <GuardedLink href={href} className="mt-5 inline-flex">
-          <Button className="w-full" variant={hasDraft ? 'secondary' : 'default'}>
+        <GuardedLink href={href} className="mt-5 inline-flex w-full">
+          <Button className="w-full min-h-12 py-3" variant={hasDraft ? 'secondary' : 'default'}>
             {actionLabel}
           </Button>
         </GuardedLink>

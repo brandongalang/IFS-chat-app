@@ -2,7 +2,7 @@
 title: Feature: Guided Check-ins
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-09
+last_updated: 2025-10-11
 feature_flag: null
 code_paths:
   - app/check-in/morning/page.tsx
@@ -21,6 +21,7 @@ code_paths:
 related_prs:
   - #36
   - #275
+  - #267
 ---
 
 ## What
@@ -49,3 +50,7 @@ Provides a gentle, repeatable practice to capture mood, intentions, and observat
 
 ## Operational notes
 - Consider rate limiting and UX for repeated submissions; overview endpoint currently scans a 10-day window for streak computation.
+
+## Mobile Responsiveness (PR #267)
+- **Dashboard slots** (`CheckInSlots.tsx`): Buttons increased to 52px height with 18px font size and 16px icon size for comfortable thumb tapping on mobile devices
+- **Touch targets**: All interactive elements meet WCAG 2.5.5 AA minimum size guidelines (44×44px)

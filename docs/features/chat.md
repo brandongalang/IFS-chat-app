@@ -16,6 +16,7 @@ related_prs:
   - #34
   - #292
   - #293
+  - #267
 ---
 
 ## What
@@ -52,3 +53,10 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
 ## UI/UX notes
 - Messages area top padding increased from 16px to 40px (2025-01-11) to prevent first message from being cut off at viewport edge
 - Active task overlay position adjusted proportionally to align with new padding
+
+## Mobile Responsiveness (PR #267)
+- **Chat page layout**: Uses dynamic viewport height (`dvh`) to accommodate mobile browser chrome (address bar, bottom nav)
+- **Touch targets**: Send button (56×56px) and End Session button (48px height, full width) meet WCAG 2.5.5 AA guidelines (44×44px minimum)
+- **Input ergonomics**: Textarea min-height 52px with 14px base font prevents zoom on iOS; rounded corners (12px) improve visual comfort
+- **Session state**: Removed redundant `isClosing` checks from disabled conditions—`sessionClosed` already captures all non-idle states
+- **Safe areas**: Chat interface respects device notches and home indicators via `safe-area-inset-*` padding (see `app/globals.css`)

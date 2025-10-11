@@ -59,6 +59,16 @@
         "docs/user-memory.md",
         "docs/runbooks/memory-cron-vercel.md"
       ]
+    },
+    {
+      "paths": [
+        "app/layout.tsx",
+        "app/globals.css",
+        "components/nav/**",
+        "tailwind.config.js",
+        "tailwind.config.ts"
+      ],
+      "docs": ["docs/features/mobile-responsiveness.md"]
     }
   ]
 }
