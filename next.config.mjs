@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Silence workspace root inference warning in CI by explicitly setting project root
+  outputFileTracingRoot: __dirname,
   serverExternalPackages: ['@mastra/core'],
   typescript: {
     // Fail the build on TypeScript errors
