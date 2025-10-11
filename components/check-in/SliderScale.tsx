@@ -43,12 +43,8 @@ export function SliderScale({
     [onChange]
   )
 
-  // Calculate position for labels
-  const range = max - min
-  const positions = Array.from({ length: labels.length }, (_, i) => {
-    const position = (i / (labels.length - 1)) * 100
-    return position
-  })
+  // Calculate positions for tick labels as percentages across the track
+  const positions = Array.from({ length: labels.length }, (_, i) => (i / (labels.length - 1)) * 100)
 
   const selectedLabel = labels[value - min] || labels[Math.floor(labels.length / 2)]
 

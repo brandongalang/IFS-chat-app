@@ -1,9 +1,9 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
+// Note: Keep imports minimal; no utility helpers are needed here
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 
 interface CheckInLayoutProps {
   variant: 'morning' | 'evening'
