@@ -29,7 +29,7 @@ related_prs:
   - #298
   - #299
   - #300
-  - #TBD_ENDPOINT_LABELS
+  - #301
 ---
 
 ## What
@@ -73,7 +73,7 @@ Provides a gentle, repeatable practice to capture mood, intentions, and observat
 - **Visual design**: Clean track and thumb with subtle focus states
 - **Backward compatibility**: `EmojiScale` preserved as a wrapper around `SliderScale`, maintaining existing component contracts
 
-### Endpoint Labels & Gradient (PR #TBD_ENDPOINT_LABELS)
+### Endpoint Labels & Gradient (PR #301)
 - **Endpoint labels**: Each slider now displays descriptive text labels at the left and right ends (e.g., "Running on empty" ← → "Glowing with joy") to clarify what each extreme of the scale represents
   - **Mobile (<768px)**: Shows abbreviated labels (first 1-2 words, max 14 chars) to prevent text overlap on small screens
   - **Desktop (≥768px)**: Shows full descriptive labels extracted from emoji option metadata
@@ -88,7 +88,7 @@ Provides a gentle, repeatable practice to capture mood, intentions, and observat
   - `EmojiScale` automatically extracts endpoint labels from first and last `EmojiOption` in the options array
   - Internal `abbreviateLabel` helper derives mobile-friendly short versions without breaking existing APIs
 
-## Mobile Responsiveness (PR #267, PR #298, PR #299, PR #300, PR #TBD_ENDPOINT_LABELS)
+## Mobile Responsiveness (PR #267, PR #298, PR #299, PR #300, PR #301)
 - **Dashboard slots** (`CheckInSlots.tsx`): Buttons increased to 52px height with 18px font size and 16px icon size for comfortable thumb tapping on mobile devices
 - **Slider scales** (`SliderScale.tsx`): Mobile-first responsive design:
   - **Endpoint labels**: Abbreviated on mobile (<768px) to 1-2 words; full descriptive text on desktop (≥768px)
