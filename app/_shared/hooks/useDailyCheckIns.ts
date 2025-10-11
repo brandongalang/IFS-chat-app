@@ -57,7 +57,7 @@ export function useDailyCheckIns(selectedDate: Date = new Date()): UseDailyCheck
   const targetDateString = useMemo(() => toLocalDateIso(targetDate), [targetDate])
   const todayString = toLocalDateIso(new Date())
   const isViewingToday = targetDateString === todayString
-  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const userTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, [])
 
   const fetchOverview = useCallback(async () => {
     requestRef.current?.abort()
@@ -98,7 +98,7 @@ export function useDailyCheckIns(selectedDate: Date = new Date()): UseDailyCheck
         setIsLoading(false)
       }
     }
-  }, [targetDateString])
+  }, [targetDateString, userTimezone])
 
   useEffect(() => {
     isMountedRef.current = true
