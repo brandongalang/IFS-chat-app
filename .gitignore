@@ -109,3 +109,8 @@ GEMINI.md
 .env.honeypot
 *.pem
 .ssh/
+
+# Temporary/personal files
+SAUNA.md
+user.md
+*.backup
