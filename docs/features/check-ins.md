@@ -24,11 +24,9 @@ related_prs:
   - #36
   - #275
   - #267
-  - #298
----
-  - #275
-  - #267
   - #297
+  - #298
+  - #299
 ---
 
 ## What
@@ -72,13 +70,14 @@ Provides a gentle, repeatable practice to capture mood, intentions, and observat
 - **Visual design**: Calm, spacious layout with descriptive scale labels ("Very Low" → "Very High") and subtle hover/focus states
 - **Backward compatibility**: `EmojiScale` preserved as wrapper around `SliderScale`, maintaining existing component contracts
 
-## Mobile Responsiveness (PR #267, PR #298)
+## Mobile Responsiveness (PR #267, PR #298, PR #299)
 - **Dashboard slots** (`CheckInSlots.tsx`): Buttons increased to 52px height with 18px font size and 16px icon size for comfortable thumb tapping on mobile devices
 - **Emoji slider scales** (`SliderScale.tsx`): Mobile-first responsive design implemented:
   - **Mobile (<768px)**: Tick labels hidden; only selected label displayed below slider with smooth transition animation
   - **Desktop (≥768px)**: Selected label shown inline in header; all tick labels visible below slider track
   - Selected label updates with `transition-opacity duration-200` and `key={value}` for smooth fade effect
   - Accessibility: `aria-live="polite"` announces selection changes to screen readers
+  - **Fix (PR #299)**: Moved tick labels container outside slider wrapper to ensure labels don't render at all on mobile (absolute positioning was causing labels to still show)
 - **Spacing and density** (`CheckInExperience.tsx`, `CheckInLayout.tsx`):
   - Scale containers use `gap-3 md:gap-5` for tighter vertical spacing on mobile
   - Card padding reduced to `p-4` on mobile, `md:p-6` on desktop
