@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
@@ -44,9 +44,15 @@ export function SliderScale({
   )
 
   // Calculate positions for tick labels as percentages across the track
-  const positions = Array.from({ length: labels.length }, (_, i) => (i / (labels.length - 1)) * 100)
+  const positions = useMemo(
+    () => Array.from({ length: labels.length }, (_, i) => (i / (labels.length - 1)) * 100),
+    [labels.length]
+  )
 
-  const selectedLabel = labels[value - min] || labels[Math.floor(labels.length / 2)]
+  const selectedLabel = useMemo(
+    () => labels[value - min] || labels[Math.floor(labels.length / 2)],
+    [labels, value, min]
+  )
 
   return (
     <div className={cn('grid gap-3', className)}>

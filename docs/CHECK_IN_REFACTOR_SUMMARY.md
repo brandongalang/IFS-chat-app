@@ -152,6 +152,7 @@ Successfully refactored the check-in UI from a 3-step wizard with emoji pickers 
 ### 🔄 Manual Testing Required
 - [ ] **Morning flow**: Set sliders, enter intention, pick parts, save
 - [ ] **Evening flow**: Verify morning summary appears, sliders work, reflection saves
+- [ ] **Data verification (Critical)**: Confirm `gratitude` and `moreNotes` both populated from single `additionalNotes`
 - [ ] **Draft persistence**: Refresh mid-edit, verify data persists
 - [ ] **Clear on save**: Verify drafts clear after successful save
 - [ ] **Streak display**: Confirm streak badge shows correctly
@@ -159,7 +160,6 @@ Successfully refactored the check-in UI from a 3-step wizard with emoji pickers 
 - [ ] **Error handling**: Test conflict detection, network errors
 - [ ] **Keyboard nav**: Tab through form, use arrows on sliders
 - [ ] **Mobile**: Test on phone/tablet (touch targets, layout)
-- [ ] **Data verification**: Check database to confirm `gratitude` and `moreNotes` both populated
 
 ## Files Modified
 

@@ -34,7 +34,17 @@ export function EmojiScale({ label, options, value, onChange, description }: Emo
     return map
   }, [options])
 
-  const currentScore = idToScore.get(value) ?? 3
+  const currentScore = (() => {
+    const score = idToScore.get(value)
+    if (score === undefined) {
+      if (process.env.NODE_ENV === 'development') {
+        // Surface unexpected IDs loudly during development
+        console.warn(`EmojiScale: Unknown option ID \"${value}\", defaulting to middle score`)
+      }
+      return 3
+    }
+    return score
+  })()
 
   const labels = useMemo(() => {
     return options.map((option) => option.label)
