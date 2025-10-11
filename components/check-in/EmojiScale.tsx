@@ -60,6 +60,10 @@ export function EmojiScale({ label, options, value, onChange, description }: Emo
     [scoreToId, onChange]
   )
 
+  // Extract endpoint labels from first and last options
+  const leftLabel = options.length > 0 ? options[0].label : undefined
+  const rightLabel = options.length > 0 ? options[options.length - 1].label : undefined
+
   return (
     <SliderScale
       label={label}
@@ -69,6 +73,8 @@ export function EmojiScale({ label, options, value, onChange, description }: Emo
       max={5}
       step={1}
       labels={labels}
+      leftLabel={leftLabel}
+      rightLabel={rightLabel}
       helpText={description}
     />
   )
