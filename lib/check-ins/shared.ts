@@ -129,3 +129,34 @@ export interface CheckInOverviewPayload {
   evening: CheckInOverviewSlot
   streak: number
 }
+
+/**
+ * Get the current hour in the specified timezone
+ * @param timezone - IANA timezone string (e.g., 'America/New_York')
+ * @returns Current hour (0-23) in the specified timezone
+ */
+export function getCurrentHourInTimezone(timezone: string): number {
+  const now = new Date()
+  const userTimeString = now.toLocaleString('en-US', {
+    timeZone: timezone,
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  const [hourStr] = userTimeString.split(':')
+  return parseInt(hourStr, 10)
+}
+
+/**
+ * Validates if a string is a valid IANA timezone
+ * @param timezone - Timezone string to validate
+ * @returns true if valid, false otherwise
+ */
+export function isValidTimezone(timezone: string): boolean {
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: timezone })
+    return true
+  } catch {
+    return false
+  }
+}

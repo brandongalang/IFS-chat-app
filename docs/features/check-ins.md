@@ -30,6 +30,7 @@ related_prs:
   - #299
   - #300
   - #301
+  - #303
 ---
 
 ## What
@@ -40,6 +41,15 @@ Provides a gentle, repeatable practice to capture mood, intentions, and observat
 
 ## How it works
 - Next.js routes under /check-in/morning and /check-in/evening render a shared `CheckInExperience` single-page form; the interface varies by variant (morning includes mood/energy/intention focus; evening includes mood/energy plus gratitude and notes).
+
+### Timezone semantics (PR #303)
+- Server-authoritative timezone is read from `users.settings.timezone`; invalid values fallback to `America/New_York`.
+- Client may send a `timezone` query param for testability, but the server prefers the profile value.
+- “Today” is computed in the user’s timezone via `getTodayIsoInTimezone()`; pages use `resolveUserTodayIso()` so morning/evening flows operate on the correct local date.
+- Availability windows are evaluated in the user’s timezone (DST-safe):
+  - Morning becomes available at 04:00 local time; shows “upcoming” before, “closed” at/after 18:00.
+  - Evening becomes available at 18:00 local time; locked before 18:00.
+- Hour and date computations use `Intl.DateTimeFormat`-based helpers to avoid server-time drift and daylight-saving issues.
 - The UI uses professional horizontal sliders (via `SliderScale` component) instead of emoji buttons, providing a 1-5 rating scale with visual endpoint labels and a subtle gradient to clarify scale direction.
 - `EmojiScale` now acts as a thin wrapper around `SliderScale`, mapping slider values to emoji metadata and automatically passing the first and last option labels as left/right endpoints, while preserving the original component API for backward compatibility.
 - The multi-step wizard interface has been replaced with a single-page form, removing the progress bar and review step for a more streamlined user experience.
