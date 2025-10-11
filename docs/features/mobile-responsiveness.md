@@ -80,9 +80,38 @@ Added CSS utilities to handle safe areas on devices with notches or home indicat
 - GuardedLink wrapper now `w-full` to ensure full-width tap target
 - Maintains responsive grid layout (single column on mobile, 2 columns on md+)
 
-### 6. Dynamic Viewport Height (`app/chat/page.tsx`)
+### 6. Check-In Emoji Slider Scales (`components/check-in/SliderScale.tsx`)
+
+#### Mobile-First Label Strategy
+- **Problem**: Multi-word tick labels (e.g., "Running on empty", "Bright and open") created text overlap and visual clutter on mobile screens
+- **Solution**: Progressive disclosure pattern
+  - **Mobile (<768px)**: Hide all tick labels; display only the currently selected label below the slider
+  - **Desktop (≥768px)**: Show selected label inline in header; display all tick labels below slider track
+
+#### Implementation Details
+- Selected label container:
+  - Mobile: `mt-1 text-center text-base font-medium transition-opacity duration-200 md:hidden`
+  - Uses `key={value}` to trigger React re-render on selection change, creating smooth fade effect
+  - `role="status"` and `aria-live="polite"` for accessibility
+- Tick labels: `hidden md:flex` to hide on mobile, show on desktop
+- Slider padding adjusted: `pb-3 md:pb-6` to reduce mobile footprint
+
+#### Benefits
+- ✓ Eliminates text overlap on small screens
+- ✓ Reduces visual noise—users focus on the slider itself
+- ✓ Maintains full context on desktop where space allows
+- ✓ Smooth transitions provide tactile feedback
+- ✓ Screen readers announce selection changes on all devices
+
+### 7. Dynamic Viewport Height (`app/chat/page.tsx`)
 
 Changed from Tailwind's `dvh` shorthand to explicit `[100dvh]` class for better browser support with dynamic viewport units.
+
+### 8. Check-In Layout Density (`components/check-in/CheckInLayout.tsx`)
+
+- Card padding: `p-4 md:p-6` (16px mobile, 24px desktop)
+- Outer container: `p-4 md:p-6 lg:p-10` (16px → 24px → 40px)
+- Progressive density allows more content width on mobile without feeling cramped
 
 ## Code Paths
 
@@ -94,6 +123,9 @@ The following files were modified:
 - `components/ethereal/EtherealChat.tsx` - Improved mobile ergonomics and touch targets
 - `components/nav/BottomTabs.tsx` - Enhanced navigation with proper safe-area support
 - `components/home/CheckInSlots.tsx` - Increased button tap targets
+- `components/check-in/SliderScale.tsx` - Mobile-first label display with progressive disclosure
+- `components/check-in/CheckInExperience.tsx` - Responsive spacing between scales
+- `components/check-in/CheckInLayout.tsx` - Progressive padding density
 
 ## Testing
 
@@ -172,3 +204,8 @@ Potential enhancements for mobile experience:
 ## Last Updated
 
 2025-01-11
+
+## Related PRs
+
+- #267 - Initial mobile responsiveness improvements
+- #298 - Check-in slider scales mobile-first redesign
