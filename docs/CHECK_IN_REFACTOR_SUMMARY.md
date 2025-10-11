@@ -53,7 +53,7 @@ Successfully refactored the check-in UI from a 3-step wizard with emoji pickers 
 ## Layout Structure
 
 ### Morning Check-In
-```
+```text
 ┌─ How are you arriving? ─────────────────┐
 │ • Mood slider                            │
 │ • Energy slider                          │
@@ -71,7 +71,7 @@ Successfully refactored the check-in UI from a 3-step wizard with emoji pickers 
 ```
 
 ### Evening Check-In
-```
+```text
 ┌─ Morning Summary (compact card) ────────┐
 ├─────────────────────────────────────────┤
 │ How are you landing tonight?            │
@@ -189,7 +189,7 @@ Successfully refactored the check-in UI from a 3-step wizard with emoji pickers 
 1. **Manual QA**: Test the flows end-to-end (see checklist above)
 2. **Unit Tests**: Add tests for `SliderScale` component
 3. **Integration Tests**: Update check-in flow tests if they rely on wizard steps
-4. **Documentation**: Update `docs/features/check-ins.md` with new UI details
+4. **Documentation**: Update [`docs/features/check-ins.md`](features/check-ins.md) with new UI details
 5. **Monitor**: Watch for user feedback on the new experience
 6. **Cleanup**: Remove `.backup` file after confirming everything works
 

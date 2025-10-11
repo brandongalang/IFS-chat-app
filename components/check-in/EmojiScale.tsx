@@ -17,6 +17,10 @@ export function EmojiScale({ label, options, value, onChange, description }: Emo
   const idToScore = useMemo(() => {
     const map = new Map<string, number>()
     options.forEach((option) => {
+      // Runtime validation: scores must be in range 1-5
+      if (option.score < 1 || option.score > 5) {
+        console.warn(`EmojiScale: Invalid score ${option.score} for option ${option.id}. Scores must be 1-5.`)
+      }
       map.set(option.id, option.score)
     })
     return map

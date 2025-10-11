@@ -21,7 +21,7 @@ export function CheckInLayout({
   const heading = variant === 'morning' ? 'Morning check-in' : 'Evening reflection'
   const subheading =
     variant === 'morning'
-      ? 'Take a moment to notice how you're arriving today.'
+      ? "Take a moment to notice how you're arriving today."
       : 'Reflect on your day with curiosity and care.'
 
   const streakLabel =
