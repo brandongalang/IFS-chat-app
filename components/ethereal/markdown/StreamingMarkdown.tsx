@@ -5,11 +5,27 @@ import { Streamdown } from 'streamdown'
 import { cn } from '@/lib/utils'
 import { CodeBlock, CodeBlockCopyButton } from '@/components/ai-elements/code-block'
 
+/**
+ * Props for the StreamingMarkdown component
+ */
 interface StreamingMarkdownProps {
+  /** The markdown text to render */
   text: string
+  /** Optional className for styling */
   className?: string
 }
 
+/**
+ * StreamingMarkdown component renders markdown content with ethereal theming.
+ * 
+ * This component uses Streamdown to progressively render markdown as it streams in,
+ * with custom styling for all markdown elements to match the ethereal aesthetic.
+ * Supports headings, text formatting, links, lists, blockquotes, tables, and code blocks
+ * with syntax highlighting.
+ * 
+ * @param props - The component props
+ * @returns A React component that renders styled markdown content
+ */
 export function StreamingMarkdown({ text, className }: StreamingMarkdownProps) {
   // Memoize components map for performance
   const components = useMemo(() => ({
