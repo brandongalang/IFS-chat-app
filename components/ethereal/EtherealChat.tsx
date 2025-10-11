@@ -116,7 +116,7 @@ export function EtherealChat() {
   }, [messages, isLoading])
 
   const onKeyDown: React.KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
-    if (sessionClosed || isClosing) {
+    if (sessionClosed) {
       e.preventDefault()
       return
     }
