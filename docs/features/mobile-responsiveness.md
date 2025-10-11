@@ -208,4 +208,4 @@ Potential enhancements for mobile experience:
 ## Related PRs
 
 - #267 - Initial mobile responsiveness improvements
-- TBD - Check-in slider scales mobile-first redesign
+- #298 - Check-in slider scales mobile-first redesign

@@ -24,7 +24,7 @@ related_prs:
   - #36
   - #275
   - #267
-  - TBD
+  - #298
 ---
   - #275
   - #267
@@ -72,7 +72,7 @@ Provides a gentle, repeatable practice to capture mood, intentions, and observat
 - **Visual design**: Calm, spacious layout with descriptive scale labels ("Very Low" → "Very High") and subtle hover/focus states
 - **Backward compatibility**: `EmojiScale` preserved as wrapper around `SliderScale`, maintaining existing component contracts
 
-## Mobile Responsiveness (PR #267, PR TBD)
+## Mobile Responsiveness (PR #267, PR #298)
 - **Dashboard slots** (`CheckInSlots.tsx`): Buttons increased to 52px height with 18px font size and 16px icon size for comfortable thumb tapping on mobile devices
 - **Emoji slider scales** (`SliderScale.tsx`): Mobile-first responsive design implemented:
   - **Mobile (<768px)**: Tick labels hidden; only selected label displayed below slider with smooth transition animation
