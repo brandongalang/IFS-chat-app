@@ -60,12 +60,13 @@ export function SliderScale({
         <Label htmlFor={id} className="text-sm font-medium">
           {label}
         </Label>
-        <span className="text-xs font-medium text-muted-foreground" aria-live="polite">
+        {/* Show selected label inline on desktop only */}
+        <span className="hidden text-xs font-medium text-muted-foreground md:inline" aria-live="polite">
           {selectedLabel}
         </span>
       </div>
       {helpText ? <p className="text-xs text-muted-foreground">{helpText}</p> : null}
-      <div className="relative px-1 pt-2 pb-6">
+      <div className="relative px-1 pt-2 pb-3 md:pb-6">
         <Slider
           id={id}
           min={min}
@@ -78,7 +79,8 @@ export function SliderScale({
           aria-valuetext={selectedLabel}
           className="w-full"
         />
-        <div className="absolute left-0 right-0 top-full mt-2 flex justify-between px-1">
+        {/* Desktop: show all tick labels below slider */}
+        <div className="absolute left-0 right-0 top-full mt-2 hidden justify-between px-1 md:flex">
           {labels.map((tickLabel, index) => (
             <span
               key={index}
@@ -89,6 +91,15 @@ export function SliderScale({
             </span>
           ))}
         </div>
+      </div>
+      {/* Mobile: show only the selected label below slider with smooth transition */}
+      <div
+        key={value}
+        className="mt-1 text-center text-base font-medium text-foreground transition-opacity duration-200 md:hidden"
+        role="status"
+        aria-live="polite"
+      >
+        {selectedLabel}
       </div>
     </div>
   )

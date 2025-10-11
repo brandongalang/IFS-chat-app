@@ -30,8 +30,8 @@ export function CheckInLayout({
       : null
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center bg-background p-6 md:p-10">
-      <div className="w-full max-w-2xl">
+    <div className="flex min-h-svh w-full items-center justify-center bg-background p-4 md:p-6 lg:p-10">
+      <div className="w-full max-w-lg">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{heading}</h1>
@@ -45,7 +45,7 @@ export function CheckInLayout({
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
-        <div className="rounded-2xl border border-border/60 bg-card/40 p-8 shadow-sm backdrop-blur">
+        <div className="rounded-2xl border border-border/60 bg-card/40 p-4 shadow-sm backdrop-blur md:p-6">
           {children}
         </div>
       </div>

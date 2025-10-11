@@ -2,7 +2,7 @@
 title: Feature: Guided Check-ins
 owner: @brandongalang
 status: shipped
-last_updated: 2025-01-17
+last_updated: 2025-01-11
 feature_flag: null
 code_paths:
   - app/check-in/morning/page.tsx
@@ -12,7 +12,6 @@ code_paths:
   - components/check-in/CheckInWizard.tsx
   - components/check-in/EmojiScale.tsx
   - components/check-in/SliderScale.tsx
-  - components/check-in/MorningSummary.tsx
   - components/check-in/CheckInLayout.tsx
   - components/check-in/PartsPicker.tsx
   - components/home/CheckInSlots.tsx
@@ -23,6 +22,10 @@ code_paths:
   - lib/check-ins/shared.ts
 related_prs:
   - #36
+  - #275
+  - #267
+  - TBD
+---
   - #275
   - #267
   - #297
@@ -69,6 +72,16 @@ Provides a gentle, repeatable practice to capture mood, intentions, and observat
 - **Visual design**: Calm, spacious layout with descriptive scale labels ("Very Low" → "Very High") and subtle hover/focus states
 - **Backward compatibility**: `EmojiScale` preserved as wrapper around `SliderScale`, maintaining existing component contracts
 
-### Mobile Responsiveness (PR #267)
+## Mobile Responsiveness (PR #267, PR TBD)
 - **Dashboard slots** (`CheckInSlots.tsx`): Buttons increased to 52px height with 18px font size and 16px icon size for comfortable thumb tapping on mobile devices
+- **Emoji slider scales** (`SliderScale.tsx`): Mobile-first responsive design implemented:
+  - **Mobile (<768px)**: Tick labels hidden; only selected label displayed below slider with smooth transition animation
+  - **Desktop (≥768px)**: Selected label shown inline in header; all tick labels visible below slider track
+  - Selected label updates with `transition-opacity duration-200` and `key={value}` for smooth fade effect
+  - Accessibility: `aria-live="polite"` announces selection changes to screen readers
+- **Spacing and density** (`CheckInExperience.tsx`, `CheckInLayout.tsx`):
+  - Scale containers use `gap-3 md:gap-5` for tighter vertical spacing on mobile
+  - Card padding reduced to `p-4` on mobile, `md:p-6` on desktop
+  - Outer container padding: `p-4 md:p-6 lg:p-10` for progressive density
 - **Touch targets**: All interactive elements meet WCAG 2.5.5 AA minimum size guidelines (44×44px)
+- **Visual hierarchy**: Cleaner mobile interface prevents text overlap and reduces visual clutter

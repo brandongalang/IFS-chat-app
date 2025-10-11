@@ -323,7 +323,7 @@ function MorningForm({ state, setState, parts }: MorningFormProps) {
   return (
     <>
       <FormSection title="How are you arriving?">
-        <div className="grid gap-5">
+        <div className="grid gap-3 md:gap-5">
           <EmojiScale
             label="How are you feeling right now?"
             options={MOOD_OPTIONS}
@@ -416,7 +416,7 @@ function EveningForm({ state, setState, parts, morningContext, partLookup }: Eve
       ) : null}
 
       <FormSection title="How are you landing tonight?">
-        <div className="grid gap-5">
+        <div className="grid gap-3 md:gap-5">
           <EmojiScale
             label="How are you feeling right now?"
             options={MOOD_OPTIONS}
