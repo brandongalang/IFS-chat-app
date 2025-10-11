@@ -8,6 +8,7 @@ code_paths:
   - app/chat/page.tsx
   - app/api/chat/route.ts
   - app/_shared/hooks/useChat.ts
+  - app/_shared/hooks/useDailyCheckIns.ts
   - components/ethereal/EtherealChat.tsx
   - components/ethereal/EtherealMessageList.tsx
   - components/ethereal/markdown/StreamingMarkdown.tsx
@@ -20,6 +21,7 @@ related_prs:
   - #293
   - #267
   - #302
+  - #303
 ---
 
 ## What
