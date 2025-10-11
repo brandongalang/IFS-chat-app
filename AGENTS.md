@@ -8,6 +8,7 @@
   4. Use descriptive branch names: `feature/description`, `fix/description`, or `refactor/description`
 - Prefer GitHub CLI (`gh`) for creating and updating pull requests from this repository.
 - Document any deviations from standard workflows in this file so future agents stay aligned.
+- **2025-10-11**: README rewrite committed directly to main by user instruction; no PR opened. This was a one-time exception for portfolio documentation updates. Subsequent work should return to standard branch/PR flow.
 
 ## Documentation Workflow (CRITICAL)
 **Before opening any PR, documentation MUST be updated to pass the `docs` CI check.**

@@ -1,374 +1,155 @@
-# IFS Therapy Companion: AI-First Product Development
+# Trailhead
 
-**A sophisticated journaling companion with Internal Family Systems methodology, demonstrating what's possible when product thinking meets modern AI development tools.**
+An Internal Family Systems (IFS) companion app built around agentic AI for structured personal reflection—demonstrating how product thinking translates into technical architecture.
 
----
+## What It Does
 
-## Product Strategy: Building Safe AI for Personal Reflection
+Trailhead helps users explore their internal psychological landscape using IFS methodology through conversational AI. Users engage with a streaming chat interface that identifies, tracks, and maps relationships between internal "parts"—the subpersonalities that make up our psyche. The agent maintains context through a differential memory system, generates insights from patterns across sessions, and visualizes part relationships in an interactive force-directed graph ("Parts Garden").
 
-This project explores how to design AI products for sensitive, personal contexts. The core challenge: building an AI companion that helps users explore their internal psychological landscape without overstepping boundaries or making therapeutic claims.
+## Key Features
 
-**Key Product Decisions:**
-- **Evidence-based interactions**: AI suggestions must cite specific user language, not hallucinate insights
-- **User agency first**: All AI-generated parts and relationships require explicit user confirmation
-- **Graceful boundaries**: Clear positioning as journaling support with IFS methodology, not therapy
-- **Data privacy**: Complete user data isolation - users cannot access others' data
-- **Transparent AI reasoning**: Users can see why the AI suggested something and undo it
+- **IFS-Informed Chat**: Streaming AI conversation trained in IFS methodology with evidence-based part detection
+- **Parts Tracking**: Lifecycle management (emerging → acknowledged → active → integrated) with confidence scoring
+- **Relationship Mapping**: Track dynamics between parts (protector-exile, polarization, allied)
+- **Memory System**: Differential snapshot architecture maintaining psychological continuity across sessions
+- **Insights Generation**: Daily AI-generated reflections and pattern detection with user feedback loop
+- **Parts Garden**: Interactive D3.js force-directed visualization of parts and their relationships
+- **Action Logging**: Complete audit trail with rollback capability for all AI-driven changes
+- **Markdown-Based Storage**: Structured note-taking with integrity tracking and event sourcing
 
-**Technical Implementation:**
-- **Multi-agent architecture**: 30+ specialized AI tools handling different aspects (memory, parts detection, relationship mapping)
-- **Differential memory system**: Efficient psychological continuity across conversations
-- **Real-time streaming**: Server-sent events with task visualization
-- **Action logging**: Complete auditability and rollback of AI decisions
-- **Force-directed visualization**: Custom D3.js parts garden showing emotional relationships with charge decay animations
+## Architecture Overview
 
----
+### Components
 
-## Development Reality: Non-Developer Builds Full-Stack AI
+**Web Application**: Next.js 15 (App Router) with React 19, TypeScript, and Tailwind CSS. Server-side rendering with streaming responses via Vercel AI SDK.
 
-**Transparency**: I'm not a developer. This entire project was built using AI coding tools as a learning exercise in what's possible when product thinking meets modern development assistance.
+**Agent Layer**: Built on Mastra framework with 15+ specialized tool modules (parts, assessments, proposals, evidence, memory, inbox observation). Agent loop orchestrates tool selection, execution, and response generation. Custom prompt engineering for IFS domain expertise.
 
-**Tool Stack Used:**
-- **Claude Code**: Primary development partner for complex features and codebase exploration
-- **Google Gemini CLI**: Whole-codebase analysis and architectural decisions
-- **Google Jules & Stitch**: UI development and rapid prototyping
-- **Replit**: Collaborative development and testing environments
-- **Multiple others**: Learning what works for different types of development tasks
+**Model Access**: OpenRouter integration (Grok-4-Fast primary model) proxied through LiteLLM for prompt injection detection and model fallback.
 
-**What This Demonstrates:**
-The barrier between "knowing what should exist" and "making it exist" is dropping dramatically. This project represents **~26,000 lines of TypeScript** implementing sophisticated AI workflows, real-time state management, force-directed graph visualization, and complex data architecture - built through product thinking and AI assistance rather than traditional programming experience.
+**Data Layer**: PostgreSQL via Supabase with Row Level Security enforcing complete user data isolation. Zod schemas with `.strict()` validation and server-injected user identity. Differential memory snapshots with JSON Patch (RFC 6902) for efficient state tracking.
 
-**Key Learning**: AI tools excel when given clear architectural constraints and domain expertise, but architectural decisions still require human judgment about user needs, security boundaries, and long-term scalability.
+**Background Jobs**: Vercel Cron for daily memory refresh, session finalization, and insight generation. Event-driven architecture with idempotent queue processing.
 
-## 📊 The Human-AI Division of Labor
+### Data Flow
 
-### What You Cannot Delegate
-Hard-learned lesson: **You cannot prompt what you cannot explain logically**. Critical non-delegable decisions:
+1. User input → Next.js API route (`/api/chat`)
+2. Agent bootstrap with personalized system prompt and memory context
+3. LLM processes conversation history + available tools
+4. Tool execution (e.g., `searchParts`, `createEmergingPart`) with action logging
+5. Response generation incorporating tool results
+6. Streaming response to client with real-time task visualization
+7. Background memory update pipeline processes session data into markdown notes
 
-#### **Architectural Foundations**
-- **Database schema design** - Every wrong choice cascades through your entire application
-- **Security boundaries** - Row Level Security, authentication flows, data access patterns
-- **Domain logic** - How IFS therapy concepts map to data structures and user workflows
-- **Integration decisions** - Which services connect and how they handle failure states
+→ See [`docs/architecture/`](docs/architecture/) for detailed component documentation
 
-#### **The Gray Zone: Collaborative Magic**
-Where domain expertise meets AI implementation skills. Example: **Parts Garden Feature**
+## Tech Stack
 
-**My Constraints**: Parts as nodes, relationships as edges, visual weight based on evidence strength, emotional charge through color/size, drag-and-drop with stable positioning
+- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, shadcn/ui, Radix UI
+- **Backend**: Next.js API Routes, Supabase (PostgreSQL + Auth), Vercel Cron
+- **AI/Agent**: Mastra framework, OpenRouter (Grok-4-Fast), LiteLLM proxy, Vercel AI SDK
+- **Data**: Supabase Postgres with RLS, differential snapshots (JSON Patch), markdown storage
+- **Validation**: Zod strict schemas with server-side user injection
+- **Security**: gitleaks secret scanning, environment-based secrets, RLS policies
+- **Deployment**: Vercel (app + cron), Supabase Cloud (data + auth)
 
-**AI's Implementation**: 500+ lines of sophisticated React with D3.js integration - force-directed graph with physics simulation, self-organizing parts based on relationships, smooth animations reflecting emotional charge, dynamic clustering
+## Project Context
 
-**The Result**: Code I couldn't have written in six months, implementing a vision I couldn't have technically specified.
+This is a portfolio project demonstrating agentic AI architecture for personal reflection use cases. Built by a Product Manager using AI development tools—architectural decisions (database design, IFS domain logic, agent loop design, tool orchestration, memory system) were human-led, while implementation was AI-assisted. The codebase (~26,000 lines of TypeScript) showcases both product design thinking and technical decision-making around multi-agent systems, real-time state management, and domain-specific AI applications
 
-### Why Starting From Scratch Fails
-**The Anti-Pattern**: Requesting complete features from scratch creates disconnected code feeling like different developers worked from subtly different specifications.
+## Setup & Development
 
-**The Breakthrough**: AI should follow foundational decisions, not make them.
+### Prerequisites
 
-#### **Incremental Expansion Strategy**
-1. **Build One Domain First**: Started with chat agent as solid foundation
-2. **Expand Adjacent Areas**: From chat → user memory → parts visualization → relationship mapping  
-3. **Establish Patterns**: Let AI extend and refine rather than create from nothing
-4. **Maintain Coherence**: Every generated line feels architecturally consistent
+- Node.js 18+ LTS
+- npm or pnpm
+- Supabase account (for database and auth)
+- OpenRouter API key (for LLM access)
 
-### Planning Revolutionizes Everything
-**Key Insight**: Have AI explain what it's building before asking it to execute.
+### Local Development
 
-This planning step:
-- Defines "correctness" within your specific context
-- Becomes specification language AI understands and optimizes toward  
-- Eliminates dead-end execution that plagued other approaches
-- Prevents "fake implementations" when AI gets overwhelmed
-
-**Workflow**: Rubber duck with GPT-5-Thinking-High first → let it crawl codebase and develop approach → execute that plan with appropriate tool
-
-## Ethereal Theme (global)
-
-The ethereal visual style is controlled centrally via ThemeController and CSS variables.
-
-- Dev override (no redeploy):
-  ```js
-  // In browser console
-  localStorage.setItem('eth-theme', JSON.stringify({ enabled: 1 })) // or 0 to hide backdrop
-  // Change background image (must exist in /public)
-  localStorage.setItem('eth-theme', JSON.stringify({ imageUrl: '/ethereal-bg.jpg' }))
-  location.reload()
-  ```
-- Central tokens live in `config/etherealTheme.ts`:
-  - Background image URL, vignette levels, blob colors/positions
-  - Text opacities and letter spacing (assistant/user)
-  - Animation timings (word/char fade, streaming cadence)
-- Components consume CSS variables; avoid hardcoding visuals in components. See `docs/ops/warp-workflow.md` for rules and a PR checklist.
-
-## 🔧 AI Development Workflow Management
-
-### Sprint Planning with AI Agents
-Demonstrating modern product management practices:
-
-#### Epic Breakdown & Story Generation
-```bash
-# Using Task Master AI for automated story decomposition
-task-master parse-prd .taskmaster/docs/user-memory-feature.md
-task-master analyze-complexity --research
-task-master expand --all --research
-```
-
-#### Cross-functional Coordination
-- **Design System**: Automated component generation using shadcn/ui patterns
-- **Backend Services**: API endpoint generation with Supabase integration
-- **Testing Strategy**: Automated test case creation for critical user journeys
-- **Documentation**: Real-time API docs and user guides through AI assistance
-
-#### Quality Assurance Integration
-- **Code Review Automation**: Jules integration for pattern recognition and best practices
-- **Performance Monitoring**: Built-in analytics for response time and user satisfaction
-- **Security Validation**: Automated security scanning and compliance checking
-
-
-## 🚀 AI-Enhanced Product Development Process
-
-### Requirements to Deployment: AI-Accelerated Pipeline
-
-This project showcases how a Product Manager can leverage AI tools throughout the entire product development lifecycle:
-
-#### 1. Requirements Analysis & Planning
-```bash
-# AI-powered PRD generation and story breakdown
-task-master init
-task-master parse-prd .taskmaster/docs/therapy-companion-prd.txt
-task-master analyze-complexity --research
-```
-
-#### 2. Technical Architecture Design  
-- **Claude Code**: Generated system architecture diagrams and API specifications
-- **Context7 MCP**: Validated framework choices against latest documentation
-- **Gemini CLI**: Analyzed large codebases for integration patterns and best practices
-
-#### 3. Implementation Coordination
-- **Multi-agent development**: Coordinated 4 specialized AI agents (Planning, Implementation, Testing, Documentation)
-- **Real-time code review**: Jules provided continuous quality feedback during development
-- **Cross-platform testing**: Replit enabled collaborative testing across different environments
-
-#### 4. Quality & User Experience Management
-- **User data security**: Row Level Security ensuring complete user data isolation
-- **Performance optimization**: AI-driven database query optimization and caching strategies
-- **Accessibility testing**: Automated ARIA compliance checking and keyboard navigation validation
-
-### Product Decision Framework
-
-#### Technical Debt Management
-Strategic decisions to balance velocity with long-term maintainability:
-
-- **Modular agent architecture** allows incremental AI model upgrades
-- **API-first design** enables independent frontend/backend iteration cycles  
-- **Progressive enhancement** ensures functionality across different user environments
-- **Comprehensive logging** provides data for continuous product improvement
-
-#### Stakeholder Communication
-AI tools enhanced traditional PM communication:
-
-- **Automated status reports** generated from git commits and task completion
-- **Visual progress tracking** through Task Master AI dashboards
-- **Task Master AI** - Automated project management and story decomposition  
-- **OpenRouter Account** - Multi-model AI inference for optimal performance
-- **Supabase Pro** - Production-grade backend with real-time capabilities
-- **Notion Workspace** - Integrated knowledge management via MCP
-
-### The Actual 7-Day Timeline
-Based on building Trailhead from scratch with no prior full-stack experience:
-
-#### **Days 1-2: Foundation & Framework Development**
-- **CAST Framework Creation**: Developed systematic AI development approach through trial and error
-- **Tool Stack Assembly**: Tested and selected specialized AI tools for different cognitive tasks  
-- **Version Control Mastery**: Learned Git workflows, branching, and checkpointing strategies
-- **Domain Architecture**: Made core decisions about IFS therapy data models and security boundaries
-
-#### **Days 3-5: Core Feature Implementation**
-- **Chat Agent Development**: Built IFS-trained conversational AI with therapeutic methodology
-- **User Memory System**: Implemented differential snapshot architecture for psychological continuity
-- **Database Design**: Created PostgreSQL schema with Row Level Security for user data isolation
-- **Authentication & Sessions**: Integrated Supabase Auth with secure session management
-
-#### **Days 6-7: Advanced Features & Polish**
-- **Parts Garden Visualization**: D3.js force-directed graph with emotional charge visualization
-- **Real-time State Sync**: Server-sent events with task visualization and progress indicators  
-- **Mobile Responsiveness**: shadcn/ui components with dark/light theme support
-- **Production Deployment**: Vercel + Supabase with environment configuration
-
-### What Actually Changed
-**The Real Insight**: AI makes domain expertise programmable. 
-
-Six months ago, manually building Trailhead would have been laughable. Terms like "Row Level Security," "force-directed graphs," and "differential state management" were completely foreign.
-
-**The Breakthrough**: You don't need implementation expertise, you need architectural decision-making combined with domain knowledge.
-
-#### **From PM with IFS Therapy Understanding → Functioning Software**
-- **Domain Expertise**: Deep understanding of IFS methodology and therapeutic needs
-- **AI Implementation**: Transformed mental models into 2,500+ lines of production code
-- **Result**: Functioning app with authentication, real-time chat, data visualization, and mobile engagement
-
-**Key Learning**: The barrier between knowing what should exist and making it exist is getting dramatically lower.
-
-## 🔍 Project Exploration Guide
-
-### Key Files Demonstrating PM + AI Integration
-```bash
-# View AI agent configuration
-cat mastra/agents/ifs-agent.ts
-
-# Review automated task management
-ls .taskmaster/tasks/
-
-# Examine AI-generated API endpoints  
-find app/api -name "*.ts" | head -5
-
-# Check feature flag implementation
-cat config/features.ts
-```
-
-## 🚀 Running the liteLLM Proxy
-
-This project uses `liteLLM` to provide a proxy layer for LLM calls, enabling features like prompt injection detection. To run the application locally, you'll need to start the `liteLLM` proxy in a separate terminal.
-
-**1. Set your OpenRouter API Key:**
-
-Make sure your `OPENROUTER_API_KEY` is set as an environment variable. You can add it to a `.env.local` file in the root of the project:
-
-```
-OPENROUTER_API_KEY=your_api_key_here
-```
-
-**2. Start the liteLLM Proxy:**
-
-Open a new terminal window and run the following command:
+1. **Environment Configuration**
 
 ```bash
-litellm --config litellm.config.yaml --port 4000
+cp .env.example .env.local
 ```
 
-This will start the proxy bound on `0.0.0.0:4000` (a wildcard bind address).
+Set required variables:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `OPENROUTER_API_KEY`
+- `CRON_SECRET` (for background jobs)
 
-**3. Point the app to your local proxy (client connection):**
-
-Add this to `.env.local` (note we connect via `127.0.0.1`, not `0.0.0.0`):
-
-```
-OPENROUTER_BASE_URL=http://127.0.0.1:4000
-```
-
-Then restart your Next.js dev server so env changes apply.
-
-- Default behavior without `OPENROUTER_BASE_URL` is to call OpenRouter cloud at `https://openrouter.ai/api/v1`.
-- If port 4000 is busy, pick another (e.g., 4001) and set `OPENROUTER_BASE_URL=http://127.0.0.1:4001`.
-
-**Sanity check the proxy:**
+2. **Install Dependencies**
 
 ```bash
-# For Grok-4-Fast model (via /v1/chat/completions endpoint)
-curl -s -X POST http://127.0.0.1:4000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model":"openrouter/x-ai/grok-4-fast","messages":[{"role":"user","content":"hello"}]}'
-
-# Alternative: Standard endpoint (if /v1 doesn't work)
-curl -s -X POST http://127.0.0.1:4000/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model":"openrouter/llama-3.1-8b-instruct","messages":[{"role":"user","content":"hello"}]}'
+npm install
 ```
 
-If your litellm config exposes `/v1/chat/completions`, use that path instead.
+3. **Run Development Servers**
 
----
+You'll need three terminal windows:
 
-## 🧩 Local Development: Processes to Run
-
-To run the full experience locally, you'll typically run three processes in parallel:
-
-1) LiteLLM proxy (LLM gateway)
-- Purpose: Provide a local OpenAI-compatible endpoint to route LLM calls.
-- Terminal A:
 ```bash
-# Ensure your OpenRouter API key is set in this terminal
-export OPENROUTER_API_KEY=YOUR_KEY_HERE
-# Start the proxy and bind to port 4000
+# Terminal 1: LiteLLM proxy (LLM gateway)
+export OPENROUTER_API_KEY=your_key_here
 npx litellm --config litellm.config.yaml --port 4000
-```
-- App config in `.env.local`:
-```bash
-# Connect the app to your local proxy
-OPENROUTER_BASE_URL=http://127.0.0.1:4000
-# Or, if your proxy exposes /v1/chat/completions:
-# OPENROUTER_BASE_URL=http://127.0.0.1:4000/v1
-```
-- Sanity check the proxy:
-```bash
-curl -s -X POST http://127.0.0.1:4000/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model":"openrouter/llama-3.1-8b-instruct","messages":[{"role":"user","content":"hello"}]}'
-```
-If that 404s but `/v1/chat/completions` works, use the `/v1` base URL as shown above.
 
-2) Mastra (agent tools). Pick one:
-- Dev mode (watches for changes):
-```bash
-npm run dev:mastra   # equivalent to: mastra dev --dir mastra
-```
-- One-time build (generate/update outputs):
-```bash
-npm run build:mastra # equivalent to: mastra build --dir mastra
-```
-Note: The Next.js API route imports agent code from `mastra/agents`. If you change tools or agent config, keep Mastra dev running or re-run the build.
+# Terminal 2: Mastra agent tools (watches for changes)
+npm run dev:mastra
 
-3) Next.js app server
-- Terminal C:
-```bash
+# Terminal 3: Next.js development server
 npm run dev
 ```
-- After any changes to `.env.local`, restart this server so env vars apply.
+
+The app will be available at `http://localhost:3000`.
+
+### Database Setup
+
+Apply migrations via Supabase CLI:
+
+```bash
+supabase link --project-ref your-project-ref
+supabase db push
+```
+
+Or apply manually via Supabase Studio SQL editor.
 
 ### Troubleshooting
-- ECONNREFUSED 127.0.0.1:4000:
-  - Make sure LiteLLM is running and listening on port 4000.
-  - Verify the correct endpoint path: `/chat/completions` vs `/v1/chat/completions`.
-  - Ensure `OPENROUTER_API_KEY` is present in the LiteLLM process environment.
-  - If 4000 is busy, start LiteLLM on another port and update `OPENROUTER_BASE_URL` accordingly.
-- Webpack hot-update 404 during dev: benign during HMR.
-- Hydration mismatch: avoid browser-only APIs (`window`, `localStorage`) in SSR render paths; move to `useEffect`, or mark components `ssr: false`.
 
-## 🔌 Agent API Architecture
+- **ECONNREFUSED on port 4000**: Ensure LiteLLM proxy is running
+- **Agent tool errors**: Restart Mastra dev server (`npm run dev:mastra`)
+- **Auth issues**: Verify Supabase env variables and RLS policies
 
-### Core Agent Endpoints
+## Documentation
 
-#### Primary Agent Interface: `/api/chat`
-- **Streaming Agent Responses**: Real-time AI SDK message streaming with task visualization
-- **Multi-Model Routing**: Intelligent model selection via OpenRouter integration
-- **Context Management**: Persistent conversation state with relationship mapping
-- **Fallback Systems**: Graceful degradation for development and testing scenarios
+- **[Product Overview](docs/overview.md)** - Vision, user stories, and product requirements
+- **[System Architecture](docs/current_state/01_system_architecture.md)** - Component breakdown and data flow
+- **[Feature Documentation](docs/features/)** - Detailed specs for chat, parts garden, insights, memory system
+- **[User Memory System](docs/user-memory.md)** - Differential snapshot architecture and background jobs
+- **[Development Workflow](docs/ops/warp-workflow.md)** - Repository guidelines and PR process
+- **[Ethereal Theme](docs/theme/ethereal.md)** - Visual styling and customization
 
-#### Development Agent Simulator: `/api/chat/dev`
-- **Local Development**: Full-featured agent simulation without external API dependencies
-- **Task Visualization**: Realistic streaming task steps and reasoning display
-- **Access Control**: Available only when dev mode is enabled (`NEXT_PUBLIC_IFS_DEV_MODE=true` or `NODE_ENV=development`)
+## Security
 
-### Advanced Analytics & Insights Engine
+- **Row Level Security**: Supabase RLS policies enforce complete user data isolation
+- **Schema Validation**: Zod `.strict()` schemas with server-injected user identity
+- **Secret Scanning**: Automated gitleaks scanning in CI (`.gitleaks.toml`)
+- **Environment-Based Secrets**: No secrets committed to repository
+- **Action Audit Trail**: All agent mutations logged for review and rollback
 
-#### Insights Generation API
-The system includes a sophisticated insights generation system that demonstrates advanced agent capabilities:
+## API Architecture
 
-- **GET `/api/insights`**: Dynamic insight card generation with JIT (Just-In-Time) provisioning
-  - Smart filtering by status: `pending`, `revealed`, `actioned`
-  - Configurable limits with intelligent backfill algorithms
-  - Real-time insight generation when `IFS_INSIGHTS_JIT=true`
+Key endpoints demonstrating agentic patterns:
 
-- **POST `/api/insights/[id]/reveal`**: Idempotent insight revelation with timestamp tracking
-- **POST `/api/insights/[id]/feedback`**: Advanced feedback collection with quartile rating system
+- **`/api/chat`** - Primary agent interface with streaming responses and tool orchestration
+- **`/api/chat/dev`** - Development agent simulator (dev mode only)
+- **`/api/insights`** - Dynamic insight generation with JIT provisioning
+- **`/api/memory/preflight`** - Real-time memory context loading before chat
+- **`/api/cron/memory-update`** - Daily background job for memory snapshots and session finalization
 
-#### Agent Performance Analytics
-- **Action Logging**: Comprehensive tracking of all agent decisions and tool executions
-- **User Engagement Metrics**: Session duration, interaction patterns, and satisfaction scoring
-- **Model Performance**: Response time, accuracy, and user preference tracking across different AI models
-
-
-## 🎨 Advanced Agent Development Patterns
+→ See [feature documentation](docs/features/) for detailed API specs
 
 ## 🔐 Secret Scanning
 
