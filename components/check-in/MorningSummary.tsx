@@ -34,7 +34,7 @@ export function MorningSummary({ context, partLookup }: MorningSummaryProps) {
       {context.intention ? (
         <div className="text-sm">
           <p className="text-xs text-muted-foreground">Your intention:</p>
-          <p className="mt-1 italic">"{context.intention}"</p>
+          <p className="mt-1 italic">&ldquo;{context.intention}&rdquo;</p>
         </div>
       ) : null}
       {parts.length > 0 ? (
