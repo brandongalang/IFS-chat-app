@@ -79,8 +79,10 @@ export function SliderScale({
           aria-valuetext={selectedLabel}
           className="w-full"
         />
-        {/* Desktop: show all tick labels below slider */}
-        <div className="absolute left-0 right-0 top-full mt-2 hidden justify-between px-1 md:flex">
+      </div>
+      {/* Desktop: show all tick labels below slider */}
+      <div className="relative hidden px-1 md:block">
+        <div className="flex justify-between">
           {labels.map((tickLabel, index) => (
             <span
               key={index}
