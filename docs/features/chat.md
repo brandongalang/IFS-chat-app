@@ -2,7 +2,7 @@
 title: Feature: Chat
 owner: @brandongalang
 status: shipped
-last_updated: 2025-01-11
+last_updated: 2025-10-11
 feature_flag: null
 code_paths:
   - app/chat/page.tsx
@@ -10,8 +10,10 @@ code_paths:
   - app/_shared/hooks/useChat.ts
   - components/ethereal/EtherealChat.tsx
   - components/ethereal/EtherealMessageList.tsx
+  - components/ethereal/markdown/StreamingMarkdown.tsx
   - components/tasks/TaskList.tsx
   - components/ai-elements/tool.tsx
+  - components/ai-elements/code-block.tsx
 related_prs:
   - #34
   - #292
@@ -53,6 +55,28 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
 ## UI/UX notes
 - Messages area top padding increased from 16px to 40px (2025-01-11) to prevent first message from being cut off at viewport edge
 - Active task overlay position adjusted proportionally to align with new padding
+
+## Markdown Rendering (2025-10-11)
+- **Assistant messages** now render markdown using `streamdown` v1.4.0 (Vercel's streaming-optimized markdown renderer)
+- **User messages** remain plain text with no markdown processing
+- **Progressive streaming**: Markdown renders incrementally as content streams in from the AI
+- **Supported markdown features**:
+  - Headings (h1-h6) with stepped sizing and white text
+  - Text formatting: **bold**, *italic*, inline `code`
+  - Links with hover states and focus rings for accessibility
+  - Ordered and unordered lists
+  - Blockquotes with subtle background and left border
+  - Tables with striped rows and bordered cells
+  - Horizontal rules
+  - Fenced code blocks with syntax highlighting via `CodeBlock` component
+    - Supports multiple languages (TypeScript, JavaScript, Python, Bash, etc.)
+    - Copy-to-clipboard button in white/translucent style
+- **Ethereal theming**: All markdown elements styled with white/translucent colors to match the ethereal aesthetic
+  - White text with varying opacity levels (90-100%)
+  - Translucent backgrounds (white/5-10%)
+  - Subtle borders (white/15-30%)
+- **Performance**: Memoized component map prevents unnecessary re-renders during streaming
+- **Accessibility**: Maintains `aria-live="polite"` for screen reader support
 
 ## Mobile Responsiveness (PR #267)
 - **Chat page layout**: Uses dynamic viewport height (`dvh`) to accommodate mobile browser chrome (address bar, bottom nav)
