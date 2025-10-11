@@ -130,7 +130,7 @@ export function StreamingMarkdown({ text, className }: StreamingMarkdownProps) {
     ),
 
     // Horizontal rule
-    hr: ({ ...props }: { children?: ReactNode }) => (
+    hr: (props: object) => (
       <hr className="border-white/15 my-6" {...props} />
     ),
 
