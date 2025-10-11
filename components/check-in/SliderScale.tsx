@@ -43,12 +43,6 @@ export function SliderScale({
     [onChange]
   )
 
-  // Calculate positions for tick labels as percentages across the track
-  const positions = useMemo(
-    () => Array.from({ length: labels.length }, (_, i) => (i / (labels.length - 1)) * 100),
-    [labels.length]
-  )
-
   const selectedLabel = useMemo(
     () => labels[value - min] || labels[Math.floor(labels.length / 2)],
     [labels, value, min]
@@ -60,13 +54,9 @@ export function SliderScale({
         <Label htmlFor={id} className="text-sm font-medium">
           {label}
         </Label>
-        {/* Show selected label inline on desktop only */}
-        <span className="hidden text-xs font-medium text-muted-foreground md:inline" aria-live="polite">
-          {selectedLabel}
-        </span>
       </div>
       {helpText ? <p className="text-xs text-muted-foreground">{helpText}</p> : null}
-      <div className="relative px-1 pt-2 pb-3 md:pb-6">
+      <div className="relative px-1 pt-2 pb-3 md:pb-3">
         <Slider
           id={id}
           min={min}
@@ -79,29 +69,6 @@ export function SliderScale({
           aria-valuetext={selectedLabel}
           className="w-full"
         />
-      </div>
-      {/* Desktop: show all tick labels below slider */}
-      <div className="relative hidden px-1 md:block">
-        <div className="flex justify-between">
-          {labels.map((tickLabel, index) => (
-            <span
-              key={index}
-              className="text-[10px] text-muted-foreground/60"
-              style={{ position: 'absolute', left: `${positions[index]}%`, transform: 'translateX(-50%)' }}
-            >
-              {tickLabel}
-            </span>
-          ))}
-        </div>
-      </div>
-      {/* Mobile: show only the selected label below slider with smooth transition */}
-      <div
-        key={value}
-        className="mt-1 text-center text-base font-medium text-foreground transition-opacity duration-200 md:hidden"
-        role="status"
-        aria-live="polite"
-      >
-        {selectedLabel}
       </div>
     </div>
   )
