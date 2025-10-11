@@ -1,9 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
 import { CheckInLayout } from './CheckInLayout'
 import { CheckInWizard } from './CheckInWizard'
 import { EmojiScale } from './EmojiScale'
@@ -19,7 +21,6 @@ import {
   ENERGY_OPTIONS,
   INTENTION_FOCUS_OPTIONS,
   MOOD_OPTIONS,
-  findEmojiOption,
   CHECK_IN_DRAFT_PREFIX,
   type MorningContextSummary,
   type PartOption,
@@ -39,19 +40,8 @@ type EveningState = {
   energy: string
   intentionFocus: string
   reflection: string
-  gratitude: string
-  moreNotes: string
+  additionalNotes: string
   parts: string[]
-}
-
-type WizardStepConfig = {
-  id: string
-  title: string
-  description?: string
-  validate?: () => string | null
-  nextLabel?: string
-  submitLabel?: string
-  render: () => ReactNode
 }
 
 interface CheckInExperienceProps {
@@ -77,8 +67,7 @@ function createEveningDefaults(context?: MorningContextSummary | null): EveningS
     energy: context ? context.emoji.energy.id : DEFAULT_ENERGY_ID,
     intentionFocus: context ? context.emoji.intentionFocus.id : DEFAULT_INTENTION_FOCUS_ID,
     reflection: '',
-    gratitude: '',
-    moreNotes: '',
+    additionalNotes: '',
     parts: context ? [...context.parts] : [],
   }
 }
@@ -92,9 +81,7 @@ export function CheckInExperience({
 }: CheckInExperienceProps) {
   const router = useRouter()
   const { toast } = useToast()
-  const [stepIndex, setStepIndex] = useState(0)
   const [formError, setFormError] = useState<string | null>(null)
-  const [submitError, setSubmitError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [actionStatus, setActionStatus] = useState<'idle' | 'pending' | 'success'>('idle')
   const [morningState, setMorningState] = useState<MorningState>(MORNING_DEFAULTS)
@@ -107,17 +94,6 @@ export function CheckInExperience({
       setEveningState((prev) => (isEveningDraftDirty(prev, eveningDefaults) ? prev : eveningDefaults))
     }
   }, [eveningDefaults, variant])
-
-  const flashSuccess = useCallback(() => {
-    if (successResetRef.current) {
-      clearTimeout(successResetRef.current)
-    }
-    setActionStatus('success')
-    successResetRef.current = setTimeout(() => {
-      setActionStatus('idle')
-      successResetRef.current = null
-    }, 900)
-  }, [])
 
   useEffect(() => {
     return () => {
@@ -137,6 +113,7 @@ export function CheckInExperience({
 
   const draftKey = `${CHECK_IN_DRAFT_PREFIX}-${variant}-${targetDateIso}`
 
+  // Hydrate from localStorage
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
@@ -157,6 +134,7 @@ export function CheckInExperience({
     }
   }, [draftKey, variant, eveningDefaults])
 
+  // Auto-save to localStorage
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (variant === 'morning') {
@@ -198,275 +176,69 @@ export function CheckInExperience({
     }
   }, [draftKey])
 
-  const steps = useMemo<WizardStepConfig[]>(() => {
-    if (variant === 'morning') {
-      return [
-        {
-          id: 'arrive',
-          title: 'How are you arriving?',
-          description: 'Check in with your body before naming the day.',
-          nextLabel: 'Continue',
-          render: () => (
-            <div className="grid gap-4">
-              <EmojiScale
-                label="How are you feeling right now?"
-                options={MOOD_OPTIONS}
-                value={morningState.mood}
-                onChange={(value) => setMorningState((prev) => ({ ...prev, mood: value }))}
-              />
-              <EmojiScale
-                label="How much energy do you have?"
-                options={ENERGY_OPTIONS}
-                value={morningState.energy}
-                onChange={(value) => setMorningState((prev) => ({ ...prev, energy: value }))}
-              />
-              <EmojiScale
-                label="How anchored do you feel in your intention?"
-                options={INTENTION_FOCUS_OPTIONS}
-                value={morningState.intentionFocus}
-                onChange={(value) => setMorningState((prev) => ({ ...prev, intentionFocus: value }))}
-              />
-            </div>
-          ),
-        },
-        {
-          id: 'focus',
-          title: 'Name what matters today',
-          description: 'Capture the threads you want to hold onto.',
-          nextLabel: 'Review',
-          validate: () => {
-            if (!morningState.intention.trim()) {
-              return 'Your intention helps guide the day. Add a quick note before continuing.'
-            }
-            return null
-          },
-          render: () => (
-            <div className="grid gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="mindForToday">What’s on your mind for today?</Label>
-                <Textarea
-                  id="mindForToday"
-                  placeholder="Upcoming conversations, hopes, or worries."
-                  value={morningState.mindForToday}
-                  onChange={(event) =>
-                    setMorningState((prev) => ({ ...prev, mindForToday: event.target.value }))
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="intention">What’s your intention for today?</Label>
-                <Textarea
-                  id="intention"
-                  placeholder="e.g., Stay grounded and curious."
-                  value={morningState.intention}
-                  onChange={(event) =>
-                    setMorningState((prev) => ({ ...prev, intention: event.target.value }))
-                  }
-                  required
-                />
-              </div>
-              <PartsPicker
-                label="Any parts feel active?"
-                options={parts}
-                selectedIds={morningState.parts}
-                onToggle={(id) =>
-                  setMorningState((prev) => ({
-                    ...prev,
-                    parts: prev.parts.includes(id)
-                      ? prev.parts.filter((value) => value !== id)
-                      : [...prev.parts, id],
-                  }))
-                }
-              />
-            </div>
-          ),
-        },
-        {
-          id: 'review',
-          title: 'Take a breath and confirm',
-          description: 'Make sure this reflects what you want to carry forward.',
-          submitLabel: 'Complete check-in',
-          render: () => <MorningReview state={morningState} partLookup={partLookup} />,
-        },
-      ]
-    }
+  const handleCancel = useCallback(() => {
+    router.push('/')
+  }, [router])
 
-    return [
-      {
-        id: 'arrive',
-        title: 'How are you landing tonight?',
-        description: 'Notice what shifted since the morning.',
-        nextLabel: 'Continue',
-        render: () => (
-          <div className="grid gap-4">
-            <EmojiScale
-              label="How are you feeling right now?"
-              options={MOOD_OPTIONS}
-              value={eveningState.mood}
-              onChange={(value) => setEveningState((prev) => ({ ...prev, mood: value }))}
-            />
-            <EmojiScale
-              label="How much energy do you have?"
-              options={ENERGY_OPTIONS}
-              value={eveningState.energy}
-              onChange={(value) => setEveningState((prev) => ({ ...prev, energy: value }))}
-            />
-            <EmojiScale
-              label="How anchored do you feel in your intention?"
-              options={INTENTION_FOCUS_OPTIONS}
-              value={eveningState.intentionFocus}
-              onChange={(value) => setEveningState((prev) => ({ ...prev, intentionFocus: value }))}
-            />
-          </div>
-        ),
-      },
-      {
-        id: 'reflect',
-        title: 'Reflect with curiosity',
-        description: 'Capture what stood out and any gratitude you want to hold.',
-        nextLabel: 'Review',
-        validate: () => {
-          if (!morningContext) {
-            return 'We couldn’t load your morning check-in. Try refreshing the page.'
-          }
-          if (!eveningState.reflection.trim()) {
-            return 'A brief reflection helps close the loop. Add a thought before continuing.'
-          }
-          return null
-        },
-        render: () => (
-          <div className="grid gap-6">
-            {morningContext ? (
-              <MorningSummary context={morningContext} partLookup={partLookup} />
-            ) : null}
-            <div className="grid gap-2">
-              <Label htmlFor="reflection">{morningContext?.generatedPrompt ?? DEFAULT_EVENING_PROMPT}</Label>
-              <Textarea
-                id="reflection"
-                placeholder="Capture what shifted, surprised, or felt meaningful."
-                value={eveningState.reflection}
-                onChange={(event) =>
-                  setEveningState((prev) => ({ ...prev, reflection: event.target.value }))
-                }
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="gratitude">Anything you’re grateful for? (optional)</Label>
-              <Textarea
-                id="gratitude"
-                placeholder="A moment of appreciation or ease."
-                value={eveningState.gratitude}
-                onChange={(event) =>
-                  setEveningState((prev) => ({ ...prev, gratitude: event.target.value }))
-                }
-              />
-            </div>
-            <PartsPicker
-              label="Which parts felt active?"
-              options={parts}
-              selectedIds={eveningState.parts}
-              onToggle={(id) =>
-                setEveningState((prev) => ({
-                  ...prev,
-                  parts: prev.parts.includes(id)
-                    ? prev.parts.filter((value) => value !== id)
-                    : [...prev.parts, id],
-                }))
-              }
-            />
-            <div className="grid gap-2">
-              <Label htmlFor="moreNotes">Anything else you want to capture?</Label>
-              <Textarea
-                id="moreNotes"
-                placeholder="Wins, lingering parts, or messages to future you."
-                value={eveningState.moreNotes}
-                onChange={(event) =>
-                  setEveningState((prev) => ({ ...prev, moreNotes: event.target.value }))
-                }
-              />
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: 'review',
-        title: 'Slow down and send',
-        description: 'Give the day a gentle closure.',
-        submitLabel: 'Complete review',
-        render: () => (
-          <EveningReview
-            state={eveningState}
-            partLookup={partLookup}
-            morningContext={morningContext}
-          />
-        ),
-      },
-    ]
-  }, [variant, morningState, eveningState, parts, partLookup, morningContext])
-
-  const currentStep = steps[stepIndex]
-  const isLastStep = stepIndex === steps.length - 1
-
-  const handleBack = useCallback(() => {
+  const handleSave = useCallback(async () => {
     setFormError(null)
-    setSubmitError(null)
-    setActionStatus('idle')
-    setStepIndex((prev) => Math.max(prev - 1, 0))
-  }, [])
-
-  const handleAdvance = useCallback(async () => {
-    setFormError(null)
-    setSubmitError(null)
     setActionStatus('pending')
 
-    const validationError = currentStep.validate?.()
-    if (validationError) {
-      setFormError(validationError)
+    // Validate required fields
+    if (variant === 'morning' && !morningState.intention.trim()) {
+      setFormError('Your intention helps guide the day. Please add one before saving.')
       setActionStatus('idle')
       return
     }
 
-    if (!isLastStep) {
-      setStepIndex((prev) => Math.min(prev + 1, steps.length - 1))
-      flashSuccess()
-      return
+    if (variant === 'evening') {
+      if (!morningContext) {
+        setFormError("We couldn't load your morning check-in. Try refreshing the page.")
+        setActionStatus('idle')
+        return
+      }
+      if (!eveningState.reflection.trim()) {
+        setFormError('A brief reflection helps close the loop. Please add one before saving.')
+        setActionStatus('idle')
+        return
+      }
     }
 
     setIsSubmitting(true)
     let completed = false
     try {
-      const payload = variant === 'morning'
-        ? {
-            type: 'morning' as const,
-            mood: morningState.mood,
-            energy: morningState.energy,
-            intentionFocus: morningState.intentionFocus,
-            mindForToday: morningState.mindForToday.trim(),
-            intention: morningState.intention.trim(),
-            parts: morningState.parts,
-          }
-        : {
-            type: 'evening' as const,
-            mood: eveningState.mood,
-            energy: eveningState.energy,
-            intentionFocus: eveningState.intentionFocus,
-            reflectionPrompt: morningContext?.generatedPrompt ?? DEFAULT_EVENING_PROMPT,
-            reflection: eveningState.reflection.trim(),
-            gratitude: eveningState.gratitude.trim(),
-            moreNotes: eveningState.moreNotes.trim(),
-            parts: eveningState.parts,
-          }
+      const payload =
+        variant === 'morning'
+          ? {
+              type: 'morning' as const,
+              mood: morningState.mood,
+              energy: morningState.energy,
+              intentionFocus: morningState.intentionFocus,
+              mindForToday: morningState.mindForToday.trim(),
+              intention: morningState.intention.trim(),
+              parts: morningState.parts,
+            }
+          : {
+              type: 'evening' as const,
+              mood: eveningState.mood,
+              energy: eveningState.energy,
+              intentionFocus: eveningState.intentionFocus,
+              reflectionPrompt: morningContext?.generatedPrompt ?? DEFAULT_EVENING_PROMPT,
+              reflection: eveningState.reflection.trim(),
+              gratitude: eveningState.additionalNotes.trim(),
+              moreNotes: eveningState.additionalNotes.trim(),
+              parts: eveningState.parts,
+            }
 
       const payloadWithDate = { ...payload, targetDateIso }
       const result = await submitCheckInAction(payloadWithDate)
 
       if (!result.ok) {
         if (result.conflict) {
-          setSubmitError(result.error ?? 'Looks like this check-in is already complete for today.')
+          setFormError(result.error ?? 'Looks like this check-in is already complete for today.')
           toast({
             title: 'Already complete',
-            description: 'You’ve already filled this check-in today. Redirecting you home.',
+            description: 'You&apos;ve already filled this check-in today. Redirecting you home.',
             variant: 'default',
           })
           clearDraft()
@@ -474,7 +246,7 @@ export function CheckInExperience({
           return
         }
 
-        setSubmitError(result.error ?? 'Failed to save your check-in. Please try again.')
+        setFormError(result.error ?? 'Failed to save your check-in. Please try again.')
         toast({
           title: 'Unable to save',
           description: result.error ?? 'Something went wrong.',
@@ -485,7 +257,7 @@ export function CheckInExperience({
       }
 
       completed = true
-      flashSuccess()
+      setActionStatus('success')
       toast({
         title: variant === 'morning' ? 'Morning check-in saved' : 'Evening reflection saved',
         description:
@@ -502,163 +274,245 @@ export function CheckInExperience({
       }
     }
   }, [
-    currentStep,
-    isLastStep,
-    steps.length,
     variant,
     morningState,
     eveningState,
     morningContext,
+    targetDateIso,
     toast,
     clearDraft,
     router,
-    flashSuccess,
-    targetDateIso,
   ])
 
+  const canSave =
+    variant === 'morning' ? morningState.intention.trim().length > 0 : eveningState.reflection.trim().length > 0
+
   return (
-    <CheckInLayout
-      variant={variant}
-      stepTitle={currentStep.title}
-      stepDescription={currentStep.description}
-      progress={(stepIndex + 1) / steps.length}
-      streakDays={streakDays}
-      error={formError ?? submitError}
-    >
+    <CheckInLayout variant={variant} streakDays={streakDays} error={formError}>
       <CheckInWizard
-        onBack={stepIndex > 0 ? handleBack : undefined}
-        onNext={handleAdvance}
-        disableNext={isSubmitting}
-        isLastStep={isLastStep}
-        nextLabel={currentStep.nextLabel}
-        submitLabel={currentStep.submitLabel}
+        onCancel={handleCancel}
+        onSave={handleSave}
+        isSaving={isSubmitting}
+        canSave={canSave}
+        saveLabel={variant === 'morning' ? 'Save check-in' : 'Save reflection'}
         status={actionStatus}
       >
-        {currentStep.render()}
+        {variant === 'morning' ? (
+          <MorningForm state={morningState} setState={setMorningState} parts={parts} />
+        ) : (
+          <EveningForm
+            state={eveningState}
+            setState={setEveningState}
+            parts={parts}
+            morningContext={morningContext}
+            partLookup={partLookup}
+          />
+        )}
       </CheckInWizard>
     </CheckInLayout>
   )
 }
 
-function MorningReview({ state, partLookup }: { state: MorningState; partLookup: Map<string, PartOption> }) {
-  const mood = findEmojiOption('mood', state.mood)
-  const energy = findEmojiOption('energy', state.energy)
-  const intentionFocus = findEmojiOption('intentionFocus', state.intentionFocus)
-  const parts = state.parts.map((id) => partLookup.get(id)).filter((part): part is PartOption => Boolean(part))
+// Morning Form Component
+interface MorningFormProps {
+  state: MorningState
+  setState: React.Dispatch<React.SetStateAction<MorningState>>
+  parts: PartOption[]
+}
 
+function MorningForm({ state, setState, parts }: MorningFormProps) {
   return (
-    <div className="grid gap-5 text-sm">
-      <section className="grid gap-2">
-        <h2 className="text-base font-medium">Mood & energy</h2>
-        <div className="flex flex-wrap gap-3 text-xl">
-          <Chip label={mood.label} emoji={mood.emoji} />
-          <Chip label={energy.label} emoji={energy.emoji} />
-          <Chip label={intentionFocus.label} emoji={intentionFocus.emoji} />
+    <>
+      <FormSection title="How are you arriving?">
+        <div className="grid gap-5">
+          <EmojiScale
+            label="How are you feeling right now?"
+            options={MOOD_OPTIONS}
+            value={state.mood}
+            onChange={(value) => setState((prev) => ({ ...prev, mood: value }))}
+          />
+          <EmojiScale
+            label="How much energy do you have?"
+            options={ENERGY_OPTIONS}
+            value={state.energy}
+            onChange={(value) => setState((prev) => ({ ...prev, energy: value }))}
+          />
+          <EmojiScale
+            label="How anchored do you feel in your intention?"
+            options={INTENTION_FOCUS_OPTIONS}
+            value={state.intentionFocus}
+            onChange={(value) => setState((prev) => ({ ...prev, intentionFocus: value }))}
+          />
         </div>
-      </section>
-      <section className="grid gap-1">
-        <h2 className="text-base font-medium">Mind for today</h2>
-        <p className="text-muted-foreground leading-relaxed">
-          {state.mindForToday.trim().length > 0 ? state.mindForToday : 'You’ll start the day with a blank slate.'}
-        </p>
-      </section>
-      <section className="grid gap-1">
-        <h2 className="text-base font-medium">Intention</h2>
-        <p className="text-foreground leading-relaxed">{state.intention.trim()}</p>
-      </section>
-      <section className="grid gap-2">
-        <h2 className="text-base font-medium">Parts to watch</h2>
-        {parts.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {parts.map((part) => (
-              <span key={part.id} className="inline-flex items-center gap-1 rounded-full bg-secondary/50 px-3 py-1">
-                <span aria-hidden>{part.emoji ?? '🧩'}</span>
-                <span className="text-xs font-medium">{part.name}</span>
-              </span>
-            ))}
+      </FormSection>
+
+      <Separator className="my-6" />
+
+      <FormSection title="Set your intention">
+        <div className="grid gap-5">
+          <div className="grid gap-2">
+            <Label htmlFor="intention" className="text-sm font-medium">
+              What&apos;s your intention for today? <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              id="intention"
+              placeholder="e.g., Stay grounded and curious"
+              value={state.intention}
+              onChange={(event) => setState((prev) => ({ ...prev, intention: event.target.value }))}
+              rows={3}
+              required
+            />
           </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">No specific parts named yet.</p>
-        )}
-      </section>
-    </div>
+          <div className="grid gap-2">
+            <Label htmlFor="mindForToday" className="text-sm font-medium text-muted-foreground">
+              What&apos;s on your mind? (optional)
+            </Label>
+            <Textarea
+              id="mindForToday"
+              placeholder="Upcoming conversations, hopes, or worries"
+              value={state.mindForToday}
+              onChange={(event) => setState((prev) => ({ ...prev, mindForToday: event.target.value }))}
+              rows={3}
+            />
+          </div>
+        </div>
+      </FormSection>
+
+      <Separator className="my-6" />
+
+      <FormSection title="Notice your parts">
+        <PartsPicker
+          label="Any parts feel active?"
+          options={parts}
+          selectedIds={state.parts}
+          onToggle={(id) =>
+            setState((prev) => ({
+              ...prev,
+              parts: prev.parts.includes(id) ? prev.parts.filter((value) => value !== id) : [...prev.parts, id],
+            }))
+          }
+        />
+      </FormSection>
+    </>
   )
 }
 
-function EveningReview({
-  state,
-  partLookup,
-  morningContext,
-}: {
+// Evening Form Component
+interface EveningFormProps {
   state: EveningState
-  partLookup: Map<string, PartOption>
+  setState: React.Dispatch<React.SetStateAction<EveningState>>
+  parts: PartOption[]
   morningContext: MorningContextSummary | null
-}) {
-  const mood = findEmojiOption('mood', state.mood)
-  const energy = findEmojiOption('energy', state.energy)
-  const intentionFocus = findEmojiOption('intentionFocus', state.intentionFocus)
-  const parts = state.parts.map((id) => partLookup.get(id)).filter((part): part is PartOption => Boolean(part))
+  partLookup: Map<string, PartOption>
+}
 
+function EveningForm({ state, setState, parts, morningContext, partLookup }: EveningFormProps) {
   return (
-    <div className="grid gap-5 text-sm">
-      <section className="grid gap-2">
-        <h2 className="text-base font-medium">Mood & energy</h2>
-        <div className="flex flex-wrap gap-3 text-xl">
-          <Chip label={mood.label} emoji={mood.emoji} />
-          <Chip label={energy.label} emoji={energy.emoji} />
-          <Chip label={intentionFocus.label} emoji={intentionFocus.emoji} />
-        </div>
-      </section>
+    <>
       {morningContext ? (
-        <section className="grid gap-1">
-          <h2 className="text-base font-medium">Evening prompt</h2>
-          <p className="italic text-muted-foreground">“{morningContext.generatedPrompt}”</p>
-        </section>
+        <>
+          <MorningSummary context={morningContext} partLookup={partLookup} />
+          <Separator className="my-6" />
+        </>
       ) : null}
-      <section className="grid gap-1">
-        <h2 className="text-base font-medium">Reflection</h2>
-        <p className="text-foreground leading-relaxed">{state.reflection.trim()}</p>
-      </section>
-      {state.gratitude.trim().length > 0 ? (
-        <section className="grid gap-1">
-          <h2 className="text-base font-medium">Gratitude</h2>
-          <p className="text-muted-foreground leading-relaxed">{state.gratitude.trim()}</p>
-        </section>
-      ) : null}
-      {state.moreNotes.trim().length > 0 ? (
-        <section className="grid gap-1">
-          <h2 className="text-base font-medium">Notes to remember</h2>
-          <p className="text-muted-foreground leading-relaxed">{state.moreNotes.trim()}</p>
-        </section>
-      ) : null}
-      <section className="grid gap-2">
-        <h2 className="text-base font-medium">Parts you noticed</h2>
-        {parts.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {parts.map((part) => (
-              <span key={part.id} className="inline-flex items-center gap-1 rounded-full bg-secondary/50 px-3 py-1">
-                <span aria-hidden>{part.emoji ?? '🧩'}</span>
-                <span className="text-xs font-medium">{part.name}</span>
-              </span>
-            ))}
+
+      <FormSection title="How are you landing tonight?">
+        <div className="grid gap-5">
+          <EmojiScale
+            label="How are you feeling right now?"
+            options={MOOD_OPTIONS}
+            value={state.mood}
+            onChange={(value) => setState((prev) => ({ ...prev, mood: value }))}
+          />
+          <EmojiScale
+            label="How much energy do you have?"
+            options={ENERGY_OPTIONS}
+            value={state.energy}
+            onChange={(value) => setState((prev) => ({ ...prev, energy: value }))}
+          />
+          <EmojiScale
+            label="How anchored do you feel in your intention?"
+            options={INTENTION_FOCUS_OPTIONS}
+            value={state.intentionFocus}
+            onChange={(value) => setState((prev) => ({ ...prev, intentionFocus: value }))}
+          />
+        </div>
+      </FormSection>
+
+      <Separator className="my-6" />
+
+      <FormSection title="Reflect on your day">
+        <div className="grid gap-5">
+          <div className="grid gap-2">
+            <Label htmlFor="reflection" className="text-sm font-medium">
+              {morningContext?.generatedPrompt ?? DEFAULT_EVENING_PROMPT}{' '}
+              <span className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              id="reflection"
+              placeholder="Capture what shifted, surprised, or felt meaningful"
+              value={state.reflection}
+              onChange={(event) => setState((prev) => ({ ...prev, reflection: event.target.value }))}
+              rows={4}
+              required
+            />
           </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">No parts were highlighted this evening.</p>
-        )}
-      </section>
-    </div>
+          <div className="grid gap-2">
+            <Label htmlFor="additionalNotes" className="text-sm font-medium text-muted-foreground">
+              Additional notes (optional)
+            </Label>
+            <p className="text-xs text-muted-foreground">Gratitude, wins, or messages to future you</p>
+            <Textarea
+              id="additionalNotes"
+              placeholder="Anything else you want to remember about today"
+              value={state.additionalNotes}
+              onChange={(event) => setState((prev) => ({ ...prev, additionalNotes: event.target.value }))}
+              rows={3}
+            />
+          </div>
+        </div>
+      </FormSection>
+
+      <Separator className="my-6" />
+
+      <FormSection title="Notice your parts">
+        <PartsPicker
+          label="Which parts were active today?"
+          options={parts}
+          selectedIds={state.parts}
+          onToggle={(id) =>
+            setState((prev) => ({
+              ...prev,
+              parts: prev.parts.includes(id) ? prev.parts.filter((value) => value !== id) : [...prev.parts, id],
+            }))
+          }
+        />
+      </FormSection>
+    </>
   )
 }
 
-function Chip({ label, emoji }: { label: string; emoji: string }) {
+// Helper Components
+interface FormSectionProps {
+  title: string
+  children: React.ReactNode
+}
+
+function FormSection({ title, children }: FormSectionProps) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-sm">
-      <span aria-hidden>{emoji}</span>
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-    </span>
+    <motion.section
+      className="grid gap-4"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+    >
+      <h2 className="text-lg font-medium">{title}</h2>
+      {children}
+    </motion.section>
   )
 }
 
+// Utility functions
 function isMorningDraftDirty(state: MorningState): boolean {
   return (
     state.mood !== MORNING_DEFAULTS.mood ||
@@ -676,8 +530,7 @@ function isEveningDraftDirty(state: EveningState, defaults: EveningState): boole
     state.energy !== defaults.energy ||
     state.intentionFocus !== defaults.intentionFocus ||
     state.reflection.trim().length > 0 ||
-    state.gratitude.trim().length > 0 ||
-    state.moreNotes.trim().length > 0 ||
+    state.additionalNotes.trim().length > 0 ||
     state.parts.length > 0
   )
 }

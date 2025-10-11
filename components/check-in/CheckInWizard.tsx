@@ -14,64 +14,68 @@ type WizardStatus = 'idle' | 'pending' | 'success'
 
 interface CheckInWizardProps {
   children: ReactNode
-  onNext: () => void
-  onBack?: () => void
-  disableNext?: boolean
-  isLastStep?: boolean
-  nextLabel?: string
-  submitLabel?: string
+  onCancel?: () => void
+  onSave: () => void
+  isSaving?: boolean
+  canSave?: boolean
+  saveLabel?: string
+  cancelLabel?: string
   status?: WizardStatus
 }
 
 export function CheckInWizard({
   children,
-  onNext,
-  onBack,
-  disableNext = false,
-  isLastStep = false,
-  nextLabel = 'Next',
-  submitLabel = 'Finish',
+  onCancel,
+  onSave,
+  isSaving = false,
+  canSave = true,
+  saveLabel = 'Save check-in',
+  cancelLabel = 'Cancel',
   status = 'idle',
 }: CheckInWizardProps) {
-  const isPending = status === 'pending'
+  const isPending = status === 'pending' || isSaving
   const isSuccess = status === 'success'
 
   const actionLabel = useMemo(() => {
     if (isPending) {
-      return isLastStep ? 'Saving…' : 'Working…'
+      return 'Saving…'
     }
     if (isSuccess) {
-      return isLastStep ? 'Saved' : 'Done'
+      return 'Saved'
     }
-    return isLastStep ? submitLabel : nextLabel
-  }, [isPending, isSuccess, isLastStep, submitLabel, nextLabel])
+    return saveLabel
+  }, [isPending, isSuccess, saveLabel])
 
   return (
-    <div className="grid gap-6">
-      <div className="grid gap-6">{children}</div>
-      <div className="flex items-center justify-between gap-2">
+    <div className="grid gap-8">
+      <div className="grid gap-8">{children}</div>
+      <div className="flex items-center justify-between gap-3 pt-2">
+        {onCancel ? (
+          <MotionButton
+            variant="ghost"
+            type="button"
+            onClick={onCancel}
+            disabled={isPending}
+            whileTap={{ scale: isPending ? 1 : 0.96 }}
+            transition={{ duration: 0.12 }}
+          >
+            {cancelLabel}
+          </MotionButton>
+        ) : (
+          <div />
+        )}
         <MotionButton
-          variant="ghost"
           type="button"
-          onClick={onBack}
-          disabled={!onBack || isPending}
-          whileTap={{ scale: onBack ? 0.96 : 1 }}
-          transition={{ duration: 0.12 }}
-        >
-          Back
-        </MotionButton>
-        <MotionButton
-          type="button"
-          onClick={onNext}
-          disabled={disableNext || isPending}
+          onClick={onSave}
+          disabled={!canSave || isPending}
           aria-busy={isPending}
           data-status={status}
           className={cn(
-            'min-w-[8rem]',
+            'min-w-[10rem]',
             isPending && 'cursor-progress',
             isSuccess && 'bg-emerald-600 text-emerald-50 hover:bg-emerald-500',
           )}
-          whileTap={{ scale: disableNext || isPending ? 1 : 0.96 }}
+          whileTap={{ scale: !canSave || isPending ? 1 : 0.96 }}
           transition={{ duration: 0.12 }}
         >
           <AnimatePresence mode="wait" initial={false}>
