@@ -6,6 +6,7 @@ import { parseIsoDate, toLocalDateIso } from '@/lib/check-ins/shared'
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const targetDateParam = searchParams.get('date')
+  const timezoneParam = searchParams.get('timezone')
 
   let targetDateIso: string
   if (targetDateParam && targetDateParam.length > 0) {
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const overview = await loadCheckInOverview(targetDateIso)
+    const overview = await loadCheckInOverview(targetDateIso, timezoneParam ?? undefined)
     return jsonResponse(overview, HTTP_STATUS.OK)
   } catch (error) {
     if (error instanceof Error) {

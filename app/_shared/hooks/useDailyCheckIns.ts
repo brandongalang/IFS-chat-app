@@ -57,6 +57,7 @@ export function useDailyCheckIns(selectedDate: Date = new Date()): UseDailyCheck
   const targetDateString = useMemo(() => toLocalDateIso(targetDate), [targetDate])
   const todayString = toLocalDateIso(new Date())
   const isViewingToday = targetDateString === todayString
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
   const fetchOverview = useCallback(async () => {
     requestRef.current?.abort()
@@ -66,9 +67,12 @@ export function useDailyCheckIns(selectedDate: Date = new Date()): UseDailyCheck
     setError(null)
 
     try {
-      const response = await fetch(`/api/check-ins/overview?date=${targetDateString}`, {
-        signal: controller.signal,
-      })
+      const response = await fetch(
+        `/api/check-ins/overview?date=${targetDateString}&timezone=${encodeURIComponent(userTimezone)}`,
+        {
+          signal: controller.signal,
+        },
+      )
 
       if (!response.ok) {
         throw new Error(`Failed to load check-ins: ${response.status}`)

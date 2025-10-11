@@ -53,7 +53,7 @@ if (!(globalThis as any).requestAnimationFrame) {
 }
 
 const { cleanup, renderHook, waitFor } = await import('@testing-library/react')
-const { useDailyCheckIns } = await import('@/hooks/useDailyCheckIns')
+const { useDailyCheckIns } = await import('@/app/_shared/hooks/useDailyCheckIns')
 
 type CheckInOverviewSlot = {
   status: 'completed' | 'available' | 'locked' | 'upcoming' | 'closed' | 'not_recorded'
@@ -82,12 +82,16 @@ let currentPayload: CheckInOverviewPayload = {
 }
 
 const originalFetch = globalThis.fetch
+let lastUrlCalled: string | null = null
 
-globalThis.fetch = async () => ({
-  ok: true,
-  status: 200,
-  json: async () => currentPayload,
-}) as unknown as Response
+globalThis.fetch = async (url: string) => {
+  lastUrlCalled = url
+  return {
+    ok: true,
+    status: 200,
+    json: async () => currentPayload,
+  } as unknown as Response
+}
 
 function setOverview(partial: Partial<CheckInOverviewPayload>) {
   currentPayload = {
@@ -165,4 +169,40 @@ test('closes the morning slot when overview reports closed status', async (t) =>
 
   assert.equal(result.current.morning.status, 'closed')
   assert.equal(result.current.morning.canStart, false)
+})
+
+test('sends user timezone in the request', async (t) => {
+  setOverview({
+    morning: { status: 'available', completed: false },
+    evening: { status: 'locked', completed: false },
+  })
+
+  const originalResolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions
+  Intl.DateTimeFormat.prototype.resolvedOptions = () => ({
+    timeZone: 'America/Los_Angeles',
+    locale: 'en-US',
+    calendar: 'gregory',
+    numberingSystem: 'latn',
+    hourCycle: 'h23',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+
+  t.after(() => {
+    cleanup()
+    Intl.DateTimeFormat.prototype.resolvedOptions = originalResolvedOptions
+  })
+
+  const { result } = renderHook(() => useDailyCheckIns())
+
+  await waitFor(() => {
+    assert.equal(result.current.isLoading, false)
+  })
+
+  assert.ok(lastUrlCalled, 'fetch should have been called')
+  assert.ok(
+    lastUrlCalled!.includes('timezone=America%2FLos_Angeles'),
+    `URL should include timezone. URL: ${lastUrlCalled}`,
+  )
 })

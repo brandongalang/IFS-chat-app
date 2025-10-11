@@ -23,7 +23,10 @@ import {
   toLocalDateIso,
   parseIsoDate,
   shiftIsoDate,
+  getCurrentHourInTimezone,
+  isValidTimezone,
 } from './shared'
+import type { UserSettings } from '@/lib/types/database'
 
 interface SubmissionBase {
   targetDateIso?: string
@@ -508,9 +511,29 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
   return { data: inserted ?? [], conflict: false }
 }
 
-export async function loadCheckInOverview(targetDateIso: string): Promise<CheckInOverviewPayload> {
+export async function loadCheckInOverview(
+  targetDateIso: string,
+  timezone?: string,
+): Promise<CheckInOverviewPayload> {
   const { supabase, userId } = await resolveContextClient()
   const normalizedTargetIso = resolveTargetDate(targetDateIso)
+
+  // Fetch user timezone if not provided
+  let userTimezone = timezone
+  if (!userTimezone) {
+    const { data: user } = await supabase
+      .from('users')
+      .select('settings')
+      .eq('id', userId)
+      .single()
+    userTimezone = (user?.settings as UserSettings | null)?.timezone ?? 'America/New_York'
+  }
+
+  // Validate timezone and fallback if invalid
+  if (!isValidTimezone(userTimezone)) {
+    console.warn(`Invalid timezone: ${userTimezone}, falling back to America/New_York`)
+    userTimezone = 'America/New_York'
+  }
 
   const { data, error } = await supabase
     .from('check_ins')
@@ -533,8 +556,7 @@ export async function loadCheckInOverview(targetDateIso: string): Promise<CheckI
   const targetDate = normalizedTargetIso
   const todayIso = toLocalDateIso(new Date())
   const isViewingToday = targetDate === todayIso
-  const now = new Date()
-  const hour = now.getHours()
+  const hour = getCurrentHourInTimezone(userTimezone)
 
   const entries = data ?? []
   const hasMorning = entries.some((row) => row.check_in_date === targetDate && row.type === 'morning')
