@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"], weight: ["100", "300", "400", "600"], 
 export default function ChatPage() {
   return (
     <Suspense fallback={null}>
-      <div className={`${inter.variable} font-sans min-h-dvh h-dvh relative overflow-hidden`}>
+      <div className={`${inter.variable} font-sans min-h-[100dvh] h-[100dvh] relative overflow-hidden`}>
         <EtherealChat />
       </div>
     </Suspense>

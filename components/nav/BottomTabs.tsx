@@ -15,11 +15,11 @@ export function BottomTabs() {
   }
 
   const baseItem =
-    'block w-full h-full min-h-[56px] py-3 flex flex-col items-center justify-center gap-1 text-xs'
+    'block w-full h-full min-h-14 py-3 flex flex-col items-center justify-center gap-1 text-xs'
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 pt-3 pb-2"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 pt-3 pb-safe"
       role="navigation"
       aria-label="Primary tabs"
     >
@@ -35,8 +35,8 @@ export function BottomTabs() {
             aria-label="Today"
             data-testid="nav-today"
           >
-            <CalendarDays className="w-5 h-5" />
-            <span>Today</span>
+            <CalendarDays className="w-6 h-6" />
+            <span className="text-xs">Today</span>
           </Link>
 
           {/* Chat */}
@@ -49,8 +49,8 @@ export function BottomTabs() {
             aria-label="Chat"
             data-testid="nav-chat"
           >
-            <MessageCircle className="w-5 h-5" />
-            <span>Chat</span>
+            <MessageCircle className="w-6 h-6" />
+            <span className="text-xs">Chat</span>
           </Link>
 
           {/* Journey */}
@@ -63,8 +63,8 @@ export function BottomTabs() {
             aria-label="Journey"
             data-testid="nav-journey"
           >
-            <Map className="w-5 h-5" />
-            <span>Journey</span>
+            <Map className="w-6 h-6" />
+            <span className="text-xs">Journey</span>
           </GuardedLink>
         </div>
       </div>
