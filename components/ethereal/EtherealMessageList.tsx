@@ -6,7 +6,6 @@ import type { UIMessage } from "ai"
 
 import type { Message, TaskEvent } from "@/app/_shared/types/chat"
 import { TaskList } from "@/components/tasks/TaskList"
-import { StreamingText } from "./StreamingText"
 import { StreamingMarkdown } from "./markdown/StreamingMarkdown"
 import { cn } from "@/lib/utils"
 
