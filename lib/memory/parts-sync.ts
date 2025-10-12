@@ -34,7 +34,7 @@ function parsePartFromMarkdown(
     .filter(Boolean);
 
   let name = 'Unknown Part';
-  let status: PartStatus = 'unknown';
+  let status: PartStatus = 'emerging';
   let category: PartCategory = 'unknown';
 
   for (const line of lines) {
