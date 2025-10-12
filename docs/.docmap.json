@@ -73,6 +73,18 @@
         "tailwind.config.ts"
       ],
       "docs": ["docs/current/features/mobile-responsiveness.md"]
+    },
+    {
+      "paths": ["app/api/feedback/**"],
+      "docs": ["docs/current/features/feedback.md"]
+    },
+    {
+      "paths": ["app/api/parts/**"],
+      "docs": ["docs/current/features/parts-api.md"]
+    },
+    {
+      "paths": ["app/api/session/**"],
+      "docs": ["docs/current/features/session-management.md"]
     }
   ]
 }

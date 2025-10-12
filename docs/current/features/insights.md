@@ -1,8 +1,8 @@
 ---
-title: Feature: Insights (Scaffolding)
+title: Feature: Insights (Phase 2)
 owner: @brandongalang
-status: experimental
-last_updated: 2025-09-26
+status: in_development
+last_updated: 2025-10-12
 feature_flag: null
 code_paths:
   - app/api/insights/*
@@ -13,7 +13,7 @@ related_prs:
 ---
 
 ## What
-Initial scaffolding for insights generation (e.g., scheduled or on-demand summaries/patterns).
+Phase 2 feature for generating insights and patterns across user sessions and parts over time. Currently in active development with API scaffolding in place.
 
 ## Why
 Surface trends and patterns across sessions and parts over time.
