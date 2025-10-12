@@ -40,7 +40,7 @@ function slugify(title: string): string {
 export function parseText(text: string): ParsedDocument {
   const lines = text.split(/\r?\n/)
   let idx = 0
-  let fm: any = {}
+let fm: unknown = {}
 
   if (lines[0] && isFence(lines[0])) {
     idx = 1
@@ -53,7 +53,7 @@ export function parseText(text: string): ParsedDocument {
     if (idx < lines.length && isFence(lines[idx])) idx++
 
     // Minimal YAML subset parser: key: value, arrays with "- value".
-    const obj: Record<string, any> = {}
+const obj: Record<string, unknown> = {}
     let currentArrayKey: string | null = null
     for (const raw of fmLines) {
       const line = raw.trimEnd()
@@ -154,7 +154,7 @@ function deslugify(slug: string): string {
   return s.length ? s[0].toUpperCase() + s.slice(1) : 'Section'
 }
 
-function coerceScalar(v: string): any {
+function coerceScalar(v: string): unknown {
   const raw = v.trim()
   if (raw === 'true') return true
   if (raw === 'false') return false
@@ -187,7 +187,7 @@ function stringifyFrontmatter(fm: Frontmatter): string {
           lines.push(`  - ${String(v)}`)
         }
       }
-    } else if (value && typeof value === 'object') {
+    } else if (value !== null && typeof value === 'object') {
       // Store nested objects as JSON for simplicity
       lines.push(`${key}: ${JSON.stringify(value)}`)
     } else {
