@@ -22,7 +22,7 @@ Sunday invitation to focus on one part for the week, with all features supportin
 
 ### 1. Weekly Focus Selection
 
-```
+```text
 Sunday Evening Inbox:
 "Ready for next week's focus?
 Based on recent activity, consider exploring:
@@ -40,7 +40,7 @@ Based on recent activity, consider exploring:
 
 ### 3. Weekly Reflection
 
-```
+```text
 Sunday Check-in:
 "This week with your [Part Name]:
 - Key insights: [AI-generated]

@@ -12,7 +12,7 @@ Enable inbox observations to seamlessly transition into chat conversations throu
 
 ### Step 1: Observation Presentation
 
-```
+```text
 ┌─────────────────────────────────────┐
 │ 📍 Pattern Noticed                  │
 │                                      │
@@ -26,7 +26,7 @@ Enable inbox observations to seamlessly transition into chat conversations throu
 
 ### Step 2A: Confirmation Flow
 
-```
+```text
 User clicks [✓ That's right]
                 ↓
 ┌─────────────────────────────────────┐
@@ -38,7 +38,7 @@ User clicks [✓ That's right]
 
 ### Step 2B: Denial Flow
 
-```
+```text
 User clicks [✗ Not quite]
                 ↓
 ┌─────────────────────────────────────┐
@@ -50,7 +50,7 @@ User clicks [✗ Not quite]
 
 ### Step 3: Chat Transition
 
-```
+```text
 User clicks [💬 Explore/Tell me]
                 ↓
 Navigate to /chat with context

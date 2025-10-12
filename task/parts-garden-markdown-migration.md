@@ -51,7 +51,7 @@ memory/users/{userId}/
 
 ## Part File Format
 
-```markdown
+```text
 ---
 id: uuid-here
 name: Inner Critic

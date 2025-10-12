@@ -1,10 +1,10 @@
-# Trailhead
+# IFS Therapy Companion
 
 An Internal Family Systems (IFS) companion app built around agentic AI for structured personal reflection—demonstrating how product thinking translates into technical architecture.
 
 ## What It Does
 
-Trailhead helps users explore their internal psychological landscape using IFS methodology through conversational AI. Users engage with a streaming chat interface that identifies, tracks, and maps relationships between internal "parts"—the subpersonalities that make up our psyche. The agent maintains context through a differential memory system, generates insights from patterns across sessions, and visualizes part relationships in an interactive force-directed graph ("Parts Garden").
+IFS Therapy Companion helps users explore their internal psychological landscape using IFS methodology through conversational AI. Users engage with a streaming chat interface that identifies, tracks, and maps relationships between internal "parts"—the subpersonalities that make up our psyche. The agent maintains context through a differential memory system, generates insights from patterns across sessions, and visualizes part relationships in an interactive force-directed graph ("Parts Garden").
 
 ## Key Features
 

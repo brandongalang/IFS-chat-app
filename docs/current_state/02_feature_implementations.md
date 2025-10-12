@@ -1,6 +1,6 @@
 # Current Feature Implementations
 
-This document describes the features of the Constellation application that are currently implemented. It is intended for new technical and product team members who want to understand what the application can do *today*.
+This document describes the features of the IFS Therapy Companion application that are currently implemented. It is intended for new technical and product team members who want to understand what the application can do *today*.
 
 ## Overview
 

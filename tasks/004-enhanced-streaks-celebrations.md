@@ -42,7 +42,7 @@ Add streak milestones, visual celebrations, and smart recovery options.
 
 ### 4. Visual Enhancement
 
-```
+```text
 Current: "🔥 7-day streak"
 Enhanced: "🔥 7-day streak (Personal Best! 🎉)"
           "⚡ 2 days from Perfect Week!"

@@ -82,6 +82,7 @@ function parsePartFromMarkdown(
       .map((l) => l.trim())
       .filter((l) => l.startsWith('-'))
       .map((l) => l.substring(1).trim())
+      // Filter out placeholder/template text from evidence
       .filter((l) => l && !l.includes('add up to'));
     evidence.push(...evidenceLines);
   }
@@ -173,7 +174,7 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
             category: partData.category,
             // Only update role if provided, otherwise preserve existing
             role: partData.role ?? existing.role,
-            // Preserve existing visualization or set default
+            // Preserve existing visualization (emoji/color) set by user in Garden UI
             visualization: existing.visualization || { emoji: '🧩', color: '#6B7280' },
             last_active: new Date().toISOString(),
           })
@@ -196,7 +197,9 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
         status: partData.status,
         category: partData.category,
         role: partData.role,
+        // Default visualization; user can customize via Garden UI
         visualization: { emoji: '🧩', color: '#6B7280' },
+        // Database-only fields for future feature expansion
         triggers: [],
         emotions: [],
         beliefs: [],

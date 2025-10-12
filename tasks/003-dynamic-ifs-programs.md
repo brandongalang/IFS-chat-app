@@ -20,7 +20,7 @@ Generate personalized 14-21 day programs for deep work with individual parts.
 
 ## Program Structure Example
 
-```
+```text
 "21 Days with Your Inner Critic"
 Week 1: Discovery & Observation
 - Day 1-3: Notice when it speaks

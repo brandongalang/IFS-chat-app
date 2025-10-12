@@ -11,6 +11,7 @@ code_paths:
   - mastra/tools/part-tools.ts
 related_prs:
   - #41
+  - #305
 ---
 
 ## What
