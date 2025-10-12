@@ -16,7 +16,7 @@ Two separate but related tasks:
 
 ## Clean Separation Principle
 
-```
+```text
 YAML Frontmatter          |  Markdown Body
 (metadata-agent managed)  |  (conversational-agent written)
 --------------------------|----------------------------------

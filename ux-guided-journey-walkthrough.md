@@ -7,7 +7,7 @@
 **Current State**: Sarah opens the app after onboarding last week
 **Screen**: Home/Today page
 
-```
+```text
 ┌─────────────────────────────────────┐
 │  This Week's Focus                  │
 │                                      │
@@ -33,7 +33,7 @@ Sarah taps "Focus on Perfectionist"
 
 **Check-in Flow** (modified for weekly focus):
 
-```
+```text
 Morning Check-in
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -72,7 +72,7 @@ Sarah opens chat. The agent now has context:
 
 **Inbox** shows a new observation:
 
-```
+```text
 ┌─────────────────────────────────────┐
 │ 🔍 Pattern Noticed                  │
 │                                      │
@@ -112,7 +112,7 @@ Sarah chats about the email pattern:
 
 **Evening Check-in** (focus-aware):
 
-```
+```text
 How did your Perfectionist show up today?
 
 [Multiple choice - can select multiple]:
@@ -130,7 +130,7 @@ Any new insights about this part?
 
 **Inbox** generates a mid-week summary:
 
-```
+```text
 ┌─────────────────────────────────────┐
 │ 📖 Your Perfectionist's Story       │
 │    (So Far This Week)               │
@@ -157,7 +157,7 @@ If Sarah engages:
 
 **Special Sunday Check-in**:
 
-```
+```text
 This Week with Your Perfectionist
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -185,7 +185,7 @@ Ready to explore a new part next week?
 
 - **Problem**: What if urgent part emerges mid-week?
 - **Solution**: "Parking lot" concept
-  ```
+  ```text
   "I notice your Anxious part is really active.
    Want to [Pause Perfectionist] or [Note for next week]?"
   ```

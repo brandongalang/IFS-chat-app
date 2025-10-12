@@ -22,7 +22,7 @@ Create a "Story Mode" view that presents the user's journey as chapters and narr
 
 ### 1. Chapter Generation
 
-```
+```text
 Chapter 1: "Meeting the Perfectionist" (Week 1-2)
 - First noticed in work emails
 - Discovered protecting younger self
