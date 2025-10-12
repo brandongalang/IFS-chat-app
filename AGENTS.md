@@ -68,3 +68,43 @@
 - 2025-10-02: Inbox APIs expose Supabase `source_id` as both `id` and `sourceId`; do not reintroduce a separate `id` column in `inbox_items_view`. Client events must send `sourceId`.
 - 2025-10-03: When a multi-phase plan (e.g., session logs like `docs/10_1_session.md`) is finished, update the relevant feature docs/runbooks before closing the workstream so the docs CI check stays green.
 - 2025-10-08: Before opening or refreshing a PR, rerun the docs sweep—confirm feature docs under `docs/features/**` list every touched module (update `code_paths`, `last_updated`, etc.) and ensure the PR description matches the required template so the docs CI check passes on the first run.
+
+## Specs & Task Documentation Workflow
+**Implementation specifications and task planning follow a lifecycle-based organization.**
+
+### Directory Structure
+- **`specs/scoping/`** - Early-stage planning, PRDs, feature proposals, architecture exploration
+- **`specs/in-progress/`** - Active work with open PRs; specs being implemented
+- **`specs/completed/`** - Shipped features; historical record of implementation decisions
+
+### Workflow
+1. **Planning Phase**: Create specs in `specs/scoping/`
+   - Product requirements documents
+   - Technical design proposals
+   - UX analysis and walkthroughs
+   - Feature ideas and brainstorming
+
+2. **Implementation Phase**: Move spec to `specs/in-progress/` when starting work
+   - Create feature branch and PR
+   - Add PR reference to spec header
+   - Update spec if scope changes during implementation
+   - Keep spec and code in sync
+
+3. **Completion Phase**: Move spec to `specs/completed/` when PR merges
+   - Add final PR number(s) to spec
+   - Keep as historical record (even if implementation deviated)
+   - Reference for future related work
+
+### Relationship to `/docs/`
+- **`/docs/features/`** - Living documentation of shipped features (maintained post-launch)
+- **`/docs/runbooks/`** - Operational procedures and troubleshooting guides
+- **`/specs/`** - Implementation planning and historical specs (point-in-time)
+
+**Key distinction**: Specs are implementation plans; docs are maintenance references.
+
+### Best Practices
+- Always move specs between folders as work progresses
+- Update spec during implementation if scope changes
+- Never delete completed specs—they're valuable history
+- Link specs to PRs and vice versa for traceability
+- Use descriptive names: `feature-name-spec.md` or `001-feature-name.md`
