@@ -1,18 +1,36 @@
 # Constellation Documentation
 
-This directory contains all of the product, design, and engineering documentation for Constellation. It is organized into two primary sections:
+This directory contains all of the product, design, and engineering documentation for Constellation. It is organized into four primary sections for solo development and AI agent orientation:
 
 ## 1. `/vision`
 
-This directory contains the **"North Star"** documentation. It describes the long-term product vision, strategic goals, and the ideal architecture we are working towards. It is derived from the original Product Strategy document and should be used as a guiding light for our development efforts.
+This directory contains the **"North Star"** documentation. It describes the long-term product vision, strategic goals, and the ideal architecture we are working towards. Use this for high-level context and inspiration.
 
-## 2. `/current_state`
+## 2. `/current`
 
-This directory contains the **"Map"** of our application. It provides a practical, human-readable description of how the system *actually works today*. This includes its current architecture, feature implementations, and data models. This section is intended to be a living document, updated as the codebase evolves, to help team members understand the current reality of the system.
+This directory contains the **"Map"** of our application as it exists today. It provides a practical, comprehensive description of how the system *actually works*. This includes current architecture, feature implementations, data models, operations, and completed work. This is your primary reference for understanding the existing system.
 
-## Recently updated highlights (September 20, 2025)
-- `docs/features/onboarding.md` — staged onboarding flow, adaptive question selection, completion summary hand-off.
-- `docs/features/authentication-google.md` & `docs/auth/google-oauth-setup.md` — Supabase session listener lifecycle, origin allowlist, refresh rotation requirements.
-- `docs/runbooks/supabase-session-sync.md` — troubleshooting guide for the new auth session bridge.
-- `docs/runbooks/memory-cron-vercel.md` & `docs/user-memory.md` — Vercel Cron migration details and dual-header auth requirements.
-- `docs/current_state/01_system_architecture.md` / `02_feature_implementations.md` — updates covering onboarding summary and daily memory refresh pipeline.
+**Detailed structure**:
+- `overview.md` - High-level product overview and vision
+- `features/` - Feature documentation and PRDs
+- `architecture/` - Technical architecture and system design
+- `operations/` - Operational runbooks and procedures
+- `development/` - Development processes, testing, and agent guides
+
+## 3. `/planning`
+
+This directory contains **active development planning** and upcoming features. It includes feature priorities, scoping documents, and work in progress. This is where you'll find what to build next.
+
+**Detailed structure**: See [`/planning/README.md`](./planning/README.md) for the complete planning documentation workflow and implementation logging format.
+
+## 4. `/archive`
+
+This directory contains **completed work** including finished planning documents and implementation logs. This provides historical context for how features were built and decisions were made.
+
+## Recently updated highlights (October 12, 2025)
+- **Restructured documentation** into four clear sections for better solo development and AI agent orientation
+- **Consolidated current state** - all existing features, architecture, and operations now in `/current/`
+- **Priority-based planning** - `/planning/` organized by urgency (`next/` vs `backlog/`)
+- **Implementation tracking** - `/planning/implementation/` for active coding sessions with task progress
+- **Historical archive** - completed work preserved in `/archive/` for future reference
+- **Agent guidelines** - See [`../AGENTS.md`](../AGENTS.md) for detailed implementation logging format and workflow

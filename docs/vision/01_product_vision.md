@@ -2,7 +2,7 @@
 
 ## Introduction: The Opportunity
 
-The core insight behind IFS Therapy Companion is the identification of a profound leverage point in human psychology. The synthesis of our collective intelligence reveals IFS Therapy Companion's true potential: **the first AI system that transforms psychological complexity from a cognitive burden into a navigable landscape**. This isn't another mental health app—it's infrastructure for human self-mastery.
+The core insight behind Constellation is the identification of a profound leverage point in human psychology. The synthesis of our collective intelligence reveals Constellation's true potential: **the first AI system that transforms psychological complexity from a cognitive burden into a navigable landscape**. This isn't another mental health app—it's infrastructure for human self-mastery.
 
 ## Product Vision: Externalized Cognition for the Psyche
 

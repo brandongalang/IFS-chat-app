@@ -2,28 +2,28 @@
   "mappings": [
     {
       "paths": ["app/garden/**", "components/garden/**", "mastra/tools/part-tools.ts"],
-      "docs": ["docs/features/parts-garden.md"]
+      "docs": ["docs/current/features/parts-garden.md"]
     },
     {
       "paths": ["lib/parts/**", "content/parts/**", "mastra/tools/part-content-tools.ts"],
-      "docs": ["docs/features/parts-markdown.md"]
+      "docs": ["docs/current/features/parts-markdown.md"]
     },
     {
       "paths": ["app/check-in/**", "components/check-in/**"],
-      "docs": ["docs/features/check-ins.md"]
+      "docs": ["docs/current/features/check-ins.md"]
     },
     {
       "paths": ["components/auth/**", "app/auth/**"],
       "docs": [
-        "docs/features/authentication-google.md",
-        "docs/runbooks/supabase-session-sync.md"
+        "docs/current/features/authentication-google.md",
+        "docs/current/operations/supabase-session-sync.md"
       ]
     },
     {
       "paths": ["supabase/migrations/**"],
       "docs": [
-        "docs/user-memory.md",
-        "docs/runbooks/memory-cron-vercel.md"
+        "docs/current/operations/user-memory.md",
+        "docs/current/operations/memory-cron-vercel.md"
       ]
     },
     {
@@ -34,23 +34,23 @@
         "components/ethereal/**",
         "lib/database/**"
       ],
-      "docs": ["docs/features/chat.md"]
+      "docs": ["docs/current/features/chat.md"]
     },
     {
       "paths": ["mastra/tools/**", "mastra/agents/**", "lib/insights/generator.ts"],
-      "docs": ["docs/features/agent-tools.md"]
+      "docs": ["docs/current/features/agent-tools.md"]
     },
     {
       "paths": ["app/api/insights/**", "lib/insights/**"],
-      "docs": ["docs/features/insights.md"]
+      "docs": ["docs/current/features/insights.md"]
     },
     {
       "paths": ["app/onboarding/**", "components/onboarding/**", "lib/onboarding/**"],
-      "docs": ["docs/features/onboarding.md"]
+      "docs": ["docs/current/features/onboarding.md"]
     },
     {
       "paths": ["lib/inbox/**", "scripts/inbox/**"],
-      "docs": ["docs/runbooks/inbox-observation-job.md"]
+      "docs": ["docs/current/operations/inbox-observation-job.md"]
     },
     {
       "paths": [
@@ -60,8 +60,8 @@
         "lib/api/cron-auth.ts"
       ],
       "docs": [
-        "docs/user-memory.md",
-        "docs/runbooks/memory-cron-vercel.md"
+        "docs/current/operations/user-memory.md",
+        "docs/current/operations/memory-cron-vercel.md"
       ]
     },
     {
@@ -72,7 +72,7 @@
         "tailwind.config.js",
         "tailwind.config.ts"
       ],
-      "docs": ["docs/features/mobile-responsiveness.md"]
+      "docs": ["docs/current/features/mobile-responsiveness.md"]
     }
   ]
 }

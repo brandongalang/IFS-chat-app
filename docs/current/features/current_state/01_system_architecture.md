@@ -1,6 +1,6 @@
 # Current System Architecture
 
-This document describes the technical architecture of the IFS Therapy Companion application as it is currently implemented. It is intended for new technical team members.
+This document describes the technical architecture of the Constellation application as it is currently implemented. It is intended for new technical team members.
 
 ## High-Level Overview
 
