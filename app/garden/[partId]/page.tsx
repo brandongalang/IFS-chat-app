@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { resolveUserId } from '@/config/dev'
 import type { PartRow, PartNoteRow } from '@/lib/types/database'
 import type { PartRelationshipWithDetails } from '@/lib/data/parts.schema'
+import { readPartById as readMarkdownPart } from '@/lib/parts/repository'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -62,11 +63,12 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
   const userId = resolveUserId(user?.id)
   const deps = { userId, client: supabase }
 
-  // Fetch part details and relationships in parallel for efficiency
-  const [partResult, relationshipsResult, notesResult] = await Promise.all([
+  // Fetch part details (DB), relationships, notes, and markdown in parallel
+  const [partResult, relationshipsResult, notesResult, markdownDoc] = await Promise.all([
     getPartById({ partId }, deps),
     getPartRelationships({ partId, includePartDetails: true, limit: 20 }, deps),
     getPartNotes({ partId }, deps),
+    readMarkdownPart(partId).catch(() => null),
   ])
 
   // Handle case where the part is not found or fails to load
@@ -90,6 +92,21 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
   const part: PartRow = partResult
   const visualization = part.visualization as { emoji?: string; color?: string }
   const story = part.story as { origin?: string; currentState?: string; purpose?: string }
+
+  const mdSections = (markdownDoc?.sections ?? {}) as Record<string, string>
+  const headerEmoji = markdownDoc?.frontmatter?.emoji ?? visualization?.emoji ?? '🤗'
+
+  // Note: we intentionally skip empty-string sections to fall back to DB story fields
+  function pickSection(...keys: string[]): string | undefined {
+    for (const k of keys) {
+      if (mdSections[k]) return mdSections[k]
+    }
+    return undefined
+  }
+
+  const mdRolePurpose = pickSection('role-purpose', 'role', 'purpose', 'body')
+  const mdCurrentState = pickSection('current-state', 'state')
+  const mdOrigin = pickSection('origin', 'origin-story')
   const relationships: PartRelationshipWithDetails[] =
     relationshipsResult && Array.isArray(relationshipsResult)
       ? (relationshipsResult as PartRelationshipWithDetails[])
@@ -109,7 +126,7 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
           </Button>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <span className="text-6xl">{visualization?.emoji || '🤗'}</span>
+          <span className="text-6xl">{headerEmoji}</span>
           <div>
             <h1 className="text-4xl font-bold">{part.name}</h1>
             <div className="flex items-center gap-2 mt-2">
@@ -134,9 +151,9 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
               <CardDescription>The narrative and role of this part.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <StorySection title="Role / Purpose" content={part.role || story?.purpose} />
-              <StorySection title="Current State" content={story?.currentState} />
-              <StorySection title="Origin Story" content={story?.origin} />
+              <StorySection title="Role / Purpose" content={mdRolePurpose ?? part.role ?? story?.purpose} />
+              <StorySection title="Current State" content={mdCurrentState ?? story?.currentState} />
+              <StorySection title="Origin Story" content={mdOrigin ?? story?.origin} />
             </CardContent>
           </Card>
 

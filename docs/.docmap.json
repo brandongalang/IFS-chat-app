@@ -5,6 +5,10 @@
       "docs": ["docs/features/parts-garden.md"]
     },
     {
+      "paths": ["lib/parts/**", "content/parts/**", "mastra/tools/part-content-tools.ts"],
+      "docs": ["docs/features/parts-markdown.md"]
+    },
+    {
       "paths": ["app/check-in/**", "components/check-in/**"],
       "docs": ["docs/features/check-ins.md"]
     },

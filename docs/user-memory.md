@@ -67,7 +67,7 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - `supabase start` (if needed)
 - `supabase db push --local`
 
-## Implementation (updated 2025-01-11)
+## Implementation (updated 2025-10-12)
 - **Background Services**: `lib/services/memory.ts`
   - `scaffoldUserMemory({ userId })` - ensures memory scaffolding exists
   - `summarizePendingUpdates({ userId?, limit? })` - processes pending updates for users
@@ -91,6 +91,11 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - **Chat preflight**: `app/api/memory/preflight/route.ts` powers the immediate summarize-on-open flow used by `useChatSession`.
 - **Agent tooling**: `mastra/tools/memory-markdown-tools.ts` exposes read + scoped write helpers (overview changelog, sections, part notes, part profile creation) shared by chat and background agents.
   - `lib/memory/snapshots/updater.ts` provides `ensurePartProfileExists` which returns `{ path, created }` atomically to eliminate TOCTOU races (updated 2025-01-11)
+- **Parts sync utility** (added 2025-10-12): `lib/memory/parts-sync.ts`
+  - `discoverUserParts(userId)` finds markdown part profiles
+  - `syncPartToDatabase(userId, partId)` updates/inserts DB record from markdown identity/role/evidence
+  - `syncAllUserParts(userId)` iterates through all detected part profiles
+  - `onPartProfileChanged(userId, partId)` hook for chat updates to reflect immediately in UI
 - Types: `lib/memory/types.ts`
 - Cron route: `app/api/cron/memory-update/route.ts`
 - **Chat Integration**: Memory maintenance removed from `app/api/chat/route.ts` - now handled by background workers

@@ -2,7 +2,7 @@
 title: Feature: Parts Garden
 owner: @brandongalang
 status: shipped
-last_updated: 2025-09-26
+last_updated: 2025-10-12
 feature_flag: ENABLE_GARDEN
 code_paths:
   - app/garden/page.tsx
@@ -20,13 +20,16 @@ Visual exploration interface for browsing and drilling into Parts.
 Offers a spatial/visual way to understand internal parts and relationships.
 
 ## How it works
-- Grid overview at app/garden/page.tsx (client) uses `@/lib/data/parts-lite`
-- Detail at app/garden/[partId]/page.tsx (server) uses `@/lib/data/parts-server`
-- PartActions server actions import from `@/lib/data/parts-server`
+- Detail at app/garden/[partId]/page.tsx (server)
+  - Reads narrative content from the Markdown repository (`lib/parts/repository`): sections like Role & Purpose, Current State, Origin
+  - Reads DB-backed fields (visualization, relationships, notes) via `@/lib/data/parts-server`
+- PartActions server actions import from `@/lib/data/parts-server` and update DB attributes (e.g., name/emoji via visualization)
 - Part tool invocations route through tightened Zod schemas and an injected Supabase client, preventing untrusted payloads from mutating data
 
 ## Data model
-- parts, part_relationships (read/derived views)
+- Dual storage model:
+  - Markdown repository for narrative content (sections) and optional emoji in frontmatter
+  - Database tables/views for identity, visualization, relationships, and notes
 
 ## Configuration
 - Enabled by default via `config/features.ts`. Environments that need to hide the Garden must set `ENABLE_GARDEN` to a falsey value (`false`, `0`, or `off`). The feature flag is read during build, with optional support for mirroring via `NEXT_PUBLIC_ENABLE_GARDEN` when client overrides are required.
