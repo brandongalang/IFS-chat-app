@@ -3,6 +3,41 @@ import { z } from 'zod'
 import { listParts, readPartById, createPart, updatePartContent, type ListPartsFilters } from '@/lib/parts/repository'
 import { frontmatterSchema } from '@/lib/parts/spec'
 
+// Input schemas for stronger typing
+const listPartsInputSchema = z
+  .object({
+    query: z.string().optional(),
+    category: z.string().optional(),
+    status: z.string().optional(),
+    tag: z.string().optional(),
+  })
+  .strict()
+
+const readPartInputSchema = z.object({ id: z.string().uuid() }).strict()
+
+const createPartInputSchema = z
+  .object({
+    frontmatter: frontmatterSchema.partial({ id: true, created_at: true, updated_at: true, last_active: true }),
+    sections: z.record(z.string()).optional(),
+    fileName: z.string().optional(),
+  })
+  .strict()
+
+const updatePartContentInputSchema = z
+  .object({
+    id: z.string().uuid(),
+    updates: z
+      .array(
+        z.object({
+          section: z.string().min(1),
+          mode: z.enum(['replace', 'append', 'prepend']),
+          text: z.string(),
+        }),
+      )
+      .min(1),
+  })
+  .strict()
+
 // 1) get_parts_metadata_summary
 export const getPartsMetadataSummary = createTool({
   id: 'get_parts_metadata_summary',
@@ -28,15 +63,8 @@ export const getPartsMetadataSummary = createTool({
 export const listPartsTool = createTool({
   id: 'list_parts',
   description: 'List parts by YAML metadata filters',
-  inputSchema: z
-    .object({
-      query: z.string().optional(),
-      category: z.string().optional(),
-      status: z.string().optional(),
-      tag: z.string().optional(),
-    })
-    .strict(),
-  execute: async ({ context }: any) => {
+  inputSchema: listPartsInputSchema,
+  execute: async ({ context }: { context: z.infer<typeof listPartsInputSchema> }) => {
     const filters: ListPartsFilters = {
       query: context.query,
       category: context.category as any,
@@ -52,8 +80,8 @@ export const listPartsTool = createTool({
 export const readPartTool = createTool({
   id: 'read_part',
   description: 'Read a part by ID, returning frontmatter and markdown sections',
-  inputSchema: z.object({ id: z.string().uuid() }).strict(),
-  execute: async ({ context }: any) => {
+  inputSchema: readPartInputSchema,
+  execute: async ({ context }: { context: z.infer<typeof readPartInputSchema> }) => {
     const doc = await readPartById(context.id)
     if (!doc) return null
     return doc
@@ -64,14 +92,8 @@ export const readPartTool = createTool({
 export const createPartTool = createTool({
   id: 'create_part',
   description: 'Create a new part file with frontmatter and optional sections',
-  inputSchema: z
-    .object({
-      frontmatter: frontmatterSchema.partial({ id: true, created_at: true, updated_at: true, last_active: true }),
-      sections: z.record(z.string()).optional(),
-      fileName: z.string().optional(),
-    })
-    .strict(),
-  execute: async ({ context }: any) => {
+  inputSchema: createPartInputSchema,
+  execute: async ({ context }: { context: z.infer<typeof createPartInputSchema> }) => {
     const { filePath, doc } = await createPart({
       frontmatter: context.frontmatter,
       sections: context.sections,
@@ -85,21 +107,8 @@ export const createPartTool = createTool({
 export const updatePartContentTool = createTool({
   id: 'update_part_content',
   description: 'Modify markdown sections for a part (replace/append/prepend)',
-  inputSchema: z
-    .object({
-      id: z.string().uuid(),
-      updates: z
-        .array(
-          z.object({
-            section: z.string().min(1),
-            mode: z.enum(['replace', 'append', 'prepend']),
-            text: z.string(),
-          }),
-        )
-        .min(1),
-    })
-    .strict(),
-  execute: async ({ context }: any) => {
+  inputSchema: updatePartContentInputSchema,
+  execute: async ({ context }: { context: z.infer<typeof updatePartContentInputSchema> }) => {
     const updated = await updatePartContent({ id: context.id, updates: context.updates })
     return updated
   },

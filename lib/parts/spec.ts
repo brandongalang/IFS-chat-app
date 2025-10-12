@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import matter from 'gray-matter'
 import { partCategoryEnum, partStatusEnum } from '@/lib/data/parts.schema'
 
 export const frontmatterSchema = z
@@ -38,63 +39,15 @@ function slugify(title: string): string {
 }
 
 export function parseText(text: string): ParsedDocument {
-  const lines = text.split(/\r?\n/)
-  let idx = 0
-let fm: unknown = {}
+  // Use gray-matter to robustly parse YAML frontmatter (supports indentation and lists)
+  const { data, content } = matter(text)
 
-  if (lines[0] && isFence(lines[0])) {
-    idx = 1
-    const fmLines: string[] = []
-    while (idx < lines.length && !isFence(lines[idx])) {
-      fmLines.push(lines[idx])
-      idx++
-    }
-    // Skip closing fence
-    if (idx < lines.length && isFence(lines[idx])) idx++
-
-    // Minimal YAML subset parser: key: value, arrays with "- value".
-const obj: Record<string, unknown> = {}
-    let currentArrayKey: string | null = null
-    for (const raw of fmLines) {
-      const line = raw.trimEnd()
-      if (!line) continue
-      if (line.startsWith('- ') && currentArrayKey) {
-        const val = line.slice(2).trim()
-        ;(obj[currentArrayKey] = obj[currentArrayKey] || []).push(coerceScalar(val))
-        continue
-      }
-      const m = line.match(/^(\w[\w_]*):\s*(.*)$/)
-      if (m) {
-        const [, key, rest] = m
-        if (rest === '' || rest === null) {
-          // Possibly start of a list in following lines
-          currentArrayKey = key
-          obj[key] = obj[key] || []
-        } else if (rest === '|' || rest === '>') {
-          // Multiline scalars not supported fully; treat as empty for now
-          obj[key] = ''
-          currentArrayKey = null
-        } else {
-          obj[key] = coerceScalar(rest)
-          currentArrayKey = null
-        }
-      } else {
-        currentArrayKey = null
-      }
-    }
-    fm = obj
-  }
-
-  // Remaining is markdown body
-  const body = lines.slice(idx).join('\n')
-  const sections = splitSections(body)
-
-  const parsed = frontmatterSchema.safeParse(fm)
+  const parsed = frontmatterSchema.safeParse(data)
   if (!parsed.success) {
-    // Throw with concise message to surface validation issues early
     throw new Error('Invalid parts frontmatter: ' + parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; '))
   }
 
+  const sections = splitSections(content)
   return { frontmatter: parsed.data, sections }
 }
 
@@ -154,24 +107,6 @@ function deslugify(slug: string): string {
   return s.length ? s[0].toUpperCase() + s.slice(1) : 'Section'
 }
 
-function coerceScalar(v: string): unknown {
-  const raw = v.trim()
-  if (raw === 'true') return true
-  if (raw === 'false') return false
-  if (raw === 'null' || raw === 'undefined' || raw === '~') return null
-  if (/^\d+$/.test(raw)) return parseInt(raw, 10)
-  if (/^\d+\.\d+$/.test(raw)) return parseFloat(raw)
-  if (/^\[.*\]$/.test(raw)) {
-    try { return JSON.parse(raw) } catch {}
-  }
-  // JSON-encoded objects
-  if (/^\{.*\}$/.test(raw)) {
-    try { return JSON.parse(raw) } catch {}
-  }
-  // Strip wrapping quotes if present
-  const q = raw.match(/^['"](.*)['"]$/)
-  return q ? q[1] : raw
-}
 
 function stringifyFrontmatter(fm: Frontmatter): string {
   const lines: string[] = []
