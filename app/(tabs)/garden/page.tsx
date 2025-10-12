@@ -8,9 +8,12 @@ import type { PartRelationshipWithDetails } from '@/lib/data/parts.schema'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { PartCard } from '@/components/garden/PartCard'
 import { isGardenGridViewEnabled } from '@/config/features'
 import type { ForceGraphProps } from 'react-force-graph-2d'
+import { syncPartsAction } from './actions'
+import { RefreshCw } from 'lucide-react'
 
 // Dynamically import the ForceGraph2D component to avoid SSR issues
 const ForceGraph2D = dynamic<ForceGraphProps<GraphNode, GraphLink>>(
@@ -127,6 +130,8 @@ export default function GardenPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [time, setTime] = useState(0) // For animation timing
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncMessage, setSyncMessage] = useState<string | null>(null)
   const error = partsError ?? relationshipsError
 
   useEffect(() => {
@@ -254,13 +259,56 @@ export default function GardenPage() {
     drawNode(node, ctx, globalScale, time);
   }, [time]);
 
+  const handleRefreshSync = useCallback(async () => {
+    setIsSyncing(true)
+    setSyncMessage(null)
+    try {
+      const result = await syncPartsAction()
+      if (result.success) {
+        setSyncMessage(`✅ Synced ${result.synced} parts${result.failed > 0 ? `, ${result.failed} failed` : ''}`)
+        // Refetch parts to show the newly synced data
+        const partsResult = await searchParts({ limit: 50 })
+        if (partsResult && Array.isArray(partsResult)) {
+          setParts(partsResult)
+        }
+      } else {
+        setSyncMessage(`❌ Sync failed: ${result.error}`)
+      }
+    } catch (error) {
+      setSyncMessage(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsSyncing(false)
+      // Clear message after 5 seconds
+      setTimeout(() => setSyncMessage(null), 5000)
+    }
+  }, [])
+
   return (
     <div className="container mx-auto p-4 md:p-6 h-full flex flex-col">
       <header className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight">The Parts Garden</h1>
-        <p className="text-muted-foreground mt-2">
-          Explore the parts of your inner world and select a card to see its details.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-4xl font-bold tracking-tight">The Parts Garden</h1>
+            <p className="text-muted-foreground mt-2">
+              Explore the parts of your inner world and select a card to see its details.
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <Button
+              onClick={handleRefreshSync}
+              disabled={isSyncing}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Syncing...' : 'Refresh'}
+            </Button>
+            {syncMessage && (
+              <p className="text-sm text-muted-foreground">{syncMessage}</p>
+            )}
+          </div>
+        </div>
       </header>
 
       <main className="flex-grow relative">

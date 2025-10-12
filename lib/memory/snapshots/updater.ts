@@ -4,6 +4,7 @@ import { userOverviewPath, partProfilePath, relationshipProfilePath } from '@/li
 import { editMarkdownSection } from '@/lib/memory/markdown/editor'
 import { buildRelationshipProfileMarkdown } from '@/lib/memory/snapshots/grammar'
 import { logEvent } from '@/lib/memory/events-logger'
+import { onPartProfileChanged } from '@/lib/memory/parts-sync'
 
 export async function ensureRelationshipProfileExists(params: { userId: string; relId: string; type: string }): Promise<string> {
   const storage = await getStorageAdapter()
@@ -46,6 +47,8 @@ export async function ensurePartProfileExists(params: { userId: string; partId: 
   if (!exists) {
     const md = buildPartProfileMarkdown(params)
     await storage.putText(path, md, { contentType: 'text/markdown; charset=utf-8' })
+    // Sync newly created profile to database immediately
+    await onPartProfileChanged(params.userId, params.partId)
     return { path, created: true }
   }
   return { path, created: false }
@@ -81,8 +84,10 @@ export async function onPartCreated(params: { userId: string; partId: string; na
     entityType: 'part',
     entityId: params.partId,
     filePath: path,
-    line: `created part \"${params.name}\" (status: ${params.status}, category: ${params.category})`,
+    line: `created part "${params.name}" (status: ${params.status}, category: ${params.category})`,
   })
+  // Sync to database after logging the creation
+  await onPartProfileChanged(params.userId, params.partId)
 }
 
 export async function onPartUpdated(params: { userId: string; partId: string; name: string; change: string }) {
@@ -92,7 +97,9 @@ export async function onPartUpdated(params: { userId: string; partId: string; na
     entityType: 'part',
     entityId: params.partId,
     filePath: path,
-    line: `updated part \"${params.name}\": ${params.change}`,
+    line: `updated part "${params.name}": ${params.change}`,
   })
+  // Sync to database after logging the update
+  await onPartProfileChanged(params.userId, params.partId)
 }
 
