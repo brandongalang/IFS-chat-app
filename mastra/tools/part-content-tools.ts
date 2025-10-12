@@ -2,13 +2,14 @@ import { createTool } from '@mastra/core'
 import { z } from 'zod'
 import { listParts, readPartById, createPart, updatePartContent, type ListPartsFilters } from '@/lib/parts/repository'
 import { frontmatterSchema } from '@/lib/parts/spec'
+import { partCategoryEnum, partStatusEnum } from '@/lib/data/parts.schema'
 
 // Input schemas for stronger typing
 const listPartsInputSchema = z
   .object({
     query: z.string().optional(),
-    category: z.string().optional(),
-    status: z.string().optional(),
+    category: partCategoryEnum.optional(),
+    status: partStatusEnum.optional(),
     tag: z.string().optional(),
   })
   .strict()
@@ -67,8 +68,8 @@ export const listPartsTool = createTool({
   execute: async ({ context }: { context: z.infer<typeof listPartsInputSchema> }) => {
     const filters: ListPartsFilters = {
       query: context.query,
-      category: context.category as any,
-      status: context.status as any,
+      category: context.category,
+      status: context.status,
       tag: context.tag,
     }
     const items = await listParts(filters)

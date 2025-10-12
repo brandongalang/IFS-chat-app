@@ -151,7 +151,7 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
     // Check if part already exists
     const { data: existing } = await supabase
       .from('parts')
-      .select('id, name, status, category, visualization')
+      .select('id, name, status, category, role, visualization')
       .eq('id', partId)
       .eq('user_id', userId)
       .single();
@@ -161,7 +161,8 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
       const needsUpdate =
         existing.name !== partData.name ||
         existing.status !== partData.status ||
-        existing.category !== partData.category;
+        existing.category !== partData.category ||
+        (partData.role !== undefined && existing.role !== partData.role);
 
       if (needsUpdate) {
         const { error } = await supabase
@@ -170,7 +171,8 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
             name: partData.name,
             status: partData.status,
             category: partData.category,
-            role: partData.role,
+            // Only update role if provided, otherwise preserve existing
+            role: partData.role ?? existing.role,
             // Preserve existing visualization or set default
             visualization: existing.visualization || { emoji: '🧩', color: '#6B7280' },
             last_active: new Date().toISOString(),

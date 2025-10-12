@@ -1,6 +1,14 @@
 # Task: Enable Parts Garden with Markdown-Only Architecture
 
-## Objective
+> **⚠️ DEPRECATED**: This document describes a "pure markdown" approach that was superseded by a **hybrid architecture** (Supabase DB + Markdown). See `docs/check-in-parts-integration-analysis.md` and `task/parts-garden-memory-integration.md` for the current implementation where:
+> - **Database (Supabase)** stores core part fields (id, name, status, category, relationships, visualization)
+> - **Markdown files** store extended memory (evidence, notes, session logs)
+> - **Sync layer** (`lib/memory/parts-sync.ts`) keeps them consistent
+> - **Garden UI** reads from both sources (DB for core data, markdown for narrative content)
+>
+> This document is kept for historical reference but should NOT be followed for new work.
+
+## Original Objective (Deprecated)
 
 Migrate Parts to a pure markdown system with YAML frontmatter, eliminate database dependency for parts, and enable the Garden UI to work with markdown files directly.
 

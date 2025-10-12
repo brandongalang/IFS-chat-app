@@ -11,6 +11,21 @@ export type PartsRepositoryOptions = {
   baseDir?: string
 }
 
+/**
+ * Normalize section key to match the slugification logic used in splitSections
+ * Strips heading markers (##), removes non-alphanumerics, collapses whitespace
+ */
+function normalizeSectionKey(section: string): string {
+  return section
+    .trim()
+    .replace(/^#+\s*/, '') // Remove heading markers like ##
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove non-alphanumerics except spaces and hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Collapse multiple hyphens
+    .replace(/^-|-$/g, '') // Trim leading/trailing hyphens
+}
+
 async function ensureDir(dir: string) {
   await fsp.mkdir(dir, { recursive: true })
 }
@@ -126,10 +141,16 @@ export async function createPart(input: CreatePartInput, opts?: PartsRepositoryO
   const doc: ParsedDocument = { frontmatter: fm, sections }
   const text = serializeDocument(doc)
 
-  const fileName = (input.fileName ?? `${fm.name}`)
+  // Sanitize filename, falling back to UUID if slug is empty (e.g., name with only symbols)
+  const slug = (input.fileName ?? fm.name)
     .toLowerCase()
     .replace(/[^a-z0-9\-\s]/g, '')
     .replace(/\s+/g, '-')
+    .replace(/-+/g, '-') // Collapse multiple hyphens
+    .replace(/^-|-$/g, '') // Trim leading/trailing hyphens
+  
+  // Fall back to UUID if slug is empty to prevent .md files and collisions
+  const fileName = slug || id
   const filePath = path.join(baseDir, `${fileName}.md`)
 
   await fsp.writeFile(filePath, text, 'utf8')
@@ -164,7 +185,8 @@ export async function updatePartContent(input: UpdatePartContentInput, opts?: Pa
       // apply updates to sections only; do not modify frontmatter except timestamps
       const sections = { ...parsed.sections }
       for (const u of updates) {
-        const key = u.section.trim().toLowerCase().replace(/\s+/g, '-')
+        // Use the same normalization logic as splitSections to match existing keys
+        const key = normalizeSectionKey(u.section)
         const existing = sections[key] ?? ''
         if (u.mode === 'replace') sections[key] = u.text
         else if (u.mode === 'append') sections[key] = [existing, u.text].filter(Boolean).join('\n\n')
