@@ -121,6 +121,7 @@ Or apply manually via Supabase Studio SQL editor.
 - **ECONNREFUSED on port 4000**: Ensure LiteLLM proxy is running
 - **Agent tool errors**: Restart Mastra dev server (`npm run dev:mastra`)
 - **Auth issues**: Verify Supabase env variables and RLS policies
+- **Parts Sync/Refresh Issues**: The parts sync script, when using the local storage adapter, reads from the `.data/memory-snapshots` directory. If this directory does not exist, it will be created automatically.
 
 ## Documentation
 

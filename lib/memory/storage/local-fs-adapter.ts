@@ -37,7 +37,14 @@ export class LocalFsStorageAdapter implements StorageAdapter {
         else out.push(path.relative(rootAbs, p))
       }
     }
-    try { await walk(full) } catch {}
+    try {
+      await fs.mkdir(full, { recursive: true })
+      await walk(full)
+    } catch (e) {
+      // Errors are swallowed here to prevent crashes if the directory is unreadable,
+      // which is consistent with the original behavior of this function. The goal is
+      // to return an empty list of parts rather than crashing the sync process.
+    }
     return out
   }
   async delete(userPath: string): Promise<void> {
