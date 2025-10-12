@@ -95,7 +95,9 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
   - `discoverUserParts(userId)` finds markdown part profiles
   - `syncPartToDatabase(userId, partId)` updates/inserts DB record from markdown identity/role/evidence
   - `syncAllUserParts(userId)` iterates through all detected part profiles
-  - `onPartProfileChanged(userId, partId)` hook for chat updates to reflect immediately in UI
+  - `onPartProfileChanged(userId, partId)` hook automatically called on part creation/update to sync to database immediately
+  - Event-driven integration: `lib/memory/snapshots/updater.ts` calls the sync hook in `ensurePartProfileExists`, `onPartCreated`, and `onPartUpdated`
+  - Manual sync fallback: `app/(tabs)/garden/actions.ts` exposes `syncPartsAction` for user-triggered refresh in Garden UI
 - Types: `lib/memory/types.ts`
 - Cron route: `app/api/cron/memory-update/route.ts`
 - **Chat Integration**: Memory maintenance removed from `app/api/chat/route.ts` - now handled by background workers
