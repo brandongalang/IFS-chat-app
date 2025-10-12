@@ -26,10 +26,6 @@ export interface ParsedDocument {
   sections: Record<string, string>
 }
 
-function isFence(line: string): boolean {
-  return line.trim() === '---'
-}
-
 function slugify(title: string): string {
   return title
     .trim()
