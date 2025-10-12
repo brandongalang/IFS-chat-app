@@ -96,6 +96,7 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
   const mdSections = (markdownDoc?.sections ?? {}) as Record<string, string>
   const headerEmoji = markdownDoc?.frontmatter?.emoji ?? visualization?.emoji ?? '🤗'
 
+  // Note: we intentionally skip empty-string sections to fall back to DB story fields
   function pickSection(...keys: string[]): string | undefined {
     for (const k of keys) {
       if (mdSections[k]) return mdSections[k]

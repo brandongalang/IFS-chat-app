@@ -11,7 +11,7 @@ The "What parts are present?" section in check-ins doesn't display any parts bec
 
 ### Current Data Flow
 
-```
+```text
 Database (Supabase)          Markdown Memory System
        │                              │
     parts table                 Part Profiles
@@ -48,7 +48,7 @@ Database (Supabase)          Markdown Memory System
 
 ### Option 1: Database as Primary, Markdown as Enhancement
 
-**Keep database as source of truth, markdown for extended memory**
+Summary: Keep database as source of truth; use markdown for extended memory
 
 ```typescript
 // Revised flow:
@@ -69,7 +69,7 @@ Cons:
 
 ### Option 2: Markdown as Primary Source
 
-**Use markdown files as the source of truth**
+Summary: Use markdown files as the source of truth
 
 ```typescript
 // Revised flow:
@@ -91,7 +91,7 @@ Cons:
 
 ### Option 3: Hybrid Approach (Recommended)
 
-**Database for core data, markdown for rich content, with bidirectional sync**
+Summary: Database for core data, markdown for rich content, with bidirectional sync
 
 ```typescript
 // Implementation plan:

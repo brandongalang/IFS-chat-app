@@ -26,7 +26,7 @@ Migrate Parts to markdown with clear separation: YAML frontmatter for structured
 
 ## File Structure
 
-```
+```text
 memory/users/{userId}/
 ├── overview.md
 ├── parts/

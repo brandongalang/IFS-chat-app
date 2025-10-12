@@ -146,7 +146,7 @@ The Parts Garden (Journey tab) and check-in features are disconnected from the m
 
 ## Data Flow
 
-```
+```text
 User Action → UI Component → Server Action → Database Update
                                                     ↓
                                             Memory Queue

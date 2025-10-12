@@ -22,7 +22,7 @@ Migrate Parts to a pure markdown system with YAML frontmatter, eliminate databas
 
 ## Architecture Decision
 
-**Pure Markdown with YAML Frontmatter**
+### Decision: Pure Markdown with YAML Frontmatter
 
 - No database for parts
 - No sync complexity
@@ -31,7 +31,7 @@ Migrate Parts to a pure markdown system with YAML frontmatter, eliminate databas
 
 ## File Structure
 
-```
+```text
 memory/users/{userId}/
 ├── overview.md
 ├── parts/
@@ -82,7 +82,7 @@ Transform Parts from database-driven to markdown-driven in 5 phases, maintaining
 
 ### Phase Sequence
 
-```
+```text
 Phase 1: Build Foundation (Markdown Repository)
     ↓
 Phase 2: Update UI (Garden reads markdown)
