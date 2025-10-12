@@ -77,6 +77,10 @@ export interface InboxEnvelopeBase {
   tags?: string[]
   actions?: InboxActionSchema
   metadata?: Record<string, unknown>
+  actionTaken?: {
+    value: InboxQuickActionValue
+    timestamp: string
+  }
 }
 
 export interface InsightSpotlightDetailSource {
