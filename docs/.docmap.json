@@ -50,8 +50,9 @@
     },
     {
       "paths": ["lib/inbox/**", "scripts/inbox/**"],
-      "docs": ["docs/current/operations/inbox-observation-job.md"]
+      "docs": ["docs/current/operations/runbooks/inbox-observation-job.md"]
     },
+
     {
       "paths": [
         "app/api/cron/memory-update/**",
