@@ -3,10 +3,11 @@
  * One-time manual sync script to backfill markdown part profiles into database
  * 
  * Usage:
- *   npx tsx scripts/sync-parts-manual.ts
+ *   npx tsx scripts/sync-parts-manual.ts          # Local environment
+ *   TARGET_ENV=prod npx tsx scripts/sync-parts-manual.ts  # Production environment
  * 
  * This script will:
- * 1. Discover all markdown part profiles in .data/memory-snapshots
+ * 1. Discover all markdown part profiles in storage (local or Supabase)
  * 2. Parse their frontmatter and content
  * 3. Upsert them into the Supabase parts table
  */
@@ -23,7 +24,13 @@ const USER_IDS = [
 ]
 
 async function main() {
+  const targetEnv = process.env.TARGET_ENV || 'local'
+  const storageMode = process.env.MEMORY_STORAGE_ADAPTER || 'local'
+  
   console.log('🌱 Starting manual parts sync...\n')
+  console.log(`🌍 Environment: ${targetEnv.toUpperCase()}`)
+  console.log(`📦 Storage: ${storageMode}`)
+  console.log(`👥 Users: ${USER_IDS.join(', ')}\n`)
   
   let totalSynced = 0
   let totalFailed = 0
