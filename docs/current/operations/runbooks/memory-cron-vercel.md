@@ -64,6 +64,15 @@ curl -X POST https://<preview-host>/api/cron/memory-update \
 - Manually run `npm run scripts:memory-update -- --user <uuid>` (if script exists) or execute the curl command per user.
 - Communicate downtime in #ops and log the manual run results (versions, errors).
 
+## Memory V2 Storage (added 2025-10-13)
+
+The cron job manages Memory V2 markdown files stored in Supabase Storage:
+- **Storage bucket**: `memory-snapshots` (created by migration 110)
+- **Configuration**: None required - uses `SUPABASE_SERVICE_ROLE_KEY` for storage access
+- **Migration**: Apply `supabase/migrations/110_memory_snapshots_bucket.sql` to create bucket with RLS policies
+- **File structure**: `users/{userId}/parts/{partId}/profile.md`, `users/{userId}/overview.md`, etc.
+- **Service role**: Required for agent operations (bypasses RLS for system access)
+
 ## Related files
 - `vercel.json`
 - `lib/api/cron-auth.ts`
@@ -74,3 +83,4 @@ curl -X POST https://<preview-host>/api/cron/memory-update \
 - `lib/memory/markdown/logging.ts` - Markdown write logging with integrity tracking (added 2025-01-11)
 - `app/api/memory/preflight/route.ts`
 - `docs/user-memory.md`
+- `supabase/migrations/110_memory_snapshots_bucket.sql` - Storage bucket setup (added 2025-10-13)

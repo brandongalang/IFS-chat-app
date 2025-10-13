@@ -30,15 +30,23 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 ## Environment variables (updated 2025-10-13)
 - Required on server:
   - `NEXT_PUBLIC_SUPABASE_URL`
-  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY` (used for Memory V2 Supabase Storage access and database operations)
   - `CRON_SECRET` (shared secret for the cron endpoint)
 - Optional:
   - `OPENROUTER_API_KEY` (LLM for summarization; falls back if unset)
   - `IFS_MODEL`, `IFS_TEMPERATURE` (shared Mastra provider config; now defaults to `grok-4-fast` via OpenRouter)
   - `USER_MEMORY_CHECKPOINT_EVERY` (default 50)
-  - `MEMORY_STORAGE_ADAPTER` (default `local`; set to `supabase` for Supabase Storage)
+  - `MEMORY_AGENTIC_V2_ENABLED` (default true) - Enables Memory V2 markdown-based storage
   - `TARGET_ENV` (set to `prod` for local development against production Supabase; production deployments should not set this)
   - `PROD_PUBLIC_SUPABASE_URL`, `PROD_SUPABASE_ANON_KEY`, `PROD_SUPABASE_SERVICE_ROLE_KEY` (production credentials for local development when `TARGET_ENV=prod`)
+
+## Memory V2 Storage (added 2025-10-13)
+The Memory V2 system stores part profiles, relationships, and user context as markdown files in Supabase Storage:
+- **Storage backend**: Always uses Supabase Storage (bucket: `memory-snapshots`)
+- **No configuration needed**: Works automatically with `SUPABASE_SERVICE_ROLE_KEY`
+- **Migration**: See `supabase/migrations/110_memory_snapshots_bucket.sql` for bucket setup with RLS policies
+- **File structure**: `users/{userId}/parts/{partId}/profile.md`, `users/{userId}/overview.md`, etc.
+- **Service role**: Required for agent operations (bypasses RLS for system access)
 
 ## Scheduling
 - Primary scheduler: **Vercel Cron** configured in `vercel.json` with `0 8 * * *` (08:00 UTC daily).
