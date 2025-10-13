@@ -9,12 +9,16 @@
  * 4. Verifying database has correct data
  */
 
+import { config } from 'dotenv'
 import { buildPartProfileMarkdown } from '@/lib/memory/snapshots/grammar'
 import { readPartProfile } from '@/lib/memory/read'
 import { getStorageAdapter, partProfilePath } from '@/lib/memory/snapshots/fs-helpers'
 import { syncPartToDatabase } from '@/lib/memory/parts-sync'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { randomUUID } from 'crypto'
+
+// Load environment variables from .env.local
+config({ path: '.env.local' })
 
 async function main() {
   const testUserId = process.env.IFS_DEFAULT_USER_ID || process.env.TEST_USER_ID
