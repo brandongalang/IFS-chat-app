@@ -35,7 +35,7 @@ interface ChatHookReturn {
   hasActiveSession: boolean
   sessionEnded: boolean
   tasksByMessage: Record<string, TaskEvent[]>
-  sendMessage: (content: string) => Promise<boolean>
+  sendMessage: (content: string, systemContext?: string) => Promise<boolean>
   addAssistantMessage: (content: string, opts?: { persist?: boolean; id?: string; persona?: 'claude' | 'default' }) => Promise<void>
   clearChat: () => void
   endSession: () => Promise<void>
@@ -198,9 +198,11 @@ export function useChat(): ChatHookReturn {
   )
 
   const sendMessage = useCallback<ChatHookReturn['sendMessage']>(
-    async (content) => {
+    async (content, systemContext) => {
       const trimmed = content.trim()
-      if (!trimmed || authLoading || needsAuth) return false
+      // Allow empty content if systemContext is provided (inbox-to-chat bridge)
+      if (!trimmed && !systemContext) return false
+      if (authLoading || needsAuth) return false
 
       if (status === 'streaming') {
         await stop()
@@ -223,11 +225,12 @@ export function useChat(): ChatHookReturn {
         : { name: '', bio: '' }
 
       await sdkSendMessage(
-        { text: trimmed },
+        { text: trimmed || ' ' }, // Send space if empty (required by AI SDK)
         {
           headers: id ? { 'x-session-id': id } : undefined,
           body: {
             profile: profilePayload,
+            ...(systemContext ? { systemContext } : {}),
           },
         },
       )

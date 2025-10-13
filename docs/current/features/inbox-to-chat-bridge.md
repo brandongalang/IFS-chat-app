@@ -100,6 +100,7 @@ Chat UI detects and consumes inbox context:
 - If context found, triggers agent response with system instructions
 - Agent generates contextual opening instead of generic greeting
 - Emits `chat_started_from_inbox` analytics event
+- **PR #310 refinements**: Removed unused `generateOpeningMessage` import (agent now uses systemContext directly), removed unused `addAssistantMessage` variable
 
 #### Inbox Cards
 `components/inbox/cards/InsightSpotlightCard.tsx` and `NudgeCard.tsx`:
@@ -244,6 +245,7 @@ action_timestamp TIMESTAMPTZ  -- When action occurred
 - SessionStorage operations
 - TTL validation
 - Opening message generation
+- **Code quality (PR #310)**: Removed unused type imports, improved type safety by removing `any` casts
 
 ### Integration Testing (TODO)
 - End-to-end flow from inbox to chat

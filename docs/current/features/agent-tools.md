@@ -22,6 +22,7 @@ related_prs:
   - #293
   - #304
   - #305
+  - '#310'
 ---
 
 ## What
@@ -48,6 +49,7 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 - Tool handlers co-locate Zod input/output schemas; malformed payloads short-circuit before hitting providers/Supabase
 - Session analysis utilities read recent sessions via StorageAdapter snapshots to keep lookback/limit semantics consistent across environments
 - Agent prompt and configuration live under mastra/agents/
+- **Inbox context integration (PR #310)**: The IFS agent prompt generator (`mastra/agents/ifs_agent_prompt.ts`) now accepts optional `systemContext` parameter that prepends custom instructions to the agent prompt, enabling context-aware responses when users navigate from inbox observations to chat
 - The inbox observation agent (`mastra/agents/inbox-observation.ts`) wires those search tools and enforces queue-safe prompts for the daily cron job.
 - Insights generator scaffolding exists in lib/insights/generator.ts
 
