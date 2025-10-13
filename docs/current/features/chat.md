@@ -91,3 +91,10 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
 - **Input ergonomics**: Textarea min-height 52px with 14px base font prevents zoom on iOS; rounded corners (12px) improve visual comfort
 - **Session state**: Removed redundant `isClosing` checks from disabled conditions—`sessionClosed` already captures all non-idle states
 - **Safe areas**: Chat interface respects device notches and home indicators via `safe-area-inset-*` padding (see `app/globals.css`)
+
+## Inbox-to-Chat System Context (PR #310)
+- **System context parameter**: Chat API now accepts optional `systemContext` parameter that prepends instructions to the agent prompt
+- **Empty message support**: When `systemContext` is provided, message content can be empty, allowing agent to generate contextual opening response
+- **Inbox integration**: Used by inbox-to-chat bridge to pass observation context when user navigates from inbox feed to chat
+- **Implementation**: `app/api/chat/route.ts` passes systemContext through to `handleAgentStream` in `logic.ts`, which forwards to agent prompt generation
+- See `docs/current/features/inbox-to-chat-bridge.md` for full inbox-to-chat flow documentation

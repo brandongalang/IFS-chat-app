@@ -13,7 +13,7 @@ import { Tool, ToolHeader, friendlyToolLabel } from "@/components/ai-elements/to
 import type { ToolHeaderProps } from "@/components/ai-elements/tool"
 import { useRouter } from "next/navigation"
 import type { ToolUIPart } from "@/app/_shared/hooks/useChat.helpers"
-import { readAndClearContextFromSession, generateOpeningMessage } from "@/lib/inbox/chat-bridge"
+import { readAndClearContextFromSession } from "@/lib/inbox/chat-bridge"
 import { emitInboxEvent } from "@/lib/analytics/inbox"
 
 type ActiveToolState = ToolHeaderProps["state"]
@@ -74,7 +74,6 @@ export function EtherealChat() {
     isLoading,
     hasActiveSession,
     endSession,
-    addAssistantMessage,
     tasksByMessage,
     currentStreamingId,
     needsAuth,

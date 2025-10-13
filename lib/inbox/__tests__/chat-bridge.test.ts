@@ -14,9 +14,8 @@ import {
   readAndClearContextFromSession,
   clearStoredContext,
   generateOpeningMessage,
-  type InboxChatReaction,
 } from '../chat-bridge'
-import type { InboxEnvelope, InsightSpotlightEnvelope, NudgeEnvelope } from '@/types/inbox'
+import type { InsightSpotlightEnvelope, NudgeEnvelope } from '@/types/inbox'
 
 // Mock sessionStorage
 const mockSessionStorage = (() => {
