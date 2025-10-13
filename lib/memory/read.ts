@@ -1,8 +1,14 @@
 import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
 import { listSections } from '@/lib/memory/markdown/md'
 import { userOverviewPath, partProfilePath, relationshipProfilePath } from '@/lib/memory/snapshots/fs-helpers'
+import { parsePartMarkdown, type PartFrontmatter } from '@/lib/memory/markdown/frontmatter'
 
 export interface SectionMap { [anchor: string]: { heading: string; text: string } }
+
+export interface PartProfileData {
+  frontmatter: PartFrontmatter | null
+  sections: SectionMap
+}
 
 async function readFileText(path: string): Promise<string | null> {
   const storage = await getStorageAdapter()
@@ -28,11 +34,32 @@ export async function readOverviewSections(userId: string): Promise<SectionMap |
   return buildSectionMap(text)
 }
 
+/**
+ * Read part profile sections (legacy - returns only sections)
+ * @deprecated Use readPartProfile() to get both frontmatter and sections
+ */
 export async function readPartProfileSections(userId: string, partId: string): Promise<SectionMap | null> {
   const path = partProfilePath(userId, partId)
   const text = await readFileText(path)
   if (!text) return null
   return buildSectionMap(text)
+}
+
+/**
+ * Read complete part profile with frontmatter and sections
+ */
+export async function readPartProfile(userId: string, partId: string): Promise<PartProfileData | null> {
+  const path = partProfilePath(userId, partId)
+  const text = await readFileText(path)
+  if (!text) return null
+  
+  // Parse frontmatter (if present)
+  const { frontmatter, content } = parsePartMarkdown(text)
+  
+  // Build section map from content
+  const sections = buildSectionMap(content)
+  
+  return { frontmatter, sections }
 }
 
 export async function readRelationshipProfileSections(userId: string, relId: string): Promise<SectionMap | null> {
