@@ -4,7 +4,7 @@
  */
 
 import { getStorageAdapter } from './snapshots/fs-helpers';
-import { readPartProfileSections } from './read';
+import { readPartProfile } from './read';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { PartCategory, PartStatus } from '@/lib/types/database';
 
@@ -15,6 +15,7 @@ interface MarkdownPartData {
   category: PartCategory;
   role?: string;
   evidence?: string[];
+  emoji?: string | null;
 }
 
 /**
@@ -132,18 +133,50 @@ export async function discoverUserParts(userId: string): Promise<string[]> {
  */
 export async function syncPartToDatabase(userId: string, partId: string): Promise<boolean> {
   try {
-    // Read the markdown profile
-    const sections = await readPartProfileSections(userId, partId);
-    if (!sections) {
+    // Read the markdown profile (with frontmatter if available)
+    const profile = await readPartProfile(userId, partId);
+    if (!profile) {
       console.warn(`No markdown profile found for part ${partId}`);
       return false;
     }
 
-    // Parse the markdown data
-    const partData = parsePartFromMarkdown(sections, partId);
-    if (!partData) {
-      console.warn(`Failed to parse markdown for part ${partId}`);
-      return false;
+    // Prefer frontmatter data if available, otherwise parse from sections
+    let partData: MarkdownPartData;
+    
+    if (profile.frontmatter) {
+      // Modern format: use frontmatter
+      const roleSection = profile.sections['role v1'];
+      const role = roleSection?.text.replace(/^-\s*/, '').trim();
+      
+      const evidenceSection = profile.sections['evidence v1'];
+      const evidence: string[] = [];
+      if (evidenceSection) {
+        const evidenceLines = evidenceSection.text
+          .split('\n')
+          .map((l) => l.trim())
+          .filter((l) => l.startsWith('-'))
+          .map((l) => l.substring(1).trim())
+          .filter((l) => l && !l.includes('add up to'));
+        evidence.push(...evidenceLines);
+      }
+      
+      partData = {
+        partId: profile.frontmatter.id,
+        name: profile.frontmatter.name,
+        status: profile.frontmatter.status,
+        category: profile.frontmatter.category,
+        role,
+        evidence,
+        emoji: profile.frontmatter.emoji,
+      };
+    } else {
+      // Legacy format: parse from sections
+      const parsed = parsePartFromMarkdown(profile.sections, partId);
+      if (!parsed) {
+        console.warn(`Failed to parse markdown for part ${partId}`);
+        return false;
+      }
+      partData = parsed;
     }
 
     // Connect to database
@@ -166,6 +199,11 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
         (partData.role !== undefined && existing.role !== partData.role);
 
       if (needsUpdate) {
+        // Sync emoji from frontmatter to visualization if present
+        const visualization = partData.emoji
+          ? { ...(existing.visualization || {}), emoji: partData.emoji }
+          : existing.visualization || { emoji: '🧩', color: '#6B7280' };
+        
         const { error } = await supabase
           .from('parts')
           .update({
@@ -174,8 +212,7 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
             category: partData.category,
             // Only update role if provided, otherwise preserve existing
             role: partData.role ?? existing.role,
-            // Preserve existing visualization (emoji/color) set by user in Garden UI
-            visualization: existing.visualization || { emoji: '🧩', color: '#6B7280' },
+            visualization,
             last_active: new Date().toISOString(),
           })
           .eq('id', partId)
@@ -190,6 +227,11 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
       }
     } else {
       // Insert new part
+      // Use emoji from frontmatter if available, otherwise default
+      const visualization = partData.emoji
+        ? { emoji: partData.emoji, color: '#6B7280' }
+        : { emoji: '🧩', color: '#6B7280' };
+      
       const { error } = await supabase.from('parts').insert({
         id: partId,
         user_id: userId,
@@ -197,8 +239,7 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
         status: partData.status,
         category: partData.category,
         role: partData.role,
-        // Default visualization; user can customize via Garden UI
-        visualization: { emoji: '🧩', color: '#6B7280' },
+        visualization,
         // Database-only fields for future feature expansion
         triggers: [],
         emotions: [],
