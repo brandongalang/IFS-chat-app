@@ -95,13 +95,28 @@ Migrations `105_inbox_message_events.sql` and `106_inbox_observations.sql` are i
 - **Chat preflight**: `app/api/memory/preflight/route.ts` powers the immediate summarize-on-open flow used by `useChatSession`.
 - **Agent tooling**: `mastra/tools/memory-markdown-tools.ts` exposes read + scoped write helpers (overview changelog, sections, part notes, part profile creation) shared by chat and background agents.
   - `lib/memory/snapshots/updater.ts` provides `ensurePartProfileExists` which returns `{ path, created }` atomically to eliminate TOCTOU races (updated 2025-01-11)
-- **Parts sync utility** (added 2025-10-12): `lib/memory/parts-sync.ts`
+- **Parts sync utility** (added 2025-10-12, enhanced 2025-01-14): `lib/memory/parts-sync.ts`
   - `discoverUserParts(userId)` finds markdown part profiles
   - `syncPartToDatabase(userId, partId)` updates/inserts DB record from markdown identity/role/evidence
+  - **Enhanced**: Now prefers YAML frontmatter data when available, falls back to section parsing for legacy parts
+  - **Emoji sync**: Extracts emoji from frontmatter and syncs to database visualization field
   - `syncAllUserParts(userId)` iterates through all detected part profiles
   - `onPartProfileChanged(userId, partId)` hook automatically called on part creation/update to sync to database immediately
   - Event-driven integration: `lib/memory/snapshots/updater.ts` calls the sync hook in `ensurePartProfileExists`, `onPartCreated`, and `onPartUpdated`
   - Manual sync fallback: `app/(tabs)/garden/actions.ts` exposes `syncPartsAction` for user-triggered refresh in Garden UI
+- **YAML Frontmatter Support** (added 2025-01-14, PR #311): `lib/memory/markdown/frontmatter.ts`
+  - Part profiles now include YAML frontmatter with structured metadata (id, name, emoji, category, status, tags, timestamps)
+  - `parsePartMarkdown(text)` extracts frontmatter + content using gray-matter
+  - `buildPartMarkdownWithFrontmatter(frontmatter, content)` combines metadata + narrative
+  - `updatePartFrontmatter(text, updates)` updates metadata while preserving content
+  - Backward compatible: returns null frontmatter if not present, falls back to section parsing
+- **Parts Repository API** (added 2025-01-14): `lib/memory/parts-repository.ts`
+  - Repository-style APIs for querying and updating parts
+  - `listParts(userId, filters)` - query by category, status, tag, name, limit
+  - `readPart(userId, partId)` - get complete part with frontmatter + sections
+  - `updatePartFrontmatter(userId, partId, updates)` - update metadata
+  - `updatePartSection(userId, partId, anchor, change)` - edit specific sections
+  - Uses StorageAdapter (works with Supabase Storage or local filesystem)
 - Types: `lib/memory/types.ts`
 - Cron route: `app/api/cron/memory-update/route.ts`
 - **Chat Integration**: Memory maintenance removed from `app/api/chat/route.ts` - now handled by background workers
