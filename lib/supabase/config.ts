@@ -34,16 +34,40 @@ function normalizeKey(raw?: string): string | undefined {
 }
 
 export function getSupabaseUrl(): string | undefined {
+  const targetEnv = process.env.TARGET_ENV
+  
+  // Use production credentials when TARGET_ENV=prod
+  if (targetEnv === 'prod') {
+    return normalizeUrl(process.env.PROD_PUBLIC_SUPABASE_URL)
+  }
+  
+  // Default: use standard env vars (local or standard deployment)
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
   return normalizeUrl(url)
 }
 
 export function getSupabaseKey(): string | undefined {
+  const targetEnv = process.env.TARGET_ENV
+  
+  // Use production credentials when TARGET_ENV=prod
+  if (targetEnv === 'prod') {
+    return normalizeKey(process.env.PROD_SUPABASE_ANON_KEY)
+  }
+  
+  // Default: use standard env vars (local or standard deployment)
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
   return normalizeKey(key)
 }
 
 export function getSupabaseServiceRoleKey(): string | undefined {
+  const targetEnv = process.env.TARGET_ENV
+  
+  // Use production credentials when TARGET_ENV=prod
+  if (targetEnv === 'prod') {
+    return normalizeKey(process.env.PROD_SUPABASE_SERVICE_ROLE_KEY)
+  }
+  
+  // Default: use standard env vars (local or standard deployment)
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   return normalizeKey(key)
 }

@@ -76,8 +76,7 @@
         "lib/api/cron-auth.ts"
       ],
       "docs": [
-        "docs/current/operations/user-memory.md",
-        "docs/current/operations/memory-cron-vercel.md"
+        "docs/current/operations/user-memory.md"
       ]
     },
     {
