@@ -232,6 +232,8 @@ async function confirmObservationInboxItem({
     .update({
       status: 'confirmed',
       confirmed_at: timestamp,
+      action_value: payload.actionValue,
+      action_timestamp: timestamp,
       metadata: updatedMeta,
     })
     .eq('id', item.id)
@@ -400,6 +402,8 @@ async function dismissObservationInboxItem({
     .update({
       status: 'dismissed',
       dismissed_at: timestamp,
+      action_value: actionValue,
+      action_timestamp: timestamp,
       metadata: updatedMeta,
     })
     .eq('id', item.id)
