@@ -83,7 +83,7 @@ export function NudgeCard({ envelope, onOpen, onQuickAction, onExploreInChat, cl
             className="rounded-full px-4"
             onClick={() => onQuickAction?.(envelope, 'ack')}
           >
-            → That's enough
+            → That&apos;s enough
           </Button>
         </div>
       ) : actions ? (

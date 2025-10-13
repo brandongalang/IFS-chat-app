@@ -95,7 +95,7 @@ export function InsightSpotlightCard({ envelope, onOpen, onQuickAction, onExplor
             className="rounded-full px-4"
             onClick={() => onQuickAction?.(envelope, 'ack')}
           >
-            → That's enough
+            → That&apos;s enough
           </Button>
         </div>
       ) : actions ? (
