@@ -67,10 +67,15 @@ describe('chat-bridge', () => {
         type: 'insight_spotlight',
         source: 'network',
         createdAt: '2025-01-01',
+        updatedAt: null,
+        expiresAt: null,
+        readAt: null,
         payload: {
           summary: 'Your inner critic is active when discussing work',
+          insightId: 'insight-1',
+          title: 'Inner Critic Pattern',
           evidence: [
-            { quote: 'I feel anxious', summary: 'Anxiety about work' },
+            { id: 'evidence-1', type: 'session_quote', quote: 'I feel anxious', summary: 'Anxiety about work' },
           ],
         },
         metadata: {
@@ -92,7 +97,7 @@ describe('chat-bridge', () => {
         id: 'env-2',
         sourceId: 'obs-2',
         type: 'nudge',
-        source: 'system',
+        source: 'network', updatedAt: null, expiresAt: null, readAt: null,
         createdAt: '2025-01-01',
         payload: {
           headline: 'Time for a check-in?',
@@ -117,8 +122,13 @@ describe('chat-bridge', () => {
         type: 'insight_spotlight',
         source: 'network',
         createdAt: '2025-01-01',
+        updatedAt: null,
+        expiresAt: null,
+        readAt: null,
         payload: {
           summary: 'Pattern detected',
+          insightId: 'insight-3',
+          title: 'Pattern Detection'
         },
         metadata: {},
       }
@@ -139,8 +149,13 @@ describe('chat-bridge', () => {
         type: 'insight_spotlight',
         source: 'network',
         createdAt: '2025-01-01',
+        updatedAt: null,
+        expiresAt: null,
+        readAt: null,
         payload: {
           summary: 'Test insight',
+          insightId: 'insight-1',
+          title: 'Test Insight Title'
         },
         metadata: {},
       }
@@ -165,8 +180,13 @@ describe('chat-bridge', () => {
         type: 'insight_spotlight',
         source: 'network',
         createdAt: '2025-01-01',
+        updatedAt: null,
+        expiresAt: null,
+        readAt: null,
         payload: {
           summary: 'Test insight',
+          insightId: 'insight-1',
+          title: 'Test Insight Title'
         },
         metadata: {},
       }
@@ -187,8 +207,13 @@ describe('chat-bridge', () => {
         type: 'insight_spotlight',
         source: 'network',
         createdAt: '2025-01-01',
+        updatedAt: null,
+        expiresAt: null,
+        readAt: null,
         payload: {
           summary: 'Test insight',
+          insightId: 'insight-1',
+          title: 'Test Insight Title'
         },
         metadata: {},
       }
@@ -210,8 +235,13 @@ describe('chat-bridge', () => {
         type: 'insight_spotlight',
         source: 'network',
         createdAt: '2025-01-01',
+        updatedAt: null,
+        expiresAt: null,
+        readAt: null,
         payload: {
           summary: 'Test insight',
+          insightId: 'insight-1',
+          title: 'Test Insight Title'
         },
         metadata: {},
       }
@@ -233,8 +263,13 @@ describe('chat-bridge', () => {
         type: 'insight_spotlight',
         source: 'network',
         createdAt: '2025-01-01',
+        updatedAt: null,
+        expiresAt: null,
+        readAt: null,
         payload: {
           summary: 'Test insight',
+          insightId: 'insight-1',
+          title: 'Test Insight Title'
         },
         metadata: {},
       }
@@ -274,8 +309,13 @@ describe('chat-bridge', () => {
         type: 'insight_spotlight',
         source: 'network',
         createdAt: '2025-01-01',
+        updatedAt: null,
+        expiresAt: null,
+        readAt: null,
         payload: {
           summary: 'Your inner critic is active',
+          insightId: 'insight-1',
+          title: 'Inner Critic Pattern'
         },
         metadata: {
           partName: 'Inner Critic',
@@ -295,8 +335,11 @@ describe('chat-bridge', () => {
         id: 'env-2',
         sourceId: 'obs-2',
         type: 'nudge',
-        source: 'system',
+        source: 'network',
         createdAt: '2025-01-01',
+        updatedAt: null,
+        expiresAt: null,
+        readAt: null,
         payload: {
           headline: 'Check-in reminder',
           body: 'Overdue',
@@ -317,8 +360,13 @@ describe('chat-bridge', () => {
         type: 'insight_spotlight',
         source: 'network',
         createdAt: '2025-01-01',
+        updatedAt: null,
+        expiresAt: null,
+        readAt: null,
         payload: {
           summary: 'Pattern detected',
+          insightId: 'insight-1',
+          title: 'Test Insight'
         },
         metadata: {},
       }
