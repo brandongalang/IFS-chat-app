@@ -52,6 +52,12 @@ The app uses a **centralized configuration system** with type-safe validation vi
 
 **Purpose**: Single source of truth for all environment configuration
 
+```typescript
+// Example usage
+import { env } from '@/config/env'
+const storageMode = env.memoryStorageAdapter
+```
+
 **Features**:
 - ✅ Zod schema validation
 - ✅ Type-safe exports

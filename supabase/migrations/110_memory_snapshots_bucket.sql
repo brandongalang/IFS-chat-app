@@ -66,6 +66,7 @@ TO service_role
 USING (bucket_id = 'memory-snapshots');
 
 -- Create index for faster path queries
+-- Optimizes common memory system queries that filter/search by path prefix
 CREATE INDEX IF NOT EXISTS idx_storage_objects_memory_snapshots 
 ON storage.objects(bucket_id, name) 
 WHERE bucket_id = 'memory-snapshots';
