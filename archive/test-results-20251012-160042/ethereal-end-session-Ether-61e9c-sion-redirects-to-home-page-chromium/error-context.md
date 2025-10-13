@@ -1,0 +1,41 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic:
+    - img "background"
+  - generic [ref=e6] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e7] [cursor=pointer]:
+      - img [ref=e8] [cursor=pointer]
+    - generic [ref=e11] [cursor=pointer]:
+      - button "Open issues overlay" [ref=e12] [cursor=pointer]:
+        - generic [ref=e13] [cursor=pointer]:
+          - generic [ref=e14] [cursor=pointer]: "0"
+          - generic [ref=e15] [cursor=pointer]: "1"
+        - generic [ref=e16] [cursor=pointer]: Issue
+      - button "Collapse issues badge" [ref=e17] [cursor=pointer]:
+        - img [ref=e18] [cursor=pointer]
+  - alert [ref=e20]
+  - generic [ref=e24]:
+    - generic [ref=e25]:
+      - generic [ref=e26]: Login
+      - generic [ref=e27]: Enter your email below to login to your account
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - generic [ref=e32]: Email
+          - textbox "Email" [ref=e33]
+        - generic [ref=e34]:
+          - generic [ref=e35]:
+            - generic [ref=e36]: Password
+            - link "Forgot your password?" [ref=e37] [cursor=pointer]:
+              - /url: /auth/forgot-password
+          - textbox "Password" [ref=e38]
+        - button "Login" [ref=e39] [cursor=pointer]
+      - generic [ref=e44]: Or continue with
+      - button "Sign in with Google" [ref=e45] [cursor=pointer]: Continue with Google
+      - generic [ref=e46]:
+        - text: Don't have an account?
+        - link "Sign up" [ref=e47] [cursor=pointer]:
+          - /url: /auth/sign-up
+```

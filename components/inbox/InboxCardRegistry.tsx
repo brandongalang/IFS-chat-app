@@ -10,6 +10,7 @@ export interface InboxCardRegistryContext {
   onOpen?: (envelope: InboxEnvelope) => void
   onQuickAction?: (envelope: InboxEnvelope, action: InboxQuickActionValue) => void
   onCta?: (envelope: CallToActionEnvelope) => void
+  onExploreInChat?: (envelope: InboxEnvelope, reaction: 'confirmed' | 'denied') => void
 }
 
 export function renderInboxCard(envelope: InboxEnvelope, context: InboxCardRegistryContext) {
@@ -21,6 +22,7 @@ export function renderInboxCard(envelope: InboxEnvelope, context: InboxCardRegis
           envelope={envelope as InsightSpotlightEnvelope}
           onOpen={(entry) => context.onOpen?.(entry)}
           onQuickAction={(entry, action) => context.onQuickAction?.(entry, action)}
+          onExploreInChat={(entry, reaction) => context.onExploreInChat?.(entry, reaction)}
         />
       )
     case 'nudge':
@@ -30,6 +32,7 @@ export function renderInboxCard(envelope: InboxEnvelope, context: InboxCardRegis
           envelope={envelope as NudgeEnvelope}
           onOpen={(entry) => context.onOpen?.(entry)}
           onQuickAction={(entry, action) => context.onQuickAction?.(entry, action)}
+          onExploreInChat={(entry, reaction) => context.onExploreInChat?.(entry, reaction)}
         />
       )
     case 'notification':

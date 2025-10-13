@@ -10,10 +10,11 @@ interface InsightSpotlightCardProps {
   envelope: InsightSpotlightEnvelope
   onOpen?: (envelope: InsightSpotlightEnvelope) => void
   onQuickAction?: (envelope: InsightSpotlightEnvelope, action: InboxQuickActionValue) => void
+  onExploreInChat?: (envelope: InsightSpotlightEnvelope, reaction: 'confirmed' | 'denied') => void
   className?: string
 }
 
-export function InsightSpotlightCard({ envelope, onOpen, onQuickAction, className }: InsightSpotlightCardProps) {
+export function InsightSpotlightCard({ envelope, onOpen, onQuickAction, onExploreInChat, className }: InsightSpotlightCardProps) {
   const { payload } = envelope
   const readingTime = typeof payload.readingTimeMinutes === 'number' && payload.readingTimeMinutes > 0
     ? `${payload.readingTimeMinutes} min read`
@@ -28,10 +29,22 @@ export function InsightSpotlightCard({ envelope, onOpen, onQuickAction, classNam
       ]
     : []
 
+  const lastAction = (envelope.metadata as Record<string, unknown> | undefined)?.lastAction as
+    | InboxQuickActionValue
+    | undefined
+  const reaction: 'confirmed' | 'denied' | undefined = lastAction
+    ? lastAction.startsWith('agree')
+      ? 'confirmed'
+      : 'denied'
+    : undefined
+
+  const actioned = Boolean(reaction)
+
   return (
     <div
       className={cn(
         'rounded-xl border border-border/40 bg-card/20 backdrop-blur p-4',
+        actioned && 'opacity-80',
         className,
       )}
     >
@@ -62,7 +75,30 @@ export function InsightSpotlightCard({ envelope, onOpen, onQuickAction, classNam
         )}
       </button>
 
-      {actions ? (
+      {actioned ? (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-border/60 px-2 py-1 text-[10px] uppercase tracking-wide text-foreground/70">
+            ✓ {reaction === 'confirmed' ? 'Agreed' : 'Disagreed'}
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-full px-4"
+            onClick={() => reaction && onExploreInChat?.(envelope, reaction)}
+          >
+            💬 Explore in chat
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="rounded-full px-4"
+            onClick={() => onQuickAction?.(envelope, 'ack')}
+          >
+            → That's enough
+          </Button>
+        </div>
+      ) : actions ? (
         <div className="mt-4">
           <div className="flex flex-wrap gap-2">
             {scaleOptions.map((option) => (

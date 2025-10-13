@@ -237,14 +237,21 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
           messageType: envelope?.type,
           source: envelope?.source ?? state.source,
         })
-        setState((prev) => {
-          const remaining = prev.envelopes.filter((entry) => entry.id !== envelopeId)
-          return {
-            ...prev,
-            envelopes: remaining,
-            status: remaining.length ? prev.status : 'empty',
-          }
-        })
+        // Keep the card in the feed (muted with CTA) instead of removing it
+        setState((prev) => ({
+          ...prev,
+          envelopes: prev.envelopes.map((entry) =>
+            entry.id === envelopeId
+              ? {
+                  ...entry,
+                  metadata: {
+                    ...(entry.metadata ?? {}),
+                    lastAction: action,
+                  },
+                }
+              : entry,
+          ),
+        }))
         if (notes) {
           emitInboxEvent('inbox_notes_submitted', {
             envelopeId,
