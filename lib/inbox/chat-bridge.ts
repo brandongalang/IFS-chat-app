@@ -194,15 +194,16 @@ export function clearStoredContext(): void {
 export function generateOpeningMessage(observation: InboxEnvelope, reaction: InboxChatReaction): string {
   let summary = ''
   if (observation.type === 'insight_spotlight') {
-    summary = (observation as any).payload?.summary || ''
+    const insight = observation as InsightSpotlightEnvelope
+    summary = insight.payload?.summary ?? ''
   } else if (observation.type === 'nudge') {
-    const n = (observation as any).payload
-    summary = [n?.headline, n?.body].filter(Boolean).join(' — ')
+    const nudge = observation as NudgeEnvelope
+    summary = [nudge.payload?.headline, nudge.payload?.body].filter(Boolean).join(' — ')
   } else {
-    summary = (observation.metadata as any)?.content || ''
+    summary = (observation.metadata as Record<string, unknown>)?.content as string || ''
   }
 
-  const partName = (observation.metadata as any)?.partName as string | undefined
+  const partName = (observation.metadata as Record<string, unknown>)?.partName as string | undefined
   const preface = reaction === 'confirmed'
     ? 'Thanks for confirming.'
     : "Thanks for letting me know that didn't quite fit."

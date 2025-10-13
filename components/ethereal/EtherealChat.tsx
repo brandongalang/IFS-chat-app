@@ -142,16 +142,16 @@ export function EtherealChat() {
           const opening = generateOpeningMessage(ctx.metadata.observation, ctx.metadata.reaction)
           void addAssistantMessage(opening, { persist: true, id: 'inbox-bridge-opening' })
           // analytics: chat started from inbox
-          const obs = ctx.metadata.observation as any
+          const obs = ctx.metadata.observation
           emitInboxEvent('chat_started_from_inbox', {
-            envelopeId: obs?.id ?? 'unknown',
-            sourceId: obs?.sourceId ?? obs?.id,
-            messageType: obs?.type ?? 'insight_spotlight',
-            source: obs?.source ?? 'network',
+            envelopeId: (obs as { id?: string })?.id ?? 'unknown',
+            sourceId: obs.sourceId ?? (obs as { id?: string })?.id ?? 'unknown',
+            messageType: obs.type ?? 'insight_spotlight',
+            source: (obs as { source?: string })?.source ?? 'network',
             metadata: { reaction: ctx.metadata.reaction },
           })
         }
-      } catch (error) {
+      } catch {
         // ignore seed if context invalid
       }
     }
