@@ -53,9 +53,13 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
   - `curl -X POST http://localhost:3000/api/cron/memory-update -H "Authorization: Bearer <CRON_SECRET>"`
   - `curl -X POST http://localhost:3000/api/cron/memory-update -H "x-vercel-cron-secret: <CRON_SECRET>"` (mirrors production header)
 
-## Migration
+## Migrations
+### Core Migration
 - File: `supabase/migrations/006_user_memory.sql`
 - Apply remotely via Supabase CLI (requires project link & token) or via Supabase Studio SQL editor
+
+###Note on Inbox Migrations (105-106)
+Migrations `105_inbox_message_events.sql` and `106_inbox_observations.sql` are inbox-related and do not affect the user memory system. They are tracked here due to broad `.docmap.json` path matching.
 
 ### CLI (remote)
 - Pre-req: `SUPABASE_ACCESS_TOKEN` exported in shell and project linked
