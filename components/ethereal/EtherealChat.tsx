@@ -13,6 +13,8 @@ import { Tool, ToolHeader, friendlyToolLabel } from "@/components/ai-elements/to
 import type { ToolHeaderProps } from "@/components/ai-elements/tool"
 import { useRouter } from "next/navigation"
 import type { ToolUIPart } from "@/app/_shared/hooks/useChat.helpers"
+import { readAndClearContextFromSession, generateOpeningMessage } from "@/lib/inbox/chat-bridge"
+import { emitInboxEvent } from "@/lib/analytics/inbox"
 
 type ActiveToolState = ToolHeaderProps["state"]
 type ActiveToolType = ToolHeaderProps["type"]
@@ -126,14 +128,32 @@ export function EtherealChat() {
     }
   }
 
-  // Ensure the hero message is present and persisted on a fresh session
+  // Seed an opening assistant message only when coming from inbox context
   const seededRef = useRef(false)
   useEffect(() => {
     if (authLoading || needsAuth) return
     if (seededRef.current) return
     if ((messages?.length ?? 0) === 0) {
-      seededRef.current = true
-      addAssistantMessage("what feels unresolved or undefined for you right now?", { persist: true, id: "ethereal-welcome" })
+      // Check for inbox-to-chat context
+      try {
+        const ctx = readAndClearContextFromSession()
+        if (ctx) {
+          seededRef.current = true
+          const opening = generateOpeningMessage(ctx.metadata.observation, ctx.metadata.reaction)
+          void addAssistantMessage(opening, { persist: true, id: 'inbox-bridge-opening' })
+          // analytics: chat started from inbox
+          const obs = ctx.metadata.observation
+          emitInboxEvent('chat_started_from_inbox', {
+            envelopeId: (obs as { id?: string })?.id ?? 'unknown',
+            sourceId: obs.sourceId ?? (obs as { id?: string })?.id ?? 'unknown',
+            messageType: obs.type ?? 'insight_spotlight',
+            source: obs.source ?? 'network',
+            metadata: { reaction: ctx.metadata.reaction },
+          })
+        }
+      } catch {
+        // ignore seed if context invalid
+      }
     }
   }, [messages?.length, addAssistantMessage, needsAuth, authLoading])
 

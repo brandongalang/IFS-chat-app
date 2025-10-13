@@ -1,0 +1,41 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic:
+    - img "background"
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - heading "Onboarding Dev Playground" [level=1] [ref=e4]
+      - alert [ref=e5]:
+        - img [ref=e6]
+        - generic [ref=e8]:
+          - strong [ref=e9]: Development Mode Only
+          - text: "- This tool is for UAT testing the onboarding flow without authentication hassles."
+    - generic [ref=e10]:
+      - generic [ref=e12]: Test Controls
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - switch "Use Live Database (OFF)" [ref=e15] [cursor=pointer]
+          - generic [ref=e16]: Use Live Database (OFF)
+        - generic [ref=e17]:
+          - generic [ref=e18]: Answer Preset
+          - combobox [ref=e19] [cursor=pointer]:
+            - generic: Perfectionism & Anxiety - High scores in perfectionism, anxiety, and self-criticism themes
+            - img [ref=e20] [cursor=pointer]
+        - generic [ref=e22]:
+          - button "Compute Stage 1 Scores" [ref=e23] [cursor=pointer]
+          - button "Run Stage 2 Selection" [disabled]
+          - button "Reset All" [ref=e24] [cursor=pointer]
+    - generic [ref=e25]:
+      - tablist [ref=e26]:
+        - tab "Stage 1 Results" [selected] [ref=e27] [cursor=pointer]
+        - tab "Stage 2 Results" [disabled]
+      - tabpanel "Stage 1 Results" [ref=e28]:
+        - generic [ref=e29]:
+          - generic [ref=e31]: Current Answers (3)
+          - generic [ref=e33]: "{ \"S1_Q1\": { \"type\": \"single_choice\", \"value\": \"methodical_checking\" }, \"S1_Q2\": { \"type\": \"single_choice\", \"value\": \"analyze_wrong\" }, \"S1_Q3\": { \"type\": \"single_choice\", \"value\": \"review_actions\" } }"
+  - button "Open Next.js Dev Tools" [ref=e39] [cursor=pointer]:
+    - img [ref=e40] [cursor=pointer]
+  - alert [ref=e43]
+```

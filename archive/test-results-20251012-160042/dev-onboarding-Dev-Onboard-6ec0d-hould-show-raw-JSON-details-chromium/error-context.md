@@ -1,0 +1,90 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic:
+    - img "background"
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - heading "Onboarding Dev Playground" [level=1] [ref=e4]
+      - alert [ref=e5]:
+        - img [ref=e6]
+        - generic [ref=e8]:
+          - strong [ref=e9]: Development Mode Only
+          - text: "- This tool is for UAT testing the onboarding flow without authentication hassles."
+    - generic [ref=e10]:
+      - generic [ref=e12]: Test Controls
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - switch "Use Live Database (OFF)" [ref=e15] [cursor=pointer]
+          - generic [ref=e16]: Use Live Database (OFF)
+        - generic [ref=e17]:
+          - generic [ref=e18]: Answer Preset
+          - combobox [ref=e19] [cursor=pointer]:
+            - generic: Perfectionism & Anxiety - High scores in perfectionism, anxiety, and self-criticism themes
+            - img [ref=e20] [cursor=pointer]
+        - generic [ref=e22]:
+          - button "Compute Stage 1 Scores" [active] [ref=e23] [cursor=pointer]
+          - button "Run Stage 2 Selection" [ref=e24] [cursor=pointer]
+          - button "Reset All" [ref=e25] [cursor=pointer]
+    - generic [ref=e26]:
+      - tablist [ref=e27]:
+        - tab "Stage 1 Results" [selected] [ref=e28] [cursor=pointer]
+        - tab "Stage 2 Results" [disabled]
+      - tabpanel "Stage 1 Results" [ref=e29]:
+        - generic [ref=e30]:
+          - generic [ref=e32]: Current Answers (3)
+          - generic [ref=e34]: "{ \"S1_Q1\": { \"type\": \"single_choice\", \"value\": \"methodical_checking\" }, \"S1_Q2\": { \"type\": \"single_choice\", \"value\": \"analyze_wrong\" }, \"S1_Q3\": { \"type\": \"single_choice\", \"value\": \"review_actions\" } }"
+        - generic [ref=e35]:
+          - generic [ref=e37]:
+            - generic [ref=e38]: Stage 1 Scores
+            - img [ref=e39]
+          - generic [ref=e42]:
+            - generic [ref=e43]:
+              - generic [ref=e44]:
+                - generic [ref=e45]: achievement
+                - generic [ref=e46]: "0.000"
+              - generic [ref=e48]:
+                - generic [ref=e49]: perfectionism
+                - generic [ref=e50]: "0.609"
+              - generic [ref=e53]:
+                - generic [ref=e54]: self criticism
+                - generic [ref=e55]: "0.381"
+              - generic [ref=e58]:
+                - generic [ref=e59]: relational
+                - generic [ref=e60]: "0.000"
+              - generic [ref=e62]:
+                - generic [ref=e63]: conflict avoidance
+                - generic [ref=e64]: "0.000"
+              - generic [ref=e66]:
+                - generic [ref=e67]: caretaking
+                - generic [ref=e68]: "0.000"
+              - generic [ref=e70]:
+                - generic [ref=e71]: safety
+                - generic [ref=e72]: "0.000"
+              - generic [ref=e74]:
+                - generic [ref=e75]: control
+                - generic [ref=e76]: "0.000"
+              - generic [ref=e78]:
+                - generic [ref=e79]: anxiety
+                - generic [ref=e80]: "0.625"
+              - generic [ref=e83]:
+                - generic [ref=e84]: avoidance
+                - generic [ref=e85]: "0.000"
+              - generic [ref=e87]:
+                - generic [ref=e88]: overwhelm
+                - generic [ref=e89]: "0.000"
+              - generic [ref=e91]:
+                - generic [ref=e92]: independence
+                - generic [ref=e93]: "0.000"
+              - generic [ref=e95]:
+                - generic [ref=e96]: restlessness
+                - generic [ref=e97]: "0.000"
+              - generic [ref=e99]:
+                - generic [ref=e100]: shame
+                - generic [ref=e101]: "0.000"
+            - group [ref=e103]
+  - button "Open Next.js Dev Tools" [ref=e110] [cursor=pointer]:
+    - img [ref=e111] [cursor=pointer]
+  - alert [ref=e114]
+```

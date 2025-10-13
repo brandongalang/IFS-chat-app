@@ -185,3 +185,33 @@ export function clearStoredContext(): void {
     console.error('[chat-bridge] Failed to clear context:', error)
   }
 }
+
+/**
+ * Generate a user-visible opening assistant message based on the observation and reaction.
+ * This is a lightweight, template-based fallback for MVP. In a future iteration,
+ * this can be replaced by a server-side generation using the systemInstruction.
+ */
+export function generateOpeningMessage(observation: InboxEnvelope, reaction: InboxChatReaction): string {
+  let summary = ''
+  if (observation.type === 'insight_spotlight') {
+    const insight = observation as InsightSpotlightEnvelope
+    summary = insight.payload?.summary ?? ''
+  } else if (observation.type === 'nudge') {
+    const nudge = observation as NudgeEnvelope
+    summary = [nudge.payload?.headline, nudge.payload?.body].filter(Boolean).join(' — ')
+  } else {
+    summary = (observation.metadata as Record<string, unknown>)?.content as string || ''
+  }
+
+  const partName = (observation.metadata as Record<string, unknown>)?.partName as string | undefined
+  const preface = reaction === 'confirmed'
+    ? 'Thanks for confirming.'
+    : "Thanks for letting me know that didn't quite fit."
+
+  const partRef = partName ? ` (sounds like this involves your ${partName})` : ''
+
+  if (reaction === 'confirmed') {
+    return `${preface} I noticed: "${summary}"${partRef}. What feels most relevant about this for you right now?`
+  }
+  return `${preface} Could you share what was actually happening for you? Any detail you want to correct or add helps me understand better.`
+}

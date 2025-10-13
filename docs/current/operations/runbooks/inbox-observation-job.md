@@ -18,6 +18,7 @@ This runbook captures how to execute and monitor the inbox observation generatio
   - `SUPABASE_SERVICE_ROLE_KEY`
   - Mastra provider settings (`OPENROUTER_API_KEY`, `IFS_MODEL`, `IFS_TEMPERATURE`)
 - Supabase migrations up to `107_inbox_observation_telemetry.sql`
+  - Includes migrations 105 (inbox_message_events) and 106 (inbox_observations, observation_events, inbox_job_runs)
 - Optional: pass `--queue` or `--window` flags to override defaults (3 slots / 14-day dedupe)
 
 ## Usage

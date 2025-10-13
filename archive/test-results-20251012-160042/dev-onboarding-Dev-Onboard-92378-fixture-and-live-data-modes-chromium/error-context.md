@@ -1,0 +1,51 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic:
+    - img "background"
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - heading "Onboarding Dev Playground" [level=1] [ref=e4]
+      - alert [ref=e5]:
+        - img [ref=e6]
+        - generic [ref=e8]:
+          - strong [ref=e9]: Development Mode Only
+          - text: "- This tool is for UAT testing the onboarding flow without authentication hassles."
+    - generic [ref=e10]:
+      - generic [ref=e12]: Test Controls
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - switch "Use Live Database (ON)" [checked] [active] [ref=e15] [cursor=pointer]
+          - generic [ref=e16]: Use Live Database (ON)
+          - generic [ref=e17]: No live data
+        - generic [ref=e18]:
+          - generic [ref=e19]: Answer Preset
+          - combobox [ref=e20] [cursor=pointer]:
+            - generic: Perfectionism & Anxiety - High scores in perfectionism, anxiety, and self-criticism themes
+            - img [ref=e21] [cursor=pointer]
+        - generic [ref=e23]:
+          - button "Compute Stage 1 Scores" [ref=e24] [cursor=pointer]
+          - button "Run Stage 2 Selection" [disabled]
+          - button "Reset All" [ref=e25] [cursor=pointer]
+    - generic [ref=e26]:
+      - tablist [ref=e27]:
+        - tab "Stage 1 Results" [selected] [ref=e28] [cursor=pointer]
+        - tab "Stage 2 Results" [disabled]
+      - tabpanel "Stage 1 Results" [ref=e29]:
+        - generic [ref=e30]:
+          - generic [ref=e32]: Current Answers (3)
+          - generic [ref=e34]: "{ \"S1_Q1\": { \"type\": \"single_choice\", \"value\": \"methodical_checking\" }, \"S1_Q2\": { \"type\": \"single_choice\", \"value\": \"analyze_wrong\" }, \"S1_Q3\": { \"type\": \"single_choice\", \"value\": \"review_actions\" } }"
+  - generic [ref=e39] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e40] [cursor=pointer]:
+      - img [ref=e41] [cursor=pointer]
+    - generic [ref=e44] [cursor=pointer]:
+      - button "Open issues overlay" [ref=e45] [cursor=pointer]:
+        - generic [ref=e46] [cursor=pointer]:
+          - generic [ref=e47] [cursor=pointer]: "0"
+          - generic [ref=e48] [cursor=pointer]: "1"
+        - generic [ref=e49] [cursor=pointer]: Issue
+      - button "Collapse issues badge" [ref=e50] [cursor=pointer]:
+        - img [ref=e51] [cursor=pointer]
+  - alert [ref=e53]
+```

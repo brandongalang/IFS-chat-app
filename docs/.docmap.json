@@ -52,6 +52,21 @@
       "paths": ["lib/inbox/**", "scripts/inbox/**"],
       "docs": ["docs/current/operations/runbooks/inbox-observation-job.md"]
     },
+    {
+      "paths": [
+        "lib/inbox/chat-bridge.ts",
+        "app/api/chat/route.ts",
+        "app/api/chat/logic.ts",
+        "mastra/agents/ifs_agent_prompt.ts",
+        "app/_shared/hooks/useChat.ts",
+        "components/ethereal/EtherealChat.tsx",
+        "components/inbox/InboxShelf.tsx",
+        "components/inbox/cards/InsightSpotlightCard.tsx",
+        "components/inbox/cards/NudgeCard.tsx",
+        "app/_shared/hooks/useInboxFeed.ts"
+      ],
+      "docs": ["docs/current/features/inbox-to-chat-bridge.md"]
+    },
 
     {
       "paths": [

@@ -2,11 +2,12 @@
 title: Feature: Chat
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-11
+last_updated: 2025-10-13
 feature_flag: null
 code_paths:
   - app/chat/page.tsx
   - app/api/chat/route.ts
+  - app/api/chat/logic.ts
   - app/_shared/hooks/useChat.ts
   - app/_shared/hooks/useDailyCheckIns.ts
   - components/ethereal/EtherealChat.tsx
@@ -22,6 +23,9 @@ related_prs:
   - #267
   - #302
   - #303
+  - '#308'
+  - '#309'
+  - '#310'
 ---
 
 ## What

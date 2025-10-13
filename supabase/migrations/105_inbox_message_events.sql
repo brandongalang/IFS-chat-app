@@ -15,10 +15,10 @@ create table if not exists public.inbox_message_events (
   created_at timestamptz not null default now()
 );
 
-default privileges in schema public
+alter default privileges in schema public
   grant select, insert on tables to authenticated;
 
-default privileges in schema public
+alter default privileges in schema public
   grant usage, select on sequences to authenticated;
 
 alter table public.inbox_message_events enable row level security;

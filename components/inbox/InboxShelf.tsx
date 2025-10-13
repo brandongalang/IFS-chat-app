@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import { cn } from '@/lib/utils'
 import { emitInboxEvent } from '@/lib/analytics/inbox'
 import { renderInboxCard } from '@/components/inbox/InboxCardRegistry'
 import { useInboxFeed } from '@/hooks/useInboxFeed'
+import { packChatContext, saveContextToSession } from '@/lib/inbox/chat-bridge'
 import type {
   InboxEnvelope,
   InboxFeedVariant,
@@ -41,6 +43,7 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
     submitAction,
     recordCta,
   } = useInboxFeed({ variant })
+  const router = useRouter()
   const [activeEnvelope, setActiveEnvelope] = useState<InboxEnvelope | null>(null)
   const [pendingAction, setPendingAction] = useState<{
     envelope: InboxEnvelope
@@ -105,6 +108,23 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
       return
     }
     void completeQuickAction(envelope, action)
+  }
+
+  const handleExploreInChat = (envelope: InboxEnvelope, reaction: 'confirmed' | 'denied') => {
+    try {
+      const ctx = packChatContext(envelope, reaction)
+      saveContextToSession(ctx)
+      emitInboxEvent('inbox_cta_clicked', {
+        envelopeId: envelope.id,
+        sourceId: envelope.sourceId ?? envelope.id,
+        messageType: envelope.type,
+        source: envelope.source,
+        metadata: { reaction },
+      })
+      router.push('/chat')
+    } catch (error) {
+      console.warn('[inbox] failed to prepare chat context', error)
+    }
   }
 
   const handleCtaVisit = (envelope: CtaEnvelope, options?: { closeDetail?: boolean }) => {
@@ -174,6 +194,7 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
                   onOpen: handleOpen,
                   onQuickAction: (entry, action) => handleQuickAction(entry, action),
                   onCta: (entry) => handleCtaVisit(entry),
+                  onExploreInChat: (entry, reaction) => handleExploreInChat(entry, reaction),
                 })}
               </div>
             ))}

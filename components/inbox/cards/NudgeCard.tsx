@@ -10,6 +10,7 @@ interface NudgeCardProps {
   envelope: NudgeEnvelope
   onOpen?: (envelope: NudgeEnvelope) => void
   onQuickAction?: (envelope: NudgeEnvelope, action: InboxQuickActionValue) => void
+  onExploreInChat?: (envelope: NudgeEnvelope, reaction: 'confirmed' | 'denied') => void
   className?: string
 }
 
@@ -20,7 +21,7 @@ const DEFAULT_SCALE = {
   disagreeStrong: 'Disagree a lot',
 }
 
-export function NudgeCard({ envelope, onOpen, onQuickAction, className }: NudgeCardProps) {
+export function NudgeCard({ envelope, onOpen, onQuickAction, onExploreInChat, className }: NudgeCardProps) {
   const { payload } = envelope
   const actions = envelope.actions?.kind === 'scale4' ? envelope.actions : null
   const scaleOptions: { value: InboxQuickActionValue; label: string }[] = actions
@@ -32,8 +33,18 @@ export function NudgeCard({ envelope, onOpen, onQuickAction, className }: NudgeC
       ]
     : []
 
+  const lastAction = (envelope.metadata as Record<string, unknown> | undefined)?.lastAction as
+    | InboxQuickActionValue
+    | undefined
+  const reaction: 'confirmed' | 'denied' | undefined = lastAction
+    ? lastAction.startsWith('agree')
+      ? 'confirmed'
+      : 'denied'
+    : undefined
+  const actioned = Boolean(reaction)
+
   return (
-    <div className={cn('rounded-xl border border-border/40 bg-card/20 backdrop-blur p-4', className)}>
+    <div className={cn('rounded-xl border border-border/40 bg-card/20 backdrop-blur p-4', actioned && 'opacity-80', className)}>
       <button
         type="button"
         onClick={() => onOpen?.(envelope)}
@@ -52,7 +63,30 @@ export function NudgeCard({ envelope, onOpen, onQuickAction, className }: NudgeC
         )}
       </button>
 
-      {actions ? (
+      {actioned ? (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-border/60 px-2 py-1 text-[10px] uppercase tracking-wide text-foreground/70">
+            ✓ {reaction === 'confirmed' ? 'Agreed' : 'Disagreed'}
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-full px-4"
+            onClick={() => reaction && onExploreInChat?.(envelope, reaction)}
+          >
+            💬 Explore in chat
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="rounded-full px-4"
+            onClick={() => onQuickAction?.(envelope, 'ack')}
+          >
+            → That&apos;s enough
+          </Button>
+        </div>
+      ) : actions ? (
         <div className="mt-4">
           <div className="flex flex-wrap gap-2">
             {scaleOptions.map((option) => (

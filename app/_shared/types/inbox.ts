@@ -186,6 +186,7 @@ export type InboxAnalyticsEvent =
   | 'inbox_quick_action'
   | 'inbox_notes_submitted'
   | 'inbox_cta_clicked'
+  | 'chat_started_from_inbox'
 
 export interface InboxAnalyticsPayload {
   envelopeId: string

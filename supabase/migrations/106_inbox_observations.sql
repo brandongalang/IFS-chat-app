@@ -34,11 +34,11 @@ execute function update_updated_at_column();
 
 alter table public.inbox_observations enable row level security;
 
-create policy if not exists "users_select_own_observations" on public.inbox_observations
+create policy "users_select_own_observations" on public.inbox_observations
   for select
   using (auth.uid() = user_id);
 
-create policy if not exists "service_role_manage_observations" on public.inbox_observations
+create policy "service_role_manage_observations" on public.inbox_observations
   using (auth.role() = 'service_role')
   with check (auth.role() = 'service_role');
 
@@ -61,11 +61,11 @@ create index if not exists observation_events_user_idx
 
 alter table public.observation_events enable row level security;
 
-create policy if not exists "users_select_own_observation_events" on public.observation_events
+create policy "users_select_own_observation_events" on public.observation_events
   for select
   using (auth.uid() = user_id);
 
-create policy if not exists "service_role_manage_observation_events" on public.observation_events
+create policy "service_role_manage_observation_events" on public.observation_events
   using (auth.role() = 'service_role')
   with check (auth.role() = 'service_role');
 
@@ -87,7 +87,7 @@ create index if not exists inbox_job_runs_name_idx
 
 alter table public.inbox_job_runs enable row level security;
 
-create policy if not exists "service_role_manage_inbox_jobs" on public.inbox_job_runs
+create policy "service_role_manage_inbox_jobs" on public.inbox_job_runs
   using (auth.role() = 'service_role')
   with check (auth.role() = 'service_role');
 

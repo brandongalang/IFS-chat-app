@@ -69,42 +69,57 @@
 - 2025-10-03: When a multi-phase plan (e.g., session logs like `docs/10_1_session.md`) is finished, update the relevant feature docs/runbooks before closing the workstream so the docs CI check stays green.
 - 2025-10-08: Before opening or refreshing a PR, rerun the docs sweep—confirm feature docs under `docs/features/**` list every touched module (update `code_paths`, `last_updated`, etc.) and ensure the PR description matches the required template so the docs CI check passes on the first run.
 
-## Specs & Task Documentation Workflow
-**Implementation specifications and task planning follow a lifecycle-based organization.**
+## Planning & Task Documentation Workflow
+**Development planning follows a priority-based organization in `/docs/planning/`.**
 
-### Directory Structure
-- **`specs/scoping/`** - Early-stage planning, PRDs, feature proposals, architecture exploration
-- **`specs/in-progress/`** - Active work with open PRs; specs being implemented
-- **`specs/completed/`** - Shipped features; historical record of implementation decisions
+### Directory Structure (Updated October 2025)
+```
+/docs/
+├── vision/          # Long-term product vision and strategy
+├── current/         # How the system works today (maintained post-launch)
+│   ├── features/    # Living documentation of shipped features
+│   ├── architecture/# Technical architecture and system design
+│   ├── operations/  # Operational procedures and runbooks
+│   └── development/ # Development processes and guides
+├── planning/        # Active development planning
+│   ├── next/        # 1-3 immediate priorities ready to build
+│   ├── backlog/     # Future considerations not yet prioritized
+│   └── implementation/ # Active coding session logs and progress
+└── archive/         # Completed work and historical documentation
+```
 
 ### Workflow
-1. **Planning Phase**: Create specs in `specs/scoping/`
-   - Product requirements documents
-   - Technical design proposals
-   - UX analysis and walkthroughs
-   - Feature ideas and brainstorming
+1. **Planning Phase**: Create docs in `/docs/planning/backlog/` or `/docs/planning/next/`
+   - Use `feat-` prefix for user-facing features
+   - Use `tech-` prefix for technical/infrastructure work
+   - Product requirements and technical designs
+   - Move from backlog to next when ready to build (limit next to 1-3 items)
 
-2. **Implementation Phase**: Move spec to `specs/in-progress/` when starting work
-   - Create feature branch and PR
-   - Add PR reference to spec header
-   - Update spec if scope changes during implementation
-   - Keep spec and code in sync
+2. **Implementation Phase**: Log progress in `/docs/planning/implementation/`
+   - Create session logs when starting work
+   - Update with progress, decisions, and blockers
+   - Reference PR numbers when created
+   - Can have multiple session files for complex features
 
-3. **Completion Phase**: Move spec to `specs/completed/` when PR merges
-   - Add final PR number(s) to spec
-   - Keep as historical record (even if implementation deviated)
-   - Reference for future related work
+3. **Completion Phase**: Archive to `/docs/archive/` when done
+   - Move planning docs and implementation logs
+   - Update `/docs/current/` with living documentation
+   - Keep as historical record of decisions made
 
-### Relationship to `/docs/`
-- **`/docs/features/`** - Living documentation of shipped features (maintained post-launch)
-- **`/docs/runbooks/`** - Operational procedures and troubleshooting guides
-- **`/specs/`** - Implementation planning and historical specs (point-in-time)
+### Relationship Between Directories
+- **`/docs/planning/`** - Active work and future plans (temporary)
+- **`/docs/current/`** - Living documentation (maintained indefinitely)
+- **`/docs/archive/`** - Historical record (preserved for reference)
+- **`/docs/vision/`** - North star direction (rarely changed)
 
-**Key distinction**: Specs are implementation plans; docs are maintenance references.
+**Key distinction**: Planning docs are temporary work artifacts; current docs are permanent references.
 
 ### Best Practices
-- Always move specs between folders as work progresses
-- Update spec during implementation if scope changes
-- Never delete completed specs—they're valuable history
-- Link specs to PRs and vice versa for traceability
-- Use descriptive names: `feature-name-spec.md` or `001-feature-name.md`
+- Keep `/docs/planning/next/` limited to 1-3 items you're actually ready to build
+- Use clear prefixes: `feat-` for features, `tech-` for technical work
+- Archive completed work promptly to avoid confusion
+- Update living documentation in `/docs/current/` when shipping features
+- Link planning docs to PRs and implementation logs for traceability
+
+### Legacy Note
+The `/specs/` directory contains older planning documents following a lifecycle-based structure (scoping → in-progress → completed). New work should use the `/docs/planning/` structure described above.
