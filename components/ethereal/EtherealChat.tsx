@@ -147,7 +147,7 @@ export function EtherealChat() {
             envelopeId: (obs as { id?: string })?.id ?? 'unknown',
             sourceId: obs.sourceId ?? (obs as { id?: string })?.id ?? 'unknown',
             messageType: obs.type ?? 'insight_spotlight',
-            source: (obs as { source?: string })?.source ?? 'network',
+            source: obs.source ?? 'network',
             metadata: { reaction: ctx.metadata.reaction },
           })
         }
