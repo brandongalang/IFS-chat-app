@@ -128,8 +128,9 @@ export function EtherealChat() {
     }
   }
 
-  // Seed an opening assistant message only when coming from inbox context
+  // Seed agent response when coming from inbox context
   const seededRef = useRef(false)
+  const inboxContextRef = useRef<string | null>(null)
   useEffect(() => {
     if (authLoading || needsAuth) return
     if (seededRef.current) return
@@ -139,8 +140,9 @@ export function EtherealChat() {
         const ctx = readAndClearContextFromSession()
         if (ctx) {
           seededRef.current = true
-          const opening = generateOpeningMessage(ctx.metadata.observation, ctx.metadata.reaction)
-          void addAssistantMessage(opening, { persist: true, id: 'inbox-bridge-opening' })
+          inboxContextRef.current = ctx.systemInstruction
+          // Send empty message to trigger agent response with context
+          void sendMessage('', ctx.systemInstruction)
           // analytics: chat started from inbox
           const obs = ctx.metadata.observation
           emitInboxEvent('chat_started_from_inbox', {
@@ -155,7 +157,7 @@ export function EtherealChat() {
         // ignore seed if context invalid
       }
     }
-  }, [messages?.length, addAssistantMessage, needsAuth, authLoading])
+  }, [messages?.length, sendMessage, needsAuth, authLoading])
 
   const currentTasks = currentStreamingId ? tasksByMessage?.[currentStreamingId] : undefined
 

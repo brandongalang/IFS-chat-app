@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
     const payload = await req.json()
     const messages = payload?.messages
     const rawProfile = payload?.profile
+    const systemContext = payload?.systemContext
 
     if (!messages || !Array.isArray(messages)) {
       return errorResponse('Messages array is required', 400)
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    return handleAgentStream(messages, secureProfile)
+    return handleAgentStream(messages, secureProfile, systemContext)
   } catch (error) {
     console.error('Chat API error:', error)
     return errorResponse('Something went wrong', 500)

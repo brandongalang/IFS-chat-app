@@ -13,6 +13,7 @@ export type IFSAgentProfile = {
   bio?: string
   userId?: string
   overviewSnapshot?: OverviewSnapshot | null
+  inboxContext?: string
 } | null
 
 const BASE_IFS_PROMPT = `You are an IFS (Internal Family Systems) companion. Your role is to help people discover and understand their internal parts through curious, non-judgmental conversation.
@@ -134,6 +135,7 @@ export function generateSystemPrompt(profile: IFSAgentProfile): string {
   const userName = profile?.name || 'the user'
   const userBio = profile?.bio
   const overviewSection = formatOverviewFragments(profile?.overviewSnapshot?.fragments ?? [])
+  const inboxContext = profile?.inboxContext
 
   const profileSection = `
 ---
@@ -155,5 +157,16 @@ ${overviewSection}
 `
     : ''
 
-  return `${BASE_IFS_PROMPT}${profileSection}${overviewPrompt}`
+  const inboxPrompt = inboxContext
+    ? `
+---
+## Inbox Context:
+
+${inboxContext}
+
+IMPORTANT: This conversation was initiated from an inbox observation. Start your first message by acknowledging the observation and exploring it with the user. Reference the specific details from the observation in your response.
+`
+    : ''
+
+  return `${BASE_IFS_PROMPT}${profileSection}${overviewPrompt}${inboxPrompt}`
 }

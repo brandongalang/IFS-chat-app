@@ -48,6 +48,7 @@ const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' } as const
 export async function handleAgentStream(
   messages: unknown,
   profile: Record<string, unknown>,
+  systemContext?: string,
 ): Promise<Response> {
   try {
     const { createMastra } = await import('@/mastra')
@@ -58,6 +59,7 @@ export async function handleAgentStream(
     const mastraProfile = {
       ...profile,
       ...(overviewSnapshot ? { overviewSnapshot } : {}),
+      ...(systemContext ? { inboxContext: systemContext } : {}),
     }
 
     const mastra = createMastra(mastraProfile)
