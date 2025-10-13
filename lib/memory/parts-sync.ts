@@ -4,7 +4,7 @@
  */
 
 import { getStorageAdapter } from './snapshots/fs-helpers';
-import { readPartProfileSections, readPartProfile } from './read';
+import { readPartProfile } from './read';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { PartCategory, PartStatus } from '@/lib/types/database';
 

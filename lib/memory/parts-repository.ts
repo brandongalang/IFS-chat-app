@@ -12,8 +12,8 @@
  */
 
 import { getStorageAdapter, partProfilePath } from '@/lib/memory/snapshots/fs-helpers'
-import { readPartProfile, type PartProfileData } from '@/lib/memory/read'
-import { parsePartMarkdown, updatePartFrontmatter as updateFrontmatterText, type PartFrontmatter } from '@/lib/memory/markdown/frontmatter'
+import { readPartProfile } from '@/lib/memory/read'
+import { updatePartFrontmatter as updateFrontmatterText, type PartFrontmatter } from '@/lib/memory/markdown/frontmatter'
 import { editMarkdownSection } from '@/lib/memory/markdown/editor'
 import { onPartProfileChanged } from '@/lib/memory/parts-sync'
 import type { PartCategory, PartStatus } from '@/lib/types/database'
