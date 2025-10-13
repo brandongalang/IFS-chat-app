@@ -33,9 +33,34 @@ export class SupabaseStorageAdapter implements StorageAdapter {
   }
   async list(prefix: string): Promise<string[]> {
     const sb = getSb()
-    const { data, error } = await sb.storage.from(MEMORY_SNAPSHOTS_BUCKET).list(prefix || undefined)
-    if (error || !data) return []
-    return data.map(d => `${prefix ? prefix.replace(/\/?$/, '/') : ''}${d.name}`)
+    const allFiles: string[] = []
+
+    async function listDirectory(currentPrefix: string) {
+      const { data, error } = await sb.storage
+        .from(MEMORY_SNAPSHOTS_BUCKET)
+        .list(currentPrefix || undefined)
+
+      if (error) {
+        console.error(`Error listing files for prefix ${currentPrefix}:`, error)
+        return
+      }
+      if (!data) return
+
+      for (const file of data) {
+        const newPath = `${currentPrefix ? currentPrefix.replace(/\/?$/, '/') : ''}${file.name}`
+
+        // In Supabase Storage, folders are returned as objects without an `id`.
+        // We can use this to recursively list directories.
+        if (file.id === null) {
+          await listDirectory(newPath)
+        } else {
+          allFiles.push(newPath)
+        }
+      }
+    }
+
+    await listDirectory(prefix)
+    return allFiles
   }
   async delete(path: string): Promise<void> {
     const sb = getSb()
