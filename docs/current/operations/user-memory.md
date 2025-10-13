@@ -27,7 +27,7 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
   - Checks for pending queue items and, if present, runs a scoped `summarizePendingUpdates({ userId })`
   - Returns `{ ok, processed, pending }` so the UI can warn if preflight failed
 
-## Environment variables (updated 2025-10-07)
+## Environment variables (updated 2025-10-13)
 - Required on server:
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `SUPABASE_SERVICE_ROLE_KEY`
@@ -36,6 +36,9 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
   - `OPENROUTER_API_KEY` (LLM for summarization; falls back if unset)
   - `IFS_MODEL`, `IFS_TEMPERATURE` (shared Mastra provider config; now defaults to `grok-4-fast` via OpenRouter)
   - `USER_MEMORY_CHECKPOINT_EVERY` (default 50)
+  - `MEMORY_STORAGE_ADAPTER` (default `local`; set to `supabase` for Supabase Storage)
+  - `TARGET_ENV` (set to `prod` for local development against production Supabase; production deployments should not set this)
+  - `PROD_PUBLIC_SUPABASE_URL`, `PROD_SUPABASE_ANON_KEY`, `PROD_SUPABASE_SERVICE_ROLE_KEY` (production credentials for local development when `TARGET_ENV=prod`)
 
 ## Scheduling
 - Primary scheduler: **Vercel Cron** configured in `vercel.json` with `0 8 * * *` (08:00 UTC daily).
@@ -71,7 +74,7 @@ Migrations `105_inbox_message_events.sql` and `106_inbox_observations.sql` are i
 - `supabase start` (if needed)
 - `supabase db push --local`
 
-## Implementation (updated 2025-10-12)
+## Implementation (updated 2025-10-13)
 - **Background Services**: `lib/services/memory.ts`
   - `scaffoldUserMemory({ userId })` - ensures memory scaffolding exists
   - `summarizePendingUpdates({ userId?, limit? })` - processes pending updates for users
@@ -95,6 +98,13 @@ Migrations `105_inbox_message_events.sql` and `106_inbox_observations.sql` are i
 - **Chat preflight**: `app/api/memory/preflight/route.ts` powers the immediate summarize-on-open flow used by `useChatSession`.
 - **Agent tooling**: `mastra/tools/memory-markdown-tools.ts` exposes read + scoped write helpers (overview changelog, sections, part notes, part profile creation) shared by chat and background agents.
   - `lib/memory/snapshots/updater.ts` provides `ensurePartProfileExists` which returns `{ path, created }` atomically to eliminate TOCTOU races (updated 2025-01-11)
+- **Storage Adapters** (updated 2025-10-13, PR #313): `lib/memory/storage/`
+  - `supabase-storage-adapter.ts` - Supabase Storage implementation with **recursive directory listing** (detects folders by `id === null` and descends into subdirectories)
+  - `local-storage-adapter.ts` - Local filesystem implementation
+  - `adapter.ts` - StorageAdapter interface defining `putText`, `getText`, `exists`, `list`, `delete` methods
+  - Configuration via `MEMORY_STORAGE_ADAPTER` env var (`supabase` or `local`)
+  - Multi-environment support: Uses `TARGET_ENV=prod` to switch between local and production Supabase credentials (see `lib/supabase/config.ts`)
+  - **Recursive listing fix**: The `list()` method now properly discovers nested files like `users/{userId}/parts/{partId}/profile.md`, fixing Parts Garden detection issues
 - **Parts sync utility** (added 2025-10-12, enhanced 2025-01-14): `lib/memory/parts-sync.ts`
   - `discoverUserParts(userId)` finds markdown part profiles
   - `syncPartToDatabase(userId, partId)` updates/inserts DB record from markdown, preferring frontmatter metadata when available
