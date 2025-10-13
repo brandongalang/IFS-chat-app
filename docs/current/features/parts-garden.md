@@ -2,7 +2,7 @@
 title: Feature: Parts Garden
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-12
+last_updated: 2025-01-14
 feature_flag: ENABLE_GARDEN
 code_paths:
   - app/garden/page.tsx
@@ -12,6 +12,7 @@ code_paths:
 related_prs:
   - #41
   - #305
+  - #TBD
 ---
 
 ## What
@@ -22,7 +23,8 @@ Offers a spatial/visual way to understand internal parts and relationships.
 
 ## How it works
 - Detail at app/garden/[partId]/page.tsx (server)
-  - Reads narrative content from the Markdown repository (`lib/parts/repository`): sections like Role & Purpose, Current State, Origin
+  - Reads narrative content from the System 2 memory repository (`lib/memory/parts-repository`): sections like Role & Purpose, Current State, Origin
+  - Supports YAML frontmatter format with emoji and metadata
   - Reads DB-backed fields (visualization, relationships, notes) via `@/lib/data/parts-server`
 - PartActions server actions import from `@/lib/data/parts-server` and update DB attributes (e.g., name/emoji via visualization)
 - Part tool invocations route through tightened Zod schemas and an injected Supabase client, preventing untrusted payloads from mutating data

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { resolveUserId } from '@/config/dev'
 import type { PartRow, PartNoteRow } from '@/lib/types/database'
 import type { PartRelationshipWithDetails } from '@/lib/data/parts.schema'
-import { readPartById as readMarkdownPart } from '@/lib/parts/repository'
+import { readPart as readMarkdownPart } from '@/lib/memory/parts-repository'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -68,7 +68,7 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
     getPartById({ partId }, deps),
     getPartRelationships({ partId, includePartDetails: true, limit: 20 }, deps),
     getPartNotes({ partId }, deps),
-    readMarkdownPart(partId).catch(() => null),
+    readMarkdownPart(userId, partId).catch(() => null),
   ])
 
   // Handle case where the part is not found or fails to load
@@ -93,13 +93,15 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
   const visualization = part.visualization as { emoji?: string; color?: string }
   const story = part.story as { origin?: string; currentState?: string; purpose?: string }
 
-  const mdSections = (markdownDoc?.sections ?? {}) as Record<string, string>
+  // System 2 returns sections as { heading: string, text: string }
+  const mdSections = markdownDoc?.sections ?? {}
   const headerEmoji = markdownDoc?.frontmatter?.emoji ?? visualization?.emoji ?? '🤗'
 
   // Note: we intentionally skip empty-string sections to fall back to DB story fields
   function pickSection(...keys: string[]): string | undefined {
     for (const k of keys) {
-      if (mdSections[k]) return mdSections[k]
+      const section = mdSections[k]
+      if (section?.text) return section.text
     }
     return undefined
   }

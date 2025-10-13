@@ -97,7 +97,9 @@ Migrations `105_inbox_message_events.sql` and `106_inbox_observations.sql` are i
   - `lib/memory/snapshots/updater.ts` provides `ensurePartProfileExists` which returns `{ path, created }` atomically to eliminate TOCTOU races (updated 2025-01-11)
 - **Parts sync utility** (added 2025-10-12, enhanced 2025-01-14): `lib/memory/parts-sync.ts`
   - `discoverUserParts(userId)` finds markdown part profiles
-  - `syncPartToDatabase(userId, partId)` updates/inserts DB record from markdown identity/role/evidence
+  - `syncPartToDatabase(userId, partId)` updates/inserts DB record from markdown, preferring frontmatter metadata when available
+  - Syncs emoji from YAML frontmatter to database visualization field
+  - Backward compatible with legacy parts without frontmatter (parses from sections)
   - **Enhanced**: Now prefers YAML frontmatter data when available, falls back to section parsing for legacy parts
   - **Emoji sync**: Extracts emoji from frontmatter and syncs to database visualization field
   - `syncAllUserParts(userId)` iterates through all detected part profiles
