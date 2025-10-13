@@ -35,6 +35,7 @@ const upsertPartNoteSchema = z
     evidence: z.array(z.string().min(1)).max(5).optional(),
     status: z.string().min(1).max(80).optional(),
     category: z.string().min(1).max(80).optional(),
+    emoji: z.string().min(1).max(8).optional(),
     fingerprint: z.string().min(3).max(120).optional(),
   })
   .strict()
@@ -54,6 +55,7 @@ const createPartProfileSchema = z
     name: z.string().min(1).max(120),
     status: z.string().min(1).max(80).default('unknown'),
     category: z.string().min(1).max(80).default('unspecified'),
+    emoji: z.string().min(1).max(8).optional(),
   })
   .strict()
 
@@ -154,6 +156,7 @@ export function createMemoryMarkdownTools(defaultUserId?: string | null) {
         name: context.name,
         status: context.status ?? 'unknown',
         category: context.category ?? 'unspecified',
+        emoji: context.emoji,
       })
 
       const sections = await readPartProfileSections(resolvedUserId, context.partId)
@@ -276,6 +279,7 @@ export function createMemoryMarkdownTools(defaultUserId?: string | null) {
         name: context.name,
         status: context.status,
         category: context.category,
+        emoji: context.emoji,
       })
       
       // Log creation if newly created
@@ -286,6 +290,7 @@ export function createMemoryMarkdownTools(defaultUserId?: string | null) {
           name: context.name,
           status: context.status,
           category: context.category,
+          emoji: context.emoji,
         })
         const afterHash = computeMarkdownHash(content)
         
@@ -305,6 +310,7 @@ export function createMemoryMarkdownTools(defaultUserId?: string | null) {
           name: context.name,
           status: context.status,
           category: context.category,
+          emoji: context.emoji,
         })
       }
       

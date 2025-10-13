@@ -40,7 +40,7 @@ export async function ensureUserOverviewExists(userId: string): Promise<string> 
   return path
 }
 
-export async function ensurePartProfileExists(params: { userId: string; partId: string; name: string; status: string; category: string }): Promise<{ path: string; created: boolean }> {
+export async function ensurePartProfileExists(params: { userId: string; partId: string; name: string; status: string; category: string; emoji?: string }): Promise<{ path: string; created: boolean }> {
   const storage = await getStorageAdapter()
   const path = partProfilePath(params.userId, params.partId)
   const exists = await storage.exists(path)
@@ -77,7 +77,7 @@ export async function appendChangeLogWithEvent(params: { userId: string; entityT
   } catch (e) { try { console.warn('logEvent error', e) } catch {} }
 }
 
-export async function onPartCreated(params: { userId: string; partId: string; name: string; status: string; category: string }) {
+export async function onPartCreated(params: { userId: string; partId: string; name: string; status: string; category: string; emoji?: string }) {
   const { path } = await ensurePartProfileExists(params)
   await appendChangeLogWithEvent({
     userId: params.userId,
