@@ -6,11 +6,14 @@ last_updated: 2025-01-14
 feature_flag: null
 code_paths:
   - lib/memory/markdown/frontmatter.ts
+  - lib/memory/markdown/README.md
   - lib/memory/snapshots/grammar.ts
+  - lib/memory/snapshots/updater.ts
   - lib/memory/read.ts
   - lib/memory/parts-repository.ts
   - lib/memory/parts-sync.ts
   - scripts/test-frontmatter-system.ts
+  - app/garden/[partId]/page.tsx
 related_prs:
   - #TBD
 ---
