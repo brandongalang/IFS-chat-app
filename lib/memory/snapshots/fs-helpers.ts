@@ -1,17 +1,12 @@
-import { getStorageMode } from '../config'
 import type { StorageAdapter } from '../storage/adapter'
 
+/**
+ * Get the storage adapter for Memory V2 system.
+ * Always returns Supabase Storage adapter for production reliability.
+ */
 export async function getStorageAdapter(): Promise<StorageAdapter> {
-  const mode = getStorageMode()
-  if (mode === 'supabase') {
-    const { SupabaseStorageAdapter } = await import('../storage/supabase-storage-adapter')
-    return new SupabaseStorageAdapter()
-  }
-  if (typeof window !== 'undefined') {
-    throw new Error('Local filesystem storage is server-only. Avoid calling snapshot storage from client code.')
-  }
-  const { LocalFsStorageAdapter } = await import('../storage/local-fs-adapter')
-  return new LocalFsStorageAdapter()
+  const { SupabaseStorageAdapter } = await import('../storage/supabase-storage-adapter')
+  return new SupabaseStorageAdapter()
 }
 
 export function partProfilePath(userId: string, partId: string) {

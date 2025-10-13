@@ -24,6 +24,9 @@ const EnvSchema = z.object({
   IFS_ENABLE_MARKDOWN_CONTEXT: z.string().optional(),
   // Dev overrides
   IFS_DEV_FORCE_NO_SUPABASE: z.string().optional(),
+
+  // Memory / Storage
+  MEMORY_AGENTIC_V2_ENABLED: z.string().optional(),
 })
 
 // Important: avoid parsing the entire process.env object because in the browser
@@ -53,6 +56,9 @@ const raw = EnvSchema.parse({
   IFS_ENABLE_MARKDOWN_CONTEXT: process.env.IFS_ENABLE_MARKDOWN_CONTEXT,
   // Dev overrides
   IFS_DEV_FORCE_NO_SUPABASE: process.env.IFS_DEV_FORCE_NO_SUPABASE,
+
+  // Memory / Storage
+  MEMORY_AGENTIC_V2_ENABLED: process.env.MEMORY_AGENTIC_V2_ENABLED,
 })
 
 const toBool = (v?: string) => v === 'true'
@@ -84,6 +90,11 @@ export const env = {
     !raw.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   ifsModel: raw.IFS_MODEL,
   ifsTemperature: raw.IFS_TEMPERATURE,
+  // Memory storage config
+  memoryV2Enabled:
+    raw.MEMORY_AGENTIC_V2_ENABLED === undefined
+      ? true
+      : !['0', 'false', 'no'].includes(raw.MEMORY_AGENTIC_V2_ENABLED.toLowerCase()),
 }
 
 export const OPENROUTER_API_BASE_URL = 'https://openrouter.ai/api/v1'

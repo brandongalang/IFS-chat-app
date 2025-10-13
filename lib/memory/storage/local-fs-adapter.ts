@@ -1,7 +1,9 @@
 import fs from 'fs/promises'
 import path from 'path'
 import type { StorageAdapter } from './adapter'
-import { MEMORY_LOCAL_ROOT } from '../config'
+
+// Local storage is deprecated - use SupabaseStorageAdapter instead
+const MEMORY_LOCAL_ROOT = '.data/memory-snapshots'
 
 function resolveSafe(userPath: string) {
   const rootAbs = path.resolve(process.cwd(), MEMORY_LOCAL_ROOT)
