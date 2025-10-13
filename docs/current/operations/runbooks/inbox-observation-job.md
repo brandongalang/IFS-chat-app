@@ -43,3 +43,6 @@ npm run inbox:generate -- --queue 5 --window 21
 1. If the script exits early, re-run with the same flags; dedupe logic prevents duplicate observations.
 2. For persistent Supabase failures, confirm credentials and RLS policies (tables: `inbox_observations`, `observation_events`, `inbox_job_runs`).
 3. Use `--user` to isolate problematic records before scaling to the full user list.
+
+## Related Updates
+- **PR #310**: Improved type safety and code quality in `lib/inbox/__tests__/chat-bridge.test.ts` (chat-bridge module tests, not observation job related)
