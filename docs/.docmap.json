@@ -67,6 +67,7 @@
       ],
       "docs": ["docs/current/features/inbox-to-chat-bridge.md"]
     },
+
     {
       "paths": [
         "app/api/cron/memory-update/**",
