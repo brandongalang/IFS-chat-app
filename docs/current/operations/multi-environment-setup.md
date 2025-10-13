@@ -197,12 +197,47 @@ TARGET_ENV=prod MEMORY_STORAGE_ADAPTER=supabase npx tsx scripts/sync-parts-manua
 # Or click "Refresh" button in Garden UI
 ```
 
+## Production Deployments (Vercel, etc.)
+
+**Important:** The `TARGET_ENV` system is for **local development only**. Your production deployments (Vercel, Railway, etc.) do **not** need any changes.
+
+### How Production Works
+
+Production deployments should **not** set `TARGET_ENV`. Without it, the code defaults to using standard `NEXT_PUBLIC_*` variables:
+
+**Vercel Environment Variables (no changes needed):**
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-key
+MEMORY_STORAGE_ADAPTER=supabase
+```
+
+**What happens in production:**
+1. `TARGET_ENV` is not set (and should not be)
+2. Code uses `NEXT_PUBLIC_SUPABASE_URL` (your production URL)
+3. Behavior is **identical to before** this feature was added
+4. ✅ No migration needed, no breaking changes
+
+### The Three Environments
+
+| Environment | TARGET_ENV | Uses | Setup |
+|-------------|------------|------|-------|
+| **Vercel/Production** | *(not set)* | `NEXT_PUBLIC_*` | Already configured ✅ |
+| **Local Dev (Docker)** | *(not set)* | `NEXT_PUBLIC_*` (local) | Default behavior |
+| **Local Dev (Remote)** | `prod` | `PROD_*` | Opt-in for testing |
+
+### Why This Design?
+
+The `TARGET_ENV=prod` system is specifically for **local development workflows** where you want to test against production data without permanently changing your `.env.local`. Production deployments continue working exactly as before.
+
 ## Security Notes
 
 1. **Never commit production credentials** - `.env.local` is in `.gitignore`
 2. **Service role key is powerful** - Treat `PROD_SUPABASE_SERVICE_ROLE_KEY` like a root password
 3. **Use different keys** - Local and production should have completely different credentials
 4. **Rotate keys if exposed** - If production keys are committed, rotate them immediately in Supabase Dashboard
+5. **Don't set TARGET_ENV in production** - This variable is only for local development
 
 ## Related Documentation
 
