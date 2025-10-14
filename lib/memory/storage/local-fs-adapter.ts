@@ -19,9 +19,10 @@ export class LocalFsStorageAdapter implements StorageAdapter {
       hasWarnedDeprecatedAdapter = true
       console.warn('[LocalFsStorageAdapter] This adapter is deprecated. Please migrate to SupabaseStorageAdapter.')
     }
-    const configuredRoot = options?.root ?? process.env.MEMORY_LOCAL_ROOT ?? DEFAULT_LOCAL_ROOT
-    this.root = configuredRoot
-    this.rootAbs = path.resolve(process.cwd(), configuredRoot)
+    const rawRoot = options?.root ?? process.env.MEMORY_LOCAL_ROOT ?? DEFAULT_LOCAL_ROOT
+    const configuredRoot = typeof rawRoot === 'string' ? rawRoot.trim() : ''
+    this.root = configuredRoot.length > 0 ? configuredRoot : DEFAULT_LOCAL_ROOT
+    this.rootAbs = path.resolve(process.cwd(), this.root)
   }
   private resolveSafe(userPath: string) {
     const full = path.resolve(this.rootAbs, userPath.replace(/^\/+/, ''))

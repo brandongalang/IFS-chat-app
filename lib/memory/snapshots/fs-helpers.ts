@@ -5,11 +5,11 @@ import type { StorageAdapter, StorageAdapterFactoryOptions } from '../storage/ad
  * Defaults to Supabase, but supports local adapters for tests and tooling.
  */
 export async function getStorageAdapter(options?: StorageAdapterFactoryOptions): Promise<StorageAdapter> {
-  const mode = (options?.mode ?? process.env.MEMORY_STORAGE_ADAPTER)?.toLowerCase()
+  const mode = (options?.mode ?? process.env.MEMORY_STORAGE_ADAPTER)?.trim()?.toLowerCase()
 
   if (mode === 'local') {
     const { LocalFsStorageAdapter } = await import('../storage/local-fs-adapter')
-    return new LocalFsStorageAdapter({ root: process.env.MEMORY_LOCAL_ROOT })
+    return new LocalFsStorageAdapter()
   }
 
   const { SupabaseStorageAdapter } = await import('../storage/supabase-storage-adapter')

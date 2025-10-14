@@ -1,17 +1,19 @@
-import {
-  partRowSchema,
-  sessionRowSchema,
-  observationRowSchema,
-  partRelationshipRowSchema,
-  timelineEventRowSchema,
-} from '../../../lib/data/schema/types'
-import { assertPrdDeps } from '../../../lib/data/schema/utils'
+process.env.SERVER_ONLY_DISABLE_GUARD = 'true'
 
 function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(message)
 }
 
 async function main() {
+  const {
+    partRowSchema,
+    sessionRowSchema,
+    observationRowSchema,
+    partRelationshipRowSchema,
+    timelineEventRowSchema,
+    assertPrdDeps,
+  } = await import('../../../lib/data/schema')
+
   const userId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
   const partIdA = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
   const partIdB = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
