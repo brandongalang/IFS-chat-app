@@ -39,6 +39,14 @@ async function runWithClient<TInput, TResult>(
   }
 }
 
+async function requireUserId(client: SupabaseDatabaseClient): Promise<string> {
+  const { data: { user }, error: authError } = await client.auth.getUser();
+  if (authError || !user) {
+    throw new Error('User not authenticated');
+  }
+  return user.id;
+}
+
 export async function searchParts(input: SearchPartsInput, deps: PartsLiteDependencies = {}): Promise<SearchPartsResult> {
   return runWithClient(searchPartsSchema, input, deps, async (validated, supabase) => {
     const filters: PartQueryFilters = {

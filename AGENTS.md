@@ -123,3 +123,5 @@
 
 ### Legacy Note
 The `/specs/` directory contains older planning documents following a lifecycle-based structure (scoping → in-progress → completed). New work should use the `/docs/planning/` structure described above.
+
+We track work in Beads instead of Markdown. Run `bd quickstart` to see how.

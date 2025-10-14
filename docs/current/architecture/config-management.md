@@ -15,7 +15,7 @@ The app uses a **centralized configuration system** with type-safe validation vi
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────┐
 │  .env.local / process.env           │
 │  (Raw environment variables)        │
@@ -70,7 +70,7 @@ const storageMode = env.memoryStorageAdapter
 import { env } from '@/config/env'
 
 // Type-safe access
-const storageMode = env.memoryStorageAdapter  // 'local' | 'supabase'
+const storageMode = env.memoryStorageAdapter  // currently always 'supabase'
 const isDevMode = env.ifsDevMode             // boolean
 const model = env.ifsModel                   // string
 ```
@@ -97,7 +97,7 @@ const model = env.ifsModel                   // string
 
 **Purpose**: Memory system configuration
 
-- Storage adapter selection (local vs Supabase)
+- Storage mode (now fixed to Supabase)
 - Memory V2 feature flag
 - Storage paths and bucket names
 
@@ -107,8 +107,8 @@ const model = env.ifsModel                   // string
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `MEMORY_STORAGE_ADAPTER` | `'local' \| 'supabase'` | `'local'` | Storage backend for Memory V2 markdown files |
-| `MEMORY_LOCAL_ROOT` | `string` | `'.data/memory-snapshots'` | Local filesystem root for memory storage |
+| `MEMORY_STORAGE_ADAPTER` | `'supabase'` | `'supabase'` | Storage backend for Memory V2 markdown files (fixed) |
+| `MEMORY_LOCAL_ROOT` | `string` | `'.data/memory-snapshots'` | Legacy local filesystem root (deprecated) |
 | `MEMORY_AGENTIC_V2_ENABLED` | `string` | `true` | Enable Memory V2 system (markdown-based) |
 
 ### AI / Model
@@ -126,6 +126,8 @@ const model = env.ifsModel                   // string
 | `NEXT_PUBLIC_SUPABASE_URL` | `string` | - | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `string` | - | Supabase anonymous key (public) |
 | `SUPABASE_SERVICE_ROLE_KEY` | `string` | - | Supabase service role key (server-only) |
+| `NEXT_PUBLIC_PROD_SUPABASE_URL` | `string` | - | Production Supabase URL for browser/server fallbacks |
+| `NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY` | `string` | - | Production Supabase anon key for browser usage |
 
 ### Development
 
@@ -135,6 +137,7 @@ const model = env.ifsModel                   // string
 | `IFS_TEST_PERSONA` | `'beginner' \| 'moderate' \| 'advanced'` | `'beginner'` | Test persona to use |
 | `IFS_DEFAULT_USER_ID` | `uuid` | - | Default user ID for testing |
 | `IFS_VERBOSE` | `boolean` | `false` | Enable verbose logging |
+| `NEXT_PUBLIC_TARGET_ENV` / `TARGET_ENV` | `string` | *(unset)* | Set to `prod` locally to target production Supabase; leave unset in deployed environments |
 
 ## Best Practices
 

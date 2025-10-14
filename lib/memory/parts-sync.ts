@@ -102,28 +102,36 @@ function parsePartFromMarkdown(
  * Discover all part profiles for a user from markdown storage
  */
 export async function discoverUserParts(userId: string): Promise<string[]> {
+  console.log(`[discoverUserParts] Starting discovery for user ${userId}`);
   const storage = await getStorageAdapter();
   const basePath = `users/${userId}/parts`;
+  console.log(`[discoverUserParts] Looking in path: ${basePath}`);
 
   try {
     // List all directories under parts/
     const entries = await storage.list(basePath);
+    console.log(`[discoverUserParts] Found ${entries.length} entries in storage:`, entries);
 
-    // Extract part IDs from paths like "users/{userId}/parts/{partId}/profile.md"
+    // Extract part IDs from paths like "{userId}/parts/{partId}/profile.md"
     const partIds: string[] = [];
     for (const entry of entries) {
+      console.log(`[discoverUserParts] Checking entry: ${entry}`);
       // Check if it's a part profile
       if (entry.endsWith('/profile.md')) {
         const match = entry.match(/parts\/([^\/]+)\/profile\.md$/);
         if (match) {
+          console.log(`[discoverUserParts] Found part ID: ${match[1]}`);
           partIds.push(match[1]);
+        } else {
+          console.log(`[discoverUserParts] Entry didn't match pattern: ${entry}`);
         }
       }
     }
 
+    console.log(`[discoverUserParts] Discovered ${partIds.length} part IDs:`, partIds);
     return partIds;
   } catch (error) {
-    console.error(`Failed to discover parts for user ${userId}:`, error);
+    console.error(`[discoverUserParts] Failed to discover parts for user ${userId}:`, error);
     return [];
   }
 }
@@ -132,13 +140,18 @@ export async function discoverUserParts(userId: string): Promise<string[]> {
  * Sync a single markdown part profile to the database
  */
 export async function syncPartToDatabase(userId: string, partId: string): Promise<boolean> {
+  console.log(`[syncPartToDatabase] Starting sync for part ${partId}`);
   try {
     // Read the markdown profile (with frontmatter if available)
+    console.log(`[syncPartToDatabase] Reading profile for part ${partId}`);
     const profile = await readPartProfile(userId, partId);
+    console.log(`[syncPartToDatabase] Profile read result:`, profile ? 'found' : 'not found');
     if (!profile) {
-      console.warn(`No markdown profile found for part ${partId}`);
+      console.warn(`[syncPartToDatabase] No markdown profile found for part ${partId}`);
       return false;
     }
+    console.log(`[syncPartToDatabase] Profile sections:`, Object.keys(profile.sections));
+    console.log(`[syncPartToDatabase] Profile frontmatter:`, profile.frontmatter);
 
     // Prefer frontmatter data if available, otherwise parse from sections
     let partData: MarkdownPartData;
@@ -180,15 +193,22 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
     }
 
     // Connect to database
+    console.log(`[syncPartToDatabase] Connecting to database`);
     const supabase = createAdminClient();
 
     // Check if part already exists
-    const { data: existing } = await supabase
+    console.log(`[syncPartToDatabase] Checking if part ${partId} exists in database`);
+    const { data: existing, error: selectError } = await supabase
       .from('parts')
       .select('id, name, status, category, role, visualization')
       .eq('id', partId)
       .eq('user_id', userId)
       .single();
+
+    if (selectError && selectError.code !== 'PGRST116') {
+      console.error(`[syncPartToDatabase] Error checking existing part:`, selectError);
+    }
+    console.log(`[syncPartToDatabase] Existing part found:`, existing ? 'yes' : 'no');
 
     if (existing) {
       // Update existing part if data has changed
@@ -223,7 +243,9 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
           return false;
         }
 
-        console.log(`Updated part ${partId} (${partData.name}) in database`);
+        console.log(`[syncPartToDatabase] ✅ Updated part ${partId} (${partData.name}) in database`);
+      } else {
+        console.log(`[syncPartToDatabase] Part ${partId} unchanged, skipping update`);
       }
     } else {
       // Insert new part
@@ -253,12 +275,12 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
         return false;
       }
 
-      console.log(`Created part ${partId} (${partData.name}) in database`);
+      console.log(`[syncPartToDatabase] ✅ Created part ${partId} (${partData.name}) in database`);
     }
 
     return true;
   } catch (error) {
-    console.error(`Failed to sync part ${partId}:`, error);
+    console.error(`[syncPartToDatabase] ❌ Failed to sync part ${partId}:`, error);
     return false;
   }
 }
@@ -269,13 +291,16 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
 export async function syncAllUserParts(
   userId: string
 ): Promise<{ synced: number; failed: number }> {
-  console.log(`Starting parts sync for user ${userId}`);
+  console.log(`[syncAllUserParts] ========================================`);
+  console.log(`[syncAllUserParts] Starting parts sync for user ${userId}`);
+  console.log(`[syncAllUserParts] ========================================`);
 
   // Discover all part profiles
   const partIds = await discoverUserParts(userId);
-  console.log(`Found ${partIds.length} part profiles to sync`);
+  console.log(`[syncAllUserParts] Found ${partIds.length} part profiles to sync`);
 
   if (partIds.length === 0) {
+    console.log(`[syncAllUserParts] No parts found in markdown storage`);
     return { synced: 0, failed: 0 };
   }
 
@@ -284,15 +309,20 @@ export async function syncAllUserParts(
   let failed = 0;
 
   for (const partId of partIds) {
+    console.log(`[syncAllUserParts] Syncing part ${synced + failed + 1}/${partIds.length}: ${partId}`);
     const success = await syncPartToDatabase(userId, partId);
     if (success) {
       synced++;
+      console.log(`[syncAllUserParts] ✅ Part ${partId} synced successfully`);
     } else {
       failed++;
+      console.log(`[syncAllUserParts] ❌ Part ${partId} sync failed`);
     }
   }
 
-  console.log(`Parts sync complete: ${synced} synced, ${failed} failed`);
+  console.log(`[syncAllUserParts] ========================================`);
+  console.log(`[syncAllUserParts] Parts sync complete: ${synced} synced, ${failed} failed`);
+  console.log(`[syncAllUserParts] ========================================`);
   return { synced, failed };
 }
 

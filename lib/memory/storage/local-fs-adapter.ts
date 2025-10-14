@@ -4,6 +4,7 @@ import type { StorageAdapter } from './adapter'
 
 // Local storage is deprecated - use SupabaseStorageAdapter instead
 const MEMORY_LOCAL_ROOT = '.data/memory-snapshots'
+let hasWarnedDeprecatedAdapter = false
 
 function resolveSafe(userPath: string) {
   const rootAbs = path.resolve(process.cwd(), MEMORY_LOCAL_ROOT)
@@ -15,6 +16,12 @@ function resolveSafe(userPath: string) {
 }
 
 export class LocalFsStorageAdapter implements StorageAdapter {
+  constructor() {
+    if (!hasWarnedDeprecatedAdapter) {
+      hasWarnedDeprecatedAdapter = true
+      console.warn('[LocalFsStorageAdapter] This adapter is deprecated. Please migrate to SupabaseStorageAdapter.')
+    }
+  }
   async putText(userPath: string, text: string): Promise<void> {
     const { full } = resolveSafe(userPath)
     await fs.mkdir(path.dirname(full), { recursive: true })

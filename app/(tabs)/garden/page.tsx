@@ -260,26 +260,36 @@ export default function GardenPage() {
   }, [time]);
 
   const handleRefreshSync = useCallback(async () => {
-    setIsSyncing(true)
-    setSyncMessage(null)
+    console.log('[Garden] Refresh button clicked!');
+    setIsSyncing(true);
+    setSyncMessage(null);
     try {
-      const result = await syncPartsAction()
+      console.log('[Garden] Calling syncPartsAction...');
+      const result = await syncPartsAction();
+      console.log('[Garden] syncPartsAction result:', result);
+
       if (result.success) {
-        setSyncMessage(`✅ Synced ${result.synced} parts${result.failed > 0 ? `, ${result.failed} failed` : ''}`)
+        setSyncMessage(`✅ Synced ${result.synced} parts${result.failed > 0 ? `, ${result.failed} failed` : ''}`);
+        console.log('[Garden] Refetching parts from database...');
         // Refetch parts to show the newly synced data
-        const partsResult = await searchParts({ limit: 50 })
+        const partsResult = await searchParts({ limit: 50 });
+        console.log('[Garden] searchParts result:', partsResult);
         if (partsResult && Array.isArray(partsResult)) {
-          setParts(partsResult)
+          console.log(`[Garden] Setting ${partsResult.length} parts in state`);
+          setParts(partsResult);
         }
       } else {
-        setSyncMessage(`❌ Sync failed: ${result.error}`)
+        console.error('[Garden] Sync failed:', result.error);
+        setSyncMessage(`❌ Sync failed: ${result.error}`);
       }
     } catch (error) {
-      setSyncMessage(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      console.error('[Garden] Exception during sync:', error);
+      setSyncMessage(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
-      setIsSyncing(false)
+      setIsSyncing(false);
+      console.log('[Garden] Sync complete, isSyncing set to false');
       // Clear message after 5 seconds
-      setTimeout(() => setSyncMessage(null), 5000)
+      setTimeout(() => setSyncMessage(null), 5000);
     }
   }, [])
 

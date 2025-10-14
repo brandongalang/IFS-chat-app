@@ -3,7 +3,7 @@
  * Setup Supabase Storage bucket for memory snapshots
  * 
  * Usage:
- *   TARGET_ENV=prod npx tsx scripts/setup-storage-bucket.ts
+ *   TARGET_ENV=prod NEXT_PUBLIC_TARGET_ENV=prod npx tsx scripts/setup-storage-bucket.ts
  */
 
 import { config } from 'dotenv'
@@ -15,7 +15,7 @@ config({ path: '.env.local' })
 const BUCKET_NAME = 'memory-snapshots'
 
 async function main() {
-  const targetEnv = process.env.TARGET_ENV || 'local'
+  const targetEnv = process.env.NEXT_PUBLIC_TARGET_ENV || process.env.TARGET_ENV || 'local'
   
   console.log('\n🪣 Supabase Storage Bucket Setup\n')
   console.log('='.repeat(60))
@@ -26,7 +26,7 @@ async function main() {
   let serviceKey: string | undefined
   
   if (targetEnv === 'prod') {
-    url = process.env.PROD_PUBLIC_SUPABASE_URL
+    url = process.env.NEXT_PUBLIC_PROD_SUPABASE_URL
     serviceKey = process.env.PROD_SUPABASE_SERVICE_ROLE_KEY
     console.log(`   URL: ${url}`)
   } else {
@@ -37,7 +37,7 @@ async function main() {
   
   if (!url || !serviceKey) {
     console.error('\n❌ Missing Supabase credentials!')
-    console.error(`   Need: ${targetEnv === 'prod' ? 'PROD_PUBLIC_SUPABASE_URL and PROD_SUPABASE_SERVICE_ROLE_KEY' : 'NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY'}`)
+    console.error(`   Need: ${targetEnv === 'prod' ? 'NEXT_PUBLIC_PROD_SUPABASE_URL and PROD_SUPABASE_SERVICE_ROLE_KEY' : 'NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY'}`)
     process.exit(1)
   }
   
@@ -99,8 +99,8 @@ async function main() {
   console.log('\n' + '='.repeat(60))
   console.log('\n✅ Storage setup complete!')
   console.log('\n💡 Next steps:')
-  console.log('   1. Test with: TARGET_ENV=prod MEMORY_STORAGE_ADAPTER=supabase npx tsx scripts/diagnose-garden.ts')
-  console.log('   2. Create a test part: TARGET_ENV=prod MEMORY_STORAGE_ADAPTER=supabase npx tsx scripts/test-frontmatter-system.ts')
+  console.log('   1. Test with: TARGET_ENV=prod NEXT_PUBLIC_TARGET_ENV=prod npx tsx scripts/diagnose-garden.ts')
+  console.log('   2. Create a test part: TARGET_ENV=prod NEXT_PUBLIC_TARGET_ENV=prod npx tsx scripts/test-frontmatter-system.ts')
   console.log('   3. Open PR and merge!\n')
 }
 
