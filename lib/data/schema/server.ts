@@ -38,6 +38,9 @@ export type PrdServerDeps = {
   client?: SupabaseDatabaseClient
 }
 
+/**
+ * Resolve Supabase dependencies for server-side data access, injecting defaults when omitted.
+ */
 async function resolveDeps(deps: PrdServerDeps): Promise<{ client: SupabaseDatabaseClient; userId: string }> {
   if (!deps?.userId) {
     throw new Error('userId is required for PRD data operations')
@@ -46,36 +49,57 @@ async function resolveDeps(deps: PrdServerDeps): Promise<{ client: SupabaseDatab
   return { client, userId: deps.userId }
 }
 
+/**
+ * Server helper to search parts using the shared schema-based implementation.
+ */
 export async function searchParts(input: SearchPartsInput, deps: PrdServerDeps): Promise<PartRowV2[]> {
   const resolved = await resolveDeps(deps)
   return searchPartsV2(input, resolved)
 }
 
+/**
+ * Server helper to fetch a single part by ID.
+ */
 export async function getPart(partId: string, deps: PrdServerDeps): Promise<PartRowV2 | null> {
   const resolved = await resolveDeps(deps)
   return getPartByIdV2(partId, resolved)
 }
 
+/**
+ * Server helper to create or update a part record.
+ */
 export async function upsertPart(input: UpsertPartInput, deps: PrdServerDeps): Promise<PartRowV2> {
   const resolved = await resolveDeps(deps)
   return upsertPartV2(input, resolved)
 }
 
+/**
+ * Server helper to delete a part record.
+ */
 export async function removePart(partId: string, deps: PrdServerDeps): Promise<void> {
   const resolved = await resolveDeps(deps)
   return deletePartV2(partId, resolved)
 }
 
+/**
+ * Server helper to insert a new observation record.
+ */
 export async function recordObservation(input: CreateObservationInput, deps: PrdServerDeps): Promise<ObservationRow> {
   const resolved = await resolveDeps(deps)
   return createObservation(input, resolved)
 }
 
+/**
+ * Server helper to list recent observations with optional filters.
+ */
 export async function recentObservations(input: ListObservationsInput, deps: PrdServerDeps): Promise<ObservationRow[]> {
   const resolved = await resolveDeps(deps)
   return listObservations(input, resolved)
 }
 
+/**
+ * Server helper to update observation follow-up metadata.
+ */
 export async function updateObservation(
   observationId: string,
   updates: { completed?: boolean; metadata?: Record<string, any> },
@@ -85,11 +109,17 @@ export async function updateObservation(
   return updateObservationFollowUp(observationId, updates, resolved)
 }
 
+/**
+ * Server helper to create a session record.
+ */
 export async function createSessionRecord(input: CreateSessionInput, deps: PrdServerDeps): Promise<SessionRowV2> {
   const resolved = await resolveDeps(deps)
   return createSession(input, resolved)
 }
 
+/**
+ * Server helper to append session activity metadata.
+ */
 export async function touchSession(
   sessionId: string,
   updates: { last_message_at?: string; observations?: string[] },
@@ -99,6 +129,9 @@ export async function touchSession(
   return appendSessionActivity(sessionId, updates, resolved)
 }
 
+/**
+ * Server helper to mark a session as completed.
+ */
 export async function completeSessionRecord(
   sessionId: string,
   input: CompleteSessionInput,
@@ -108,11 +141,17 @@ export async function completeSessionRecord(
   return completeSession(sessionId, input, resolved)
 }
 
+/**
+ * Server helper to fetch the current active session.
+ */
 export async function getActiveSessionRecord(deps: PrdServerDeps): Promise<SessionRowV2 | null> {
   const resolved = await resolveDeps(deps)
   return getActiveSession(resolved)
 }
 
+/**
+ * Server helper to upsert a part relationship.
+ */
 export async function upsertRelationshipRecord(
   input: UpsertRelationshipInput,
   deps: PrdServerDeps
@@ -121,6 +160,9 @@ export async function upsertRelationshipRecord(
   return upsertRelationship(input, resolved)
 }
 
+/**
+ * Server helper to list relationships with optional filters.
+ */
 export async function listRelationshipRecords(
   deps: PrdServerDeps,
   filters?: { partId?: string; type?: UpsertRelationshipInput['type'] }
@@ -129,6 +171,9 @@ export async function listRelationshipRecords(
   return listRelationships(resolved, filters)
 }
 
+/**
+ * Server helper to create a timeline event.
+ */
 export async function createTimelineEventRecord(
   input: CreateTimelineEventInput,
   deps: PrdServerDeps
@@ -137,6 +182,9 @@ export async function createTimelineEventRecord(
   return createTimelineEvent(input, resolved)
 }
 
+/**
+ * Server helper to list timeline events for a user.
+ */
 export async function listTimelineEventRecords(deps: PrdServerDeps, limit?: number): Promise<TimelineEventRow[]> {
   const resolved = await resolveDeps(deps)
   return listTimelineEvents(resolved, limit)

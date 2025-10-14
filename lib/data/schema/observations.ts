@@ -24,6 +24,9 @@ const listObservationsInputSchema = z
 
 export type ListObservationsInput = z.infer<typeof listObservationsInputSchema>
 
+/**
+ * Insert a new observation row scoped to the current user, returning the typed record.
+ */
 export async function createObservation(
   input: CreateObservationInput,
   deps: PrdDataDependencies
@@ -47,6 +50,9 @@ export async function createObservation(
   return observationRowSchema.parse(data)
 }
 
+/**
+ * List recent observations for a user with optional filtering by type and timestamp.
+ */
 export async function listObservations(
   input: ListObservationsInput,
   deps: PrdDataDependencies
@@ -76,6 +82,9 @@ export async function listObservations(
   return (data ?? []).map((row) => observationRowSchema.parse(row))
 }
 
+/**
+ * Update follow-up metadata for an observation, preserving user scoping and validation.
+ */
 export async function updateObservationFollowUp(
   observationId: string,
   updates: { completed?: boolean; metadata?: Record<string, any> },

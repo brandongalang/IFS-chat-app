@@ -40,6 +40,9 @@ const upsertPartInputSchema = z
 
 export type UpsertPartInput = z.infer<typeof upsertPartInputSchema>
 
+/**
+ * Search the parts_v2 table for the current user with flexible filters and fuzzy matching.
+ */
 export async function searchPartsV2(
   input: SearchPartsInput,
   deps: PrdDataDependencies
@@ -80,6 +83,9 @@ export async function searchPartsV2(
   return rows.map((row) => partRowSchema.parse(row))
 }
 
+/**
+ * Retrieve a single part by ID for the current user, returning null when it does not exist.
+ */
 export async function getPartByIdV2(
   partId: string,
   deps: PrdDataDependencies
@@ -100,6 +106,9 @@ export async function getPartByIdV2(
   return partRowSchema.parse(data)
 }
 
+/**
+ * Create or update a part in parts_v2, enforcing user scoping and returning the stored row.
+ */
 export async function upsertPartV2(
   input: UpsertPartInput,
   deps: PrdDataDependencies
@@ -125,6 +134,9 @@ export async function upsertPartV2(
   return partRowSchema.parse(data)
 }
 
+/**
+ * Delete a part scoped to the current user.
+ */
 export async function deletePartV2(partId: string, deps: PrdDataDependencies): Promise<void> {
   const { client, userId } = assertPrdDeps(deps)
   const { error } = await client

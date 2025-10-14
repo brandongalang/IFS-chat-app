@@ -20,6 +20,9 @@ const upsertRelationshipInputSchema = z
 
 export type UpsertRelationshipInput = z.infer<typeof upsertRelationshipInputSchema>
 
+/**
+ * Create or update a relationship between two parts, enforcing uniqueness per pair and type.
+ */
 export async function upsertRelationship(
   input: UpsertRelationshipInput,
   deps: PrdDataDependencies
@@ -43,6 +46,9 @@ export async function upsertRelationship(
   return partRelationshipRowSchema.parse(data)
 }
 
+/**
+ * List relationships for the current user with optional filtering by part or type.
+ */
 export async function listRelationships(
   deps: PrdDataDependencies,
   filters?: { partId?: string; type?: z.infer<typeof relationshipTypeEnum> }

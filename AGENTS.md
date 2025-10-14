@@ -22,6 +22,7 @@ We track work in Beads instead of Markdown. Run `bd quickstart` to see how.
 - **PR cadence**:
   - Open a PR as soon as a bead’s deliverables are implemented and validated. Do not stack multiple beads on one PR.
   - PR description must reference completed bead IDs and summarize validation (tests, scripts) that were run.
+  - Complete the documentation sweep (update affected docs, verify docstring coverage, ensure PR description template compliance) **before** opening or refreshing the PR to keep Docs CI green.
 - After a PR merges, reset to `main`, re-run `bd ready` to pick the next bead, and repeat the cycle.
 - If a bead reveals new follow-up work, capture it via new beads before moving on.
 

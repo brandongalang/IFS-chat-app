@@ -14,6 +14,9 @@ const createTimelineEventInputSchema = z
 
 export type CreateTimelineEventInput = z.infer<typeof createTimelineEventInputSchema>
 
+/**
+ * Insert a timeline event for the current user, capturing notable milestones.
+ */
 export async function createTimelineEvent(
   input: CreateTimelineEventInput,
   deps: PrdDataDependencies
@@ -37,6 +40,9 @@ export async function createTimelineEvent(
   return timelineEventRowSchema.parse(data)
 }
 
+/**
+ * List timeline events for a user, sorted newest-first.
+ */
 export async function listTimelineEvents(
   deps: PrdDataDependencies,
   limit = 50

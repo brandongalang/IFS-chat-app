@@ -29,6 +29,9 @@ const completeSessionInputSchema = z
 
 export type CompleteSessionInput = z.infer<typeof completeSessionInputSchema>
 
+/**
+ * Insert a new session for the current user with sensible defaults for metadata and timestamps.
+ */
 export async function createSession(
   input: CreateSessionInput,
   deps: PrdDataDependencies
@@ -53,6 +56,9 @@ export async function createSession(
   return sessionRowSchema.parse(data)
 }
 
+/**
+ * Append activity metadata to an existing session, requiring at least one meaningful change.
+ */
 export async function appendSessionActivity(
   sessionId: string,
   updates: { last_message_at?: string; observations?: string[] },
@@ -87,6 +93,9 @@ export async function appendSessionActivity(
   return sessionRowSchema.parse(data)
 }
 
+/**
+ * Mark a session as completed while persisting summarization metadata.
+ */
 export async function completeSession(
   sessionId: string,
   input: CompleteSessionInput,
@@ -113,6 +122,9 @@ export async function completeSession(
   return sessionRowSchema.parse(data)
 }
 
+/**
+ * Fetch the most recent active session (without ended_at) for the current user.
+ */
 export async function getActiveSession(
   deps: PrdDataDependencies
 ): Promise<SessionRowV2 | null> {
