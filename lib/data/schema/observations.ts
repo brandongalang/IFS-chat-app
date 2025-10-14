@@ -29,6 +29,23 @@ export interface MergeObservationFollowUpInput {
   completed?: boolean
 }
 
+function isPlainObject(value: unknown): value is Record<string, any> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function mergePlainObject(target: Record<string, any>, source: Record<string, any>): Record<string, any> {
+  for (const [key, value] of Object.entries(source)) {
+    if (isPlainObject(value) && isPlainObject(target[key])) {
+      target[key] = mergePlainObject({ ...target[key] }, value)
+    } else if (isPlainObject(value)) {
+      target[key] = mergePlainObject({}, value)
+    } else {
+      target[key] = value
+    }
+  }
+  return target
+}
+
 /**
  * Merge follow-up metadata updates into an existing metadata object without clobbering prior keys.
  */
@@ -41,7 +58,7 @@ export function mergeObservationFollowUpMetadata(
   }
 
   if (updates.metadata) {
-    Object.assign(base, updates.metadata)
+    mergePlainObject(base, updates.metadata)
   }
 
   if (typeof updates.completed === 'boolean') {

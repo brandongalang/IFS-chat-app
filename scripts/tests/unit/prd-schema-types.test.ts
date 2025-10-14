@@ -143,6 +143,27 @@ async function main() {
 
   assert(!('completed' in mergedRemovingCompletion), 'completed flag removed when set to false')
 
+  const nestedExisting = {
+    followUp: 'true',
+    reminders: {
+      morning: { note: 'check breathing', priority: 'high' },
+      evening: { note: 'journal entry' },
+    },
+  }
+
+  const nestedMerged = mergeObservationFollowUpMetadata(nestedExisting, {
+    metadata: {
+      reminders: {
+        morning: { priority: 'medium' },
+        weekly: { note: 'group session' },
+      },
+    },
+  })
+
+  assert(nestedMerged.reminders.morning.note === 'check breathing', 'deep merge preserves existing nested keys')
+  assert(nestedMerged.reminders.morning.priority === 'medium', 'deep merge overrides nested fields')
+  assert(nestedMerged.reminders.weekly.note === 'group session', 'deep merge adds new nested keys')
+
   console.log('prd-schema-types unit test passed')
 }
 
