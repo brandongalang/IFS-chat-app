@@ -107,8 +107,8 @@ const model = env.ifsModel                   // string
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `MEMORY_STORAGE_ADAPTER` | `'supabase'` | `'supabase'` | Storage backend for Memory V2 markdown files (fixed) |
-| `MEMORY_LOCAL_ROOT` | `string` | `'.data/memory-snapshots'` | Legacy local filesystem root (deprecated) |
+| `MEMORY_STORAGE_ADAPTER` | `'local' \| 'supabase'` | `'local'` | Storage backend for Memory V2 markdown files |
+| `MEMORY_LOCAL_ROOT` | `string` | `'.data/memory-snapshots'` | Local filesystem root for memory storage |
 | `MEMORY_AGENTIC_V2_ENABLED` | `string` | `true` | Enable Memory V2 system (markdown-based) |
 
 ### AI / Model
