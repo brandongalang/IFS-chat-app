@@ -31,8 +31,6 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...local-service-key
 # Used when TARGET_ENV or NEXT_PUBLIC_TARGET_ENV is set to prod
 NEXT_PUBLIC_PROD_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY=sb_publishable_...
-PROD_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-PROD_SUPABASE_ANON_KEY=sb_publishable_...
 PROD_SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
 
 # === STORAGE CONFIGURATION ===
@@ -65,7 +63,7 @@ npm run dev
 **Production environment:**
 ```bash
 TARGET_ENV=prod NEXT_PUBLIC_TARGET_ENV=prod MEMORY_STORAGE_ADAPTER=supabase npm run dev
-# Uses NEXT_PUBLIC_PROD_SUPABASE_URL (browser) and PROD_PUBLIC_SUPABASE_URL (server) to connect to production Supabase
+# Uses NEXT_PUBLIC_PROD_SUPABASE_URL for browser and server requests to production Supabase
 ```
 
 ### Running Scripts
@@ -94,6 +92,33 @@ TARGET_ENV=prod NEXT_PUBLIC_TARGET_ENV=prod MEMORY_STORAGE_ADAPTER=supabase npx 
 TARGET_ENV=prod NEXT_PUBLIC_TARGET_ENV=prod MEMORY_STORAGE_ADAPTER=supabase npx tsx scripts/test-frontmatter-system.ts
 ```
 
+### Command Shortcuts
+
+To avoid setting multiple environment variables on every command, add a shell alias or npm script:
+
+```bash
+# .bashrc or .zshrc example
+alias npm-dev-prod='TARGET_ENV=prod NEXT_PUBLIC_TARGET_ENV=prod MEMORY_STORAGE_ADAPTER=supabase npm run dev'
+alias tsx-prod='TARGET_ENV=prod NEXT_PUBLIC_TARGET_ENV=prod MEMORY_STORAGE_ADAPTER=supabase npx tsx'
+```
+
+```json
+// package.json snippet
+{
+  "scripts": {
+    "dev:prod": "TARGET_ENV=prod NEXT_PUBLIC_TARGET_ENV=prod MEMORY_STORAGE_ADAPTER=supabase npm run dev",
+    "tsx:prod": "TARGET_ENV=prod NEXT_PUBLIC_TARGET_ENV=prod MEMORY_STORAGE_ADAPTER=supabase npx tsx"
+  }
+}
+```
+
+Then run:
+
+```bash
+npm run dev:prod
+npm run tsx:prod scripts/diagnose-garden.ts
+```
+
 ## How It Works
 
 ### Configuration Resolution
@@ -109,12 +134,10 @@ export function getSupabaseUrl(): string | undefined {
   const targetEnv = resolveTargetEnv()
   
   if (targetEnv === 'prod') {
-    const prodUrl =
-      normalizeUrl(process.env.NEXT_PUBLIC_PROD_SUPABASE_URL) ??
-      normalizeUrl(process.env.PROD_PUBLIC_SUPABASE_URL)
+    const prodUrl = normalizeUrl(process.env.NEXT_PUBLIC_PROD_SUPABASE_URL)
 
     if (!prodUrl) {
-      console.warn('[supabase/config] TARGET_ENV=prod but NEXT_PUBLIC_PROD_SUPABASE_URL or PROD_PUBLIC_SUPABASE_URL is not configured')
+      console.warn('[supabase/config] TARGET_ENV=prod but NEXT_PUBLIC_PROD_SUPABASE_URL is not configured')
     }
 
     const fallbackUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
@@ -129,7 +152,7 @@ export function getSupabaseUrl(): string | undefined {
 
 ### Precedence
 
-1. If `NEXT_PUBLIC_TARGET_ENV=prod` (or `TARGET_ENV=prod` on the server) → prefer `NEXT_PUBLIC_PROD_*` values and fall back to `PROD_*`
+1. If `NEXT_PUBLIC_TARGET_ENV=prod` (or `TARGET_ENV=prod` on the server) → prefer `NEXT_PUBLIC_PROD_*` values and fall back to standard `NEXT_PUBLIC_*` values when missing
 2. Otherwise → use `NEXT_PUBLIC_*` variables (local or default)
 
 ## Common Workflows
@@ -185,7 +208,7 @@ npm run dev
 **Cause:** The production credentials aren't set or aren't being loaded.
 
 **Solution:**
-1. Verify `.env.local` has `NEXT_PUBLIC_PROD_SUPABASE_URL`, `NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY`, `PROD_PUBLIC_SUPABASE_URL`, `PROD_SUPABASE_ANON_KEY`, and `PROD_SUPABASE_SERVICE_ROLE_KEY`
+1. Verify `.env.local` has `NEXT_PUBLIC_PROD_SUPABASE_URL`, `NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY`, and `PROD_SUPABASE_SERVICE_ROLE_KEY`
 2. Ensure you're setting both `TARGET_ENV=prod` and `NEXT_PUBLIC_TARGET_ENV=prod` in the same command
 3. Restart your terminal or dev server
 

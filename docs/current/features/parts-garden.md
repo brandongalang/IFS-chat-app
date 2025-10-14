@@ -40,7 +40,7 @@ Offers a spatial/visual way to understand internal parts and relationships.
 - Enabled by default via `config/features.ts`. Environments that need to hide the Garden must set `ENABLE_GARDEN` to a falsey value (`false`, `0`, or `off`). The feature flag is read during build, with optional support for mirroring via `NEXT_PUBLIC_ENABLE_GARDEN` when client overrides are required.
 
 ### Multi-Environment Support
-The system supports switching between local and production Supabase environments via the `TARGET_ENV` environment variable:
+The system supports switching between local and production Supabase environments via the browser-safe `NEXT_PUBLIC_TARGET_ENV` flag (with `TARGET_ENV` as a server fallback):
 
 **Local Environment (default):**
 ```bash
@@ -49,14 +49,14 @@ npm run dev  # Uses NEXT_PUBLIC_SUPABASE_URL
 
 **Production Environment:**
 ```bash
-TARGET_ENV=prod npm run dev  # Uses PROD_PUBLIC_SUPABASE_URL
+TARGET_ENV=prod NEXT_PUBLIC_TARGET_ENV=prod npm run dev  # Uses NEXT_PUBLIC_PROD_SUPABASE_URL
 ```
 
 **Environment Variables:**
 - Local: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- Production: `PROD_PUBLIC_SUPABASE_URL`, `PROD_SUPABASE_ANON_KEY`, `PROD_SUPABASE_SERVICE_ROLE_KEY`
+- Production: `NEXT_PUBLIC_PROD_SUPABASE_URL`, `NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY`, `PROD_SUPABASE_SERVICE_ROLE_KEY`
 
-This allows developers to keep both local and production credentials in `.env.local` and switch between them easily.
+This allows developers to keep both local and production credentials in `.env.local` and switch between them easily while keeping browser credentials explicit.
 
 ## Testing
 - Unit tests for helper logic; Playwright for navigation (overview → detail)

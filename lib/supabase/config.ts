@@ -39,7 +39,7 @@ function normalizeKey(raw?: string): string | undefined {
 
 function warnMissingProdConfig(kind: 'url' | 'key') {
   if (typeof window !== 'undefined') return
-  const prop = kind === 'url' ? 'NEXT_PUBLIC_PROD_SUPABASE_URL or PROD_PUBLIC_SUPABASE_URL' : 'NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY or PROD_SUPABASE_ANON_KEY'
+  const prop = kind === 'url' ? 'NEXT_PUBLIC_PROD_SUPABASE_URL' : 'NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY'
   console.warn(`[supabase/config] TARGET_ENV=prod but ${prop} is not configured`)
 }
 
@@ -47,9 +47,7 @@ export function getSupabaseUrl(): string | undefined {
   const targetEnv = resolveTargetEnv()
 
   if (targetEnv === 'prod') {
-    const prodUrl =
-      normalizeUrl(process.env.NEXT_PUBLIC_PROD_SUPABASE_URL) ??
-      normalizeUrl(process.env.PROD_PUBLIC_SUPABASE_URL)
+    const prodUrl = normalizeUrl(process.env.NEXT_PUBLIC_PROD_SUPABASE_URL)
 
     if (!prodUrl) {
       warnMissingProdConfig('url')
@@ -67,9 +65,7 @@ export function getSupabaseKey(): string | undefined {
   const targetEnv = resolveTargetEnv()
 
   if (targetEnv === 'prod') {
-    const prodKey =
-      normalizeKey(process.env.NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY) ??
-      normalizeKey(process.env.PROD_SUPABASE_ANON_KEY)
+    const prodKey = normalizeKey(process.env.NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY)
 
     if (!prodKey) {
       warnMissingProdConfig('key')
@@ -84,7 +80,7 @@ export function getSupabaseKey(): string | undefined {
 }
 
 export function getSupabaseServiceRoleKey(): string | undefined {
-  const targetEnv = process.env.TARGET_ENV
+  const targetEnv = resolveTargetEnv()
   
   // Use production credentials when TARGET_ENV=prod
   if (targetEnv === 'prod') {

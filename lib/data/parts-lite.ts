@@ -39,6 +39,14 @@ async function runWithClient<TInput, TResult>(
   }
 }
 
+async function requireUserId(client: SupabaseDatabaseClient): Promise<string> {
+  const { data: { user }, error: authError } = await client.auth.getUser();
+  if (authError || !user) {
+    throw new Error('User not authenticated');
+  }
+  return user.id;
+}
+
 export async function searchParts(input: SearchPartsInput, deps: PartsLiteDependencies = {}): Promise<SearchPartsResult> {
   return runWithClient(searchPartsSchema, input, deps, async (validated, supabase) => {
     const filters: PartQueryFilters = {
@@ -48,13 +56,9 @@ export async function searchParts(input: SearchPartsInput, deps: PartsLiteDepend
       limit: validated.limit,
     }
 
-    // Get current user ID and filter by it
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('User not authenticated');
-    }
+    const userId = await requireUserId(supabase);
 
-    const { data, error } = await buildPartsQuery(supabase, filters).eq('user_id', user.id)
+    const { data, error } = await buildPartsQuery(supabase, filters).eq('user_id', userId);
     if (error) throw new Error(`Database error: ${error.message}`)
 
     return (data || []) as SearchPartsResult
@@ -63,17 +67,13 @@ export async function searchParts(input: SearchPartsInput, deps: PartsLiteDepend
 
 export async function getPartById(input: GetPartByIdInput, deps: PartsLiteDependencies = {}): Promise<GetPartByIdResult> {
   return runWithClient(getPartByIdSchema, input, deps, async (validated, supabase) => {
-    // Get current user ID and filter by it
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('User not authenticated');
-    }
+    const userId = await requireUserId(supabase);
 
     const { data, error } = await supabase
       .from('parts')
       .select('*')
       .eq('id', validated.partId)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     if (error) {
@@ -92,16 +92,12 @@ export async function getPartRelationships(
   deps: PartsLiteDependencies = {}
 ): Promise<GetPartRelationshipsResult> {
   return runWithClient(getPartRelationshipsSchema, input, deps, async (validated, supabase) => {
-    // Get current user ID and filter by it
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('User not authenticated');
-    }
+    const userId = await requireUserId(supabase);
 
     let query = supabase
       .from('part_relationships')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(validated.limit)
 
@@ -135,7 +131,7 @@ export async function getPartRelationships(
         const { data: parts, error: partsError } = await supabase
           .from('parts')
           .select('id, name, status')
-          .eq('user_id', user.id)  // Also filter parts by user_id
+          .eq('user_id', userId)  // Also filter parts by user_id
           .in('id', uniquePartIds)
         if (!partsError) {
           partsDetails = (parts || []).reduce((acc, part) => {
