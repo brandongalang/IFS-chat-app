@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
-import { assertPrdDeps, prdClient, type PrdDataDependencies } from './utils'
+import { assertPrdDeps, type PrdDataDependencies } from './utils'
 import {
   partRowSchema,
   partCategoryEnum,
@@ -46,16 +46,18 @@ export async function searchPartsV2(
 ): Promise<PartRowV2[]> {
   const validated = searchPartsInputSchema.parse(input)
   const { client, userId } = assertPrdDeps(deps)
-  const supabase = prdClient(client)
 
-  let query = supabase
+  let query = client
     .from('parts_v2')
     .select('*')
     .eq('user_id', userId)
-    .order('last_active', { ascending: false, nullsLast: true })
+    .order('last_active', { ascending: false, nullsFirst: false })
 
   if (validated.query) {
-    query = query.textSearch('search_vector', validated.query)
+    const pattern = `%${validated.query.replace(/([%_])/g, '\\$1')}%`
+    query = query.or(
+      `name.ilike.${pattern},placeholder.ilike.${pattern},data->>role.ilike.${pattern}`
+    )
   }
   if (validated.category) {
     query = query.eq('category', validated.category)
@@ -83,8 +85,7 @@ export async function getPartByIdV2(
   deps: PrdDataDependencies
 ): Promise<PartRowV2 | null> {
   const { client, userId } = assertPrdDeps(deps)
-  const supabase = prdClient(client)
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('parts_v2')
     .select('*')
     .eq('id', partId)
@@ -105,14 +106,13 @@ export async function upsertPartV2(
 ): Promise<PartRowV2> {
   const payload = upsertPartInputSchema.parse(input)
   const { client, userId } = assertPrdDeps(deps)
-  const supabase = prdClient(client)
 
   const insertOrUpdate = {
     ...payload,
     user_id: userId,
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('parts_v2')
     .upsert(insertOrUpdate, { onConflict: 'id' })
     .select('*')
@@ -127,8 +127,7 @@ export async function upsertPartV2(
 
 export async function deletePartV2(partId: string, deps: PrdDataDependencies): Promise<void> {
   const { client, userId } = assertPrdDeps(deps)
-  const supabase = prdClient(client)
-  const { error } = await supabase
+  const { error } = await client
     .from('parts_v2')
     .delete()
     .eq('id', partId)

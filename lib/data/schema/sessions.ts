@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { assertPrdDeps, prdClient, type PrdDataDependencies } from './utils'
+import { assertPrdDeps, type PrdDataDependencies } from './utils'
 import { sessionRowSchema, sessionTypeEnum, type SessionRowV2 } from './types'
 
 const createSessionInputSchema = z
@@ -35,9 +35,8 @@ export async function createSession(
 ): Promise<SessionRowV2> {
   const payload = createSessionInputSchema.parse(input)
   const { client, userId } = assertPrdDeps(deps)
-  const supabase = prdClient(client)
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('sessions_v2')
     .insert({
       ...payload,
@@ -60,7 +59,6 @@ export async function appendSessionActivity(
   deps: PrdDataDependencies
 ): Promise<SessionRowV2> {
   const { client, userId } = assertPrdDeps(deps)
-  const supabase = prdClient(client)
   const patch: Record<string, unknown> = {}
 
   if (updates.last_message_at) {
@@ -70,7 +68,11 @@ export async function appendSessionActivity(
     patch.observations = updates.observations
   }
 
-  const { data, error } = await supabase
+  if (Object.keys(patch).length === 0) {
+    throw new Error('No valid updates provided')
+  }
+
+  const { data, error } = await client
     .from('sessions_v2')
     .update(patch)
     .eq('id', sessionId)
@@ -92,9 +94,8 @@ export async function completeSession(
 ): Promise<SessionRowV2> {
   const payload = completeSessionInputSchema.parse(input)
   const { client, userId } = assertPrdDeps(deps)
-  const supabase = prdClient(client)
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('sessions_v2')
     .update({
       ...payload,

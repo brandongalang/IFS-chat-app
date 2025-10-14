@@ -33,12 +33,12 @@ import {
   type TimelineEventRow,
 } from './index'
 
-type PrdServerDeps = {
+export type PrdServerDeps = {
   userId: string
   client?: SupabaseDatabaseClient
 }
 
-async function resolveDeps(deps: PrdServerDeps) {
+async function resolveDeps(deps: PrdServerDeps): Promise<{ client: SupabaseDatabaseClient; userId: string }> {
   if (!deps?.userId) {
     throw new Error('userId is required for PRD data operations')
   }

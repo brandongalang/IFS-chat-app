@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { assertPrdDeps, prdClient, type PrdDataDependencies } from './utils'
+import { assertPrdDeps, type PrdDataDependencies } from './utils'
 import { observationRowSchema, observationTypeEnum, type ObservationRow } from './types'
 
 const createObservationInputSchema = z
@@ -30,9 +30,8 @@ export async function createObservation(
 ): Promise<ObservationRow> {
   const payload = createObservationInputSchema.parse(input)
   const { client, userId } = assertPrdDeps(deps)
-  const supabase = prdClient(client)
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('observations')
     .insert({
       ...payload,
@@ -54,9 +53,8 @@ export async function listObservations(
 ): Promise<ObservationRow[]> {
   const filters = listObservationsInputSchema.parse(input)
   const { client, userId } = assertPrdDeps(deps)
-  const supabase = prdClient(client)
 
-  let query = supabase
+  let query = client
     .from('observations')
     .select('*')
     .eq('user_id', userId)
@@ -84,10 +82,10 @@ export async function updateObservationFollowUp(
   deps: PrdDataDependencies
 ): Promise<ObservationRow> {
   const { client, userId } = assertPrdDeps(deps)
-  const supabase = prdClient(client)
   const patch: Record<string, unknown> = {}
 
   if (typeof updates.completed === 'boolean') {
+    // Store completion as strings to align with existing follow-up filters (metadata->>'completed' checks)
     patch.metadata = {
       ...(updates.metadata ?? {}),
       completed: updates.completed ? 'true' : null,
@@ -96,7 +94,7 @@ export async function updateObservationFollowUp(
     patch.metadata = updates.metadata
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('observations')
     .update(patch)
     .eq('id', observationId)

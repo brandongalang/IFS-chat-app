@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { assertPrdDeps, prdClient, type PrdDataDependencies } from './utils'
+import { assertPrdDeps, type PrdDataDependencies } from './utils'
 import {
   partRelationshipRowSchema,
   relationshipTypeEnum,
@@ -26,9 +26,8 @@ export async function upsertRelationship(
 ): Promise<PartRelationshipRowV2> {
   const payload = upsertRelationshipInputSchema.parse(input)
   const { client, userId } = assertPrdDeps(deps)
-  const supabase = prdClient(client)
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('part_relationships_v2')
     .upsert({
       ...payload,
@@ -49,9 +48,8 @@ export async function listRelationships(
   filters?: { partId?: string; type?: z.infer<typeof relationshipTypeEnum> }
 ): Promise<PartRelationshipRowV2[]> {
   const { client, userId } = assertPrdDeps(deps)
-  const supabase = prdClient(client)
 
-  let query = supabase
+  let query = client
     .from('part_relationships_v2')
     .select('*')
     .eq('user_id', userId)

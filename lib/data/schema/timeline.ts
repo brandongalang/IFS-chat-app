@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { assertPrdDeps, prdClient, type PrdDataDependencies } from './utils'
+import { assertPrdDeps, type PrdDataDependencies } from './utils'
 import { timelineEventRowSchema, type TimelineEventRow } from './types'
 
 const createTimelineEventInputSchema = z
@@ -20,9 +20,8 @@ export async function createTimelineEvent(
 ): Promise<TimelineEventRow> {
   const payload = createTimelineEventInputSchema.parse(input)
   const { client, userId } = assertPrdDeps(deps)
-  const supabase = prdClient(client)
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('timeline_events')
     .insert({
       ...payload,
@@ -43,8 +42,7 @@ export async function listTimelineEvents(
   limit = 50
 ): Promise<TimelineEventRow[]> {
   const { client, userId } = assertPrdDeps(deps)
-  const supabase = prdClient(client)
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('timeline_events')
     .select('*')
     .eq('user_id', userId)
