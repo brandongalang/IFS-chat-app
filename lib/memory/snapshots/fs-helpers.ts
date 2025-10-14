@@ -1,10 +1,17 @@
-import type { StorageAdapter } from '../storage/adapter'
+import type { StorageAdapter, StorageAdapterFactoryOptions } from '../storage/adapter'
 
 /**
  * Get the storage adapter for Memory V2 system.
- * Always returns Supabase Storage adapter for production reliability.
+ * Defaults to Supabase, but supports local adapters for tests and tooling.
  */
-export async function getStorageAdapter(): Promise<StorageAdapter> {
+export async function getStorageAdapter(options?: StorageAdapterFactoryOptions): Promise<StorageAdapter> {
+  const mode = (options?.mode ?? process.env.MEMORY_STORAGE_ADAPTER)?.trim()?.toLowerCase()
+
+  if (mode === 'local') {
+    const { LocalFsStorageAdapter } = await import('../storage/local-fs-adapter')
+    return new LocalFsStorageAdapter()
+  }
+
   const { SupabaseStorageAdapter } = await import('../storage/supabase-storage-adapter')
   return new SupabaseStorageAdapter()
 }

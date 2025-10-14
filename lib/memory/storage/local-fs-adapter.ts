@@ -3,40 +3,49 @@ import path from 'path'
 import type { StorageAdapter } from './adapter'
 
 // Local storage is deprecated - use SupabaseStorageAdapter instead
-const MEMORY_LOCAL_ROOT = '.data/memory-snapshots'
+const DEFAULT_LOCAL_ROOT = '.data/memory-snapshots'
 let hasWarnedDeprecatedAdapter = false
 
-function resolveSafe(userPath: string) {
-  const rootAbs = path.resolve(process.cwd(), MEMORY_LOCAL_ROOT)
-  const full = path.resolve(rootAbs, userPath.replace(/^\/+/, ''))
-  if (!full.startsWith(rootAbs + path.sep) && full !== rootAbs) {
-    throw new Error('Path traversal detected')
-  }
-  return { rootAbs, full }
+interface LocalFsAdapterOptions {
+  root?: string | null
 }
 
 export class LocalFsStorageAdapter implements StorageAdapter {
-  constructor() {
+  private readonly root: string
+  private readonly rootAbs: string
+
+  constructor(options?: LocalFsAdapterOptions) {
     if (!hasWarnedDeprecatedAdapter) {
       hasWarnedDeprecatedAdapter = true
       console.warn('[LocalFsStorageAdapter] This adapter is deprecated. Please migrate to SupabaseStorageAdapter.')
     }
+    const rawRoot = options?.root ?? process.env.MEMORY_LOCAL_ROOT ?? DEFAULT_LOCAL_ROOT
+    const configuredRoot = typeof rawRoot === 'string' ? rawRoot.trim() : ''
+    this.root = configuredRoot.length > 0 ? configuredRoot : DEFAULT_LOCAL_ROOT
+    this.rootAbs = path.resolve(process.cwd(), this.root)
+  }
+  private resolveSafe(userPath: string) {
+    const full = path.resolve(this.rootAbs, userPath.replace(/^\/+/, ''))
+    if (!full.startsWith(this.rootAbs + path.sep) && full !== this.rootAbs) {
+      throw new Error('Path traversal detected')
+    }
+    return { rootAbs: this.rootAbs, full }
   }
   async putText(userPath: string, text: string): Promise<void> {
-    const { full } = resolveSafe(userPath)
+    const { full } = this.resolveSafe(userPath)
     await fs.mkdir(path.dirname(full), { recursive: true })
     await fs.writeFile(full, text, 'utf8')
   }
   async getText(userPath: string): Promise<string | null> {
-    const { full } = resolveSafe(userPath)
+    const { full } = this.resolveSafe(userPath)
     try { return await fs.readFile(full, 'utf8') } catch { return null }
   }
   async exists(userPath: string): Promise<boolean> {
-    const { full } = resolveSafe(userPath)
+    const { full } = this.resolveSafe(userPath)
     try { await fs.access(full); return true } catch { return false }
   }
   async list(prefix: string): Promise<string[]> {
-    const { rootAbs, full } = resolveSafe(prefix)
+    const { rootAbs, full } = this.resolveSafe(prefix)
     const out: string[] = []
     async function walk(dir: string) {
       const entries = await fs.readdir(dir, { withFileTypes: true })
@@ -50,7 +59,7 @@ export class LocalFsStorageAdapter implements StorageAdapter {
     return out
   }
   async delete(userPath: string): Promise<void> {
-    const { full } = resolveSafe(userPath)
+    const { full } = this.resolveSafe(userPath)
     try { await fs.unlink(full) } catch {}
   }
 }

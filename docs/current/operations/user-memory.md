@@ -39,11 +39,13 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
   - `MEMORY_AGENTIC_V2_ENABLED` (default true) - Enables Memory V2 markdown-based storage
   - `TARGET_ENV` / `NEXT_PUBLIC_TARGET_ENV` (set to `prod` for local development against production Supabase; production deployments should not set these)
   - `NEXT_PUBLIC_PROD_SUPABASE_URL`, `NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY`, `PROD_SUPABASE_SERVICE_ROLE_KEY` (production credentials for local development when targeting production)
+  - `MEMORY_STORAGE_ADAPTER` (defaults to `supabase`; set to `local` to run filesystem-backed tests and tooling)
+  - `MEMORY_LOCAL_ROOT` (optional override when using the local adapter; default `.data/memory-snapshots`)
 
-## Memory V2 Storage (added 2025-10-13)
-The Memory V2 system stores part profiles, relationships, and user context as markdown files in Supabase Storage:
-- **Storage backend**: Always uses Supabase Storage (bucket: `memory-snapshots`)
-- **No configuration needed**: Works automatically with `SUPABASE_SERVICE_ROLE_KEY`
+## Memory V2 Storage (updated 2025-10-14)
+The Memory V2 system stores part profiles, relationships, and user context as markdown files via the shared storage adapter:
+- **Storage backend**: Defaults to Supabase Storage (bucket: `memory-snapshots`); set `MEMORY_STORAGE_ADAPTER=local` for filesystem-backed tests
+- **Configuration**: Supabase mode works automatically with `SUPABASE_SERVICE_ROLE_KEY`; local mode respects `MEMORY_LOCAL_ROOT`
 - **Migration**: See `supabase/migrations/110_memory_snapshots_bucket.sql` for bucket setup with RLS policies
 - **File structure**: `users/{userId}/parts/{partId}/profile.md`, `users/{userId}/overview.md`, etc.
 - **Service role**: Required for agent operations (bypasses RLS for system access)
@@ -112,7 +114,7 @@ Migrations `105_inbox_message_events.sql` and `106_inbox_observations.sql` are i
   - `supabase-storage-adapter.ts` - Supabase Storage implementation with **recursive directory listing** (detects folders by `id === null` and descends into subdirectories)
   - `local-storage-adapter.ts` - Legacy local filesystem implementation (deprecated; logs a runtime warning)
   - `adapter.ts` - StorageAdapter interface defining `putText`, `getText`, `exists`, `list`, `delete` methods
-  - Supabase Storage is now always used in production; local adapter remains only for historical tooling/tests
+  - Adapter selection now respects `MEMORY_STORAGE_ADAPTER`; Supabase remains the production default while `local` enables filesystem tooling/tests
   - Multi-environment support: Uses `TARGET_ENV`/`NEXT_PUBLIC_TARGET_ENV` to switch between local and production Supabase credentials (see `lib/supabase/config.ts`)
   - **Recursive listing fix**: The `list()` method now properly discovers nested files like `users/{userId}/parts/{partId}/profile.md`, fixing Parts Garden detection issues
 - **Parts sync utility** (added 2025-10-12, enhanced 2025-01-14): `lib/memory/parts-sync.ts`
