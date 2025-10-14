@@ -12,6 +12,7 @@ async function main() {
     partRelationshipRowSchema,
     timelineEventRowSchema,
     assertPrdDeps,
+    mergeObservationFollowUpMetadata,
   } = await import('../../../lib/data/schema')
 
   const userId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -120,6 +121,48 @@ async function main() {
   }
 
   assert(invalidCaught, 'invalid userId should fail validation')
+
+  const existingMetadata = { followUp: 'true', note: 'call tomorrow' }
+  const mergedWithUpdate = mergeObservationFollowUpMetadata(existingMetadata, {
+    metadata: { note: 'call next week', extra: 'value' },
+  })
+
+  assert(mergedWithUpdate.followUp === 'true', 'merge preserves prior followUp flag')
+  assert(mergedWithUpdate.note === 'call next week', 'merge applies metadata overrides')
+  assert(mergedWithUpdate.extra === 'value', 'merge includes new metadata keys')
+
+  const mergedWithCompletion = mergeObservationFollowUpMetadata(mergedWithUpdate, {
+    completed: true,
+  })
+
+  assert(mergedWithCompletion.completed === 'true', 'completed flag stored as string true')
+
+  const mergedRemovingCompletion = mergeObservationFollowUpMetadata(mergedWithCompletion, {
+    completed: false,
+  })
+
+  assert(!('completed' in mergedRemovingCompletion), 'completed flag removed when set to false')
+
+  const nestedExisting = {
+    followUp: 'true',
+    reminders: {
+      morning: { note: 'check breathing', priority: 'high' },
+      evening: { note: 'journal entry' },
+    },
+  }
+
+  const nestedMerged = mergeObservationFollowUpMetadata(nestedExisting, {
+    metadata: {
+      reminders: {
+        morning: { priority: 'medium' },
+        weekly: { note: 'group session' },
+      },
+    },
+  })
+
+  assert(nestedMerged.reminders.morning.note === 'check breathing', 'deep merge preserves existing nested keys')
+  assert(nestedMerged.reminders.morning.priority === 'medium', 'deep merge overrides nested fields')
+  assert(nestedMerged.reminders.weekly.note === 'group session', 'deep merge adds new nested keys')
 
   console.log('prd-schema-types unit test passed')
 }

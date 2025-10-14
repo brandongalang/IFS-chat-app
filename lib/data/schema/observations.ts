@@ -24,6 +24,54 @@ const listObservationsInputSchema = z
 
 export type ListObservationsInput = z.infer<typeof listObservationsInputSchema>
 
+export interface MergeObservationFollowUpInput {
+  metadata?: Record<string, any>
+  completed?: boolean
+}
+
+function isPlainObject(value: unknown): value is Record<string, any> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function mergePlainObject(target: Record<string, any>, source: Record<string, any>): Record<string, any> {
+  for (const [key, value] of Object.entries(source)) {
+    if (isPlainObject(value) && isPlainObject(target[key])) {
+      target[key] = mergePlainObject({ ...target[key] }, value)
+    } else if (isPlainObject(value)) {
+      target[key] = mergePlainObject({}, value)
+    } else {
+      target[key] = value
+    }
+  }
+  return target
+}
+
+/**
+ * Merge follow-up metadata updates into an existing metadata object without clobbering prior keys.
+ */
+export function mergeObservationFollowUpMetadata(
+  current: Record<string, any> | null | undefined,
+  updates: MergeObservationFollowUpInput
+): Record<string, any> {
+  const base: Record<string, any> = {
+    ...(current ?? {}),
+  }
+
+  if (updates.metadata) {
+    mergePlainObject(base, updates.metadata)
+  }
+
+  if (typeof updates.completed === 'boolean') {
+    if (updates.completed) {
+      base.completed = 'true'
+    } else {
+      delete base.completed
+    }
+  }
+
+  return base
+}
+
 /**
  * Insert a new observation row scoped to the current user, returning the typed record.
  */
@@ -91,21 +139,32 @@ export async function updateObservationFollowUp(
   deps: PrdDataDependencies
 ): Promise<ObservationRow> {
   const { client, userId } = assertPrdDeps(deps)
-  const patch: Record<string, unknown> = {}
+  const wantsMetadataUpdate = updates.metadata !== undefined || typeof updates.completed === 'boolean'
 
-  if (typeof updates.completed === 'boolean') {
-    // Store completion as strings to align with existing follow-up filters (metadata->>'completed' checks)
-    patch.metadata = {
-      ...(updates.metadata ?? {}),
-      completed: updates.completed ? 'true' : null,
-    }
-  } else if (updates.metadata) {
-    patch.metadata = updates.metadata
+  if (!wantsMetadataUpdate) {
+    throw new Error('No valid updates provided')
   }
+
+  const { data: existingRow, error: existingError } = await client
+    .from('observations')
+    .select('metadata')
+    .eq('id', observationId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (existingError) {
+    throw new Error(`Failed to load observation ${observationId}: ${existingError.message}`)
+  }
+
+  if (!existingRow) {
+    throw new Error(`Observation ${observationId} not found`)
+  }
+
+  const mergedMetadata = mergeObservationFollowUpMetadata(existingRow.metadata, updates)
 
   const { data, error } = await client
     .from('observations')
-    .update(patch)
+    .update({ metadata: mergedMetadata })
     .eq('id', observationId)
     .eq('user_id', userId)
     .select('*')
