@@ -1,5 +1,7 @@
 # Agent Guidelines
 
+We track work in Beads instead of Markdown. Run `bd quickstart` to see how.
+
 ## Branch Management
 - **IMPORTANT**: Before starting any new work, verify you're on a clean branch appropriate for the task:
   1. Check current branch with `git branch --show-current`
@@ -9,6 +11,27 @@
 - Prefer GitHub CLI (`gh`) for creating and updating pull requests from this repository.
 - Document any deviations from standard workflows in this file so future agents stay aligned.
 - **2025-10-11**: README rewrite committed directly to main by user instruction; no PR opened. This was a one-time exception for portfolio documentation updates. Subsequent work should return to standard branch/PR flow.
+
+## Beads Workflow & Delivery Cadence
+- Every bead should progress through **plan → implement → validate → ship** before picking up the next task.
+- When starting a bead, capture a todo list (`bd create`, `TodoWrite`) so each subtask is traceable.
+- While implementing, keep work on a dedicated branch. Stage commits incrementally; avoid large "mega" commits that span multiple beads.
+- **Testing cadence**:
+  - Run targeted checks (e.g., `npm run migrations:verify`, unit tests) immediately after introducing schema or code changes.
+  - Run the full lint/type/test suite before opening a PR for that bead.
+- **PR cadence**:
+  - Open a PR as soon as a bead’s deliverables are implemented and validated. Do not stack multiple beads on one PR.
+  - PR description must reference completed bead IDs and summarize validation (tests, scripts) that were run.
+  - Complete the documentation sweep (update affected docs, verify docstring coverage, ensure PR description template compliance) **before** opening or refreshing the PR to keep Docs CI green.
+- After a PR merges, reset to `main`, re-run `bd ready` to pick the next bead, and repeat the cycle.
+- If a bead reveals new follow-up work, capture it via new beads before moving on.
+
+### Bead Record Structure (Title, Description, Design, Notes)
+- **Title**: short action statement (verb + object) that makes the scope obvious (e.g., "Implement PRD core migrations").
+- **Description**: high-level intent and business value; include success definition in plain language.
+- **Design**: detailed implementation outline—key steps, affected modules, constraints, data flows, and testing expectations. Treat this as the acceptance criteria the implementer must satisfy.
+- **Notes / Context**: capture decisions, links, and references (docs, PRD sections, related beads). Record clarifications or assumptions agreed with the user here.
+- A bead is only "ready" when all four fields provide enough context that any agent, unfamiliar with prior work, can execute without further discovery.
 
 ## Documentation Workflow (CRITICAL)
 **Before opening any PR, documentation MUST be updated to pass the `docs` CI check.**
@@ -123,5 +146,3 @@
 
 ### Legacy Note
 The `/specs/` directory contains older planning documents following a lifecycle-based structure (scoping → in-progress → completed). New work should use the `/docs/planning/` structure described above.
-
-We track work in Beads instead of Markdown. Run `bd quickstart` to see how.
