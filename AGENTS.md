@@ -157,3 +157,22 @@ We track work in Beads instead of Markdown. Run `bd quickstart` to see how.
 
 ### Legacy Note
 The `/specs/` directory contains older planning documents following a lifecycle-based structure (scoping → in-progress → completed). New work should use the `/docs/planning/` structure described above.
+
+## Human · Droid Assistant · Codex Workflow
+- **Human**: sets priority, clarifies requirements, reviews the final output, and signs off on bead completion. Reference `plan.md` or the relevant bead entry for context before giving new work.
+- **Droid Assistant (Chat)**: owns planning, updates the bead record, orchestrates Codex, reviews diffs, and reports status. Do not write code directly; leverage Codex for implementation.
+- **Codex CLI**: acts as the execution agent. Follow the prompts supplied by the Droid Assistant, run tests, and surface diffs. Keep Codex aligned with the conventions in this file.
+
+### Execution Pattern (single Codex session per bead)
+1. Understand the bead scope (`bd show <id>`), capture/refresh todos, and note assumptions in bead notes if needed.
+2. Derive a concise implementation plan; store it in the bead (via `bd edit`) or a planning doc under `docs/planning/implementation/` when non-trivial.
+3. Launch **one** Codex interactive session for the bead (`tmux new -As codex-orch` → `codex "<prompt>"`). Reuse the same session throughout; only spin additional sessions if the bead is explicitly split later.
+4. Let Codex propose diffs and test runs. Review every diff before applying, ensure tests and type checks align with Acceptance Criteria, and re-run locally when Codex skips a check.
+5. Record the Codex session ID (see the TUI header or `~/.codex/sessions/`) in your status update and bead notes so future agents can resume (`codex resume <SESSION_ID>`).
+6. After applying changes, run mandatory local checks (lint, typecheck, unit tests, docs when required), summarize outcomes, and update the bead status.
+7. Once the bead is ready to ship, prepare commits (spec → implementation if specs/docs were added), ensure docs workflow requirements are satisfied, and coordinate PR creation per Branch Management guidelines.
+
+### Codex CLI Orchestration Tips
+- Default to a single tmux window/pane for the bead. Use additional panes only for log tailing or long-running scripts—not for parallel Codex work.
+- Prefer interactive mode (`codex "<prompt>"`) so Codex can iterate. Use `codex exec` sparingly for deterministic, single-command automation (e.g., “explain file”).
+- Before handing off, leave Codex mid-session with a clear summary of remaining steps and copy the session ID into the status update.
