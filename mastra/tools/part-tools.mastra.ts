@@ -9,7 +9,7 @@ import {
   updatePart,
   getPartRelationships,
   logRelationship,
-} from '@/lib/data/parts-server'
+} from '@/lib/data/schema/parts-agent'
 import {
   searchPartsSchema,
   getPartByIdSchema,

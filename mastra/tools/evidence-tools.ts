@@ -4,7 +4,7 @@ import { resolveUserId, devLog } from '@/config/dev'
 import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
 import { getServerSupabaseClient } from '@/lib/supabase/clients'
 import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
-import { searchParts as searchPartsData } from '@/lib/data/parts'
+import { searchParts as searchPartsData } from '@/lib/data/schema/parts-agent'
 import type { PartRow, ToolResult, SessionRow } from '@/lib/types/database'
 
 const evidenceItemSchema = z
