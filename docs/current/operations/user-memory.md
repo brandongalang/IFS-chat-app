@@ -67,10 +67,11 @@ The Memory V2 system stores part profiles, relationships, and user context as ma
   - `curl -X POST http://localhost:3000/api/cron/memory-update -H "x-vercel-cron-secret: <CRON_SECRET>"` (mirrors production header)
 
 ## Migrations
-### Core Migrations (updated 2025-10-14)
+### Core Migrations (updated 2025-10-15)
 - `supabase/migrations/006_user_memory.sql` — legacy snapshots + queue baseline
 - `supabase/migrations/111_prd_core_tables.sql` — introduces `parts_v2`, `sessions_v2`, `observations`, `part_relationships_v2`, `timeline_events` plus RLS and supporting indexes
 - `supabase/migrations/112_prd_context_views.sql` — defines `parts_display`, `timeline_display`, `user_context_cache`, and the `refresh_user_context_cache()` helper
+- After applying migrations 111/112, run `SELECT refresh_user_context_cache();` once to hydrate the materialized view before enabling the agent warm start flow.
 - Apply remotely via Supabase CLI (requires project link & token) or via Supabase Studio SQL editor
 
 ###Note on Inbox Migrations (105-106)
