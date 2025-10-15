@@ -12,7 +12,7 @@ This runbook explains how to operate the daily `/api/cron/memory-update` job now
   - **Enhanced:** Process pending memory updates for all users with queued changes (cron and chat preflight share this queue)
   - **Background Processing:** Memory maintenance moved from chat requests to this dedicated worker
   - **No-op guard:** Summarizer skips mutation when no new sessions, insights, or check-ins are present to avoid empty version bumps.
-  - **Context cache:** After memory updates are processed, schedule `SELECT refresh_user_context_cache();` (migration 112) in follow-up cron if fresh agent warm-start data is required.
+  - **Context cache:** After memory updates are processed, schedule `SELECT refresh_user_context_cache();` (migration 113) in follow-up cron if fresh agent warm-start data is required.
 
 ## Prerequisites (updated 2025-10-07)
 - `CRON_SECRET` defined for Production & Preview environments in Vercel project settings.
@@ -93,4 +93,5 @@ The cron job manages Memory V2 markdown files stored in Supabase Storage:
 - `docs/user-memory.md`
 - `supabase/migrations/110_memory_snapshots_bucket.sql` - Storage bucket setup (added 2025-10-13)
 - `supabase/migrations/111_prd_core_tables.sql` - PRD schema foundations (parts_v2, sessions_v2, observations, timeline)
-- `supabase/migrations/112_prd_context_views.sql` - Parts/timeline views and `user_context_cache` materialized view
+- `supabase/migrations/112_prd_context_views.sql` - Parts/timeline views and initial `user_context_cache` materialized view
+- `supabase/migrations/113_prd_context_view_refinements.sql` - Refined context views, extended cache payload, and resilient refresh helper

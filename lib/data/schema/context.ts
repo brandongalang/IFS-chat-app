@@ -1,7 +1,13 @@
 import { z } from 'zod'
 import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
 import { assertPrdDeps, type PrdDataDependencies } from './utils'
-import { partCategoryEnum, partStatusEnum, partChargeEnum } from './types'
+import {
+  partCategoryEnum,
+  partStatusEnum,
+  partChargeEnum,
+  observationTypeEnum,
+  sessionTypeEnum,
+} from './types'
 
 export const partDisplayRowSchema = z
   .object({
@@ -69,6 +75,20 @@ export async function getPartDisplay(
   return partDisplayRowSchema.parse(data)
 }
 
+const observationMetadataSchema = z.record(z.any())
+
+const partMetadataSchema = z.record(z.any())
+
+const relationshipMetadataSchema = z
+  .object({
+    strength: z.number().nullable().optional(),
+    context: z.string().nullable().optional(),
+    observations: z.array(z.string()).optional(),
+  })
+  .passthrough()
+
+const timelineEventMetadataSchema = z.record(z.any())
+
 export const timelineDisplayRowSchema = z
   .object({
     user_id: z.string().uuid(),
@@ -77,7 +97,12 @@ export const timelineDisplayRowSchema = z
     event_subtype: z.string(),
     description: z.string(),
     entities: z.array(z.string().uuid()),
-    metadata: z.record(z.any()),
+    metadata: z.union([
+      observationMetadataSchema,
+      partMetadataSchema,
+      relationshipMetadataSchema,
+      timelineEventMetadataSchema,
+    ]),
     source_id: z.string().uuid(),
     source_table: z.enum(['observations', 'parts_v2', 'part_relationships_v2', 'timeline_events']),
     session_id: z.string().uuid().nullable(),
@@ -105,14 +130,60 @@ export async function listTimelineDisplay(
   return (data ?? []).map((row) => timelineDisplayRowSchema.parse(row))
 }
 
+const recentPartSchema = z
+  .object({
+    id: z.string().uuid(),
+    display_name: z.string(),
+    category: partCategoryEnum,
+    status: partStatusEnum,
+    charge: partChargeEnum,
+    needs_attention: z.boolean(),
+    last_active: z.string().datetime().nullable(),
+    emoji: z.string().nullable(),
+  })
+  .strict()
+
+const incompletePartSchema = z
+  .object({
+    id: z.string().uuid(),
+    display_name: z.string(),
+    next_step: z.enum(['needs_name', 'needs_role', 'needs_category', 'needs_details']),
+    updated_at: z.string().datetime().nullable(),
+  })
+  .strict()
+
+const followUpSchema = z
+  .object({
+    id: z.string().uuid(),
+    content: z.string(),
+    type: observationTypeEnum,
+    created_at: z.string().datetime(),
+  })
+  .strict()
+
+const timelineDisplayEventSchema = timelineDisplayRowSchema
+
+const lastSessionSchema = z
+  .object({
+    id: z.string().uuid(),
+    type: sessionTypeEnum,
+    summary: z.string().nullable(),
+    key_insights: z.array(z.string()),
+    homework: z.array(z.string()),
+    next_session: z.array(z.string()),
+    started_at: z.string().datetime(),
+    ended_at: z.string().datetime().nullable(),
+  })
+  .strict()
+
 export const userContextCacheRowSchema = z
   .object({
     user_id: z.string().uuid(),
-    recent_parts: z.array(z.record(z.any())),
-    incomplete_parts: z.array(z.record(z.any())),
-    follow_ups: z.array(z.record(z.any())),
-    recent_events: z.array(z.record(z.any())),
-    last_session: z.record(z.any()).nullable(),
+    recent_parts: z.array(recentPartSchema),
+    incomplete_parts: z.array(incompletePartSchema),
+    follow_ups: z.array(followUpSchema),
+    recent_events: z.array(timelineDisplayEventSchema),
+    last_session: lastSessionSchema.nullable(),
     cache_time: z.string().datetime(),
     last_observation_at: z.string().datetime().nullable(),
     total_sessions: z.number().int().nonnegative(),
