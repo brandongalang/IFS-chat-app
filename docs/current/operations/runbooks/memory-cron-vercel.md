@@ -33,6 +33,13 @@ curl -X POST https://<preview-host>/api/cron/memory-update \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 
+### Context cache refresh (new 2025-10-15)
+- After the cron completes, optionally schedule a follow-up task (cron or manual) to refresh the PRD warm-start cache:
+  ```sql
+  select refresh_user_context_cache();
+  ```
+- Running the refresh immediately after migrations 111/112 or large data backfills ensures the agent context stays in sync with the PRD tables without waiting for the next automated cycle.
+
 ### Secret rotation / config drift
 1. Generate new random secret (e.g., `openssl rand -hex 32`).
 2. Update Vercel project Environment Variables (`CRON_SECRET`) for Production and Preview.
