@@ -2,7 +2,7 @@
 title: Feature: Agent Tools
 owner: @brandongalang
 status: shipped
-last_updated: 2025-01-14
+last_updated: 2025-10-14
 feature_flag: null
 code_paths:
   - mastra/tools/*.ts
@@ -10,6 +10,7 @@ code_paths:
   - mastra/tools/markdown-write-tools.ts
   - mastra/tools/update-sync-tools.ts
   - mastra/agents/*.ts
+  - lib/data/schema/parts-agent.ts
   - lib/memory/markdown/logging.ts
   - lib/memory/markdown/frontmatter.ts
   - lib/memory/parts-repository.ts
@@ -43,6 +44,7 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 - **Markdown logging instrumentation**: All markdown write operations (append/replace/create) are logged via `lib/memory/markdown/logging.ts`, which computes SHA-256 hashes (before/after), infers entity context (user/part/relationship) from file paths, and emits `profile_update` events with integrity metadata. Logging failures are swallowed (non-fatal) to ensure writes always succeed.
 - Memory markdown tooling (`mastra/tools/memory-markdown-tools.ts`) exposes shared helpers for reading overview sections, appending changelog entries, and updating part notes. Both the chat agent and the background summarizer load the same factory so they operate on identical capabilities. The new `createPartProfileMarkdown` tool scaffolds part profile files (idempotent), triggering change-log entries on first create via `onPartCreated`.
 - **System 1 cleanup (2025-01-14)**: Removed orphaned `mastra/tools/part-content-tools.ts` which was never registered with any agent. All part operations now use System 2 (`lib/memory/`) with frontmatter support.
+- **PRD parts adapter (2025-10-14)**: Mastra part-facing tools now call `lib/data/schema/parts-agent.ts`, which maps legacy tool payloads onto the PRD `parts_v2` / `part_relationships_v2` tables while preserving action logging and markdown-driven context. Evidence tools reuse the same adapter, keeping user IDs server-derived and compatible with the existing audit trail.
 - **YAML frontmatter support (PR #311)**: Part profiles now include YAML frontmatter with structured metadata (id, name, emoji, category, status, tags, timestamps). Tools accept optional `emoji` parameter that gets stored in frontmatter and synced to database visualization field. The system is backward compatible with parts lacking frontmatter. See `lib/memory/markdown/frontmatter.ts` for parsing/serialization and `lib/memory/parts-repository.ts` for repository-style APIs.
 - **Update sync workflow**: The agent prompt is now markdown-first, emphasizing the markdown tooling (list/search/read/write) over legacy Supabase tools. The prompt guides the agent to use `listUnprocessedUpdates` to fetch pending sessions/insights/check-ins, write notes to markdown, then call `markUpdatesProcessed` to mark them as processed, closing the ingest loop.
 - Stub creation tooling remains in `mastra/tools/stub-tools.ts` for dev scaffolding but is no longer wired into the production chat agent, preventing dummy part responses at runtime.
