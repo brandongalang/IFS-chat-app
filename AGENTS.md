@@ -166,11 +166,12 @@ The `/specs/` directory contains older planning documents following a lifecycle-
 ### Execution Pattern (single Codex session per bead)
 1. Understand the bead scope (`bd show <id>`), capture/refresh todos, and note assumptions in bead notes if needed.
 2. Derive a concise implementation plan; store it in the bead (via `bd edit`) or a planning doc under `docs/planning/implementation/` when non-trivial.
-3. Launch **one** Codex interactive session for the bead (`tmux new -As codex-orch` → `codex "<prompt>"`). Reuse the same session throughout; only spin additional sessions if the bead is explicitly split later.
-4. Let Codex propose diffs and test runs. Review every diff before applying, ensure tests and type checks align with Acceptance Criteria, and re-run locally when Codex skips a check.
-5. Record the Codex session ID (see the TUI header or `~/.codex/sessions/`) in your status update and bead notes so future agents can resume (`codex resume <SESSION_ID>`).
-6. After applying changes, run mandatory local checks (lint, typecheck, unit tests, docs when required), summarize outcomes, and update the bead status.
-7. Once the bead is ready to ship, prepare commits (spec → implementation if specs/docs were added), ensure docs workflow requirements are satisfied, and coordinate PR creation per Branch Management guidelines.
+3. Before launching Codex, assemble the prompt with (a) the bead summary/acceptance criteria from `bd show <id>` and (b) the initial file/function shortlist you expect Codex to touch. This keeps Codex aligned with the bead definition of done while narrowing its search surface.
+4. Launch **one** Codex interactive session for the bead (`tmux new -As codex-orch` → `codex "<prompt>"`). Reuse the same session throughout; only spin additional sessions if the bead is explicitly split later.
+5. Let Codex propose diffs and test runs. Review every diff before applying, ensure tests and type checks align with Acceptance Criteria, and re-run locally when Codex skips a check.
+6. Record the Codex session ID (see the TUI header or `~/.codex/sessions/`) in your status update and bead notes so future agents can resume (`codex resume <SESSION_ID>`).
+7. After applying changes, run mandatory local checks (lint, typecheck, unit tests, docs when required), summarize outcomes, and update the bead status.
+8. Once the bead is ready to ship, prepare commits (spec → implementation if specs/docs were added), ensure docs workflow requirements are satisfied, and coordinate PR creation per Branch Management guidelines.
 
 ### Codex CLI Orchestration Tips
 - Default to a single tmux window/pane for the bead. Use additional panes only for log tailing or long-running scripts—not for parallel Codex work.
