@@ -71,7 +71,8 @@ The Memory V2 system stores part profiles, relationships, and user context as ma
 - `supabase/migrations/006_user_memory.sql` — legacy snapshots + queue baseline
 - `supabase/migrations/111_prd_core_tables.sql` — introduces `parts_v2`, `sessions_v2`, `observations`, `part_relationships_v2`, `timeline_events` plus RLS and supporting indexes
 - `supabase/migrations/112_prd_context_views.sql` — defines `parts_display`, `timeline_display`, `user_context_cache`, and the `refresh_user_context_cache()` helper
-- After applying migrations 111/112, run `SELECT refresh_user_context_cache();` once to hydrate the materialized view before enabling the agent warm start flow.
+- `supabase/migrations/113_prd_context_view_refinements.sql` — rebuilds the context views, expands the cached payload, and adds supporting indexes + resilient refresh helper
+- After applying migrations 111-113, run `SELECT refresh_user_context_cache();` once to hydrate the materialized view before enabling the agent warm start flow.
 - Apply remotely via Supabase CLI (requires project link & token) or via Supabase Studio SQL editor
 
 ###Note on Inbox Migrations (105-106)

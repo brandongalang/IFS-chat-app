@@ -11,6 +11,14 @@ import {
   type CompleteSessionInput,
   type UpsertRelationshipInput,
   type CreateTimelineEventInput,
+  type PartRowV2,
+  type ObservationRow,
+  type SessionRowV2,
+  type PartRelationshipRowV2,
+  type TimelineEventRow,
+  type PartDisplayRow,
+  type TimelineDisplayRow,
+  type UserContextCacheRow,
   searchPartsV2,
   getPartByIdV2,
   upsertPartV2,
@@ -26,11 +34,11 @@ import {
   listRelationships,
   createTimelineEvent,
   listTimelineEvents,
-  type PartRowV2,
-  type ObservationRow,
-  type SessionRowV2,
-  type PartRelationshipRowV2,
-  type TimelineEventRow,
+  listPartsDisplay,
+  getPartDisplay,
+  listTimelineDisplay,
+  getUserContextCache,
+  refreshUserContextCache,
 } from './index'
 
 export type PrdServerDeps = {
@@ -188,4 +196,55 @@ export async function createTimelineEventRecord(
 export async function listTimelineEventRecords(deps: PrdServerDeps, limit?: number): Promise<TimelineEventRow[]> {
   const resolved = await resolveDeps(deps)
   return listTimelineEvents(resolved, limit)
+}
+
+/**
+ * Server helper to list part display rows from the computed view.
+ */
+export async function listPartDisplayRecords(
+  deps: PrdServerDeps,
+  limit?: number
+): Promise<PartDisplayRow[]> {
+  const resolved = await resolveDeps(deps)
+  return listPartsDisplay(resolved, limit ?? 50)
+}
+
+/**
+ * Server helper to fetch a single part display row.
+ */
+export async function getPartDisplayRecord(
+  partId: string,
+  deps: PrdServerDeps
+): Promise<PartDisplayRow | null> {
+  const resolved = await resolveDeps(deps)
+  return getPartDisplay(partId, resolved)
+}
+
+/**
+ * Server helper to list timeline display entries.
+ */
+export async function listTimelineDisplayRecords(
+  deps: PrdServerDeps,
+  limit?: number
+): Promise<TimelineDisplayRow[]> {
+  const resolved = await resolveDeps(deps)
+  return listTimelineDisplay(resolved, limit ?? 100)
+}
+
+/**
+ * Server helper to load the cached user context snapshot.
+ */
+export async function loadUserContextCache(
+  deps: PrdServerDeps
+): Promise<UserContextCacheRow | null> {
+  const resolved = await resolveDeps(deps)
+  return getUserContextCache(resolved)
+}
+
+/**
+ * Server helper to trigger a context cache refresh using the service role client.
+ */
+export async function refreshContextCache(client?: SupabaseDatabaseClient): Promise<void> {
+  const supabase = client ?? (await getServerSupabaseClient())
+  await refreshUserContextCache(supabase)
 }

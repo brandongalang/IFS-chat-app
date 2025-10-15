@@ -16,6 +16,7 @@ We track work in Beads instead of Markdown. Run `bd quickstart` to see how.
 - Every bead should progress through **plan → implement → validate → ship** before picking up the next task.
 - When starting a bead, capture a todo list (`bd create`, `TodoWrite`) so each subtask is traceable.
 - While implementing, keep work on a dedicated branch. Stage commits incrementally; avoid large "mega" commits that span multiple beads.
+- Update bead status in Beads as you move through the workflow (plan/implement/validate/ship) and commit the updated `.beads` database with your changes so downstream agents see the current state.
 - **Testing cadence**:
   - Run targeted checks (e.g., `npm run migrations:verify`, unit tests) immediately after introducing schema or code changes.
   - Run the full lint/type/test suite before opening a PR for that bead.
@@ -23,6 +24,8 @@ We track work in Beads instead of Markdown. Run `bd quickstart` to see how.
   - Open a PR as soon as a bead’s deliverables are implemented and validated. Do not stack multiple beads on one PR.
   - PR description must reference completed bead IDs and summarize validation (tests, scripts) that were run.
   - Complete the documentation sweep (update affected docs, verify docstring coverage, ensure PR description template compliance) **before** opening or refreshing the PR to keep Docs CI green.
+  - Run the docs check (`node .github/scripts/docs-check.mjs`) and resolve any failures—including docstring coverage gaps—*before* pushing or requesting review; never rely on reviewers to flag doc regressions.
+  - If CodeRabbit or CI leaves actionable comments (docs template, docstrings, etc.), address them immediately rather than waiting for reviewer follow-up.
 - After a PR merges, reset to `main`, re-run `bd ready` to pick the next bead, and repeat the cycle.
 - If a bead reveals new follow-up work, capture it via new beads before moving on.
 
