@@ -29,6 +29,14 @@ We track work in Beads instead of Markdown. Run `bd quickstart` to see how.
 - After a PR merges, reset to `main`, re-run `bd ready` to pick the next bead, and repeat the cycle.
 - If a bead reveals new follow-up work, capture it via new beads before moving on.
 
+### Status Updates & Hand-off Protocol
+- Whenever you pause or finish work, the final message to the user must explicitly state:
+  1. The current status of the active bead (e.g., in progress, ready for validation).
+  2. Whether the requested work is fully complete.
+  3. Whether the branch is ready for a PR (or what remains before it is).
+- Run and report relevant checks (lint, typecheck, tests, docs) as you implement changes—do not wait for the user to request them.
+- If work is ongoing, note the next concrete step so the user can decide whether to continue or pause.
+
 ### Bead Record Structure (Title, Description, Design, Notes)
 - **Title**: short action statement (verb + object) that makes the scope obvious (e.g., "Implement PRD core migrations").
 - **Description**: high-level intent and business value; include success definition in plain language.
