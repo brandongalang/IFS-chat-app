@@ -15,6 +15,7 @@ export async function GET() {
   try {
     const displayRows = await listPartDisplayRecords(
       { client: supabase, userId: user.id },
+      null, // fetch all parts (no limit)
     )
     return jsonResponse(displayRows)
   } catch (error) {

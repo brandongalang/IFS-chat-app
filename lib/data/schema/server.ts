@@ -219,11 +219,11 @@ export async function listTimelineEventRecords(deps: PrdServerDeps, limit?: numb
 /**
  * Server helper to list part display rows from the computed view.
  * @param deps - Server dependencies (userId + client)
- * @param limit - Optional limit; if undefined, fetches all parts. Use a high number (e.g., 1000) to apply a bound.
+ * @param limit - Number to apply a limit (default: 50), or null to fetch all parts unbounded
  */
 export async function listPartDisplayRecords(
   deps: PrdServerDeps,
-  limit?: number
+  limit: number | null = 50
 ): Promise<PartDisplayRow[]> {
   const resolved = await resolveDeps(deps)
   return listPartsDisplay(resolved, limit)

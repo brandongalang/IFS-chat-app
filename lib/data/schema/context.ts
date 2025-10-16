@@ -38,7 +38,7 @@ export type PartDisplayRow = z.infer<typeof partDisplayRowSchema>
 
 export async function listPartsDisplay(
   deps: PrdDataDependencies,
-  limit?: number
+  limit: number | null = 50
 ): Promise<PartDisplayRow[]> {
   const { client, userId } = assertPrdDeps(deps)
   let query = client
@@ -47,7 +47,8 @@ export async function listPartsDisplay(
     .eq('user_id', userId)
     .order('last_active', { ascending: false, nullsFirst: false })
 
-  if (typeof limit === 'number') {
+  // limit: null means no limit (unbounded); otherwise apply the provided limit
+  if (limit !== null) {
     query = query.limit(limit)
   }
 

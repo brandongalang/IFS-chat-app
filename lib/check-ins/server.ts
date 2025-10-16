@@ -182,7 +182,10 @@ export async function loadAvailableParts(): Promise<PartOption[]> {
   const { supabase, userId } = await resolveContextClient()
 
   try {
-    const partsDisplay = await listPartDisplayRecords({ client: supabase as PrdServerDeps['client'], userId })
+    const partsDisplay = await listPartDisplayRecords(
+      { client: supabase as PrdServerDeps['client'], userId },
+      null, // fetch all parts (no limit) for check-in picker
+    )
     return partsDisplay.map((row) => ({
       id: row.id,
       name: row.display_name || row.name || 'Unnamed Part',
