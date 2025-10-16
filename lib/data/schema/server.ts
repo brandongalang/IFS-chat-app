@@ -58,11 +58,41 @@ async function resolveDeps(deps: PrdServerDeps): Promise<{ client: SupabaseDatab
 }
 
 /**
- * Server helper to search parts using the shared schema-based implementation.
+ * Log schema operation for observability and debugging.
+ * Logs operations with timestamp, operation name, and optional parameters to help track
+ * PRD data access patterns and debug issues in the field.
+ *
+ * @param operation - The name of the operation being logged (e.g., 'searchParts', 'recordObservation')
+ * @param params - Optional structured parameters to include in the log entry
+ */
+function logOperation(operation: string, params?: Record<string, any>) {
+  const timestamp = new Date().toISOString()
+  console.log(`[prd-schema] ${timestamp} ${operation}`, params ? JSON.stringify(params, null, 2) : '')
+}
+
+/**
+ * Search parts with optional filters, category, status, and full-text query support.
+ * Logs operation timing and result count for observability. Errors include operation duration
+ * and actionable context.
+ *
+ * @param input - Search criteria including optional query, category, status, and result limit
+ * @param deps - Dependencies containing userId and optional Supabase client
+ * @returns Array of matching part records
  */
 export async function searchParts(input: SearchPartsInput, deps: PrdServerDeps): Promise<PartRowV2[]> {
+  const startTime = Date.now()
   const resolved = await resolveDeps(deps)
-  return searchPartsV2(input, resolved)
+  logOperation('searchParts', { query: input.query, limit: input.limit, userId: deps.userId })
+  try {
+    const result = await searchPartsV2(input, resolved)
+    const duration = Date.now() - startTime
+    console.log(`[prd-schema] searchParts completed in ${duration}ms, found ${result.length} parts`)
+    return result
+  } catch (error) {
+    const duration = Date.now() - startTime
+    console.error(`[prd-schema] searchParts failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    throw error
+  }
 }
 
 /**
@@ -74,11 +104,28 @@ export async function getPart(partId: string, deps: PrdServerDeps): Promise<Part
 }
 
 /**
- * Server helper to create or update a part record.
+ * Create or update a part record with optional ID, name, category, status, and metadata.
+ * Logs operation timing and part details for observability. Returns the resulting part record.
+ * Errors include operation duration and context for debugging.
+ *
+ * @param input - Part data including optional ID (for updates), name, category, status
+ * @param deps - Dependencies containing userId and optional Supabase client
+ * @returns The created or updated part record
  */
 export async function upsertPart(input: UpsertPartInput, deps: PrdServerDeps): Promise<PartRowV2> {
+  const startTime = Date.now()
   const resolved = await resolveDeps(deps)
-  return upsertPartV2(input, resolved)
+  logOperation('upsertPart', { id: input.id, name: input.name, category: input.category, userId: deps.userId })
+  try {
+    const result = await upsertPartV2(input, resolved)
+    const duration = Date.now() - startTime
+    console.log(`[prd-schema] upsertPart completed in ${duration}ms: ${result.id}`)
+    return result
+  } catch (error) {
+    const duration = Date.now() - startTime
+    console.error(`[prd-schema] upsertPart failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    throw error
+  }
 }
 
 /**
@@ -90,11 +137,28 @@ export async function removePart(partId: string, deps: PrdServerDeps): Promise<v
 }
 
 /**
- * Server helper to insert a new observation record.
+ * Record a new observation (e.g., client insight, part behavior, therapeutic note).
+ * Logs operation timing and observation type for observability. Returns the recorded observation.
+ * Errors include operation duration and actionable context for triage.
+ *
+ * @param input - Observation data including content, type (note/behavior/etc.), and optional entities
+ * @param deps - Dependencies containing userId and optional Supabase client
+ * @returns The created observation record with ID and timestamp
  */
 export async function recordObservation(input: CreateObservationInput, deps: PrdServerDeps): Promise<ObservationRow> {
+  const startTime = Date.now()
   const resolved = await resolveDeps(deps)
-  return createObservation(input, resolved)
+  logOperation('recordObservation', { type: input.type, content_length: input.content?.length, userId: deps.userId })
+  try {
+    const result = await createObservation(input, resolved)
+    const duration = Date.now() - startTime
+    console.log(`[prd-schema] recordObservation completed in ${duration}ms: ${result.id}`)
+    return result
+  } catch (error) {
+    const duration = Date.now() - startTime
+    console.error(`[prd-schema] recordObservation failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    throw error
+  }
 }
 
 /**
@@ -252,19 +316,50 @@ export async function listTimelineDisplayRecords(
 }
 
 /**
- * Server helper to load the cached user context snapshot.
+ * Load the cached user context snapshot for pre-computed session data.
+ * Includes recent parts, topics, open threads, and follow-ups for quick access during sessions.
+ * Logs operation timing and cache availability for observability. Returns null if cache not yet built.
+ *
+ * @param deps - Dependencies containing userId and optional Supabase client
+ * @returns The cached context row if available, null if not yet built
  */
 export async function loadUserContextCache(
   deps: PrdServerDeps
 ): Promise<UserContextCacheRow | null> {
+  const startTime = Date.now()
   const resolved = await resolveDeps(deps)
-  return getUserContextCache(resolved)
+  logOperation('loadUserContextCache', { userId: deps.userId })
+  try {
+    const result = await getUserContextCache(resolved)
+    const duration = Date.now() - startTime
+    console.log(`[prd-schema] loadUserContextCache completed in ${duration}ms, cache ${result ? 'found' : 'not found'}`)
+    return result
+  } catch (error) {
+    const duration = Date.now() - startTime
+    console.error(`[prd-schema] loadUserContextCache failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    throw error
+  }
 }
 
 /**
- * Server helper to trigger a context cache refresh using the service role client.
+ * Refresh the user context cache across all users using service-role privileges.
+ * Pre-computes recent parts, active topics, follow-ups, and related context for fast session loading.
+ * Logs operation timing and completion status for observability. Errors include operation duration
+ * and diagnostic context for troubleshooting cache issues.
+ *
+ * @param client - Optional pre-configured Supabase client; defaults to server client if omitted
  */
 export async function refreshContextCache(client?: SupabaseDatabaseClient): Promise<void> {
-  const supabase = client ?? (await getServerSupabaseClient())
-  await refreshUserContextCache(supabase)
+  const startTime = Date.now()
+  logOperation('refreshContextCache', {})
+  try {
+    const supabase = client ?? (await getServerSupabaseClient())
+    await refreshUserContextCache(supabase)
+    const duration = Date.now() - startTime
+    console.log(`[prd-schema] refreshContextCache completed in ${duration}ms`)
+  } catch (error) {
+    const duration = Date.now() - startTime
+    console.error(`[prd-schema] refreshContextCache failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    throw error
+  }
 }
