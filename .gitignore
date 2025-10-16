@@ -103,8 +103,14 @@ GEMINI.md
 # Local memory snapshots
 .data/
 
-# Local bead tracking (kept local per developer)
+# Local bead tracking
 .beads/
+!.beads/
+.beads/*
+# Keep SQLite caches local-only but track JSONL source of truth
+.beads/*.db
+.beads/*.sqlite
+!.beads/issues.jsonl
 
 # Security-sensitive files (never commit)
 .env*
