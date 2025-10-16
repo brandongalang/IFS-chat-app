@@ -58,11 +58,30 @@ async function resolveDeps(deps: PrdServerDeps): Promise<{ client: SupabaseDatab
 }
 
 /**
+ * Log schema operation for observability.
+ */
+function logOperation(operation: string, params?: Record<string, any>) {
+  const timestamp = new Date().toISOString()
+  console.log(`[prd-schema] ${timestamp} ${operation}`, params ? JSON.stringify(params, null, 2) : '')
+}
+
+/**
  * Server helper to search parts using the shared schema-based implementation.
  */
 export async function searchParts(input: SearchPartsInput, deps: PrdServerDeps): Promise<PartRowV2[]> {
+  const startTime = Date.now()
   const resolved = await resolveDeps(deps)
-  return searchPartsV2(input, resolved)
+  logOperation('searchParts', { query: input.query, limit: input.limit, userId: deps.userId })
+  try {
+    const result = await searchPartsV2(input, resolved)
+    const duration = Date.now() - startTime
+    console.log(`[prd-schema] searchParts completed in ${duration}ms, found ${result.length} parts`)
+    return result
+  } catch (error) {
+    const duration = Date.now() - startTime
+    console.error(`[prd-schema] searchParts failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    throw error
+  }
 }
 
 /**
@@ -77,8 +96,19 @@ export async function getPart(partId: string, deps: PrdServerDeps): Promise<Part
  * Server helper to create or update a part record.
  */
 export async function upsertPart(input: UpsertPartInput, deps: PrdServerDeps): Promise<PartRowV2> {
+  const startTime = Date.now()
   const resolved = await resolveDeps(deps)
-  return upsertPartV2(input, resolved)
+  logOperation('upsertPart', { id: input.id, name: input.name, category: input.category, userId: deps.userId })
+  try {
+    const result = await upsertPartV2(input, resolved)
+    const duration = Date.now() - startTime
+    console.log(`[prd-schema] upsertPart completed in ${duration}ms: ${result.id}`)
+    return result
+  } catch (error) {
+    const duration = Date.now() - startTime
+    console.error(`[prd-schema] upsertPart failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    throw error
+  }
 }
 
 /**
@@ -93,8 +123,19 @@ export async function removePart(partId: string, deps: PrdServerDeps): Promise<v
  * Server helper to insert a new observation record.
  */
 export async function recordObservation(input: CreateObservationInput, deps: PrdServerDeps): Promise<ObservationRow> {
+  const startTime = Date.now()
   const resolved = await resolveDeps(deps)
-  return createObservation(input, resolved)
+  logOperation('recordObservation', { type: input.type, content_length: input.content?.length, userId: deps.userId })
+  try {
+    const result = await createObservation(input, resolved)
+    const duration = Date.now() - startTime
+    console.log(`[prd-schema] recordObservation completed in ${duration}ms: ${result.id}`)
+    return result
+  } catch (error) {
+    const duration = Date.now() - startTime
+    console.error(`[prd-schema] recordObservation failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    throw error
+  }
 }
 
 /**
@@ -257,14 +298,35 @@ export async function listTimelineDisplayRecords(
 export async function loadUserContextCache(
   deps: PrdServerDeps
 ): Promise<UserContextCacheRow | null> {
+  const startTime = Date.now()
   const resolved = await resolveDeps(deps)
-  return getUserContextCache(resolved)
+  logOperation('loadUserContextCache', { userId: deps.userId })
+  try {
+    const result = await getUserContextCache(resolved)
+    const duration = Date.now() - startTime
+    console.log(`[prd-schema] loadUserContextCache completed in ${duration}ms, cache ${result ? 'found' : 'not found'}`)
+    return result
+  } catch (error) {
+    const duration = Date.now() - startTime
+    console.error(`[prd-schema] loadUserContextCache failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    throw error
+  }
 }
 
 /**
  * Server helper to trigger a context cache refresh using the service role client.
  */
 export async function refreshContextCache(client?: SupabaseDatabaseClient): Promise<void> {
-  const supabase = client ?? (await getServerSupabaseClient())
-  await refreshUserContextCache(supabase)
+  const startTime = Date.now()
+  logOperation('refreshContextCache', {})
+  try {
+    const supabase = client ?? (await getServerSupabaseClient())
+    await refreshUserContextCache(supabase)
+    const duration = Date.now() - startTime
+    console.log(`[prd-schema] refreshContextCache completed in ${duration}ms`)
+  } catch (error) {
+    const duration = Date.now() - startTime
+    console.error(`[prd-schema] refreshContextCache failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    throw error
+  }
 }
