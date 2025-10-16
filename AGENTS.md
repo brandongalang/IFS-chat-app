@@ -158,6 +158,106 @@ We track work in Beads instead of Markdown. Run `bd quickstart` to see how.
 ### Legacy Note
 The `/specs/` directory contains older planning documents following a lifecycle-based structure (scoping → in-progress → completed). New work should use the `/docs/planning/` structure described above.
 
+## WorkTree Protocol: Multi-Agent Parallel Development
+
+### Quick Start (Per Bead)
+
+**1. Get your assignment**
+- You are assigned a bead ID (e.g., `ifs-chat-app-6`).
+- Read the bead title: `bd show ifs-chat-app-6 | grep title`.
+- Slugify the title: "Refactor agent tools" → `agent-tools-refactor`.
+
+**2. Create your worktree (one-time)**
+```bash
+# Extract number from bead ID
+BEAD_NUM=6  # from ifs-chat-app-6
+
+# Create worktree rooted at ../ifs-bead-<number>
+git worktree add ../ifs-bead-$BEAD_NUM -b feature/$BEAD_NUM-agent-tools-refactor origin/main
+cd ../ifs-bead-$BEAD_NUM
+
+# Verify branch naming
+git branch --show-current  # Expect: feature/6-agent-tools-refactor
+```
+
+**3. Lock files before editing**
+```bash
+bead checkout ifs-chat-app-6 lib/data/therapy-tools.ts
+# ✅ Locked lib/data/therapy-tools.ts for ifs-chat-app-6
+# OR
+# ❌ File lib/data/therapy-tools.ts is locked by ifs-chat-app-7
+```
+
+**4. Work normally**
+- Edit files, run tests, commit code.
+- Pre-commit hook prevents staging `.beads/*`, committing locked files, or committing on the wrong branch.
+
+**5. Release when done**
+```bash
+bead release ifs-chat-app-6 lib/data/therapy-tools.ts   # release a single file
+bead release ifs-chat-app-6 --all                      # release everything when finished
+```
+
+**6. Open PR and clean up**
+```bash
+gh pr create -B main -H feature/6-agent-tools-refactor
+git worktree remove ../ifs-bead-6   # after the PR merges
+```
+
+### Bead Wrapper Commands
+
+| Command | What it does | Example |
+|---------|--------------|---------|
+| `bead checkout <id> <file>` | Lock a file | `bead checkout ifs-chat-app-6 lib/widget.ts` |
+| `bead release <id> <file>`  | Unlock one file | `bead release ifs-chat-app-6 lib/widget.ts` |
+| `bead release <id> --all`   | Unlock everything for a bead | `bead release ifs-chat-app-6 --all` |
+| `bead locks`                | Show all locks | `bead locks` |
+| `bead who <file>`           | See who holds a file | `bead who lib/widget.ts` |
+
+### Two Lanes
+
+- **Code lane**: Your per-bead worktree (e.g., `../ifs-bead-6/`, branch `feature/6-agent-tools-refactor`). Only code changes live here.
+- **Ledger lane**: Shared worktree (`../ifs-ledger/`, branch `beads-ledger`) that tracks `.beads/issues.jsonl` locks. Commit only ledger updates in this lane.
+
+### When You Hit a Locked File
+
+```
+$ bead checkout ifs-chat-app-6 lib/data.ts
+❌ File 'lib/data.ts' is locked by ifs-chat-app-7
+```
+
+Options:
+1. Wait for the other agent to release the file.
+2. Work on a different file: `bead checkout ifs-chat-app-6 lib/other.ts`.
+3. Coordinate directly and confirm whether the other agent can release the lock.
+
+### Branch Naming Rules
+
+- Branches **must** follow `feature/<number>-<description>`.
+- Examples: ✅ `feature/6-agent-tools-refactor`, ✅ `feature/7-data-migration`.
+- The pre-commit hook blocks invalid names (missing number/description, wrong prefix, etc.).
+
+### Checklist Before Opening a PR
+
+- Working in the correct worktree (`../ifs-bead-N/`) on `feature/N-description`.
+- All locks released (`bead locks` shows none).
+- Staging only code changes (no `.beads/*` or `.beads/*.db`).
+- Pre-commit hook passes without warnings.
+
+### Troubleshooting
+
+- **Wrong worktree?** Check `pwd` and `git branch --show-current`.
+- **Missing worktree?** Recreate: `git worktree add ../ifs-bead-6 -b feature/6-description origin/main`.
+- **Ledger worktree missing?** One-time setup: `git worktree add ../ifs-ledger -b beads-ledger`.
+- **Pre-commit blocked commit?** Inspect `git diff --cached`, check `bead locks`, and resolve the reported issue.
+- **What am I locking?** `bead locks` (all locks) or `bead who <file>` (specific file).
+
+### Why Follow This Protocol?
+
+- Ensures multiple agents work safely in parallel.
+- Prevents accidental ledger overwrites or branch collisions.
+- Provides a repeatable, self-enforcing workflow for every bead.
+
 ## Human · Droid Assistant · Codex Workflow
 - **Human**: sets priority, clarifies requirements, reviews the final output, and signs off on bead completion. Reference `plan.md` or the relevant bead entry for context before giving new work.
 - **Droid Assistant (Chat)**: owns planning, updates the bead record, orchestrates Codex, reviews diffs, and reports status. Do not write code directly; leverage Codex for implementation.
