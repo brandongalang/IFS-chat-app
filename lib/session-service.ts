@@ -36,6 +36,42 @@ export class ChatSessionService {
   }
 
   /**
+   * Dual-write session to both PRD (sessions_v2) and legacy (sessions) tables
+   * during migration period. Legacy table is still read by cron jobs and memory service.
+   */
+  private async syncLegacySessionWrite(
+    sessionId: string,
+    prdSession: SessionRowV2,
+    transcript?: StoredTranscript
+  ): Promise<void> {
+    try {
+      const legacyPayload = {
+        id: sessionId,
+        user_id: prdSession.user_id,
+        start_time: prdSession.started_at,
+        end_time: prdSession.ended_at,
+        duration: prdSession.ended_at
+          ? Math.floor(
+              (new Date(prdSession.ended_at).getTime() - new Date(prdSession.started_at).getTime()) / 1000
+            )
+          : null,
+        messages: transcript?.messages ?? [],
+        processed: false,
+        processed_at: null,
+        created_at: prdSession.created_at,
+        updated_at: prdSession.updated_at,
+      }
+
+      await this.supabase.from('sessions').upsert(legacyPayload, { onConflict: 'id' })
+    } catch (error) {
+      console.warn('[sessions] failed to sync to legacy sessions table', {
+        sessionId,
+        error,
+      })
+    }
+  }
+
+  /**
    * Start a new chat session for the current user
    */
   async startSession(): Promise<string> {
@@ -55,13 +91,18 @@ export class ChatSessionService {
       },
     )
 
-    await this.writeTranscript(session.id, {
+    const transcript = {
       user_id: session.user_id,
       start_time: session.started_at,
       end_time: null,
       duration: null,
       messages: [] as SessionMessage[],
-    })
+    }
+
+    await this.writeTranscript(session.id, transcript)
+
+    // TODO(ifs-chat-app-5): Remove dual-write once all readers migrated to PRD sessions_v2
+    await this.syncLegacySessionWrite(session.id, session)
 
     // TODO(ifs-chat-app-5): Reintroduce action logging once PRD event hooks are defined.
 
@@ -177,16 +218,17 @@ export class ChatSessionService {
       throw new Error(`Failed to record session activity: ${err.message ?? 'unknown error'}`)
     }
 
-    await this.writeTranscript(
-      sessionId,
-      {
-        user_id: session.user_id,
-        start_time: session.started_at,
-        end_time: session.ended_at,
-        messages: updatedMessages,
-      },
-      existingTranscript,
-    )
+    const transcript = {
+      user_id: session.user_id,
+      start_time: session.started_at,
+      end_time: session.ended_at,
+      messages: updatedMessages,
+    }
+
+    await this.writeTranscript(sessionId, transcript, existingTranscript)
+
+    // TODO(ifs-chat-app-5): Remove dual-write once all readers migrated to PRD sessions_v2
+    await this.syncLegacySessionWrite(sessionId, session, transcript)
   }
 
   /**
@@ -215,17 +257,18 @@ export class ChatSessionService {
         ? Math.floor((new Date(endTime).getTime() - new Date(startedAt).getTime()) / 1000)
         : null
 
-    await this.writeTranscript(
-      sessionId,
-      {
-        user_id: session.user_id,
-        start_time: startedAt ?? endTime,
-        end_time: session.ended_at,
-        duration,
-        messages: existingTranscript?.messages,
-      },
-      existingTranscript,
-    )
+    const transcript = {
+      user_id: session.user_id,
+      start_time: startedAt ?? endTime,
+      end_time: session.ended_at,
+      duration,
+      messages: existingTranscript?.messages,
+    }
+
+    await this.writeTranscript(sessionId, transcript, existingTranscript)
+
+    // TODO(ifs-chat-app-5): Remove dual-write once all readers migrated to PRD sessions_v2
+    await this.syncLegacySessionWrite(sessionId, session, transcript)
 
     const enqueueResult = await enqueueMemoryUpdate({
       userId: session.user_id,
