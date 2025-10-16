@@ -4,6 +4,8 @@ import { statusForPath } from '@/config/features'
 import ComingSoonPage from '@/components/common/ComingSoonPage'
 import { dev } from '@/config/dev'
 
+export const dynamic = 'force-dynamic'
+
 export default async function CheckInPage() {
   const feature = statusForPath('/check-in')
   if (feature.status === 'coming_soon') {
