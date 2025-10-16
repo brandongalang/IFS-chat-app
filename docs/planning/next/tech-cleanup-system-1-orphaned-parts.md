@@ -24,7 +24,7 @@ During the parts markdown frontmatter work, we discovered **three separate part 
 - **Status**: Enhanced with frontmatter, fully functional
 
 ### System 3: `lib/data/parts-*.ts` - DATABASE LAYER ✅
-- **Files**: `lib/data/parts-lite.ts`, `lib/data/parts-server.ts`, `lib/data/parts.ts`, `lib/data/parts.schema.ts`
+- **Files**: `lib/data/parts-lite.ts`, `lib/data/parts-server.ts`, `lib/data/schema/**` (legacy `lib/data/parts.ts` removed 2025-10-17)
 - **Storage**: Supabase database tables
 - **Purpose**: Database query layer for UI
 - **Used by**: Garden UI, check-ins, all UI components

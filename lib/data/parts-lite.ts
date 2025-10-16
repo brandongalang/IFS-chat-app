@@ -1,7 +1,6 @@
-import type { PartRow, PartRelationshipRow, Database } from '@/lib/types/database'
+import type { PartRow, Database } from '@/lib/types/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
-import { buildPartsQuery, type PartQueryFilters } from './parts-query'
 import {
   searchPartsSchema,
   getPartByIdSchema,
@@ -13,6 +12,15 @@ import {
   type GetPartRelationshipsInput,
   type GetPartRelationshipsResult,
 } from './parts.schema'
+import {
+  DEFAULT_RELATIONSHIP_STATUS,
+  fromV2RelationshipType,
+  mapPartRowFromV2,
+  parseRelationshipContext,
+  parseRelationshipObservations,
+  toV2RelationshipType,
+} from './schema/legacy-mappers'
+import type { PartRowV2, PartRelationshipRowV2 } from './schema/types'
 
 type SupabaseDatabaseClient = SupabaseClient<Database>
 
@@ -52,49 +60,59 @@ async function requireUserId(client: SupabaseDatabaseClient): Promise<string> {
 
 export async function searchParts(input: SearchPartsInput, deps: PartsLiteDependencies = {}): Promise<SearchPartsResult> {
   return runWithClient(searchPartsSchema, input, deps, async (validated, supabase) => {
-    const filters: PartQueryFilters = {
-      name: validated.query,
-      status: validated.status,
-      category: validated.category,
-      limit: validated.limit,
+    const userId = await requireUserId(supabase)
+
+    let query = supabase
+      .from('parts_v2')
+      .select('*')
+      .eq('user_id', userId)
+      .order('last_active', { ascending: false, nullsFirst: false })
+
+    if (validated.query) {
+      const pattern = `%${validated.query.replace(/([%_])/g, '\\$1')}%`
+      query = query.or(`name.ilike.${pattern},placeholder.ilike.${pattern},data->>role.ilike.${pattern}`)
     }
 
-    // Get current user ID and filter by it
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('User not authenticated');
+    if (validated.category) {
+      query = query.eq('category', validated.category)
     }
 
-    const { data, error } = await buildPartsQuery(supabase, filters).eq('user_id', user.id)
-    if (error) throw new Error(`Database error: ${error.message}`)
+    if (validated.status) {
+      query = query.eq('status', validated.status)
+    }
 
-    return (data || []) as SearchPartsResult
+    query = query.limit(validated.limit ?? 20)
+
+    const { data, error } = await query
+    if (error) {
+      throw new Error(`Database error: ${error.message}`)
+    }
+
+    const rows = Array.isArray(data) ? (data as PartRowV2[]) : []
+    return rows.map(mapPartRowFromV2)
   })
 }
 
 export async function getPartById(input: GetPartByIdInput, deps: PartsLiteDependencies = {}): Promise<GetPartByIdResult> {
   return runWithClient(getPartByIdSchema, input, deps, async (validated, supabase) => {
-    // Get current user ID and filter by it
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('User not authenticated');
-    }
+    const userId = await requireUserId(supabase)
 
     const { data, error } = await supabase
-      .from('parts')
+      .from('parts_v2')
       .select('*')
       .eq('id', validated.partId)
-      .eq('user_id', user.id)
-      .single()
+      .eq('user_id', userId)
+      .maybeSingle()
 
-    if (error) {
-      if ((error as any).code === 'PGRST116') {
-        return null
-      }
+    if (error && (error as any).code !== 'PGRST116') {
       throw new Error(`Database error: ${error.message}`)
     }
 
-    return (data as PartRow | null) as GetPartByIdResult
+    if (!data) {
+      return null
+    }
+
+    return mapPartRowFromV2(data as PartRowV2)
   })
 }
 
@@ -103,81 +121,95 @@ export async function getPartRelationships(
   deps: PartsLiteDependencies = {}
 ): Promise<GetPartRelationshipsResult> {
   return runWithClient(getPartRelationshipsSchema, input, deps, async (validated, supabase) => {
-    // Get current user ID and filter by it
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      throw new Error('User not authenticated');
-    }
+    const userId = await requireUserId(supabase)
 
     let query = supabase
-      .from('part_relationships')
+      .from('part_relationships_v2')
       .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(validated.limit)
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
 
     if (validated.relationshipType) {
-      query = query.eq('type', validated.relationshipType)
-    }
-    if (validated.status) {
-      query = query.eq('status', validated.status)
+      query = query.eq('type', toV2RelationshipType(validated.relationshipType))
     }
 
     const { data, error } = await query
-    if (error) throw new Error(`Database error: ${error.message}`)
-
-    const relationships = (data || []) as PartRelationshipRow[]
-
-    let filtered = relationships
-
-    if (validated.partId) {
-      const pid = validated.partId
-      filtered = relationships.filter((rel) => Array.isArray(rel.parts) && rel.parts.includes(pid))
+    if (error) {
+      throw new Error(`Database error: ${error.message}`)
     }
+
+    const rows = Array.isArray(data) ? (data as PartRelationshipRowV2[]) : []
+
+    const enriched = rows.map((rel) => ({
+      rel,
+      context: parseRelationshipContext(rel.context),
+      dynamics: parseRelationshipObservations(rel.observations),
+    }))
+
+    let filtered = validated.partId
+      ? enriched.filter(({ rel }) => rel.part_a_id === validated.partId || rel.part_b_id === validated.partId)
+      : enriched
+
+    if (validated.status) {
+      filtered = filtered.filter(({ context }) => (context.status ?? DEFAULT_RELATIONSHIP_STATUS) === validated.status)
+    }
+
+    const limited = filtered.slice(0, validated.limit)
 
     let partsDetails: Record<string, { name: string; status: string }> = {}
     if (validated.includePartDetails) {
-      const allPartIds = filtered.reduce((acc, rel) => {
-        const partIds = Array.isArray(rel.parts) ? rel.parts : []
-        return [...acc, ...partIds]
-      }, [] as string[])
-      const uniquePartIds = [...new Set(allPartIds)]
-      if (uniquePartIds.length > 0) {
+      const partIds = new Set<string>()
+      for (const { rel } of limited) {
+        partIds.add(rel.part_a_id)
+        partIds.add(rel.part_b_id)
+      }
+      if (partIds.size > 0) {
         const { data: parts, error: partsError } = await supabase
-          .from('parts')
+          .from('parts_v2')
           .select('id, name, status')
-          .eq('user_id', user.id)  // Also filter parts by user_id
-          .in('id', uniquePartIds)
-        if (!partsError) {
-          partsDetails = (parts || []).reduce((acc, part) => {
-            acc[part.id] = { name: (part as any).name, status: (part as any).status }
-            return acc
-          }, {} as Record<string, { name: string; status: string }>)
+          .eq('user_id', userId)
+          .in('id', Array.from(partIds))
+
+        if (partsError) {
+          throw new Error(`Failed to fetch part details: ${partsError.message}`)
         }
+
+        partsDetails = (parts ?? []).reduce<Record<string, { name: string; status: string }>>((acc, part) => {
+          acc[part.id] = { name: part.name ?? 'Unnamed Part', status: part.status ?? 'active' }
+          return acc
+        }, {})
       }
     }
 
-    return filtered.map((rel) => {
-      const partIds = Array.isArray(rel.parts) ? rel.parts : []
+    return limited.map(({ rel, context, dynamics }) => {
+      const polarization =
+        typeof context.polarizationLevel === 'number'
+          ? context.polarizationLevel
+          : typeof rel.strength === 'number'
+            ? Math.max(0, Math.min(1, 1 - rel.strength))
+            : 0.5
+
+      const partIds = [rel.part_a_id, rel.part_b_id]
+
       return {
         id: rel.id,
-        type: rel.type,
-        status: rel.status,
-        description: rel.description,
-        issue: rel.issue,
-        common_ground: rel.common_ground,
-        polarization_level: rel.polarization_level,
-        dynamics: rel.dynamics || [],
-        parts: partIds.map((partId: string) => ({
+        type: fromV2RelationshipType(rel.type),
+        status: context.status ?? DEFAULT_RELATIONSHIP_STATUS,
+        description: context.description ?? null,
+        issue: context.issue ?? null,
+        common_ground: context.commonGround ?? null,
+        polarization_level: polarization,
+        dynamics,
+        parts: partIds.map((partId) => ({
           id: partId,
           ...(validated.includePartDetails && partsDetails[partId]
             ? { name: partsDetails[partId].name, status: partsDetails[partId].status }
             : {}),
         })),
-        last_addressed: rel.last_addressed,
+        last_addressed: context.lastAddressed ?? null,
         created_at: rel.created_at,
         updated_at: rel.updated_at,
       }
-    }) as GetPartRelationshipsResult
+    })
   })
 }

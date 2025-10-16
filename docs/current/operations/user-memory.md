@@ -49,6 +49,7 @@ The Memory V2 system stores part profiles, relationships, and user context as ma
 - **Migration**: See `supabase/migrations/110_memory_snapshots_bucket.sql` for bucket setup with RLS policies
 - **File structure**: `users/{userId}/parts/{partId}/profile.md`, `users/{userId}/overview.md`, etc.
 - **Service role**: Required for agent operations (bypasses RLS for system access)
+- **2025-10-17 PRD cutover**: Interactive agents and background jobs no longer write to markdown. Update digests and change logs are persisted via Supabase `observations` / `timeline_events`, while markdown snapshots remain available for read-only hydration during the transition.
 
 ## Scheduling
 - Primary scheduler: **Vercel Cron** configured in `vercel.json` with `0 8 * * *` (08:00 UTC daily).

@@ -3,9 +3,7 @@ import type { Agent } from '@mastra/core'
 import { getMastra } from '@/mastra'
 import { updateDigestSchema, type UpdateDigest } from '@/mastra/agents/update-summarizer'
 import { fetchPendingUpdates, markUpdatesProcessed, type MemoryUpdateRecord } from '@/lib/memory/updates'
-import { ensureOverviewExists } from '@/lib/memory/snapshots/scaffold'
-import { userOverviewPath } from '@/lib/memory/snapshots/fs-helpers'
-import { appendChangeLogWithEvent } from '@/lib/memory/snapshots/updater'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export interface UpdateSummarizerResult {
   userId: string
@@ -100,17 +98,17 @@ export async function summarizePendingUpdatesForUser(
     }
   }
 
-  await ensureOverviewExists(userId)
-  const overviewPath = userOverviewPath(userId)
   const trimmedDigest = digest.digest.trim()
+
   if (trimmedDigest) {
-    await appendChangeLogWithEvent({
-      userId,
-      entityType: 'user',
-      entityId: userId,
-      filePath: overviewPath,
-      line: trimmedDigest,
-    })
+    try {
+      await recordUpdateDigest(userId, digest)
+    } catch (error) {
+      console.error('[UpdateRunner] Failed to persist update digest', {
+        userId,
+        error: error instanceof Error ? error.message : error,
+      })
+    }
   }
 
   await markUpdatesProcessed({ userId, updates: processed, digest: trimmedDigest })
@@ -122,5 +120,27 @@ export async function summarizePendingUpdatesForUser(
     itemCount: processed.length,
     skipped: false,
     raw: digest,
+  }
+}
+async function recordUpdateDigest(userId: string, digest: UpdateDigest): Promise<void> {
+  const trimmed = digest.digest.trim()
+  if (!trimmed) return
+
+  const supabase = createAdminClient()
+  const payload = {
+    user_id: userId,
+    type: 'note',
+    content: trimmed,
+    metadata: {
+      source: 'update-runner',
+      items: digest.items ?? [],
+      leftoverIds: digest.leftoverIds ?? [],
+    },
+    entities: [] as string[],
+  }
+
+  const { error } = await supabase.from('observations').insert(payload)
+  if (error) {
+    throw new Error(`Failed to record update digest: ${error.message}`)
   }
 }

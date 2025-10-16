@@ -13,10 +13,10 @@ What is logged
   - error: string when an exception occurs
 
 Where logs are emitted
-- lib/data/parts.ts when MEMORY_AGENTIC_V2_ENABLED=1 and snapshot reads are attempted:
-  - getPartById: logs part_profile hit/miss/error
-  - getPartDetail: logs overview and part_profile; logs each relationship_profile
-  - getPartRelationships: logs each relationship_profile
+- `lib/data/schema/parts-agent.ts` when `MEMORY_AGENTIC_V2_ENABLED=1` and snapshot reads are attempted:
+  - `getPartById`: logs `part_profile` hit/miss/error
+  - `getPartDetail`: logs `overview` and `part_profile`; logs each `relationship_profile`
+  - `getPartRelationships`: logs each `relationship_profile`
 
 How to view
 - Locally: run any flow that calls the above functions, then grep the dev server logs:
@@ -49,4 +49,3 @@ KPIs to watch
 Notes
 - Observability is best-effort and never blocks user flows.
 - Keep feature usage behind MEMORY_AGENTIC_V2_ENABLED until metrics look healthy.
-

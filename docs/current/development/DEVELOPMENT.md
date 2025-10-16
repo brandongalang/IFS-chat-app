@@ -136,7 +136,7 @@ To avoid bundling Node-only APIs (e.g., fs/promises, node:crypto) into the brows
   - Use in server components, route handlers, and server actions only
 
 - Under the hood:
-  - `@/lib/data/parts.ts` is marked server-only, and exposes richer logic (logging, snapshots). It should not be imported from client code directly; use `parts-server` instead.
+  - The legacy `@/lib/data/parts.ts` module has been removed. Use `parts-server` (server-safe) or the PRD schema helpers under `lib/data/schema/` for any new work.
   - Snapshot logic lazily imports storage adapters on the server and throws if called on the client.
 
 Examples:

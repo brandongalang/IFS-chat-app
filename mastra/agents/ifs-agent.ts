@@ -8,7 +8,6 @@ import { createProposalTools } from '../tools/proposal-tools'
 import { createEvidenceTools } from '../tools/evidence-tools'
 import { createMemoryTools } from '../tools/memory-tools'
 import { createMarkdownTools } from '../tools/markdown-tools'
-import { createMarkdownWriteTools } from '../tools/markdown-write-tools'
 import { createMemoryMarkdownTools } from '../tools/memory-markdown-tools'
 import { createUpdateSyncTools } from '../tools/update-sync-tools'
 import { createTherapyTools } from '../tools/therapy-tools'
@@ -43,7 +42,6 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
       : undefined
 
   const markdownTools = env.ifsMarkdownContextEnabled ? createMarkdownTools(userId ?? null) : null
-  const markdownWriteTools = env.ifsMarkdownContextEnabled ? createMarkdownWriteTools(userId ?? null) : null
   const memoryMarkdownTools = env.ifsMarkdownContextEnabled ? createMemoryMarkdownTools(userId ?? null) : null
   const updateSyncTools = createUpdateSyncTools(userId)
   const therapyTools = createTherapyTools(userId ?? undefined)
@@ -61,7 +59,6 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
       ...updateSyncTools, // Update sync workflow tools
       ...therapyTools, // PRD schema therapy data tools
       ...(markdownTools ?? {}),
-      ...(markdownWriteTools ?? {}),
       ...(memoryMarkdownTools ?? {}),
     },
   })
