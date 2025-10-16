@@ -37,7 +37,14 @@
       "docs": ["docs/current/features/chat.md"]
     },
     {
-      "paths": ["mastra/tools/**", "mastra/agents/**", "lib/insights/generator.ts"],
+      "paths": [
+        "mastra/tools/**",
+        "mastra/agents/**",
+        "lib/insights/generator.ts",
+        "lib/data/therapy-tools.ts",
+        "lib/data/therapy-tools.schema.ts",
+        "scripts/tests/unit/therapy-tools.test.ts"
+      ],
       "docs": ["docs/current/features/agent-tools.md"]
     },
     {
