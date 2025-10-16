@@ -84,13 +84,13 @@ type PartRelationshipInsert = {
   updated_at?: string | null
 }
 
-// Helper to handle schema cache refresh delays
 /**
- * Retry helper for transient Supabase schema cache errors.
- * @param fn - Async function returning {data, error}
- * @param maxAttempts - Max retries (default: 2)
- * @param delayMs - Delay between retries ms (default: 100)
- * @returns Query result or final error
+ * Retry a fetch-style operation when transient "schema cache" errors occur.
+ *
+ * @param fn - A function that performs the operation and resolves to an object `{ data, error }`. The call will be retried if `error.message` contains the substring "schema cache".
+ * @param maxAttempts - Maximum number of attempts to run `fn` (default: 2).
+ * @param delayMs - Milliseconds to wait between retry attempts (default: 100).
+ * @returns The first `{ data, error }` result whose `error` is absent or does not contain "schema cache"; if all attempts fail with schema-cache errors, returns `{ data: null, error: lastError }`.
  */
 async function withRetry<T>(
   fn: () => Promise<{ data: T | null; error: any }>,
@@ -111,7 +111,12 @@ async function withRetry<T>(
   return { data: null, error: lastError }
 }
 
-/** Check if user data has been migrated to PRD schema. */
+/**
+ * Check whether a user's PRD backfill has been completed.
+ *
+ * @param userId - The user's id
+ * @returns `true` if the user's `settings.prd_backfill_completed` is `true`, `false` otherwise or if the settings could not be fetched
+ */
 async function getMigrationFlag(userId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from('users')
@@ -124,7 +129,11 @@ async function getMigrationFlag(userId: string): Promise<boolean> {
   return settings?.prd_backfill_completed === true
 }
 
-/** Mark user as completed PRD schema migration. */
+/**
+ * Mark a user's PRD backfill as completed by setting the backfill flag and timestamp in their settings.
+ *
+ * @param userId - The ID of the user whose settings will be updated
+ */
 async function setMigrationFlag(userId: string): Promise<void> {
   await supabase
     .from('users')
@@ -137,7 +146,16 @@ async function setMigrationFlag(userId: string): Promise<void> {
     .eq('id', userId)
 }
 
-/** Migrate legacy parts to parts_v2 with deduplication. */
+/**
+ * Migrate a user's legacy parts into the parts_v2 table, performing deduplication and basic validation.
+ *
+ * When not a dry run, prepares new parts entries from legacy records and inserts them in a single batch.
+ * Duplicate parts (by name) and legacy records missing required fields are skipped.
+ *
+ * @param userId - The ID of the user whose legacy parts will be migrated
+ * @param dryRun - If true, perform all checks and preparation but do not insert into the database
+ * @returns An object with `migratedCount` (number of prepared/inserted records), `skipped` (number of legacy records not migrated), and `errors` (any error messages encountered)
+ */
 async function migratePartsForUser(
   userId: string,
   dryRun: boolean,
@@ -236,7 +254,13 @@ async function migratePartsForUser(
   return { migratedCount, skipped, errors }
 }
 
-/** Migrate legacy sessions to sessions_v2 with deduplication. */
+/**
+ * Migrates legacy session records for a user from `sessions` into `sessions_v2`.
+ *
+ * @param userId - ID of the user whose sessions will be migrated
+ * @param dryRun - If true, prepares records and performs validation/deduplication but does not write to the database
+ * @returns An object with `migratedCount` (number of sessions prepared or inserted), `skipped` (number of legacy sessions skipped due to deduplication), and `errors` (array of error messages encountered)
+ */
 async function migrateSessionsForUser(
   userId: string,
   dryRun: boolean,
@@ -328,7 +352,16 @@ async function migrateSessionsForUser(
   return { migratedCount, skipped, errors }
 }
 
-/** Migrate legacy relationships to part_relationships_v2 with ID mapping. */
+/**
+ * Migrate legacy part relationships for a single user into the v2 relationships table.
+ *
+ * Prepares v2 relationship records by mapping legacy part IDs → v2 part IDs, normalizing types,
+ * deduplicating against existing v2 relationships, and optionally inserting the new records.
+ *
+ * @param userId - ID of the user whose legacy relationships will be migrated
+ * @param dryRun - If true, the function performs all checks and preparation but does not write to the database
+ * @returns An object with `migratedCount` (number of relationships prepared/inserted), `skipped` (number of legacy entries skipped for validation, mapping, or deduplication), and `errors` (collected error messages encountered during processing)
+ */
 async function migrateRelationshipsForUser(
   userId: string,
   dryRun: boolean,
@@ -470,7 +503,20 @@ async function migrateRelationshipsForUser(
   return { migratedCount, skipped, errors }
 }
 
-/** Collect statistics for legacy and migrated records. */
+/**
+ * Collects counts of legacy and migrated PRD records for the given user.
+ *
+ * @returns A BackfillStats object containing:
+ * - `legacyPartsCount`: number of records in the legacy `parts` table for the user
+ * - `legacySessionsCount`: number of records in the legacy `sessions` table for the user
+ * - `legacyRelationshipsCount`: number of records in the legacy `part_relationships` table for the user
+ * - `migratedPartsCount`: number of records in `parts_v2` for the user
+ * - `migratedSessionsCount`: number of records in `sessions_v2` for the user
+ * - `migratedRelationshipsCount`: number of records in `part_relationships_v2` for the user
+ * - `duplicatePartsSkipped`: count of duplicate legacy parts skipped (always `0` here)
+ * - `invalidPartsSkipped`: count of invalid legacy parts skipped (always `0` here)
+ * - `timestamp`: ISO 8601 string for when the stats were generated
+ */
 async function getBackfillStats(
   userId: string,
 ): Promise<BackfillStats> {
@@ -519,7 +565,16 @@ async function getBackfillStats(
   }
 }
 
-/** Orchestrate backfill for single user (parts, sessions, relationships). */
+/**
+ * Orchestrates the backfill of parts, sessions, and relationships for a single user.
+ *
+ * Runs each entity-specific migration (parts, sessions, relationships), aggregates any errors,
+ * sets the user's migration-completed flag when running for real and no errors occurred,
+ * and returns post-run statistics.
+ *
+ * @param dryRun - When true, perform a dry-run (no database writes); when false, apply changes and set the migration flag on success
+ * @returns An object containing the user's BackfillStats and an array of error messages encountered during the backfill
+ */
 async function backfillForUser(
   userId: string,
   dryRun: boolean,
@@ -572,7 +627,11 @@ async function backfillForUser(
   }
 }
 
-/** Main entry point parsing CLI args and orchestrating backfill. */
+/**
+ * Orchestrates the PRD schema backfill process, supporting dry-run mode, execute mode, and optional per-user scope.
+ *
+ * Parses command-line flags (--dry-run, --execute, --user-id), runs the per-user backfill flow for a single user or all users, aggregates per-user statistics and errors, prints a summary to the console, and writes a timestamped JSON report to disk.
+ */
 async function main() {
   const args = process.argv.slice(2)
   const dryRun = args.includes('--dry-run') || !args.includes('--execute')
