@@ -348,7 +348,7 @@ async function migrateRelationshipsForUser(
 
   // 4. Check for existing relationships
   let existingRelationships = []
-  const { data: existingData, error: existingError } = await withRetry(() =>
+  const { data: existingData, error: existingError } = await withRetry(async () =>
     supabase
       .from('part_relationships_v2')
       .select('part_a_id, part_b_id, type')
@@ -422,7 +422,7 @@ async function migrateRelationshipsForUser(
 
   // 6. Batch insert
   if (!dryRun) {
-    const { error: insertError } = await withRetry(() =>
+    const { error: insertError } = await withRetry(async () =>
       supabase
         .from('part_relationships_v2')
         .insert(relationshipsToInsert),
