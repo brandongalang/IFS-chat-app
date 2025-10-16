@@ -1,0 +1,446 @@
+#!/usr/bin/env node
+
+import { readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { resolve, relative, sep, posix as posixPath } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import process from 'node:process';
+
+const CHECKOUT_PREFIX = 'Checkout:';
+
+function extractFlag(values, flag) {
+  const filtered = [];
+  let present = false;
+  values.forEach((value) => {
+    if (value === flag) {
+      present = true;
+      return;
+    }
+    filtered.push(value);
+  });
+  return { filtered, present };
+}
+
+function runGit(args, cwd, options = {}) {
+  const result = spawnSync('git', args, {
+    cwd,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
+    ...options,
+  });
+
+  if (result.error) {
+    throw new Error(`Failed to run git ${args.join(' ')}: ${result.error.message}`);
+  }
+
+  if (result.status !== 0) {
+    throw new Error(result.stderr.trim() || `git ${args.join(' ')} failed`);
+  }
+
+  return result.stdout.trim();
+}
+
+function getGitRoot() {
+  const result = spawnSync('git', ['rev-parse', '--show-toplevel'], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
+  });
+
+  if (result.error || result.status !== 0) {
+    console.error('❌ ERROR: Could not determine git root. Run this command inside a git worktree.');
+    process.exit(1);
+  }
+
+  return result.stdout.trim();
+}
+
+function resolveLedgerRoot(repoRoot) {
+  return resolve(repoRoot, '..', 'ifs-ledger');
+}
+
+function ensureLedgerReady(ledgerRoot) {
+  if (!existsSync(ledgerRoot)) {
+    console.error(`❌ ERROR: Ledger worktree not found at ${ledgerRoot}`);
+    console.error('   Run: git worktree add ../ifs-ledger -b beads-ledger');
+    process.exit(1);
+  }
+
+  const ledgerGitDir = resolve(ledgerRoot, '.git');
+  if (!existsSync(ledgerGitDir)) {
+    console.error(`❌ ERROR: ${ledgerRoot} is not a git worktree. Re-run ledger setup.`);
+    process.exit(1);
+  }
+
+  const ledgerFile = resolve(ledgerRoot, '.beads', 'issues.jsonl');
+  if (!existsSync(ledgerFile)) {
+    console.error(`❌ ERROR: Ledger file not found at ${ledgerFile}`);
+    console.error('   Make sure issues.jsonl exists and is checked in.');
+    process.exit(1);
+  }
+}
+
+function hasUpstream(ledgerRoot) {
+  const result = spawnSync('git', ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'], {
+    cwd: ledgerRoot,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
+  });
+
+  return result.status === 0 && result.stdout.trim().length > 0;
+}
+
+function pullLedger(ledgerRoot) {
+  if (!hasUpstream(ledgerRoot)) {
+    return;
+  }
+
+  const result = spawnSync('git', ['pull', '--rebase', '--no-stat'], {
+    cwd: ledgerRoot,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
+  });
+
+  if (result.status !== 0) {
+    const stderr = result.stderr.trim();
+    if (stderr.length > 0) {
+      console.error(`⚠️  Warning: git pull --rebase failed: ${stderr}`);
+    } else {
+      console.error('⚠️  Warning: git pull --rebase failed. Continuing with local ledger state.');
+    }
+  }
+}
+
+function ensureLedgerClean(ledgerRoot) {
+  const status = runGit(['status', '--porcelain'], ledgerRoot);
+  if (status.length > 0) {
+    console.error('❌ ERROR: Ledger worktree has uncommitted changes.');
+    console.error(`   Location: ${ledgerRoot}`);
+    console.error('   Resolve pending changes (commit or stash) before using bead checkout/release.');
+    process.exit(1);
+  }
+}
+
+function readLedgerEntries(ledgerFile) {
+  const content = readFileSync(ledgerFile, 'utf8');
+  return content
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+}
+
+function writeLedgerEntries(ledgerFile, entries) {
+  const tempFile = `${ledgerFile}.tmp-${randomBytes(6).toString('hex')}`;
+  const payload = entries.map((entry) => JSON.stringify(entry)).join('\n') + '\n';
+  writeFileSync(tempFile, payload, 'utf8');
+  renameSync(tempFile, ledgerFile);
+}
+
+function toPosixRelative(repoRoot, inputPath) {
+  const absolutePath = resolve(process.cwd(), inputPath);
+  const relativePath = relative(repoRoot, absolutePath);
+
+  if (relativePath === '') {
+    console.error(`❌ ERROR: Path '${inputPath}' must point to a file inside the repository.`);
+    process.exit(1);
+  }
+
+  if (relativePath.startsWith('..')) {
+    console.error(`❌ ERROR: Path '${inputPath}' must resolve inside the repository.`);
+    process.exit(1);
+  }
+
+  return relativePath.split(sep).join('/');
+}
+
+function extractCheckoutPaths(notes) {
+  if (!notes || typeof notes !== 'string') {
+    return [];
+  }
+  const lines = notes.split('\n').map((line) => line.trim());
+  const checkoutLine = lines.find((line) => line.startsWith(CHECKOUT_PREFIX));
+  if (!checkoutLine) {
+    return [];
+  }
+  const suffix = checkoutLine.slice(CHECKOUT_PREFIX.length).trim();
+  if (!suffix) {
+    return [];
+  }
+  return suffix.split(',').map((segment) => segment.trim()).filter(Boolean);
+}
+
+function updateCheckoutNotes(notes, paths) {
+  const uniquePaths = Array.from(new Set(paths)).sort();
+  const lines = notes && typeof notes === 'string' ? notes.split('\n').map((line) => line.trim()).filter(Boolean) : [];
+  const remaining = lines.filter((line) => !line.startsWith(CHECKOUT_PREFIX));
+
+  if (uniquePaths.length === 0) {
+    return remaining.length > 0 ? remaining.join('\n') : undefined;
+  }
+
+  remaining.push(`${CHECKOUT_PREFIX} ${uniquePaths.join(', ')}`);
+  return remaining.join('\n');
+}
+
+function buildLockIndex(entries) {
+  const index = new Map();
+  entries.forEach((entry) => {
+    const paths = extractCheckoutPaths(entry.notes);
+    paths.forEach((path) => {
+      index.set(path, {
+        beadId: entry.id,
+        title: entry.title ?? '',
+      });
+    });
+  });
+  return index;
+}
+
+function requireBead(entries, beadId) {
+  const bead = entries.find((entry) => entry.id === beadId);
+  if (!bead) {
+    console.error(`❌ ERROR: Bead '${beadId}' not found in issues.jsonl.`);
+    process.exit(1);
+  }
+  return bead;
+}
+
+function commitLedgerChange(ledgerRoot, message) {
+  const diffResult = spawnSync('git', ['diff', '--quiet', '--', '.beads/issues.jsonl'], {
+    cwd: ledgerRoot,
+  });
+  const hasChanges = diffResult.status === 1;
+  if (!hasChanges) {
+    console.log('⚠️  No ledger changes detected. Skipping commit.');
+    return;
+  }
+
+  runGit(['add', '--force', '.beads/issues.jsonl'], ledgerRoot);
+  runGit(['commit', '--no-verify', '-m', message], ledgerRoot);
+  console.log(`✅ ${message}`);
+}
+
+function handleCheckout(args, entries, repoRoot, ledgerRoot) {
+  if (args.length < 2) {
+    console.error('Usage: bead checkout <bead-id> <path> [<path> ...]');
+    process.exit(1);
+  }
+
+  const [beadId, ...pathsInput] = args;
+  const targetPaths = pathsInput.map((p) => toPosixRelative(repoRoot, p));
+
+  if (targetPaths.length === 0) {
+    console.error('❌ ERROR: Provide at least one file path to checkout.');
+    process.exit(1);
+  }
+
+  const normalizedTargets = targetPaths.map((path) => posixPath.normalize(path));
+  const lockIndex = buildLockIndex(entries);
+  const conflicts = normalizedTargets
+    .map((path) => ({ path, lock: lockIndex.get(path) }))
+    .filter(({ lock }) => lock && lock.beadId !== beadId);
+
+  if (conflicts.length > 0) {
+    console.error('❌ ERROR: Unable to checkout file(s) already locked:');
+    conflicts.forEach(({ path, lock }) => {
+      console.error(`   • ${path} → ${lock.beadId}${lock.title ? ` (${lock.title})` : ''}`);
+    });
+    console.error('   Use `bead who <path>` to check status or coordinate with the owning bead.');
+    process.exit(1);
+  }
+
+  const bead = requireBead(entries, beadId);
+  const currentPaths = new Set(extractCheckoutPaths(bead.notes));
+  const additions = normalizedTargets.filter((path) => !currentPaths.has(path));
+
+  if (additions.length === 0) {
+    console.log(`ℹ️  Requested files are already locked by ${beadId}.`);
+    return;
+  }
+
+  additions.forEach((path) => currentPaths.add(path));
+
+  const updatedNotes = updateCheckoutNotes(bead.notes, Array.from(currentPaths));
+  if (updatedNotes === undefined) {
+    delete bead.notes;
+  } else {
+    bead.notes = updatedNotes;
+  }
+
+  const ledgerFile = resolve(ledgerRoot, '.beads', 'issues.jsonl');
+  writeLedgerEntries(ledgerFile, entries);
+  commitLedgerChange(ledgerRoot, `beads: checkout ${additions.join(', ')} for ${beadId}`);
+}
+
+function handleRelease(args, entries, repoRoot, ledgerRoot) {
+  if (args.length < 2) {
+    console.error('Usage: bead release <bead-id> <path|--all> [<path> ...]');
+    process.exit(1);
+  }
+
+  const [beadId, ...targets] = args;
+  const bead = requireBead(entries, beadId);
+  const currentPaths = new Set(extractCheckoutPaths(bead.notes));
+
+  if (targets.length === 1 && targets[0] === '--all') {
+    if (currentPaths.size === 0) {
+      console.log(`ℹ️  No active locks for ${beadId}.`);
+      return;
+    }
+    const updatedNotes = updateCheckoutNotes(bead.notes, []);
+    if (updatedNotes === undefined) {
+      delete bead.notes;
+    } else {
+      bead.notes = updatedNotes;
+    }
+
+    const ledgerFile = resolve(ledgerRoot, '.beads', 'issues.jsonl');
+    writeLedgerEntries(ledgerFile, entries);
+    commitLedgerChange(ledgerRoot, `beads: release all for ${beadId}`);
+    return;
+  }
+
+  if (targets.length === 0) {
+    console.error('❌ ERROR: Provide file paths to release or --all.');
+    process.exit(1);
+  }
+
+  const normalizedTargets = targets.map((path) => {
+    try {
+      return posixPath.normalize(toPosixRelative(repoRoot, path));
+    } catch {
+      return posixPath.normalize(path);
+    }
+  });
+
+  const removed = normalizedTargets.filter((normalized) => currentPaths.delete(normalized));
+
+  if (removed.length === 0) {
+    console.log(`ℹ️  No matching locks removed for ${beadId}.`);
+    return;
+  }
+
+  const updatedNotes = updateCheckoutNotes(bead.notes, Array.from(currentPaths));
+  if (updatedNotes === undefined) {
+    delete bead.notes;
+  } else {
+    bead.notes = updatedNotes;
+  }
+
+  const ledgerFile = resolve(ledgerRoot, '.beads', 'issues.jsonl');
+  writeLedgerEntries(ledgerFile, entries);
+  commitLedgerChange(ledgerRoot, `beads: release ${removed.join(', ')} for ${beadId}`);
+}
+
+function handleLocks(entries, args) {
+  const { filtered, present: shouldPrintJson } = extractFlag(args, '--json');
+  const lockIndex = buildLockIndex(entries);
+
+  if (filtered.length > 0) {
+    console.error(`❌ ERROR: Unexpected argument(s) for locks: ${filtered.join(', ')}`);
+    process.exit(1);
+  }
+
+  if (shouldPrintJson) {
+    const payload = {};
+    lockIndex.forEach((value, key) => {
+      payload[key] = value;
+    });
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    return;
+  }
+
+  if (lockIndex.size === 0) {
+    console.log('✅ No active locks.');
+    return;
+  }
+
+  console.log('🔒 Active locks:');
+  lockIndex.forEach((value, key) => {
+    const label = value.title ? `${value.beadId} (${value.title})` : value.beadId;
+    console.log(`   • ${key} → ${label}`);
+  });
+}
+
+function handleWho(entries, args) {
+  const { filtered, present: shouldPrintJson } = extractFlag(args, '--json');
+
+  if (filtered.length !== 1) {
+    console.error('Usage: bead who <path> [--json]');
+    process.exit(1);
+  }
+
+  const [targetPath] = filtered;
+  const normalized = posixPath.normalize(targetPath);
+  const lockIndex = buildLockIndex(entries);
+  const info = lockIndex.get(normalized);
+
+  if (shouldPrintJson) {
+    process.stdout.write(
+      `${JSON.stringify(
+        info
+          ? { path: normalized, ...info }
+          : { path: normalized, beadId: null, title: null },
+        null,
+        2,
+      )}\n`,
+    );
+    return;
+  }
+
+  if (!info) {
+    console.log(`✅ ${normalized} is not locked.`);
+    return;
+  }
+
+  console.log(
+    `🔒 ${normalized} locked by ${info.beadId}${info.title ? ` (${info.title})` : ''}`,
+  );
+}
+
+function main() {
+  const [command, ...args] = process.argv.slice(2);
+  if (!command) {
+    console.error('Usage: bead <command> [...args]');
+    console.error('Commands: checkout, release, locks, who');
+    process.exit(1);
+  }
+
+  const repoRoot = getGitRoot();
+  const ledgerRoot = resolveLedgerRoot(repoRoot);
+  ensureLedgerReady(ledgerRoot);
+  pullLedger(ledgerRoot);
+
+  const ledgerFile = resolve(ledgerRoot, '.beads', 'issues.jsonl');
+  let entries;
+
+  try {
+    entries = readLedgerEntries(ledgerFile);
+  } catch (error) {
+    console.error(`❌ ERROR: Unable to read ${ledgerFile}: ${(error && error.message) || error}`);
+    process.exit(1);
+  }
+
+  if (command === 'checkout' || command === 'release') {
+    ensureLedgerClean(ledgerRoot);
+  }
+
+  switch (command) {
+    case 'checkout':
+      handleCheckout(args, entries, repoRoot, ledgerRoot);
+      break;
+    case 'release':
+      handleRelease(args, entries, repoRoot, ledgerRoot);
+      break;
+    case 'locks':
+      handleLocks(entries, args);
+      break;
+    case 'who':
+      handleWho(entries, args);
+      break;
+    default:
+      console.error(`❌ ERROR: Unknown command '${command}'. Use checkout, release, locks, or who.`);
+      process.exit(1);
+  }
+}
+
+main();

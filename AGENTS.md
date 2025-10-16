@@ -12,6 +12,53 @@ We track work in Beads instead of Markdown. Run `bd quickstart` to see how.
 - Document any deviations from standard workflows in this file so future agents stay aligned.
 - **2025-10-11**: README rewrite committed directly to main by user instruction; no PR opened. This was a one-time exception for portfolio documentation updates. Subsequent work should return to standard branch/PR flow.
 
+## Multi-Agent Parallel Workflow (Git Worktrees + File Locking)
+
+### Overview
+- Two-lane system: feature work happens in bead-specific worktrees, while `.beads/issues.jsonl` lives in a dedicated ledger worktree (`../ifs-ledger`).
+- File locks are recorded in the ledger via `bead` CLI commands: `checkout`, `release`, `locks`, and `who`.
+- Branch names are auto-derived from bead titles and must follow `feature/<number>-<slug>` (e.g., `feature/6-agent-tools`). Pre-commit hooks enforce this along with lock compliance.
+- Pre-commit hooks run per worktree:
+  - Feature worktree hook blocks `.beads/` changes and enforces lock checks.
+  - Ledger hook ensures only `.beads/issues.jsonl` changes are committed there.
+
+### Session Startup Checklist
+1. Ensure ledger worktree exists (idempotent):  
+   `git worktree add ../ifs-ledger -b beads-ledger` (no-op if already created).
+2. Read bead metadata from `.beads/issues.jsonl`; grab bead number and title.
+3. Slugify title to `{slug}` and create/join branch `feature/<number>-{slug}` inside a dedicated worktree:  
+   `git worktree add ../ifs-bead-<number> -b feature/<number>-{slug} origin/main`.
+4. From the new worktree, install the correct pre-commit hook:  
+   `bash scripts/setup-pre-commit-hook.sh`.
+5. Run `npm install` if needed, sync environment vars, and record the branch name plus Codex session ID in the bead notes (so branch cleanup is traceable later).
+
+### During Development
+- Before editing a file: `scripts/bead checkout <bead-id> path/to/file.ts`.  
+  If blocked, use `bead who path/to/file.ts` to see the current owner and coordinate.
+- Periodically verify locks: `scripts/bead locks` (or add `--json` for automation).
+- When finished with a file: `scripts/bead release <bead-id> path/to/file.ts`.  
+  Use `--all` after merge/cleanup to drop every lock in one shot.
+- Pre-commit hook will block:
+  - Any staged `.beads/*` file from feature worktrees.
+  - Commits on branches that are not `feature/<number>-<slug>`.
+  - Files locked by another bead (message points to `bead who` for resolution).
+
+### Opening & Merging PRs
+- Validate lint/type/test/docs before pushing (per main workflow).
+- Open PRs from the feature worktree only; ledger commits stay on `beads-ledger`.
+- Reference the bead ID in the PR description along with validation evidence.
+- After merge:
+  1. `scripts/bead release <bead-id> --all`
+  2. `git worktree remove ../ifs-bead-<number>`
+  3. `git push origin :feature/<number>-<slug>` (delete remote branch)
+  4. Update bead status via `bd`, note that the branch was deleted (with timestamp/commit if useful), and archive any planning docs.
+
+### Troubleshooting
+- **Lock conflicts**: run `scripts/bead who <path>`; coordinate with the owning bead or pick a different file.
+- **Hook failures**: rerun `bash scripts/setup-pre-commit-hook.sh` inside the current worktree.
+- **Ledger out of sync**: from any worktree run `git -C ../ifs-ledger pull --rebase`; if conflicts remain, resolve in the ledger worktree first.
+- **Missing ledger**: rerun the worktree add command above; the setup is idempotent and safe to repeat.
+
 ## Beads Workflow & Delivery Cadence
 - Every bead should progress through **plan → implement → validate → ship** before picking up the next task.
 - When starting a bead, capture a todo list (`bd create`, `TodoWrite`) so each subtask is traceable.
