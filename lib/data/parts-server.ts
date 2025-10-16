@@ -2,6 +2,8 @@ import 'server-only'
 
 import { getServerSupabaseClient } from '@/lib/supabase/clients'
 import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
+// PRD-backed shim: delegates legacy server callers to the schema helpers that map parts_v2 data
+// back into the old PartRow shape while we complete the full migration.
 import {
   searchParts as searchPartsData,
   getPartById as getPartByIdData,
@@ -11,7 +13,7 @@ import {
   getPartRelationships as getPartRelationshipsData,
   getPartNotes as getPartNotesData,
   logRelationship as logRelationshipData,
-} from './parts'
+} from './schema/parts-agent'
 import type {
   SearchPartsInput,
   SearchPartsResult,

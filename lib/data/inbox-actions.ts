@@ -2,8 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { DatabaseActionLogger } from '@/lib/database/action-logger'
 import { getInboxItemById } from '@/lib/data/inbox-items'
+import { getPartById, updatePart } from '@/lib/data/parts-server'
+import type { UpdatePartInput } from '@/lib/data/parts.schema'
 import type { InboxItem, InboxQuickActionValue } from '@/types/inbox'
-import type { Database, InsightRow, InsightUpdate, PartRow, PartUpdate } from '@/lib/types/database'
+import type { Database, InsightRow, InsightUpdate } from '@/lib/types/database'
 
 export type ConfirmInboxActionPayload = {
   note?: string
@@ -95,11 +97,9 @@ export async function confirmInboxItemAction({
     if (item.partId) {
       await touchRelatedPart({
         supabase,
-        actionLogger,
         partId: item.partId,
         userId,
         note,
-        timestamp: now,
       })
     }
 
@@ -133,53 +133,41 @@ function toRecord(value: unknown): Record<string, unknown> {
 
 type PartTouchContext = {
   supabase: SupabaseClient<Database>
-  actionLogger: DatabaseActionLogger
   partId: string
   userId: string
-  timestamp: string
   note?: string
 }
 
 async function touchRelatedPart({
   supabase,
-  actionLogger,
   partId,
   userId,
-  timestamp,
   note,
 }: PartTouchContext): Promise<void> {
-  const { data: partRow, error } = await supabase
-    .from('parts')
-    .select('id,name,status,acknowledged_at')
-    .eq('id', partId)
-    .eq('user_id', userId)
-    .maybeSingle()
+  const deps = { client: supabase, userId }
+  const part = await getPartById({ partId }, deps)
 
-  if (error) {
-    throw error
-  }
-
-  if (!partRow) {
+  if (!part) {
     return
   }
 
-  const updates: Partial<PartUpdate> = {
-    last_active: timestamp,
-  }
+  const updates: UpdatePartInput['updates'] = {}
 
-  if (!partRow.acknowledged_at) {
-    updates.acknowledged_at = timestamp
-  }
-
-  if (partRow.status === 'emerging') {
+  if (part.status === 'emerging') {
     updates.status = 'acknowledged'
   }
 
-  await actionLogger.loggedUpdate<PartRow>('parts', partRow.id, updates, userId, 'acknowledge_part', {
-    partName: partRow.name,
-    changeDescription: 'Part touched by inbox confirmation',
-    ...(note ? { note } : {}),
-  })
+  // TODO(ifs-chat-app-5): Feed acknowledged/interaction timestamps into PRD parts helpers once
+  // updatePart can accept those fields directly.
+
+  await updatePart(
+    {
+      partId,
+      updates,
+      auditNote: note ?? 'Part touched by inbox confirmation',
+    },
+    deps,
+  )
 }
 
 async function confirmObservationInboxItem({
@@ -311,7 +299,6 @@ export async function dismissInboxItemAction(
   if (item.sourceType === 'part_follow_up' || item.sourceType === 'follow_up') {
     const updated = await dismissPartFollowUpInboxItem({
       supabase,
-      actionLogger,
       item,
       userId,
       timestamp,
@@ -338,6 +325,15 @@ export async function snoozeInboxItemAction(
 type DismissContext = {
   supabase: SupabaseClient<Database>
   actionLogger: DatabaseActionLogger
+  item: InboxItem
+  userId: string
+  timestamp: string
+  reason?: string
+  actionValue: InboxQuickActionValue
+}
+
+type PartDismissContext = {
+  supabase: SupabaseClient<Database>
   item: InboxItem
   userId: string
   timestamp: string
@@ -493,44 +489,40 @@ async function dismissInsightInboxItem({
 
 async function dismissPartFollowUpInboxItem({
   supabase,
-  actionLogger,
   item,
   userId,
   timestamp,
   reason,
   actionValue,
-}: DismissContext): Promise<InboxItem | null> {
+}: PartDismissContext): Promise<InboxItem | null> {
   if (!item.partId) {
     throw new Error('Part follow-up item missing partId')
   }
 
-  const { data: partRow, error } = await supabase
-    .from('parts')
-    .select('id,name,last_interaction_at')
-    .eq('id', item.partId)
-    .eq('user_id', userId)
-    .maybeSingle()
+  void timestamp
 
-  if (error) {
-    throw error
-  }
+  const deps = { client: supabase, userId }
+  const part = await getPartById({ partId: item.partId }, deps)
 
-  if (!partRow) {
+  if (!part) {
     throw new Error('Part not found for dismissal')
   }
 
-  const part = partRow as Pick<PartRow, 'id' | 'name'>
+  const updates: UpdatePartInput['updates'] = {}
+  const baseAudit = 'User dismissed part follow-up reminder'
+  const auditNote = reason ? `${baseAudit}: ${reason}` : baseAudit
 
-  const updates: Partial<PartUpdate> = {
-    last_interaction_at: timestamp,
-  }
+  // TODO(ifs-chat-app-5): Push follow-up dismissal timestamps into PRD parts metadata once
+  // updatePart exposes a dedicated last_interaction field.
 
-  await actionLogger.loggedUpdate<PartRow>('parts', part.id, updates, userId, 'dismiss_part_follow_up', {
-    partName: part.name,
-    changeDescription: 'User dismissed part follow-up reminder',
-    ...(reason ? { reason } : {}),
-    responseValue: actionValue,
-  })
+  await updatePart(
+    {
+      partId: item.partId,
+      updates,
+      auditNote,
+    },
+    deps,
+  )
 
   return getInboxItemById(supabase, item.id, userId)
 }

@@ -158,6 +158,24 @@ export async function getActiveSessionRecord(deps: PrdServerDeps): Promise<Sessi
 }
 
 /**
+ * Server helper to fetch a specific session by ID.
+ */
+export async function getSessionRecord(sessionId: string, deps: PrdServerDeps): Promise<SessionRowV2 | null> {
+  const resolved = await resolveDeps(deps)
+  const { getSession } = await import('./index')
+  return getSession(sessionId, resolved)
+}
+
+/**
+ * Server helper to list recent sessions for the user.
+ */
+export async function listSessionRecords(deps: PrdServerDeps, limit?: number): Promise<SessionRowV2[]> {
+  const resolved = await resolveDeps(deps)
+  const { listSessions } = await import('./index')
+  return listSessions(resolved, limit ?? 10)
+}
+
+/**
  * Server helper to upsert a part relationship.
  */
 export async function upsertRelationshipRecord(

@@ -146,3 +146,50 @@ export async function getActiveSession(
   if (!data) return null
   return sessionRowSchema.parse(data)
 }
+
+/**
+ * Fetch a specific session by ID for the current user.
+ */
+export async function getSession(
+  sessionId: string,
+  deps: PrdDataDependencies
+): Promise<SessionRowV2 | null> {
+  const { client, userId } = assertPrdDeps(deps)
+
+  const { data, error } = await client
+    .from('sessions_v2')
+    .select('*')
+    .eq('id', sessionId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Failed to fetch session ${sessionId}: ${error.message}`)
+  }
+
+  if (!data) return null
+  return sessionRowSchema.parse(data)
+}
+
+/**
+ * List recent sessions for the current user, ordered by start time (newest first).
+ */
+export async function listSessions(
+  deps: PrdDataDependencies,
+  limit: number = 10
+): Promise<SessionRowV2[]> {
+  const { client, userId } = assertPrdDeps(deps)
+
+  const { data, error } = await client
+    .from('sessions_v2')
+    .select('*')
+    .eq('user_id', userId)
+    .order('started_at', { ascending: false })
+    .limit(limit)
+
+  if (error) {
+    throw new Error(`Failed to list sessions: ${error.message}`)
+  }
+
+  return (data ?? []).map((row) => sessionRowSchema.parse(row))
+}

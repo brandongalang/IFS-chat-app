@@ -1,4 +1,5 @@
 import { getUserClient } from '@/lib/supabase/clients'
+import { listPartDisplayRecords } from '@/lib/data/schema/server'
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 
 export async function GET() {
@@ -12,18 +13,10 @@ export async function GET() {
   }
 
   try {
-    const { data: parts, error } = await supabase
-      .from('parts')
-      .select('id, name, visualization')
-      .eq('user_id', user.id)
-      .order('last_active', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching parts:', error)
-      return errorResponse('Failed to fetch parts', HTTP_STATUS.INTERNAL_SERVER_ERROR)
-    }
-
-    return jsonResponse(parts)
+    const displayRows = await listPartDisplayRecords(
+      { client: supabase, userId: user.id },
+    )
+    return jsonResponse(displayRows)
   } catch (error) {
     console.error('Parts API error:', error)
     return errorResponse('An unexpected error occurred', HTTP_STATUS.INTERNAL_SERVER_ERROR)

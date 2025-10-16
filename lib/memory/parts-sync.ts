@@ -6,6 +6,8 @@
 import { getStorageAdapter } from './snapshots/fs-helpers';
 import { readPartProfile } from './read';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getPart, upsertPart } from '@/lib/data/schema/server';
+import type { UpsertPartInput } from '@/lib/data/schema/parts';
 import type { PartCategory, PartStatus } from '@/lib/types/database';
 
 interface MarkdownPartData {
@@ -96,6 +98,29 @@ function parsePartFromMarkdown(
     role,
     evidence,
   };
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  return value as Record<string, unknown>;
+}
+
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((entry) => (typeof entry === 'string' ? entry.trim() : String(entry ?? '')))
+    .filter((entry) => entry.length > 0);
+}
+
+function arraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  return a.every((value, index) => value === b[index]);
 }
 
 /**
@@ -192,91 +217,84 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
       partData = parsed;
     }
 
-    // Connect to database
-    console.log(`[syncPartToDatabase] Connecting to database`);
+    // Connect to database via service role
+    console.log(`[syncPartToDatabase] Connecting to database (PRD helpers)`);
     const supabase = createAdminClient();
+    const deps = { client: supabase, userId };
 
-    // Check if part already exists
-    console.log(`[syncPartToDatabase] Checking if part ${partId} exists in database`);
-    const { data: existing, error: selectError } = await supabase
-      .from('parts')
-      .select('id, name, status, category, role, visualization')
-      .eq('id', partId)
-      .eq('user_id', userId)
-      .single();
+    console.log(`[syncPartToDatabase] Checking PRD record for part ${partId}`);
+    const existing = await getPart(partId, deps);
+    console.log(`[syncPartToDatabase] Existing PRD record:`, existing ? 'yes' : 'no');
 
-    if (selectError && selectError.code !== 'PGRST116') {
-      console.error(`[syncPartToDatabase] Error checking existing part:`, selectError);
+    const now = new Date().toISOString();
+    const existingData = toRecord(existing?.data);
+
+    const existingRole =
+      typeof existingData.role === 'string' && existingData.role.trim().length > 0
+        ? existingData.role
+        : null;
+
+    const existingEvidence = toStringArray(existingData.recent_evidence);
+    const finalEvidence = Array.isArray(partData.evidence) && partData.evidence.length > 0
+      ? partData.evidence
+      : existingEvidence;
+
+    const existingVisualization = toRecord(existingData.visualization);
+    const visualization = {
+      emoji: partData.emoji ?? (typeof existingVisualization.emoji === 'string' ? existingVisualization.emoji : '🧩'),
+      color: typeof existingVisualization.color === 'string' ? existingVisualization.color : '#6B7280',
+      energyLevel:
+        typeof existingVisualization.energyLevel === 'number' ? existingVisualization.energyLevel : 0.5,
+    };
+
+    const updatedData: Record<string, unknown> = {
+      ...existingData,
+      role: partData.role ?? existingRole ?? null,
+      recent_evidence: finalEvidence,
+      visualization,
+      markdown_sync: {
+        last_synced_at: now,
+        source: 'markdown_profile',
+      },
+    };
+
+    const payload: UpsertPartInput = {
+      id: partId,
+      name: partData.name,
+      status: partData.status,
+      category: partData.category,
+      charge: existing?.charge ?? 'neutral',
+      data: updatedData,
+      evidence_count: finalEvidence.length,
+      confidence: existing?.confidence ?? 0.5,
+      needs_attention: existing?.needs_attention ?? false,
+      last_active: now,
+    };
+
+    if (!existing?.first_noticed) {
+      payload.first_noticed = now;
     }
-    console.log(`[syncPartToDatabase] Existing part found:`, existing ? 'yes' : 'no');
 
-    if (existing) {
-      // Update existing part if data has changed
-      const needsUpdate =
-        existing.name !== partData.name ||
-        existing.status !== partData.status ||
-        existing.category !== partData.category ||
-        (partData.role !== undefined && existing.role !== partData.role);
+    const hasMeaningfulChanges =
+      !existing ||
+      existing.name !== payload.name ||
+      existing.status !== payload.status ||
+      existing.category !== payload.category ||
+      (partData.role !== undefined && (existingRole ?? null) !== (partData.role ?? null)) ||
+      (partData.emoji !== undefined &&
+        (typeof existingVisualization.emoji === 'string' ? existingVisualization.emoji : '🧩') !== visualization.emoji) ||
+      !arraysEqual(finalEvidence, existingEvidence);
 
-      if (needsUpdate) {
-        // Sync emoji from frontmatter to visualization if present
-        const visualization = partData.emoji
-          ? { ...(existing.visualization || {}), emoji: partData.emoji }
-          : existing.visualization || { emoji: '🧩', color: '#6B7280' };
-        
-        const { error } = await supabase
-          .from('parts')
-          .update({
-            name: partData.name,
-            status: partData.status,
-            category: partData.category,
-            // Only update role if provided, otherwise preserve existing
-            role: partData.role ?? existing.role,
-            visualization,
-            last_active: new Date().toISOString(),
-          })
-          .eq('id', partId)
-          .eq('user_id', userId);
-
-        if (error) {
-          console.error(`Failed to update part ${partId}:`, error);
-          return false;
-        }
-
-        console.log(`[syncPartToDatabase] ✅ Updated part ${partId} (${partData.name}) in database`);
-      } else {
-        console.log(`[syncPartToDatabase] Part ${partId} unchanged, skipping update`);
-      }
-    } else {
-      // Insert new part
-      // Use emoji from frontmatter if available, otherwise default
-      const visualization = partData.emoji
-        ? { emoji: partData.emoji, color: '#6B7280' }
-        : { emoji: '🧩', color: '#6B7280' };
-      
-      const { error } = await supabase.from('parts').insert({
-        id: partId,
-        user_id: userId,
-        name: partData.name,
-        status: partData.status,
-        category: partData.category,
-        role: partData.role,
-        visualization,
-        // Database-only fields for future feature expansion
-        triggers: [],
-        emotions: [],
-        beliefs: [],
-        last_active: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-      });
-
-      if (error) {
-        console.error(`Failed to insert part ${partId}:`, error);
-        return false;
-      }
-
-      console.log(`[syncPartToDatabase] ✅ Created part ${partId} (${partData.name}) in database`);
+    if (!hasMeaningfulChanges && existing) {
+      console.log(`[syncPartToDatabase] Part ${partId} unchanged (updating sync metadata only)`);
     }
+
+    // TODO(ifs-chat-app-5): Replace generic upsert with dedicated PRD markdown sync helper when available.
+    await upsertPart(payload, deps);
+
+    console.log(
+      `[syncPartToDatabase] ✅ ${existing ? 'Updated' : 'Created'} part ${partId} (${partData.name}) via PRD helpers`
+    );
 
     return true;
   } catch (error) {

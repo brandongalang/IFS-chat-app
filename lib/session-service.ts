@@ -1,14 +1,24 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { DatabaseActionLogger } from './database/action-logger'
+import {
+  completeSessionRecord,
+  createSessionRecord,
+  getSessionRecord,
+  listSessionRecords,
+  touchSession,
+} from './data/schema/server'
+import type { SessionRowV2 } from './data/schema'
 import { enqueueMemoryUpdate } from './memory/queue'
-import type {
-  Database,
-  SessionInsert,
-  SessionMessage,
-  SessionRow,
-  SessionUpdate,
-} from './types/database'
 import { getStorageAdapter, sessionTranscriptPath } from './memory/snapshots/fs-helpers'
+import type { Database, SessionMessage, SessionRow, SessionUpdate } from './types/database'
+
+interface StoredTranscript {
+  id?: string
+  user_id?: string | null
+  start_time?: string
+  end_time?: string | null
+  duration?: number | null
+  messages?: SessionMessage[]
+}
 
 export interface ChatSessionServiceOptions {
   supabase: SupabaseClient<Database>
@@ -17,15 +27,12 @@ export interface ChatSessionServiceOptions {
 
 export class ChatSessionService {
   private readonly supabase: SupabaseClient<Database>
-  private readonly actionLogger: DatabaseActionLogger
   private readonly userId: string
   private userRecordEnsured = false
 
   constructor(options: ChatSessionServiceOptions) {
     this.userId = options.userId
     this.supabase = options.supabase
-
-    this.actionLogger = new DatabaseActionLogger(this.supabase)
   }
 
   /**
@@ -34,43 +41,31 @@ export class ChatSessionService {
   async startSession(): Promise<string> {
     await this.ensureUserRecord()
 
-    const startTime = new Date().toISOString()
+    const startedAt = new Date().toISOString()
 
-    const session: SessionInsert = {
-      user_id: this.userId,
-      start_time: startTime,
-      messages: [],
-      parts_involved: {},
-      new_parts: [],
-      breakthroughs: [],
-      emotional_arc: {
-        start: { valence: 0, arousal: 0 },
-        peak: { valence: 0, arousal: 0 },
-        end: { valence: 0, arousal: 0 },
-      },
-      processed: false,
-    }
-
-    const data = await this.actionLogger.loggedInsert<{ id: string }>(
-      'sessions',
-      session,
-      this.userId,
-      'create_session',
+    const session = await createSessionRecord(
       {
-        changeDescription: 'Started new chat session',
-        sessionId: undefined,
+        type: 'therapy',
+        metadata: {},
+        started_at: startedAt,
+      },
+      {
+        client: this.supabase,
+        userId: this.userId,
       },
     )
 
-    await this.writeTranscript(data.id, {
-      user_id: this.userId,
-      start_time: startTime,
+    await this.writeTranscript(session.id, {
+      user_id: session.user_id,
+      start_time: session.started_at,
       end_time: null,
       duration: null,
       messages: [] as SessionMessage[],
     })
 
-    return data.id
+    // TODO(ifs-chat-app-5): Reintroduce action logging once PRD event hooks are defined.
+
+    return session.id
   }
 
   private async ensureUserRecord(): Promise<void> {
@@ -163,41 +158,35 @@ export class ChatSessionService {
     sessionId: string,
     message: Omit<SessionMessage, 'timestamp'>,
   ): Promise<void> {
-    const { data: session, error: fetchError } = await this.supabase
-      .from('sessions')
-      .select('messages, user_id, start_time, end_time, duration')
-      .eq('id', sessionId)
-      .single()
-
-    if (fetchError) {
-      throw new Error(`Failed to fetch session: ${fetchError.message}`)
-    }
-
     const newMessage: SessionMessage = {
       ...message,
       timestamp: new Date().toISOString(),
     }
-    const updatedMessages = [...(session.messages || []), newMessage]
+    const existingTranscript = await this.readTranscript(sessionId)
+    const updatedMessages = [...(existingTranscript?.messages ?? []), newMessage]
 
-    const { error: updateError } = await this.supabase
-      .from('sessions')
-      .update({
-        messages: updatedMessages,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', sessionId)
-
-    if (updateError) {
-      throw new Error(`Failed to add message: ${updateError.message}`)
+    let session: SessionRowV2
+    try {
+      session = await touchSession(
+        sessionId,
+        { last_message_at: newMessage.timestamp },
+        { client: this.supabase, userId: this.userId },
+      )
+    } catch (error) {
+      const err = error as { message?: string }
+      throw new Error(`Failed to record session activity: ${err.message ?? 'unknown error'}`)
     }
 
-    await this.writeTranscript(sessionId, {
-      user_id: session.user_id,
-      start_time: session.start_time,
-      end_time: session.end_time,
-      duration: session.duration,
-      messages: updatedMessages,
-    })
+    await this.writeTranscript(
+      sessionId,
+      {
+        user_id: session.user_id,
+        start_time: session.started_at,
+        end_time: session.ended_at,
+        messages: updatedMessages,
+      },
+      existingTranscript,
+    )
   }
 
   /**
@@ -206,39 +195,37 @@ export class ChatSessionService {
   async endSession(sessionId: string): Promise<void> {
     const endTime = new Date().toISOString()
 
-    const { data: session, error: fetchError } = await this.supabase
-      .from('sessions')
-      .select('start_time, user_id, end_time, duration, messages')
-      .eq('id', sessionId)
-      .single()
+    const existingTranscript = await this.readTranscript(sessionId)
 
-    if (fetchError) {
-      throw new Error(`Failed to fetch session: ${fetchError.message}`)
+    let session: SessionRowV2
+    try {
+      session = await completeSessionRecord(
+        sessionId,
+        { ended_at: endTime },
+        { client: this.supabase, userId: this.userId },
+      )
+    } catch (error) {
+      const err = error as { message?: string }
+      throw new Error(`Failed to complete session: ${err.message ?? 'unknown error'}`)
     }
 
-    const startTime = new Date(session.start_time)
-    const duration = Math.floor((new Date(endTime).getTime() - startTime.getTime()) / 1000)
+    const startedAt = session.started_at ?? existingTranscript?.start_time
+    const duration =
+      startedAt != null
+        ? Math.floor((new Date(endTime).getTime() - new Date(startedAt).getTime()) / 1000)
+        : null
 
-    const { error } = await this.supabase
-      .from('sessions')
-      .update({
-        end_time: endTime,
+    await this.writeTranscript(
+      sessionId,
+      {
+        user_id: session.user_id,
+        start_time: startedAt ?? endTime,
+        end_time: session.ended_at,
         duration,
-        updated_at: endTime,
-      })
-      .eq('id', sessionId)
-
-    if (error) {
-      throw new Error(`Failed to end session: ${error.message}`)
-    }
-
-    await this.writeTranscript(sessionId, {
-      user_id: session.user_id,
-      start_time: session.start_time,
-      end_time: endTime,
-      duration,
-      messages: session.messages || [],
-    })
+        messages: existingTranscript?.messages,
+      },
+      existingTranscript,
+    )
 
     const enqueueResult = await enqueueMemoryUpdate({
       userId: session.user_id,
@@ -261,78 +248,148 @@ export class ChatSessionService {
   }
 
   /**
+   * Map a PRD SessionRowV2 to legacy SessionRow format
+   */
+  private mapPrdSessionToLegacy(prdSession: SessionRowV2): Partial<SessionRow> {
+    const duration =
+      prdSession.started_at && prdSession.ended_at
+        ? Math.floor(
+            (new Date(prdSession.ended_at).getTime() - new Date(prdSession.started_at).getTime()) / 1000
+          )
+        : null
+
+    return {
+      id: prdSession.id,
+      user_id: prdSession.user_id,
+      start_time: prdSession.started_at,
+      end_time: prdSession.ended_at,
+      duration,
+      messages: [],
+      summary: prdSession.summary,
+      new_parts: [],
+      breakthroughs: prdSession.breakthroughs,
+      parts_involved: {},
+      emotional_arc: {
+        start: { valence: 0, arousal: 0 },
+        peak: { valence: 0, arousal: 0 },
+        end: { valence: 0, arousal: 0 },
+      },
+      processed: false,
+      processed_at: null,
+      created_at: prdSession.created_at,
+      updated_at: prdSession.updated_at,
+    }
+  }
+
+  /**
    * Get session history with messages
    */
   async getSession(sessionId: string): Promise<SessionRow | null> {
-    const { data, error } = await this.supabase
-      .from('sessions')
-      .select('*')
-      .eq('id', sessionId)
-      .single()
+    try {
+      const prdSession = await getSessionRecord(sessionId, {
+        client: this.supabase,
+        userId: this.userId,
+      })
 
-    if (error) {
-      if ((error as { code?: string }).code === 'PGRST116') {
+      if (!prdSession) {
         return null
       }
-      throw new Error(`Failed to get session: ${error.message}`)
-    }
 
-    return data
+      const transcript = await this.readTranscript(sessionId)
+
+      const legacy = this.mapPrdSessionToLegacy(prdSession)
+      return {
+        ...legacy,
+        messages: transcript?.messages ?? [],
+      } as SessionRow
+    } catch (error) {
+      const err = error as { message?: string }
+      throw new Error(`Failed to load session ${sessionId}: ${err.message ?? 'unknown error'}`)
+    }
   }
 
   /**
    * Get recent sessions for the current user
    */
   async getUserSessions(limit: number = 10): Promise<SessionRow[]> {
-    const { data, error } = await this.supabase
-      .from('sessions')
-      .select('*')
-      .eq('user_id', this.userId)
-      .order('start_time', { ascending: false })
-      .limit(limit)
+    try {
+      const prdSessions = await listSessionRecords(
+        {
+          client: this.supabase,
+          userId: this.userId,
+        },
+        limit
+      )
 
-    if (error) {
-      throw new Error(`Failed to get user sessions: ${error.message}`)
+      return prdSessions.map((s) => this.mapPrdSessionToLegacy(s)) as SessionRow[]
+    } catch (error) {
+      const err = error as { message?: string }
+      throw new Error(`Failed to list sessions: ${err.message ?? 'unknown error'}`)
     }
-
-    return data || []
   }
 
   /**
    * Get messages from a session (lightweight - just messages)
    */
   async getSessionMessages(sessionId: string): Promise<SessionMessage[]> {
-    const { data, error } = await this.supabase
-      .from('sessions')
-      .select('messages')
-      .eq('id', sessionId)
-      .single()
-
-    if (error) {
-      if ((error as { code?: string }).code === 'PGRST116') {
-        return []
-      }
-      throw new Error(`Failed to get session messages: ${error.message}`)
+    try {
+      const transcript = await this.readTranscript(sessionId)
+      return transcript?.messages ?? []
+    } catch (error) {
+      const err = error as { message?: string }
+      throw new Error(`Failed to load session messages for ${sessionId}: ${err.message ?? 'unknown error'}`)
     }
-
-    return data.messages || []
   }
 
   /**
    * Update session metadata (for IFS-specific tracking)
    */
   async updateSessionMetadata(sessionId: string, updates: Partial<SessionUpdate>): Promise<void> {
-    const { error } = await this.supabase
-      .from('sessions')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', sessionId)
+    try {
+      const patchUpdates: { last_message_at?: string; observations?: string[] } = {}
 
-    if (error) {
-      throw new Error(`Failed to update session metadata: ${error.message}`)
+      // Map legacy SessionUpdate fields to PRD session metadata
+      if (updates.updated_at) {
+        patchUpdates.last_message_at = updates.updated_at
+      }
+
+      if (Object.keys(patchUpdates).length === 0) {
+        return
+      }
+
+      await touchSession(
+        sessionId,
+        patchUpdates,
+        {
+          client: this.supabase,
+          userId: this.userId,
+        }
+      )
+    } catch (error) {
+      const err = error as { message?: string }
+      throw new Error(`Failed to update session metadata for ${sessionId}: ${err.message ?? 'unknown error'}`)
     }
+  }
+
+  private async readTranscript(sessionId: string, userId?: string): Promise<StoredTranscript | undefined> {
+    const storage = await getStorageAdapter()
+    const transcriptUserId = userId ?? this.userId
+    const transcriptPath = sessionTranscriptPath(transcriptUserId, sessionId)
+
+    try {
+      const existing = await storage.getText(transcriptPath)
+      if (!existing) {
+        return undefined
+      }
+      const parsed = JSON.parse(existing) as StoredTranscript
+      if (parsed && typeof parsed === 'object') {
+        return parsed
+      }
+    } catch {
+      return undefined
+    }
+
+    return undefined
   }
 
   private async writeTranscript(
@@ -344,31 +401,13 @@ export class ChatSessionService {
       duration?: number | null
       messages?: SessionMessage[] | null
     },
+    existing?: StoredTranscript,
   ): Promise<void> {
     const storage = await getStorageAdapter()
     const transcriptUserId = session.user_id ?? this.userId
     const transcriptPath = sessionTranscriptPath(transcriptUserId, sessionId)
 
-    type StoredTranscript = {
-      start_time?: string
-      end_time?: string | null
-      duration?: number | null
-      messages?: SessionMessage[]
-    }
-
-    let parsed: StoredTranscript | undefined
-
-    try {
-      const existing = await storage.getText(transcriptPath)
-      if (existing) {
-        const parsedValue = JSON.parse(existing) as StoredTranscript
-        if (parsedValue && typeof parsedValue === 'object') {
-          parsed = parsedValue
-        }
-      }
-    } catch {
-      parsed = undefined
-    }
+    const parsed = existing ?? (await this.readTranscript(sessionId, transcriptUserId))
 
     const storedMessages = parsed?.messages
     const parsedMessages = Array.isArray(storedMessages)
