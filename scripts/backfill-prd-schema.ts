@@ -33,6 +33,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
   process.exit(1)
 }
 
+/** Statistics collected during backfill process for a single user. */
 interface BackfillStats {
   legacyPartsCount: number
   legacySessionsCount: number
@@ -45,6 +46,7 @@ interface BackfillStats {
   timestamp: string
 }
 
+/** Complete migration report with per-user statistics and totals. */
 interface MigrationReport {
   mode: 'dry-run' | 'execute'
   userCount: number
@@ -65,6 +67,13 @@ interface MigrationReport {
 const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
 
 // Helper to handle schema cache refresh delays
+/**
+ * Retry helper for transient Supabase schema cache errors.
+ * @param fn - Async function returning {data, error}
+ * @param maxAttempts - Max retries (default: 2)
+ * @param delayMs - Delay between retries ms (default: 100)
+ * @returns Query result or final error
+ */
 async function withRetry<T>(
   fn: () => Promise<{ data: T | null; error: any }>,
   maxAttempts: number = 2,
@@ -84,6 +93,7 @@ async function withRetry<T>(
   return { data: null, error: lastError }
 }
 
+/** Check if user data has been migrated to PRD schema. */
 async function getMigrationFlag(userId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from('users')
@@ -96,6 +106,7 @@ async function getMigrationFlag(userId: string): Promise<boolean> {
   return settings?.prd_backfill_completed === true
 }
 
+/** Mark user as completed PRD schema migration. */
 async function setMigrationFlag(userId: string): Promise<void> {
   await supabase
     .from('users')
@@ -108,6 +119,7 @@ async function setMigrationFlag(userId: string): Promise<void> {
     .eq('id', userId)
 }
 
+/** Migrate legacy parts to parts_v2 with deduplication. */
 async function migratePartsForUser(
   userId: string,
   dryRun: boolean,
@@ -206,6 +218,7 @@ async function migratePartsForUser(
   return { migratedCount, skipped, errors }
 }
 
+/** Migrate legacy sessions to sessions_v2 with deduplication. */
 async function migrateSessionsForUser(
   userId: string,
   dryRun: boolean,
@@ -297,6 +310,7 @@ async function migrateSessionsForUser(
   return { migratedCount, skipped, errors }
 }
 
+/** Migrate legacy relationships to part_relationships_v2 with ID mapping. */
 async function migrateRelationshipsForUser(
   userId: string,
   dryRun: boolean,
@@ -438,6 +452,7 @@ async function migrateRelationshipsForUser(
   return { migratedCount, skipped, errors }
 }
 
+/** Collect statistics for legacy and migrated records. */
 async function getBackfillStats(
   userId: string,
 ): Promise<BackfillStats> {
@@ -486,6 +501,7 @@ async function getBackfillStats(
   }
 }
 
+/** Orchestrate backfill for single user (parts, sessions, relationships). */
 async function backfillForUser(
   userId: string,
   dryRun: boolean,
@@ -538,6 +554,7 @@ async function backfillForUser(
   }
 }
 
+/** Main entry point parsing CLI args and orchestrating backfill. */
 async function main() {
   const args = process.argv.slice(2)
   const dryRun = args.includes('--dry-run') || !args.includes('--execute')
