@@ -2,198 +2,71 @@
 
 We track work in Beads instead of Markdown. Run `bd quickstart` to see how.
 
----
+## Branch Management
+- **IMPORTANT**: Before starting any new work, verify you're on a clean branch appropriate for the task:
+  1. Check current branch with `git branch --show-current`
+  2. If the current branch was used for a different PR or feature, create a new branch from `main`
+  3. Never build new work onto a branch that already has an open/merged PR
+  4. Use descriptive branch names: `feature/description`, `fix/description`, or `refactor/description`
+- Prefer GitHub CLI (`gh`) for creating and updating pull requests from this repository.
+- Document any deviations from standard workflows in this file so future agents stay aligned.
+- **2025-10-11**: README rewrite committed directly to main by user instruction; no PR opened. This was a one-time exception for portfolio documentation updates. Subsequent work should return to standard branch/PR flow.
 
-## Quick Reference Card
-
-**Starting Work**
-```bash
-# 1. Verify clean branch
-git branch --show-current
-
-# 2. Get next bead
-bd ready
-
-# 3. Understand requirements
-bd show <id>
-
-# 4. Create new branch if needed (if current has open/merged PR)
-git checkout -b feature/<description>
-```
-
-**During Implementation**
-```bash
-# 1. Review every diff/change as you implement
-
-# 2. Update bead status as you progress
-bd edit <id>  # Update to implement/validate/ship
-
-# 3. Run checks incrementally
-npm run migrations:verify  # After schema changes
-npm test                   # After code changes
-```
-
-**Before Final Response** ⚠️
-```bash
-# 1. Re-read AGENTS.md relevant sections (see Pre-Response Checklist below)
-
-# 2. Run quality gates
-npm run lint
-npm run typecheck
-npm test
-node .github/scripts/docs-check.mjs
-
-# 3. Update bead status
-bd edit <id>
-
-# 4. Commit .beads database
-git add .beads && git commit -m "chore: update bead status"
-
-# 5. State in response: (a) bead status, (b) work completion, (c) PR readiness
-```
-
-**Shipping**
-```bash
-# 1. Verify docs check passes
-node .github/scripts/docs-check.mjs
-
-# 2. Create PR with bead ID in description
-gh pr create --title "Complete bead <id>: <title>" --body "..."
-
-# 3. After merge
-git checkout main
-git pull
-bd ready  # Get next bead
-```
-
----
-
-## Core Workflow (Bead Lifecycle)
-
-Every bead progresses through **plan → implement → validate → ship** before picking up the next task.
-
-### Phase 1: Plan
-
-1. **Get next bead**: `bd ready` (shows highest-priority bead)
-2. **Review requirements**: `bd show <id>`
-3. **Branch check**: Run `git branch --show-current`
-   - If current branch has open/merged PR → create new branch from `main`
-   - Use format: `feature/<description>`, `fix/<description>`, `refactor/<description>`
-   - Never build new work onto a branch with existing PR
-4. **Create todo list**: `bd create` or `TodoWrite` tool so each subtask is traceable
-5. **Document assumptions**: Use `bd edit <id>` to add notes/context to bead
-6. **Derive implementation plan**: Store in bead or create doc in `docs/planning/implementation/` for non-trivial work
-
-### Phase 2: Implement
-
-1. **Implement directly**: Use Claude Code tools to make changes
-   - Review every change as you make it
-   - Ensure tests and type checks align with acceptance criteria
-2. **Stage commits incrementally**: Avoid large "mega" commits spanning multiple beads
-3. **Run targeted checks immediately** after changes:
-   - Schema changes → `npm run migrations:verify`
-   - Code changes → relevant unit tests
-4. **Update bead status**: `bd edit <id>` to set status to "implement"
-5. **Commit `.beads` database**: After status changes so downstream agents see current state
-
-### Phase 3: Validate
-
-1. **Run full test suite**:
-   ```bash
-   npm run lint
-   npm run typecheck
-   npm test
-   ```
-2. **Update documentation** (see Quality Gates → Documentation below)
-3. **Run docs check**: `node .github/scripts/docs-check.mjs`
-   - Resolve any failures including docstring coverage gaps
-   - Never rely on reviewers to flag doc regressions
-4. **Address CI/CodeRabbit feedback**: Immediately, don't wait for reviewer follow-up
-5. **Update bead status**: `bd edit <id>` to set status to "validate"
-
-### Phase 4: Ship
-
-1. **Open PR**: `gh pr create`
-   - Reference bead ID in description
-   - List validation steps performed (tests, scripts run)
-   - Use required PR template format
-   - **One bead per PR** - do not stack multiple beads
-2. **After merge**:
-   ```bash
-   git checkout main
-   git pull
-   bd ready  # Get next bead and repeat cycle
-   ```
-
-### Phase 5: Archive (if needed)
-
-1. **Capture follow-up work**: If bead revealed new tasks, create new beads via `bd create`
-2. **Move planning docs**: From `/docs/planning/implementation/` to `/docs/archive/`
-3. **Update living docs**: Update `/docs/current/` if feature shipped
+## Beads Workflow & Delivery Cadence
+- Every bead should progress through **plan → implement → validate → ship** before picking up the next task.
+- When starting a bead, capture a todo list (`bd create`, `TodoWrite`) so each subtask is traceable.
+- While implementing, keep work on a dedicated branch. Stage commits incrementally; avoid large "mega" commits that span multiple beads.
+- Update bead status in Beads as you move through the workflow (plan/implement/validate/ship) and commit the updated `.beads` database with your changes so downstream agents see the current state.
+- **Testing cadence**:
+  - Run targeted checks (e.g., `npm run migrations:verify`, unit tests) immediately after introducing schema or code changes.
+  - Run the full lint/type/test suite before opening a PR for that bead.
+- **PR cadence**:
+  - Open a PR as soon as a bead’s deliverables are implemented and validated. Do not stack multiple beads on one PR.
+  - PR description must reference completed bead IDs and summarize validation (tests, scripts) that were run.
+  - Complete the documentation sweep (update affected docs, verify docstring coverage, ensure PR description template compliance) **before** opening or refreshing the PR to keep Docs CI green.
+  - Run the docs check (`node .github/scripts/docs-check.mjs`) and resolve any failures—including docstring coverage gaps—*before* pushing or requesting review; never rely on reviewers to flag doc regressions.
+  - If CodeRabbit or CI leaves actionable comments (docs template, docstrings, etc.), address them immediately rather than waiting for reviewer follow-up.
+- After a PR merges, reset to `main`, re-run `bd ready` to pick the next bead, and repeat the cycle.
+- If a bead reveals new follow-up work, capture it via new beads before moving on.
 
 ### Status Updates & Hand-off Protocol
+- Whenever you pause or finish work, the final message to the user must explicitly state:
+  1. The current status of the active bead (e.g., in progress, ready for validation).
+  2. Whether the requested work is fully complete.
+  3. Whether the branch is ready for a PR (or what remains before it is).
+- Run and report relevant checks (lint, typecheck, tests, docs) as you implement changes—do not wait for the user to request them.
+- If work is ongoing, note the next concrete step so the user can decide whether to continue or pause.
 
-Whenever you pause or finish work, the final message to the user must explicitly state:
+### Bead Record Structure (Title, Description, Design, Notes)
+- **Title**: short action statement (verb + object) that makes the scope obvious (e.g., "Implement PRD core migrations").
+- **Description**: high-level intent and business value; include success definition in plain language.
+- **Design**: detailed implementation outline—key steps, affected modules, constraints, data flows, and testing expectations. Treat this as the acceptance criteria the implementer must satisfy.
+- **Notes / Context**: capture decisions, links, and references (docs, PRD sections, related beads). Record clarifications or assumptions agreed with the user here.
+- A bead is only "ready" when all four fields provide enough context that any agent, unfamiliar with prior work, can execute without further discovery.
 
-1. **Current bead status**: What phase is it in? (plan/implement/validate/ship)
-2. **Work completion**: Is the requested work fully done, or what remains?
-3. **PR readiness**: Can this be shipped, or what's blocking?
-4. **Next step**: What's the immediate next action?
+## Documentation Workflow (CRITICAL)
+**Before opening any PR, documentation MUST be updated to pass the `docs` CI check.**
 
-Additional requirements:
-- Run and report relevant checks (lint, typecheck, tests, docs) as you implement—do not wait for user to request
-- If work is ongoing, note concrete next steps so user can decide whether to continue or pause
+### When to Update Docs
+- **ALWAYS update docs** when changes affect:
+  - Behavior, data flow, or system design
+  - User-facing features or UI/UX
+  - API contracts, database schemas, or data models
+  - Configuration or environment variables
+  - Tool/agent capabilities or workflows
 
----
+- **SKIP docs only when** the change is purely non-functional:
+  - Code formatting or style fixes
+  - Comment updates
+  - Test refactors that don't change behavior
+  - Dependency version bumps without API changes
+  - **If skipping docs, add the `docs:skip` label and justify in the PR description**
 
-## Quality Gates
-
-All PRs must pass these gates before requesting review.
-
-### 1. Testing Requirements
-
-**When to run:**
-- **Targeted tests** → immediately after code changes
-- **Full suite** → before opening PR
-
-**Commands:**
-```bash
-npm run lint                   # Code style
-npm run typecheck              # Type safety
-npm test                       # Unit/integration tests
-npm run migrations:verify      # If schema changed
-```
-
-**Standards:**
-- All tests must pass
-- No type errors
-- No lint warnings
-- New code should have test coverage
-
-### 2. Documentation Requirements
-
-**Always update docs when changes affect:**
-- ✅ Behavior, data flow, or system design
-- ✅ User-facing features or UI/UX
-- ✅ API contracts, database schemas, or data models
-- ✅ Configuration or environment variables
-- ✅ Tool/agent capabilities or workflows
-
-**Skip docs only when change is purely non-functional:**
-- ❌ Code formatting or style fixes
-- ❌ Comment-only updates
-- ❌ Test refactors (no behavior change)
-- ❌ Dependency version bumps without API changes
-- **If skipping: add `docs:skip` label + justification in PR description**
-
-**Update process:**
-
+### Documentation Update Checklist
 1. **Identify affected areas** using `docs/.docmap.json`:
-   ```bash
-   git diff main...HEAD --name-only  # See changed files
-   # Match changed paths against docmap patterns
-   # Update ALL mapped docs that correspond to changed code
-   ```
+   - Run `git diff main...HEAD --name-only` to see changed files
+   - Match changed paths against docmap patterns
+   - Update ALL mapped docs that correspond to changed code
 
 2. **Update feature docs** (`docs/features/**`):
    - Add PR number to `related_prs` list
@@ -212,73 +85,28 @@ npm run migrations:verify      # If schema changed
    - Cross-cutting concerns (e.g., mobile responsiveness, accessibility)
    - Add corresponding entries to `docs/.docmap.json`
 
-5. **Add docstrings** for new public functions/classes
+5. **Verify docs CI will pass**:
+   - Run `node .github/scripts/docs-check.mjs` locally (requires BASE_SHA and HEAD_SHA env vars)
+   - Or push and let GitHub Actions validate
+   - Fix any violations before requesting review
 
-**Validation:**
-```bash
-node .github/scripts/docs-check.mjs  # Must pass before PR
-```
-
-**Documentation standards:**
+### Documentation Standards
 - Use clear, concise language
 - Include code examples where helpful
 - Link to related PRs, issues, and other docs
 - Keep frontmatter metadata up to date
 - Follow existing doc structure and conventions
-
-### 3. CI Compliance
-
-- Docs check must be green
-- Address CodeRabbit comments immediately (don't wait for reviewer)
-- PR description must match template
-- No commits titled "WIP" or "fix tests"
-
----
-
-## Bead Record Structure
-
-A bead is only "ready" when all four fields provide enough context that any agent, unfamiliar with prior work, can execute without further discovery.
-
-**Required fields:**
-
-- **Title**: Short action statement (verb + object) that makes scope obvious
-  - Example: "Implement PRD core migrations"
-
-- **Description**: High-level intent and business value
-  - Include success definition in plain language
-
-- **Design**: Detailed implementation outline—acceptance criteria
-  - Key steps, affected modules, constraints
-  - Data flows and testing expectations
-  - What the implementer must satisfy to consider it complete
-
-- **Notes / Context**: Decisions, links, and references
-  - Docs, PRD sections, related beads
-  - Clarifications or assumptions agreed with user
-
----
-
-## Role Definitions
-
-### Human
-- Sets priority and clarifies requirements
-- Reviews final output and signs off on bead completion
-- Reference `plan.md` or relevant bead entry for context before giving new work
-
-### Agent (Claude Code)
-- Executes bead work using available tools (Read, Edit, Bash, etc.)
-- Runs tests and validates changes
-- Reports status to human with clear work completion summary
-- Stays aligned with conventions in this file
-
----
+- Mastra tool modules now export factory helpers (e.g., `createAssessmentTools`) that require passing the server-derived user ID; inject the profile's user ID when wiring agents.
+- 2025-09-26: Remaining stacked PRs (#262, #263) diverge significantly from the new Supabase/bootstrap architecture. Prefer Option 2 — cut fresh branches from `main`, cherry-pick essential tool/schema updates, and drop legacy dependency injection patterns.
+- 2025-10-01: Part-related Zod schemas are `.strict()` and expect the server to inject user identity; keep `userId` out of tool payloads/tests (updated `scripts/tests/unit/part-schemas.test.ts`).
+- 2025-10-02: Inbox APIs expose Supabase `source_id` as both `id` and `sourceId`; do not reintroduce a separate `id` column in `inbox_items_view`. Client events must send `sourceId`.
+- 2025-10-03: When a multi-phase plan (e.g., session logs like `docs/10_1_session.md`) is finished, update the relevant feature docs/runbooks before closing the workstream so the docs CI check stays green.
+- 2025-10-08: Before opening or refreshing a PR, rerun the docs sweep—confirm feature docs under `docs/features/**` list every touched module (update `code_paths`, `last_updated`, etc.) and ensure the PR description matches the required template so the docs CI check passes on the first run.
 
 ## Planning & Task Documentation Workflow
-
 **Development planning follows a priority-based organization in `/docs/planning/`.**
 
 ### Directory Structure (Updated October 2025)
-
 ```
 /docs/
 ├── vision/          # Long-term product vision and strategy
@@ -295,26 +123,24 @@ A bead is only "ready" when all four fields provide enough context that any agen
 ```
 
 ### Workflow
+1. **Planning Phase**: Create docs in `/docs/planning/backlog/` or `/docs/planning/next/`
+   - Use `feat-` prefix for user-facing features
+   - Use `tech-` prefix for technical/infrastructure work
+   - Product requirements and technical designs
+   - Move from backlog to next when ready to build (limit next to 1-3 items)
 
-**1. Planning Phase**: Create docs in `/docs/planning/backlog/` or `/docs/planning/next/`
-- Use `feat-` prefix for user-facing features
-- Use `tech-` prefix for technical/infrastructure work
-- Product requirements and technical designs
-- Move from backlog to next when ready to build (limit next to 1-3 items)
+2. **Implementation Phase**: Log progress in `/docs/planning/implementation/`
+   - Create session logs when starting work
+   - Update with progress, decisions, and blockers
+   - Reference PR numbers when created
+   - Can have multiple session files for complex features
 
-**2. Implementation Phase**: Log progress in `/docs/planning/implementation/`
-- Create session logs when starting work
-- Update with progress, decisions, and blockers
-- Reference PR numbers when created
-- Can have multiple session files for complex features
-
-**3. Completion Phase**: Archive to `/docs/archive/` when done
-- Move planning docs and implementation logs
-- Update `/docs/current/` with living documentation
-- Keep as historical record of decisions made
+3. **Completion Phase**: Archive to `/docs/archive/` when done
+   - Move planning docs and implementation logs
+   - Update `/docs/current/` with living documentation
+   - Keep as historical record of decisions made
 
 ### Relationship Between Directories
-
 - **`/docs/planning/`** - Active work and future plans (temporary)
 - **`/docs/current/`** - Living documentation (maintained indefinitely)
 - **`/docs/archive/`** - Historical record (preserved for reference)
@@ -323,7 +149,6 @@ A bead is only "ready" when all four fields provide enough context that any agen
 **Key distinction**: Planning docs are temporary work artifacts; current docs are permanent references.
 
 ### Best Practices
-
 - Keep `/docs/planning/next/` limited to 1-3 items you're actually ready to build
 - Use clear prefixes: `feat-` for features, `tech-` for technical work
 - Archive completed work promptly to avoid confusion
@@ -331,90 +156,24 @@ A bead is only "ready" when all four fields provide enough context that any agen
 - Link planning docs to PRs and implementation logs for traceability
 
 ### Legacy Note
-
 The `/specs/` directory contains older planning documents following a lifecycle-based structure (scoping → in-progress → completed). New work should use the `/docs/planning/` structure described above.
 
----
+## Human · Droid Assistant · Codex Workflow
+- **Human**: sets priority, clarifies requirements, reviews the final output, and signs off on bead completion. Reference `plan.md` or the relevant bead entry for context before giving new work.
+- **Droid Assistant (Chat)**: owns planning, updates the bead record, orchestrates Codex, reviews diffs, and reports status. Do not write code directly; leverage Codex for implementation.
+- **Codex CLI**: acts as the execution agent. Follow the prompts supplied by the Droid Assistant, run tests, and surface diffs. Keep Codex aligned with the conventions in this file.
 
-## Pre-Response Checklist
+### Execution Pattern (single Codex session per bead)
+1. Understand the bead scope (`bd show <id>`), capture/refresh todos, and note assumptions in bead notes if needed.
+2. Derive a concise implementation plan; store it in the bead (via `bd edit`) or a planning doc under `docs/planning/implementation/` when non-trivial.
+3. Before launching Codex, assemble the prompt with (a) the bead summary/acceptance criteria from `bd show <id>` and (b) the initial file/function shortlist you expect Codex to touch. This keeps Codex aligned with the bead definition of done while narrowing its search surface.
+4. Launch **one** Codex interactive session for the bead (`tmux new -As codex-orch` → `codex "<prompt>"`). Reuse the same session throughout; only spin additional sessions if the bead is explicitly split later.
+5. Let Codex propose diffs and test runs. Review every diff before applying, ensure tests and type checks align with Acceptance Criteria, and re-run locally when Codex skips a check.
+6. Record the Codex session ID (see the TUI header or `~/.codex/sessions/`) in your status update and bead notes so future agents can resume (`codex resume <SESSION_ID>`).
+7. After applying changes, run mandatory local checks (lint, typecheck, unit tests, docs when required), summarize outcomes, and update the bead status.
+8. Once the bead is ready to ship, prepare commits (spec → implementation if specs/docs were added), ensure docs workflow requirements are satisfied, and coordinate PR creation per Branch Management guidelines.
 
-**Before every final response to the user, verify:**
-
-### ✅ Self-Review
-
-**Re-read AGENTS.md sections relevant to current work:**
-- If implementing → review **Core Workflow**
-- If shipping → review **Quality Gates**
-- If documenting → review **Planning & Task Documentation Workflow**
-
-### ✅ Work Status Communication
-
-**Must explicitly state:**
-1. **Bead status**: What phase is the active bead in? (plan/implement/validate/ship)
-2. **Completion**: Is the requested work fully done, or what remains?
-3. **PR readiness**: Can this be shipped, or what's blocking?
-4. **Next step**: What's the immediate next action?
-
-### ✅ Quality Verification
-
-**If claiming work is "done" or "ready for PR":**
-- [ ] All Quality Gates passed (tests, docs, CI)
-- [ ] Bead status updated in Beads
-- [ ] `.beads` database committed
-- [ ] Branch is clean and up-to-date
-
-### ✅ Context Hand-off
-
-**If pausing mid-work:**
-- [ ] Documented current state in bead notes
-- [ ] Listed concrete next steps
-- [ ] Captured any blockers or open questions
-
-**This checklist prevents:**
-- Forgetting to run required checks
-- Leaving work in ambiguous state
-- Missing documentation updates
-- Incomplete hand-offs between agents
-
----
-
-## Decision Log
-
-Historical context and architectural decisions. Reference these when encountering related code.
-
-### Tool Architecture (2025-09-26)
-
-- Mastra tool modules export factory helpers (e.g., `createAssessmentTools`)
-- Factories require server-derived user ID
-- Inject profile's user ID when wiring agents
-- **Context**: Stacked PRs (#262, #263) diverged from Supabase architecture; prefer cutting fresh branches from `main`, cherry-pick essential tool/schema updates, and drop legacy dependency injection patterns
-
-### Schema Conventions (2025-10-01)
-
-- Part-related Zod schemas use `.strict()`
-- Server injects user identity; keep `userId` out of tool payloads/tests
-- **Reference**: `scripts/tests/unit/part-schemas.test.ts`
-
-### API Consistency (2025-10-02)
-
-- Inbox APIs expose Supabase `source_id` as both `id` and `sourceId`
-- Do not reintroduce separate `id` column in `inbox_items_view`
-- Client events must send `sourceId`
-
-### Documentation Maintenance (2025-10-03)
-
-- When multi-phase plan (e.g., session logs like `docs/10_1_session.md`) is finished, update relevant feature docs/runbooks before closing workstream
-- Keeps docs CI check green
-
-### PR Documentation Sweep (2025-10-08)
-
-- Before opening/refreshing PR: rerun docs sweep
-- Confirm `docs/features/**` lists every touched module
-- Update `code_paths`, `last_updated`, etc.
-- Ensure PR description matches required template so docs CI check passes on first run
-
-### README Direct Commit (2025-10-11)
-
-- **One-time exception**: README rewrite committed directly to `main` by user instruction; no PR opened
-- **Context**: Portfolio documentation update
-- **Future**: Return to standard branch/PR flow
+### Codex CLI Orchestration Tips
+- Default to a single tmux window/pane for the bead. Use additional panes only for log tailing or long-running scripts—not for parallel Codex work.
+- Prefer interactive mode (`codex "<prompt>"`) so Codex can iterate. Use `codex exec` sparingly for deterministic, single-command automation (e.g., “explain file”).
+- Before handing off, leave Codex mid-session with a clear summary of remaining steps and copy the session ID into the status update.
