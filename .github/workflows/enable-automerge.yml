@@ -15,6 +15,9 @@ jobs:
        contains(join(github.event.pull_request.labels.*.name, ','), 'automerge'))
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       - uses: peter-evans/enable-pull-request-automerge@v3
         with:
+          pull-request: ${{ github.event.pull_request.number }}
           merge-method: SQUASH
