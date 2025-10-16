@@ -3,6 +3,7 @@ import 'server-only'
 import { proposePartSplitSchema, proposePartMergeSchema, approveRejectSchema, executeProposalSchema, type ProposePartSplitInput, type ProposePartMergeInput, type ApproveRejectInput, type ExecuteProposalInput } from './proposals.schema'
 import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
 import { createActionLogger } from '@/lib/database/action-logger'
+import { getPartById } from './parts-server'
 import type { PartRow } from '@/lib/types/database'
 
 export type ProposalDependencies = {
@@ -150,6 +151,13 @@ async function getActionLoggerWithClient(client: SupabaseDatabaseClient) {
   return createActionLogger(client)
 }
 
+function toRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+  return value as Record<string, unknown>
+}
+
 export async function executeSplit(
   input: ExecuteProposalInput,
   deps: ProposalDependencies
@@ -169,66 +177,115 @@ export async function executeSplit(
   }
 
   const payload = proposal.payload as any
+  const parent = await getPartById({ partId: payload.parentPartId }, deps)
+  if (!parent) {
+    throw new Error('Parent part not found')
+  }
 
-  const { data: parent, error: parentErr } = await supabase
-    .from('parts')
-    .select('*')
-    .eq('id', payload.parentPartId)
+  const { data: parentRecord, error: parentRecordError } = await supabase
+    .from('parts_v2')
+    .select('id, data, confidence, category, status, evidence_count, first_noticed, last_active, charge, needs_attention')
+    .eq('id', parent.id)
     .eq('user_id', userId)
-    .single()
-  if (parentErr || !parent) throw new Error('Parent part not found')
+    .maybeSingle()
+
+  if (parentRecordError || !parentRecord) {
+    throw new Error('Parent part record missing in PRD schema')
+  }
 
   const now = new Date().toISOString()
-
-  const inserts = (payload.children as Array<any>).map((c: any) => ({
-    user_id: userId,
-    name: c.name,
-    status: 'emerging',
-    category: parent.category,
-    age: c.age ?? null,
-    role: c.role ?? null,
-    triggers: parent.triggers ?? [],
-    emotions: parent.emotions ?? [],
-    beliefs: parent.beliefs ?? [],
-    somatic_markers: parent.somatic_markers ?? [],
-    confidence: Math.max(0, Math.min(1, parent.confidence - 0.1)),
-    evidence_count: 0,
-    recent_evidence: [],
-    story: {
-      ...(parent.story || {}),
-      evolution: [
-        ...((parent.story?.evolution) || []),
-        { timestamp: now, change: `Split from ${parent.name}`, trigger: 'Split execution' },
-      ],
-    },
-    relationships: parent.relationships || {},
-    visualization: parent.visualization || { emoji: '🤗', color: '#6B7280', energyLevel: 0.5 },
-    first_noticed: parent.first_noticed,
-    acknowledged_at: null,
-    last_active: now,
-    created_at: now,
-    updated_at: now,
-  }))
-
-  const { data: children, error: childErr } = await supabase
-    .from('parts')
-    .insert(inserts)
-    .select('*')
-  if (childErr) throw new Error(`Failed to create split children: ${childErr.message}`)
-
   const actionLogger = await getActionLoggerWithClient(supabase)
 
-  const relationships = parent.relationships || {}
-  const lineage = { ...(relationships.lineage || {}) }
-  lineage['superseded_by'] = [...(lineage['superseded_by'] || []), ...children.map((c: PartRow) => c.id)]
-  const updatedParent = await actionLogger.loggedUpdate<PartRow>(
-    'parts',
+  const childResults: PartRow[] = []
+  const childIds: string[] = []
+
+  for (const child of payload.children as Array<any>) {
+    const childStory = toRecord(parent.story)
+    const childStoryEvolution = Array.isArray((parent.story as any)?.evolution)
+      ? [
+          ...((parent.story as any).evolution as Array<{ timestamp?: string; change?: string; trigger?: string }>),
+          { timestamp: now, change: `Split from ${parent.name}`, trigger: 'Split execution' },
+        ]
+      : [{ timestamp: now, change: `Split from ${parent.name}`, trigger: 'Split execution' }]
+
+    const childData = {
+      role: child.role ?? parent.role ?? null,
+      age: child.age ?? parent.age ?? null,
+      triggers: parent.triggers ?? [],
+      emotions: parent.emotions ?? [],
+      beliefs: parent.beliefs ?? [],
+      somatic_markers: parent.somatic_markers ?? [],
+      recent_evidence: [],
+      story: { ...childStory, evolution: childStoryEvolution },
+      relationships: parent.relationships ?? {},
+      visualization: parent.visualization ?? { emoji: '🤗', color: '#6B7280', energyLevel: 0.5 },
+      acknowledged_at: null,
+      last_interaction_at: now,
+      lineage_source: parent.id,
+    }
+
+    // TODO(ifs-chat-app-5): Replace manual parts_v2 payload shaping with a dedicated split helper once
+    // the PRD schema exposes first-class split/merge operations.
+    const inserted = await actionLogger.loggedInsert(
+      'parts_v2',
+      {
+        user_id: userId,
+        name: child.name,
+        status: 'emerging',
+        category: parent.category,
+        charge: parentRecord.charge ?? 'neutral',
+        needs_attention: false,
+        confidence: Math.max(0, Math.min(1, (parent.confidence ?? 0) - 0.1)),
+        evidence_count: 0,
+        data: childData,
+        first_noticed: parent.first_noticed ?? now,
+        last_active: now,
+        created_at: now,
+        updated_at: now,
+      },
+      userId,
+      'create_emerging_part',
+      {
+        partName: child.name,
+        changeDescription: `Split child created from ${parent.name}`,
+        parentPartId: parent.id,
+      }
+    )
+
+    childIds.push(inserted.id)
+    const mappedChild = await getPartById({ partId: inserted.id }, deps)
+    if (mappedChild) {
+      childResults.push(mappedChild)
+    }
+  }
+
+  const parentData = toRecord(parentRecord.data)
+  const relationships = toRecord(parentData.relationships ?? parent.relationships)
+  const lineage = toRecord(relationships.lineage)
+  const superseded = Array.isArray(lineage.superseded_by) ? (lineage.superseded_by as string[]) : []
+  relationships.lineage = {
+    ...lineage,
+    superseded_by: [...new Set([...superseded, ...childIds])],
+  }
+  parentData.relationships = relationships
+
+  // TODO(ifs-chat-app-5): Swap to PRD merge helper when available to avoid hand-crafted lineage patches.
+  await actionLogger.loggedUpdate(
+    'parts_v2',
     parent.id,
-    { relationships: { ...relationships, lineage }, updated_at: now },
+    {
+      data: parentData,
+      updated_at: now,
+    },
     userId,
     'update_part_attributes',
     { partName: parent.name, changeDescription: 'Updated lineage after split' }
   )
+
+  const updatedParent = await getPartById({ partId: parent.id }, deps)
+  if (!updatedParent) {
+    throw new Error('Failed to reload parent part after split execution')
+  }
 
   const { error: execErr } = await supabase
     .from('part_change_proposals')
@@ -236,7 +293,7 @@ export async function executeSplit(
     .eq('id', validated.proposalId)
   if (execErr) throw new Error(`Failed to mark proposal executed: ${execErr.message}`)
 
-  return { parent: updatedParent, children }
+  return { parent: updatedParent, children: childResults }
 }
 
 export async function executeMerge(
@@ -255,40 +312,85 @@ export async function executeMerge(
   if (!proposal || proposal.type !== 'merge') throw new Error('Invalid merge proposal')
 
   const payload = proposal.payload as any
-
-  const { data: parts, error: partsErr } = await supabase
-    .from('parts')
-    .select('*')
+  const { data: partRecords, error: partsErr } = await supabase
+    .from('parts_v2')
+    .select('id, name, data')
     .eq('user_id', userId)
     .in('id', payload.partIds)
-  if (partsErr || !parts || parts.length < 2) throw new Error('Parts not found for merge')
 
-  const canonical = parts[0]
+  if (partsErr) {
+    throw new Error(`Failed to load parts for merge: ${partsErr.message}`)
+  }
+
+  if (!partRecords || partRecords.length < 2) {
+    throw new Error('Parts not found for merge')
+  }
+
   const now = new Date().toISOString()
-
   const actionLogger = await getActionLoggerWithClient(supabase)
 
-  const updatedCanonical = await actionLogger.loggedUpdate<PartRow>(
-    'parts',
-    canonical.id,
+  const canonicalId: string = payload.partIds[0] ?? partRecords[0].id
+  const canonicalRecord = partRecords.find((row: any) => row.id === canonicalId) ?? partRecords[0]
+
+  await actionLogger.loggedUpdate(
+    'parts_v2',
+    canonicalRecord.id,
     { name: payload.canonicalName, updated_at: now },
     userId,
     'update_part_attributes',
-    { partName: canonical.name, changeDescription: `Renamed to ${payload.canonicalName} during merge` }
+    {
+      partName: canonicalRecord.name ?? 'Unnamed Part',
+      changeDescription: `Renamed to ${payload.canonicalName} during merge`,
+    }
   )
 
-  for (const p of parts.slice(1)) {
-    const relationships = p.relationships || {}
-    const lineage = { ...(relationships.lineage || {}) }
-    lineage['superseded_by'] = [...(lineage['superseded_by'] || []), updatedCanonical.id]
-    await actionLogger.loggedUpdate<PartRow>(
-      'parts',
-      p.id,
-      { relationships: { ...relationships, lineage }, updated_at: now },
+  const mergedIds: string[] = []
+
+  for (const record of partRecords) {
+    if (record.id === canonicalRecord.id) {
+      continue
+    }
+
+    const data = toRecord(record.data)
+    const relationships = toRecord(data.relationships)
+    const lineage = toRecord(relationships.lineage)
+    const superseded = Array.isArray(lineage.superseded_by)
+      ? (lineage.superseded_by as string[])
+      : []
+
+    relationships.lineage = {
+      ...lineage,
+      superseded_by: [...new Set([...superseded, canonicalRecord.id])],
+    }
+
+    data.relationships = relationships
+
+    await actionLogger.loggedUpdate(
+      'parts_v2',
+      record.id,
+      { data, updated_at: now },
       userId,
       'update_part_attributes',
-      { partName: p.name, changeDescription: `Superseded by ${payload.canonicalName}` }
+      {
+        partName: record.name ?? 'Unnamed Part',
+        changeDescription: `Superseded by ${payload.canonicalName}`,
+      }
     )
+
+    mergedIds.push(record.id)
+  }
+
+  const updatedCanonical = await getPartById({ partId: canonicalRecord.id }, deps)
+  if (!updatedCanonical) {
+    throw new Error('Failed to reload canonical part after merge execution')
+  }
+
+  const mergedParts: PartRow[] = []
+  for (const id of mergedIds) {
+    const merged = await getPartById({ partId: id }, deps)
+    if (merged) {
+      mergedParts.push(merged)
+    }
   }
 
   const { error: execErr } = await supabase
@@ -297,5 +399,5 @@ export async function executeMerge(
     .eq('id', validated.proposalId)
   if (execErr) throw new Error(`Failed to mark proposal executed: ${execErr.message}`)
 
-  return { canonical: updatedCanonical, merged: parts.slice(1) }
+  return { canonical: updatedCanonical, merged: mergedParts }
 }

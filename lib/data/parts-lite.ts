@@ -16,6 +16,9 @@ import {
 
 type SupabaseDatabaseClient = SupabaseClient<Database>
 
+// TODO(ifs-chat-app-5): Replace direct `parts`/`part_relationships` table access with PRD-backed views
+// once browser-safe endpoints are available. Keep usage scoped to client contexts only.
+
 type PartsLiteDependencies = {
   client?: SupabaseDatabaseClient
 }

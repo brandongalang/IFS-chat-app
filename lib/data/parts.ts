@@ -5,6 +5,10 @@ import { getSupabaseServiceRoleKey } from '@/lib/supabase/config'
 import { isMemoryV2Enabled } from '@/lib/memory/config'
 import { recordSnapshotUsage } from '@/lib/memory/observability'
 import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
+// TODO(ifs-chat-app-5): Migrate this module to PRD helpers (`parts_v2`, `part_relationships_v2`).
+// The current implementation still relies on legacy tables and column shapes to support rich
+// story/evidence fields and action logging; keep new server code from depending on it until the
+// PRD-backed replacements can supply equivalent data.
 import type {
   PartRow,
   PartInsert,

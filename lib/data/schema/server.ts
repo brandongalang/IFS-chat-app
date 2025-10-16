@@ -158,6 +158,24 @@ export async function getActiveSessionRecord(deps: PrdServerDeps): Promise<Sessi
 }
 
 /**
+ * Server helper to fetch a specific session by ID.
+ */
+export async function getSessionRecord(sessionId: string, deps: PrdServerDeps): Promise<SessionRowV2 | null> {
+  const resolved = await resolveDeps(deps)
+  const { getSession } = await import('./index')
+  return getSession(sessionId, resolved)
+}
+
+/**
+ * Server helper to list recent sessions for the user.
+ */
+export async function listSessionRecords(deps: PrdServerDeps, limit?: number): Promise<SessionRowV2[]> {
+  const resolved = await resolveDeps(deps)
+  const { listSessions } = await import('./index')
+  return listSessions(resolved, limit ?? 10)
+}
+
+/**
  * Server helper to upsert a part relationship.
  */
 export async function upsertRelationshipRecord(
@@ -200,13 +218,15 @@ export async function listTimelineEventRecords(deps: PrdServerDeps, limit?: numb
 
 /**
  * Server helper to list part display rows from the computed view.
+ * @param deps - Server dependencies (userId + client)
+ * @param limit - Number to apply a limit (default: 50), or null to fetch all parts unbounded
  */
 export async function listPartDisplayRecords(
   deps: PrdServerDeps,
-  limit?: number
+  limit: number | null = 50
 ): Promise<PartDisplayRow[]> {
   const resolved = await resolveDeps(deps)
-  return listPartsDisplay(resolved, limit ?? 50)
+  return listPartsDisplay(resolved, limit)
 }
 
 /**
