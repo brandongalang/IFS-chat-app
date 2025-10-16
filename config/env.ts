@@ -63,6 +63,15 @@ const raw = EnvSchema.parse({
 
 const toBool = (v?: string) => v === 'true'
 
+const devModeOverride =
+  raw.IFS_DEV_MODE !== undefined
+    ? toBool(raw.IFS_DEV_MODE)
+    : raw.NEXT_PUBLIC_IFS_DEV_MODE !== undefined
+      ? toBool(raw.NEXT_PUBLIC_IFS_DEV_MODE)
+      : null
+
+const defaultDevMode = raw.NODE_ENV === 'development' || raw.NODE_ENV === 'test'
+
 export const ENV = raw
 
 export const env = {
@@ -73,11 +82,7 @@ export const env = {
   isDev: raw.NODE_ENV !== 'production',
   isTest: raw.NODE_ENV === 'test',
   // Enable IFS dev mode in development, tests, or when explicitly requested
-  ifsDevMode:
-    raw.NODE_ENV === 'development' ||
-    raw.NODE_ENV === 'test' ||
-    toBool(raw.IFS_DEV_MODE) ||
-    toBool(raw.NEXT_PUBLIC_IFS_DEV_MODE),
+  ifsDevMode: devModeOverride ?? defaultDevMode,
   ifsVerbose: toBool(raw.IFS_VERBOSE),
   ifsDisablePolarizationUpdate: toBool(raw.IFS_DISABLE_POLARIZATION_UPDATE),
   ifsMarkdownContextEnabled:
