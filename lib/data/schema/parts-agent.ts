@@ -7,15 +7,10 @@ import { recordSnapshotUsage } from '@/lib/memory/observability'
 import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
 import type {
   PartRow,
-  PartStory,
-  PartVisualization,
-  PartEvidence,
   PartRelationshipRow,
   RelationshipDynamic,
-  RelationshipStatus,
   RelationshipType,
   PartNoteRow,
-  Json,
 } from '@/lib/types/database'
 import {
   searchPartsSchema,
@@ -43,32 +38,25 @@ import {
   type LogRelationshipInput,
   type LogRelationshipResult,
 } from '@/lib/data/parts.schema'
-import {
-  searchPartsV2,
-  getPartByIdV2,
-} from './parts'
+import { searchPartsV2, getPartByIdV2 } from './parts'
 import { listRelationships as listRelationshipsV2 } from './relationships'
 import type { PartRowV2, PartRelationshipRowV2 } from './types'
+import {
+  DEFAULT_RELATIONSHIP_STATUS,
+  DEFAULT_VISUALIZATION,
+  fromV2RelationshipType,
+  RelationshipContextPayload,
+  coerceVisualization,
+  mapPartRowFromV2,
+  parseRelationshipContext,
+  parseRelationshipObservations,
+  toV2RelationshipType,
+} from './legacy-mappers'
 
 type PartsAgentDependencies = {
   client: SupabaseDatabaseClient
   userId: string
 }
-
-const DEFAULT_STORY: PartStory = {
-  origin: null,
-  currentState: null,
-  purpose: null,
-  evolution: [],
-}
-
-const DEFAULT_VISUALIZATION: PartVisualization = {
-  emoji: '🤗',
-  color: '#6B7280',
-  energyLevel: 0.5,
-}
-
-const DEFAULT_RELATIONSHIP_STATUS: RelationshipStatus = 'active'
 
 function assertAgentDeps(deps: PartsAgentDependencies): PartsAgentDependencies {
   if (!deps?.client) {
@@ -78,69 +66,6 @@ function assertAgentDeps(deps: PartsAgentDependencies): PartsAgentDependencies {
     throw new Error('userId is required for agent part operations')
   }
   return deps
-}
-
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-
-function coerceArray<T>(value: unknown, fallback: readonly T[] = []): T[] {
-  if (Array.isArray(value)) return value as T[]
-  return [...fallback]
-}
-
-function coerceStory(value: unknown): PartStory {
-  if (!isPlainObject(value)) {
-    return { ...DEFAULT_STORY }
-  }
-  const story = value as Partial<PartStory>
-  return {
-    origin: typeof story.origin === 'string' ? story.origin : null,
-    currentState: typeof story.currentState === 'string' ? story.currentState : null,
-    purpose: typeof story.purpose === 'string' ? story.purpose : null,
-    evolution: Array.isArray(story.evolution)
-      ? story.evolution.filter((entry): entry is PartStory['evolution'][number] =>
-          isPlainObject(entry) &&
-          typeof entry.timestamp === 'string' &&
-          typeof entry.change === 'string'
-        )
-      : [],
-  }
-}
-
-function coerceVisualization(value: unknown): PartVisualization {
-  if (!isPlainObject(value)) {
-    return { ...DEFAULT_VISUALIZATION }
-  }
-  const vis = value as Partial<PartVisualization>
-  return {
-    emoji: typeof vis.emoji === 'string' && vis.emoji.length > 0 ? vis.emoji : DEFAULT_VISUALIZATION.emoji,
-    color: typeof vis.color === 'string' && vis.color.length > 0 ? vis.color : DEFAULT_VISUALIZATION.color,
-    energyLevel:
-      typeof vis.energyLevel === 'number' && Number.isFinite(vis.energyLevel)
-        ? Math.max(0, Math.min(1, vis.energyLevel))
-        : DEFAULT_VISUALIZATION.energyLevel,
-  }
-}
-
-interface RelationshipContextPayload {
-  description?: string | null
-  issue?: string | null
-  commonGround?: string | null
-  status?: RelationshipStatus | null
-  polarizationLevel?: number | null
-  lastAddressed?: string | null
-}
-
-function parseRelationshipContext(raw: unknown): RelationshipContextPayload {
-  if (typeof raw !== 'string') {
-    return {}
-  }
-  try {
-    const parsed = JSON.parse(raw) as RelationshipContextPayload
-    return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch {
-    return { description: raw }
-  }
 }
 
 function encodeRelationshipContext(payload: RelationshipContextPayload): string | null {
@@ -167,65 +92,9 @@ function encodeRelationshipContext(payload: RelationshipContextPayload): string 
   return JSON.stringify(pruned)
 }
 
-interface RelationshipObservationsPayload {
-  dynamics: RelationshipDynamic[]
-}
-
-function parseRelationshipObservations(raw: unknown): RelationshipDynamic[] {
-  if (!Array.isArray(raw)) {
-    return []
-  }
-  const results: RelationshipDynamic[] = []
-  for (const entry of raw) {
-    if (typeof entry === 'string') {
-      try {
-        const parsed = JSON.parse(entry) as RelationshipObservationsPayload | RelationshipDynamic
-        if (Array.isArray((parsed as RelationshipObservationsPayload).dynamics)) {
-          results.push(...(parsed as RelationshipObservationsPayload).dynamics)
-        } else if (
-          isPlainObject(parsed) &&
-          typeof (parsed as RelationshipDynamic).observation === 'string' &&
-          typeof (parsed as RelationshipDynamic).context === 'string'
-        ) {
-          results.push(parsed as RelationshipDynamic)
-        }
-      } catch {
-        // ignore malformed entries
-      }
-    }
-  }
-  return results
-}
-
 function encodeRelationshipDynamics(dynamics: RelationshipDynamic[]): string[] {
   if (!dynamics.length) return []
   return [JSON.stringify({ dynamics })]
-}
-
-type RelationshipTypeV2 = 'protects' | 'conflicts' | 'supports' | 'triggers' | 'soothes'
-
-const RELATIONSHIP_TYPE_TO_V2: Record<RelationshipType, RelationshipTypeV2> = {
-  polarized: 'conflicts',
-  'protector-exile': 'protects',
-  allied: 'supports',
-}
-
-const RELATIONSHIP_TYPE_FROM_V2: Record<RelationshipTypeV2, RelationshipType> = {
-  protects: 'protector-exile',
-  conflicts: 'polarized',
-  supports: 'allied',
-  triggers: 'polarized',
-  soothes: 'allied',
-}
-
-function toV2RelationshipType(type: RelationshipType): RelationshipTypeV2 {
-  return RELATIONSHIP_TYPE_TO_V2[type] ?? 'supports'
-}
-
-function fromV2RelationshipType(type: string | null | undefined): RelationshipType {
-  if (!type) return 'allied'
-  const cast = type as RelationshipTypeV2
-  return RELATIONSHIP_TYPE_FROM_V2[cast] ?? 'allied'
 }
 
 function mapRelationshipRowLegacy(
@@ -252,56 +121,13 @@ function mapRelationshipRowLegacy(
   }
 }
 
-function mapPartRow(row: PartRowV2): PartRow {
-  const data = isPlainObject(row.data) ? (row.data as Record<string, unknown>) : {}
-  const age = typeof data.age === 'number' ? data.age : null
-  const role = typeof data.role === 'string' ? data.role : null
-  const triggers = coerceArray<string>(data.triggers)
-  const emotions = coerceArray<string>(data.emotions)
-  const beliefs = coerceArray<string>(data.beliefs)
-  const somaticMarkers = coerceArray<string>(data.somatic_markers)
-  const recentEvidence = coerceArray<PartEvidence>(data.recent_evidence)
-  const story = coerceStory(data.story)
-  const visualization = coerceVisualization(data.visualization)
-  const relationships = (data.relationships ?? null) as Json
-  const acknowledgedAt = typeof data.acknowledged_at === 'string' ? data.acknowledged_at : null
-  const lastInteractionAt = typeof data.last_interaction_at === 'string' ? data.last_interaction_at : null
-  const lastChargedAt = typeof data.last_charged_at === 'string' ? data.last_charged_at : null
-  const lastChargeIntensity = typeof data.last_charge_intensity === 'number' ? data.last_charge_intensity : null
-
-  return {
-    id: row.id,
-    user_id: row.user_id,
-    name: row.name ?? row.placeholder ?? 'Unnamed Part',
-    status: row.status,
-    category: row.category,
-    age,
-    role,
-    triggers,
-    emotions,
-    beliefs,
-    somatic_markers: somaticMarkers,
-    confidence: row.confidence ?? 0,
-    evidence_count: row.evidence_count ?? 0,
-    recent_evidence: recentEvidence,
-    story,
-    relationships,
-    visualization,
-    first_noticed: row.first_noticed,
-    acknowledged_at: acknowledgedAt,
-    last_active: row.last_active ?? row.updated_at,
-    last_interaction_at: lastInteractionAt,
-    last_charged_at: lastChargedAt,
-    last_charge_intensity: lastChargeIntensity,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-  }
-}
-
 async function getActionLogger(client: SupabaseDatabaseClient) {
   const { createActionLogger } = await import('../../database/action-logger')
   return createActionLogger(client)
 }
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
 
 function buildPartDataPatch(current: PartRowV2, patch: Record<string, unknown>): Record<string, unknown> {
   const existing = isPlainObject(current.data) ? { ...(current.data as Record<string, unknown>) } : {}
@@ -324,7 +150,7 @@ export async function searchParts(
   devLog('agent.searchParts', { userId, query: validated.query })
 
   const results = await searchPartsV2(validated, { client, userId })
-  return results.map(mapPartRow)
+  return results.map(mapPartRowFromV2)
 }
 
 /**
@@ -342,7 +168,7 @@ export async function getPartById(
   const part = await getPartByIdV2(validated.partId, { client, userId })
   if (!part) return null
 
-  const mapped = mapPartRow(part)
+  const mapped = mapPartRowFromV2(part)
 
   if (typeof window === 'undefined' && isMemoryV2Enabled()) {
     const t0 = Date.now()
@@ -378,7 +204,7 @@ export async function getPartDetail(
 
   const relationships = await listRelationshipsV2({ client, userId }, { partId: validated.partId })
 
-  const mappedPart = mapPartRow(part)
+  const mappedPart = mapPartRowFromV2(part)
   const mappedRelationships: PartRelationshipRow[] = relationships.map((rel) => {
     const contextPayload = parseRelationshipContext(rel.context)
     const dynamics = parseRelationshipObservations(rel.observations)
@@ -540,7 +366,7 @@ export async function createEmergingPart(
     }
   )
 
-  return mapPartRow(inserted as PartRowV2)
+  return mapPartRowFromV2(inserted as PartRowV2)
 }
 
 function combinePartUpdates(
@@ -648,7 +474,7 @@ export async function updatePart(
     throw new Error('Part not found or access denied')
   }
 
-  const current = mapPartRow(currentRow as PartRowV2)
+  const current = mapPartRowFromV2(currentRow as PartRowV2)
   const nowIso = new Date().toISOString()
 
   const { partPatch, dataPatch, actionType: baseActionType, changeDescription: baseChangeDescription } = combinePartUpdates(current, validated.updates, nowIso)
@@ -704,7 +530,7 @@ export async function updatePart(
     }
   )
 
-  return mapPartRow(updated as PartRowV2)
+  return mapPartRowFromV2(updated as PartRowV2)
 }
 
 /**
@@ -994,7 +820,7 @@ export async function logRelationship(
 }
 
 export const __test = {
-  mapPartRow,
+  mapPartRowFromV2,
   parseRelationshipContext,
   encodeRelationshipContext,
   parseRelationshipObservations,

@@ -283,12 +283,18 @@ export class DatabaseValidator {
 
     try {
       // Create test data for user 1
+      const nowIso = new Date().toISOString()
       const { data: part1, error: createError } = await this.supabase
-        .from('parts')
+        .from('parts_v2')
         .insert({
           user_id: userId1,
           name: 'Test Part User 1',
-          status: 'emerging'
+          status: 'emerging',
+          category: 'unknown',
+          charge: 'neutral',
+          data: {},
+          first_noticed: nowIso,
+          last_active: nowIso,
         })
         .select()
         .single()
@@ -304,7 +310,7 @@ export class DatabaseValidator {
 
       // Try to access user 1's data as user 2 (should fail or return empty)
       const { data: isolationTest, error: accessError } = await this.supabase
-        .from('parts')
+        .from('parts_v2')
         .select('*')
         .eq('user_id', userId1)
 
@@ -328,7 +334,7 @@ export class DatabaseValidator {
 
       // Cleanup test data
       await this.supabase
-        .from('parts')
+        .from('parts_v2')
         .delete()
         .eq('id', part1.id)
 

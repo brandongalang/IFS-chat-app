@@ -64,7 +64,7 @@ async function main() {
 
   // 3. Query parts table directly (no RLS)
   const { data: partsRaw, error: partsRawError } = await supabase
-    .from('parts')
+    .from('parts_v2')
     .select('*')
     .eq('user_id', profile.id)
 
@@ -75,8 +75,8 @@ async function main() {
     console.log(`✅ Found ${partsRaw?.length || 0} parts`)
     if (partsRaw && partsRaw.length > 0) {
       console.log('\nParts:')
-      partsRaw.forEach((part, i) => {
-        console.log(`  ${i + 1}. ${part.name} (${part.category}) - Status: ${part.status}`)
+      partsRaw.forEach((part: any, i) => {
+        console.log(`  ${i + 1}. ${part.name ?? part.placeholder ?? 'Unnamed'} (${part.category}) - Status: ${part.status}`)
       })
     }
   }
@@ -89,7 +89,7 @@ async function main() {
 
   // 5. Query with buildPartsQuery pattern (what the app uses)
   const { data: partsQuery, error: partsQueryError } = await supabase
-    .from('parts')
+    .from('parts_v2')
     .select('*')
     .order('last_active', { ascending: false })
     .eq('user_id', profile.id)

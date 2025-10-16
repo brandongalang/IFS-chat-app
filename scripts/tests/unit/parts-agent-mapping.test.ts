@@ -62,7 +62,7 @@ async function main() {
     updated_at: new Date().toISOString(),
   }
 
-  const legacyPart = __test.mapPartRow(partRowV2 as any)
+  const legacyPart = __test.mapPartRowFromV2(partRowV2 as any)
   assert(legacyPart.name === 'Inner Critic', 'maps part name')
   assert(legacyPart.role === 'protector', 'maps role from data')
   assert(Array.isArray(legacyPart.recent_evidence) && legacyPart.recent_evidence.length === 1, 'maps evidence array')

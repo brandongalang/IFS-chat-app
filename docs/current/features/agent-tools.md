@@ -2,12 +2,11 @@
 title: Feature: Agent Tools
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-16
+last_updated: 2025-10-17
 feature_flag: null
 code_paths:
   - mastra/tools/*.ts
   - mastra/tools/memory-markdown-tools.ts
-  - mastra/tools/markdown-write-tools.ts
   - mastra/tools/update-sync-tools.ts
   - mastra/tools/therapy-tools.ts
   - mastra/agents/*.ts
@@ -16,8 +15,6 @@ code_paths:
   - lib/data/therapy-tools.ts
   - lib/memory/markdown/logging.ts
   - lib/memory/markdown/frontmatter.ts
-  - lib/memory/parts-repository.ts
-  - lib/memory/snapshots/updater.ts
   - lib/insights/generator.ts
   - lib/memory/overview.ts
   - app/api/chat/logic.ts
@@ -44,13 +41,12 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 - **Therapy tools integration (PR #330)**: New therapy-focused tools have been added to support therapy-related data management and session context insights. The `mastra/tools/therapy-tools.ts` provides tools for creating, querying, and updating therapy-related items with robust input validation. Session context insights include time since last contact, recent topics, open threads, active parts, suggested focus areas, and reminders. These tools are integrated into the IFS agent for seamless in-app access during therapy sessions.
 - Inbox observation tooling now lives in `mastra/tools/inbox-observation-tools.ts`; it now exposes list/search/read helpers for markdown, sessions, and check-ins (including `listMarkdown`, `readMarkdown`, `listSessions`, `getSessionDetail`, `listCheckIns`, `getCheckInDetail`) so agents can enumerate context before fetching details.
 - The primary IFS chat agent now hydrates markdown context when `IFS_ENABLE_MARKDOWN_CONTEXT` is enabled. During agent bootstrap we resolve an overview snapshot via `lib/memory/overview.ts`, append selected anchors (`identity v1`, `current_focus v1`, `change_log v1`) to the system prompt, and expose read-only `listMarkdown`, `searchMarkdown`, and `readMarkdown` tools via `mastra/tools/markdown-tools.ts`.
-- Chat now also exposes scoped write helpers (`previewMarkdownSectionPatch`, `writeMarkdownSection`, `createMarkdownFile`) from `mastra/tools/markdown-write-tools.ts`, enabling the agent to diff or persist updates while respecting per-user storage namespaces and section anchors.
-- **Markdown logging instrumentation**: All markdown write operations (append/replace/create) are logged via `lib/memory/markdown/logging.ts`, which computes SHA-256 hashes (before/after), infers entity context (user/part/relationship) from file paths, and emits `profile_update` events with integrity metadata. Logging failures are swallowed (non-fatal) to ensure writes always succeed.
-- Memory markdown tooling (`mastra/tools/memory-markdown-tools.ts`) exposes shared helpers for reading overview sections, appending changelog entries, and updating part notes. Both the chat agent and the background summarizer load the same factory so they operate on identical capabilities. The new `createPartProfileMarkdown` tool scaffolds part profile files (idempotent), triggering change-log entries on first create via `onPartCreated`.
+- Memory context tooling (`mastra/tools/memory-markdown-tools.ts`) is now read-only. Agents can hydrate overview and part snapshots, but all markdown mutation helpers have been retired in favor of PRD-backed persistence.
+- **Markdown logging instrumentation**: Historical logging helpers remain for legacy jobs, but the active agent path uses PRD tables (`observations`, `timeline_events`) for change tracking. Background digests are recorded via Supabase rather than direct markdown writes.
 - **System 1 cleanup (2025-01-14)**: Removed orphaned `mastra/tools/part-content-tools.ts` which was never registered with any agent. All part operations now use System 2 (`lib/memory/`) with frontmatter support.
 - **PRD parts adapter (2025-10-14)**: Mastra part-facing tools now call `lib/data/schema/parts-agent.ts`, which maps legacy tool payloads onto the PRD `parts_v2` / `part_relationships_v2` tables while preserving action logging and markdown-driven context. Evidence tools reuse the same adapter, keeping user IDs server-derived and compatible with the existing audit trail.
 - **YAML frontmatter support (PR #311)**: Part profiles now include YAML frontmatter with structured metadata (id, name, emoji, category, status, tags, timestamps). Tools accept optional `emoji` parameter that gets stored in frontmatter and synced to database visualization field. The system is backward compatible with parts lacking frontmatter. See `lib/memory/markdown/frontmatter.ts` for parsing/serialization and `lib/memory/parts-repository.ts` for repository-style APIs.
-- **Update sync workflow**: The agent prompt is now markdown-first, emphasizing the markdown tooling (list/search/read/write) over legacy Supabase tools. The prompt guides the agent to use `listUnprocessedUpdates` to fetch pending sessions/insights/check-ins, write notes to markdown, then call `markUpdatesProcessed` to mark them as processed, closing the ingest loop.
+- **Update sync workflow**: The agent prompt emphasizes read-only markdown context. `listUnprocessedUpdates` still surfaces pending items, but digests are persisted automatically through PRD observations (see `lib/memory/update-runner.ts`). Agents acknowledge updates with the user and then call `markUpdatesProcessed` without editing markdown files.
 - Stub creation tooling remains in `mastra/tools/stub-tools.ts` for dev scaffolding but is no longer wired into the production chat agent, preventing dummy part responses at runtime.
 - Update sync tooling (`mastra/tools/update-sync-tools.ts`) is registered with the IFS chat agent, exposing `listUnprocessedUpdates` to fetch pending sessions/insights/check-ins and `markUpdatesProcessed` to mark them as processed after memory updates are written, enabling agent-driven sync workflows.
 - Tool factories defer user resolution until execution. `createObservationResearchTools` accepts an optional profile user ID and falls back to the runtime context; this keeps build-time agent instantiation (e.g., cron routes) safe in multi-tenant environments.
