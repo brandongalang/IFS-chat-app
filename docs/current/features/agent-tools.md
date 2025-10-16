@@ -2,15 +2,18 @@
 title: Feature: Agent Tools
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-14
+last_updated: 2025-10-16
 feature_flag: null
 code_paths:
   - mastra/tools/*.ts
   - mastra/tools/memory-markdown-tools.ts
   - mastra/tools/markdown-write-tools.ts
   - mastra/tools/update-sync-tools.ts
+  - mastra/tools/therapy-tools.ts
   - mastra/agents/*.ts
   - lib/data/schema/parts-agent.ts
+  - lib/data/schema/therapy-tools.schema.ts
+  - lib/data/therapy-tools.ts
   - lib/memory/markdown/logging.ts
   - lib/memory/markdown/frontmatter.ts
   - lib/memory/parts-repository.ts
@@ -27,6 +30,7 @@ related_prs:
   - #305
   - '#310'
   - '#311'
+  - #330
   - #TBD
 ---
 
@@ -37,7 +41,7 @@ The tools and agent definitions powering the IFS companion’s capabilities.
 Encapsulates privileged operations (e.g., db mutations) behind auditable tools, enabling safe agent workflows.
 
 ## How it works
-- Mastra tools implement capabilities (parts, relationships, evidence, assessments, proposals, rollback)
+- **Therapy tools integration (PR #330)**: New therapy-focused tools have been added to support therapy-related data management and session context insights. The `mastra/tools/therapy-tools.ts` provides tools for creating, querying, and updating therapy-related items with robust input validation. Session context insights include time since last contact, recent topics, open threads, active parts, suggested focus areas, and reminders. These tools are integrated into the IFS agent for seamless in-app access during therapy sessions.
 - Inbox observation tooling now lives in `mastra/tools/inbox-observation-tools.ts`; it now exposes list/search/read helpers for markdown, sessions, and check-ins (including `listMarkdown`, `readMarkdown`, `listSessions`, `getSessionDetail`, `listCheckIns`, `getCheckInDetail`) so agents can enumerate context before fetching details.
 - The primary IFS chat agent now hydrates markdown context when `IFS_ENABLE_MARKDOWN_CONTEXT` is enabled. During agent bootstrap we resolve an overview snapshot via `lib/memory/overview.ts`, append selected anchors (`identity v1`, `current_focus v1`, `change_log v1`) to the system prompt, and expose read-only `listMarkdown`, `searchMarkdown`, and `readMarkdown` tools via `mastra/tools/markdown-tools.ts`.
 - Chat now also exposes scoped write helpers (`previewMarkdownSectionPatch`, `writeMarkdownSection`, `createMarkdownFile`) from `mastra/tools/markdown-write-tools.ts`, enabling the agent to diff or persist updates while respecting per-user storage namespaces and section anchors.
