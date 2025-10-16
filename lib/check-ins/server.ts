@@ -6,6 +6,8 @@ import { getServiceClient, getUserClient } from '@/lib/supabase/clients'
 import { enqueueMemoryUpdate } from '@/lib/memory/queue'
 import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
 import type { CheckInRow } from '@/lib/types/database'
+import { listPartDisplayRecords } from '@/lib/data/schema/server'
+import type { PrdServerDeps } from '@/lib/data/schema/server'
 import {
   DEFAULT_EVENING_PROMPT,
   ENERGY_OPTIONS,
@@ -179,25 +181,17 @@ async function resolveContextClient(): Promise<{ supabase: SupabaseDatabaseClien
 export async function loadAvailableParts(): Promise<PartOption[]> {
   const { supabase, userId } = await resolveContextClient()
 
-  const { data, error } = await supabase
-    .from('parts')
-    .select('id, name, visualization')
-    .eq('user_id', userId)
-    .order('name', { ascending: true })
-
-  if (error) {
-    console.error('Failed to load parts for check-in', error)
+  try {
+    const partsDisplay = await listPartDisplayRecords({ client: supabase as PrdServerDeps['client'], userId })
+    return partsDisplay.map((row) => ({
+      id: row.id,
+      name: row.display_name || row.name || 'Unnamed Part',
+      emoji: row.emoji,
+    }))
+  } catch (error) {
+    console.error('Failed to load parts for check-in using PRD schema', error)
     return []
   }
-
-  return (data ?? []).map((row) => {
-    const visualization = (row.visualization as Record<string, unknown> | null) ?? null
-    const emoji =
-      visualization && typeof visualization === 'object' && typeof visualization.emoji === 'string'
-        ? (visualization.emoji as string)
-        : null
-    return { id: row.id as string, name: row.name as string, emoji }
-  })
 }
 
 export async function loadMorningContext(targetDateIso: string): Promise<MorningContextSummary | null> {
