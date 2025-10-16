@@ -66,6 +66,24 @@ interface MigrationReport {
 
 const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
 
+type PartRelationshipRow = {
+  part_a_id: string
+  part_b_id: string
+  type: string
+}
+
+type PartRelationshipInsert = {
+  user_id: string
+  part_a_id: string
+  part_b_id: string
+  type: string
+  strength?: number | null
+  context?: string | null
+  observations?: string[] | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
 // Helper to handle schema cache refresh delays
 /**
  * Retry helper for transient Supabase schema cache errors.
@@ -361,7 +379,7 @@ async function migrateRelationshipsForUser(
   const nameToV2Id = new Map((partsV2 || []).map(p => [p.name, p.id]))
 
   // 4. Check for existing relationships
-  let existingRelationships = []
+  let existingRelationships: PartRelationshipRow[] = []
   const { data: existingData, error: existingError } = await withRetry(async () =>
     supabase
       .from('part_relationships_v2')
@@ -380,7 +398,7 @@ async function migrateRelationshipsForUser(
   )
 
   // 5. Prepare inserts with deduplication
-  const relationshipsToInsert = []
+  const relationshipsToInsert: PartRelationshipInsert[] = []
 
   for (const rel of legacyRelationships) {
     const partIds = rel.parts as any
@@ -408,7 +426,7 @@ async function migrateRelationshipsForUser(
     }
 
     // Create canonical order (A < B) for consistency
-    const [partA, partB] = partV2Ids.sort()
+    const [partA, partB] = partV2Ids.sort() as string[]
     const relKey = `${partA}:${partB}:${relType}`
 
     // Skip if already migrated
@@ -422,9 +440,9 @@ async function migrateRelationshipsForUser(
       part_a_id: partA,
       part_b_id: partB,
       type: relType,
-      strength: rel.polarization_level || 0.5,
+      strength: rel.polarization_level ?? 0.5,
       context: rel.description,
-      observations: rel.dynamics || [],
+      observations: rel.dynamics ?? [],
       created_at: rel.created_at,
       updated_at: rel.updated_at,
     })
