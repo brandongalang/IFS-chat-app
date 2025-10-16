@@ -103,6 +103,9 @@ GEMINI.md
 # Local memory snapshots
 .data/
 
+# Local bead tracking (kept local per developer)
+.beads/
+
 # Security-sensitive files (never commit)
 .env*
 .env.local

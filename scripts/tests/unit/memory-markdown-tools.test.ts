@@ -7,7 +7,7 @@ async function setupLocalStorageRoot() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'memory-tools-'))
   process.env.MEMORY_LOCAL_ROOT = root
   process.env.MEMORY_STORAGE_ADAPTER = 'local'
-  process.env.NODE_ENV = 'production'
+  process.env.NODE_ENV = 'test'
   process.env.IFS_DEV_MODE = 'false'
   process.env.NEXT_PUBLIC_IFS_DEV_MODE = 'false'
   return root

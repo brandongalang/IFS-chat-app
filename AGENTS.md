@@ -16,7 +16,7 @@ We track work in Beads instead of Markdown. Run `bd quickstart` to see how.
 - Every bead should progress through **plan → implement → validate → ship** before picking up the next task.
 - When starting a bead, capture a todo list (`bd create`, `TodoWrite`) so each subtask is traceable.
 - While implementing, keep work on a dedicated branch. Stage commits incrementally; avoid large "mega" commits that span multiple beads.
-- Update bead status in Beads as you move through the workflow (plan/implement/validate/ship) and commit the updated `.beads` database with your changes so downstream agents see the current state.
+- Update bead status in Beads as you move through the workflow (plan/implement/validate/ship). The `.beads` database is kept local and not committed to git.
 - **Testing cadence**:
   - Run targeted checks (e.g., `npm run migrations:verify`, unit tests) immediately after introducing schema or code changes.
   - Run the full lint/type/test suite before opening a PR for that bead.
