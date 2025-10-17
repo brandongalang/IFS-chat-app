@@ -2,11 +2,17 @@
 title: Feature: Agent Tools
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-17
+last_updated: 2025-10-18
 feature_flag: null
 code_paths:
-  - mastra/tools/*.ts
-  - mastra/tools/memory-markdown-tools.ts
+  - mastra/tools/assessment-tools.ts
+  - mastra/tools/evidence-tools.ts
+  - mastra/tools/inbox-observation-tools.ts
+  - mastra/tools/memory-tools.ts
+  - mastra/tools/part-tools.mastra.ts
+  - mastra/tools/part-tools.ts
+  - mastra/tools/proposal-tools.ts
+  - mastra/tools/rollback-tools.ts
   - mastra/tools/update-sync-tools.ts
   - mastra/tools/therapy-tools.ts
   - mastra/agents/*.ts
@@ -28,7 +34,9 @@ related_prs:
   - '#310'
   - '#311'
   - #330
-  - #TBD
+  - '#338'
+  - '#339'
+  - '#340'
 ---
 
 ## What
@@ -39,10 +47,9 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 
 ## How it works
 - **Therapy tools integration (PR #330)**: New therapy-focused tools have been added to support therapy-related data management and session context insights. The `mastra/tools/therapy-tools.ts` provides tools for creating, querying, and updating therapy-related items with robust input validation. Session context insights include time since last contact, recent topics, open threads, active parts, suggested focus areas, and reminders. These tools are integrated into the IFS agent for seamless in-app access during therapy sessions.
-- Inbox observation tooling now lives in `mastra/tools/inbox-observation-tools.ts`; it now exposes list/search/read helpers for markdown, sessions, and check-ins (including `listMarkdown`, `readMarkdown`, `listSessions`, `getSessionDetail`, `listCheckIns`, `getCheckInDetail`) so agents can enumerate context before fetching details.
-- The primary IFS chat agent now hydrates markdown context when `IFS_ENABLE_MARKDOWN_CONTEXT` is enabled. During agent bootstrap we resolve an overview snapshot via `lib/memory/overview.ts`, append selected anchors (`identity v1`, `current_focus v1`, `change_log v1`) to the system prompt, and expose read-only `listMarkdown`, `searchMarkdown`, and `readMarkdown` tools via `mastra/tools/markdown-tools.ts`.
-- Memory context tooling (`mastra/tools/memory-markdown-tools.ts`) is now read-only. Agents can hydrate overview and part snapshots, but all markdown mutation helpers have been retired in favor of PRD-backed persistence.
-- **Markdown logging instrumentation**: Historical logging helpers remain for legacy jobs, but the active agent path uses PRD tables (`observations`, `timeline_events`) for change tracking. Background digests are recorded via Supabase rather than direct markdown writes.
+- Inbox observation tooling now lives in `mastra/tools/inbox-observation-tools.ts`; it exposes list/search/read helpers for sessions and check-ins (including `listSessions`, `getSessionDetail`, `listCheckIns`, `getCheckInDetail`) so agents can enumerate context before fetching details.
+- **Markdown tools removal (2025-10-17)**: Legacy markdown tools (`mastra/tools/markdown-tools.ts` and `mastra/tools/memory-markdown-tools.ts`) have been deprecated and removed. The IFS chat agent now operates exclusively with PRD-backed tools (therapy tools, memory tools, update sync tools). All agent context flows through the PRD schema (`observations`, `timeline_events`).
+- **Logging instrumentation**: The active agent path uses PRD tables (`observations`, `timeline_events`) for all change tracking and context hydration. Background digests are recorded via Supabase; markdown snapshots remain read-only for legacy queries but are no longer written by agents.
 - **System 1 cleanup (2025-01-14)**: Removed orphaned `mastra/tools/part-content-tools.ts` which was never registered with any agent. All part operations now use System 2 (`lib/memory/`) with frontmatter support.
 - **PRD parts adapter (2025-10-14)**: Mastra part-facing tools now call `lib/data/schema/parts-agent.ts`, which maps legacy tool payloads onto the PRD `parts_v2` / `part_relationships_v2` tables while preserving action logging and markdown-driven context. Evidence tools reuse the same adapter, keeping user IDs server-derived and compatible with the existing audit trail.
 - **YAML frontmatter support (PR #311)**: Part profiles now include YAML frontmatter with structured metadata (id, name, emoji, category, status, tags, timestamps). Tools accept optional `emoji` parameter that gets stored in frontmatter and synced to database visualization field. The system is backward compatible with parts lacking frontmatter. See `lib/memory/markdown/frontmatter.ts` for parsing/serialization and `lib/memory/parts-repository.ts` for repository-style APIs.
@@ -67,7 +74,7 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 - Provider configuration centralized in `config/model.ts` and `mastra/index.ts`
 - Agents default to the hard-coded `OPENROUTER_API_BASE_URL` (`https://openrouter.ai/api/v1`); only `IFS_MODEL` and `IFS_TEMPERATURE` remain configurable via env vars
 - Agents share the single `openrouter` provider created during Mastra bootstrap
-- `IFS_ENABLE_MARKDOWN_CONTEXT` (default `true`) gates overview hydration and markdown tooling for the chat agent; disable when diagnosing storage issues or runaway token budgets.
+- All agents now use PRD-backed tools exclusively; legacy markdown context configuration has been removed
 
 ## Testing
 - Unit tests for tool logic; integration tests via smoke scripts (scripts/smoke-*)
