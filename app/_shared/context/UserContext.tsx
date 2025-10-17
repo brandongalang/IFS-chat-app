@@ -33,7 +33,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         try {
           const { data, error } = await supabase
             .from('users')
-            .select('name, avatar_url')
+            .select('name')
             .eq('id', user.id)
             .maybeSingle()
 
@@ -45,7 +45,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             id: user.id,
             name: data?.name || '',
             bio: '',
-            avatarUrl: data?.avatar_url?.trim() || null,
+            avatarUrl: null,
           })
         } catch (error) {
           console.error('Unexpected error fetching user profile', error)

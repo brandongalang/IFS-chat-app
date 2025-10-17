@@ -6,7 +6,10 @@ import { getSupabaseServiceRoleKey, getSupabaseUrl } from '@/lib/supabase/config
 function getSb() {
   const url = getSupabaseUrl()
   const service = getSupabaseServiceRoleKey()
-  if (!url || !service) throw new Error('Supabase Storage adapter requires URL and service role key')
+  if (!url || !service) {
+    // Defer throwing to callers to allow graceful fallback at higher layers
+    throw new Error('storage_unavailable')
+  }
   return createClient(url, service)
 }
 
@@ -18,21 +21,34 @@ export class SupabaseStorageAdapter implements StorageAdapter {
     if (error) throw error
   }
   async getText(path: string): Promise<string | null> {
-    const sb = getSb()
-    const { data, error } = await sb.storage.from(MEMORY_SNAPSHOTS_BUCKET).download(path)
-    if (error) return null
-    return await data.text()
+    try {
+      const sb = getSb()
+      const { data, error } = await sb.storage.from(MEMORY_SNAPSHOTS_BUCKET).download(path)
+      if (error) return null
+      return await data.text()
+    } catch (e) {
+      return null
+    }
   }
   async exists(path: string): Promise<boolean> {
-    const sb = getSb()
-    const parent = path.split('/').slice(0, -1).join('/')
-    const name = path.split('/').slice(-1)[0]
-    const { data, error } = await sb.storage.from(MEMORY_SNAPSHOTS_BUCKET).list(parent || undefined, { search: name })
-    if (error) return false
-    return (data || []).some(f => f.name === name)
+    try {
+      const sb = getSb()
+      const parent = path.split('/').slice(0, -1).join('/')
+      const name = path.split('/').slice(-1)[0]
+      const { data, error } = await sb.storage.from(MEMORY_SNAPSHOTS_BUCKET).list(parent || undefined, { search: name })
+      if (error) return false
+      return (data || []).some(f => f.name === name)
+    } catch {
+      return false
+    }
   }
   async list(prefix: string): Promise<string[]> {
-    const sb = getSb()
+    let sb
+    try {
+      sb = getSb()
+    } catch {
+      return []
+    }
     const allFiles: string[] = []
 
     async function listDirectory(currentPrefix: string) {
@@ -63,9 +79,13 @@ export class SupabaseStorageAdapter implements StorageAdapter {
     return allFiles
   }
   async delete(path: string): Promise<void> {
-    const sb = getSb()
-    const { error } = await sb.storage.from(MEMORY_SNAPSHOTS_BUCKET).remove([path])
-    if (error) throw error
+    try {
+      const sb = getSb()
+      const { error } = await sb.storage.from(MEMORY_SNAPSHOTS_BUCKET).remove([path])
+      if (error) throw error
+    } catch {
+      // ignore when storage unavailable
+    }
   }
 }
 
