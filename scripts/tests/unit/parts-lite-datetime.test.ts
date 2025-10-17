@@ -45,9 +45,9 @@ async function main() {
             confidence: 0.5,
             evidence_count: 0,
             first_noticed: '2025-10-18 12:34:56.789+00',
-            last_active: '2025-10-18 12:34:56.789+00',
-            created_at: '2025-10-18 12:34:56.789+00',
-            updated_at: '2025-10-18 12:34:56.789+00',
+            last_active: '2025-10-18 12:34:56.789 +0000',
+            created_at: '2025-10-18T12:34:56.789',
+            updated_at: '2025-10-18 12:34:56',
           }
 
           resolve({ data: [row], error: null })
