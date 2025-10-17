@@ -2,6 +2,35 @@ import { z } from 'zod'
 import { assertPrdDeps, type PrdDataDependencies } from './utils'
 import { sessionRowSchema, sessionTypeEnum, type SessionRowV2 } from './types'
 
+function toIsoString(value: unknown): string | null {
+  if (value == null) return null
+  if (value instanceof Date) return value.toISOString()
+  if (typeof value === 'string') {
+    // Accept common Postgres formats and coerce to RFC3339
+    const d = new Date(value)
+    if (!Number.isNaN(d.getTime())) return d.toISOString()
+    return value // leave as-is; zod may still accept if already RFC3339
+  }
+  return null
+}
+
+function normalizeSessionRowDates(row: any): any {
+  if (!row || typeof row !== 'object') return row
+  const copy: any = { ...row }
+  if ('started_at' in copy) copy.started_at = toIsoString(copy.started_at) ?? copy.started_at
+  if ('ended_at' in copy && copy.ended_at != null) copy.ended_at = toIsoString(copy.ended_at) ?? copy.ended_at
+  if ('last_message_at' in copy && copy.last_message_at != null)
+    copy.last_message_at = toIsoString(copy.last_message_at) ?? copy.last_message_at
+  if ('created_at' in copy) copy.created_at = toIsoString(copy.created_at) ?? copy.created_at
+  if ('updated_at' in copy) copy.updated_at = toIsoString(copy.updated_at) ?? copy.updated_at
+  return copy
+}
+
+function parseSessionRow(row: any): SessionRowV2 {
+  const normalized = normalizeSessionRowDates(row)
+  return sessionRowSchema.parse(normalized)
+}
+
 const createSessionInputSchema = z
   .object({
     id: z.string().uuid().optional(),
@@ -53,7 +82,7 @@ export async function createSession(
     throw new Error(`Failed to create session: ${error.message}`)
   }
 
-  return sessionRowSchema.parse(data)
+  return parseSessionRow(data)
 }
 
 /**
@@ -90,7 +119,7 @@ export async function appendSessionActivity(
     throw new Error(`Failed to update session ${sessionId}: ${error.message}`)
   }
 
-  return sessionRowSchema.parse(data)
+  return parseSessionRow(data)
 }
 
 /**
@@ -119,7 +148,7 @@ export async function completeSession(
     throw new Error(`Failed to complete session ${sessionId}: ${error.message}`)
   }
 
-  return sessionRowSchema.parse(data)
+  return parseSessionRow(data)
 }
 
 /**
@@ -144,7 +173,7 @@ export async function getActiveSession(
   }
 
   if (!data) return null
-  return sessionRowSchema.parse(data)
+  return parseSessionRow(data)
 }
 
 /**
@@ -191,5 +220,5 @@ export async function listSessions(
     throw new Error(`Failed to list sessions: ${error.message}`)
   }
 
-  return (data ?? []).map((row) => sessionRowSchema.parse(row))
+  return (data ?? []).map((row) => parseSessionRow(row))
 }

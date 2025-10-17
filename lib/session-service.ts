@@ -10,6 +10,7 @@ import type { SessionRowV2 } from './data/schema'
 import { enqueueMemoryUpdate } from './memory/queue'
 import { getStorageAdapter, sessionTranscriptPath } from './memory/snapshots/fs-helpers'
 import type { Database, SessionMessage, SessionRow, SessionUpdate } from './types/database'
+import { getServiceClient } from '@/lib/supabase/clients'
 
 interface StoredTranscript {
   id?: string
@@ -123,20 +124,31 @@ export class ChatSessionService {
       return
     }
 
-    const {
-      data: existing,
-      error: selectError,
-    } = await this.supabase
+    // First try with user-scoped client (RLS expected)
+    const { data: existing, error: selectError } = await this.supabase
       .from('users')
       .select('id')
       .eq('id', this.userId)
       .maybeSingle()
 
-    if (selectError && selectError.code !== 'PGRST116') {
-      throw new Error(`Failed to verify user record: ${selectError.message}`)
+    // If RLS or other errors prevent reading, try service-role fallback
+    let exists = Boolean(existing?.id)
+    if (!exists && selectError && selectError.code !== 'PGRST116') {
+      try {
+        const admin = getServiceClient()
+        const { data: adminExisting } = await admin
+          .from('users')
+          .select('id')
+          .eq('id', this.userId)
+          .maybeSingle()
+        exists = Boolean(adminExisting?.id)
+      } catch (e) {
+        // ignore; we'll attempt upsert below
+        console.warn('[sessions] admin fallback select failed in ensureUserRecord', e)
+      }
     }
 
-    if (existing?.id) {
+    if (exists) {
       this.userRecordEnsured = true
       return
     }
@@ -152,19 +164,30 @@ export class ChatSessionService {
       (profile.user_metadata?.name as string | undefined) ||
       profile.email
 
-    const { error: upsertError } = await this.supabase
-      .from('users')
-      .upsert(
-        {
-          id: this.userId,
-          email: profile.email,
-          name: nameMetadata,
-        },
-        { onConflict: 'id' },
-      )
+    // Prefer service-role for upsert to bypass missing RLS policies
+    let upsertError: unknown = null
+    try {
+      const admin = getServiceClient()
+      const { error } = await admin
+        .from('users')
+        .upsert(
+          {
+            id: this.userId,
+            email: profile.email,
+            name: nameMetadata,
+          },
+          { onConflict: 'id' },
+        )
+      upsertError = error ?? null
+    } catch (e) {
+      upsertError = e
+    }
 
     if (upsertError) {
-      throw new Error(`Failed to upsert user profile: ${upsertError.message}`)
+      const msg = upsertError && typeof upsertError === 'object' && 'message' in upsertError
+        ? String((upsertError as { message?: string }).message)
+        : 'unknown error'
+      throw new Error(`Failed to upsert user profile: ${msg}`)
     }
 
     console.info('ChatSessionService: created missing user profile', { userId: this.userId })
