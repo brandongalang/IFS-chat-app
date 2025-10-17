@@ -9,6 +9,27 @@ import {
   type PartRowV2,
 } from './types'
 
+function toIsoString(value: unknown): string | null {
+  if (value == null) return null
+  if (value instanceof Date) return value.toISOString()
+  if (typeof value === 'string') {
+    const d = new Date(value)
+    if (!Number.isNaN(d.getTime())) return d.toISOString()
+    return value
+  }
+  return null
+}
+
+function normalizePartRowDates(row: any): any {
+  if (!row || typeof row !== 'object') return row
+  const copy: any = { ...row }
+  if ('first_noticed' in copy && copy.first_noticed != null) copy.first_noticed = toIsoString(copy.first_noticed) ?? copy.first_noticed
+  if ('last_active' in copy && copy.last_active != null) copy.last_active = toIsoString(copy.last_active) ?? copy.last_active
+  if ('created_at' in copy) copy.created_at = toIsoString(copy.created_at) ?? copy.created_at
+  if ('updated_at' in copy) copy.updated_at = toIsoString(copy.updated_at) ?? copy.updated_at
+  return copy
+}
+
 const searchPartsInputSchema = z
   .object({
     query: z.string().optional(),
@@ -80,7 +101,7 @@ export async function searchPartsV2(
   }
 
   const rows = Array.isArray(data) ? data : []
-  return rows.map((row) => partRowSchema.parse(row))
+  return rows.map((row) => partRowSchema.parse(normalizePartRowDates(row)))
 }
 
 /**
@@ -103,7 +124,7 @@ export async function getPartByIdV2(
   }
 
   if (!data) return null
-  return partRowSchema.parse(data)
+  return partRowSchema.parse(normalizePartRowDates(data))
 }
 
 /**
@@ -131,7 +152,7 @@ export async function upsertPartV2(
     throw new Error(`Failed to upsert part_v2: ${error.message}`)
   }
 
-  return partRowSchema.parse(data)
+  return partRowSchema.parse(normalizePartRowDates(data))
 }
 
 /**
