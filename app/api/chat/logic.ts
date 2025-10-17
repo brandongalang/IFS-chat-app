@@ -24,21 +24,53 @@ export async function getUserIdFromSupabase(): Promise<string | undefined> {
   }
 }
 
-export function createDevStream(text: string): ReadableStream<Uint8Array> {
+/**
+ * Provide a dev-friendly fallback stream that matches the Vercel AI SDK
+ * UI message stream format. This ensures the client hook (@ai-sdk/react useChat)
+ * can render messages even when real providers/agents are unavailable.
+ */
+export function provideDevFallbackStream(text: string): Response {
+  const deltaSize = 24
+  const deltas: string[] = []
+  for (let i = 0; i < text.length; i += deltaSize) {
+    deltas.push(text.slice(i, i + deltaSize))
+  }
+
   const encoder = new TextEncoder()
-  return new ReadableStream<Uint8Array>({
+  const chunks: string[] = [
+    `data: ${JSON.stringify({ type: 'start', messageId: `msg-dev-${Date.now()}` })}\n\n`,
+    `data: ${JSON.stringify({ type: 'start-step', id: 'dev-writing', name: 'writing' })}\n\n`,
+    `data: ${JSON.stringify({ type: 'text-start', id: 'text-1' })}\n\n`,
+    ...deltas.map((d) => `data: ${JSON.stringify({ type: 'text-delta', id: 'text-1', delta: d })}\n\n`),
+    `data: ${JSON.stringify({ type: 'text-end', id: 'text-1' })}\n\n`,
+    `data: ${JSON.stringify({ type: 'finish-step', id: 'dev-writing', status: 'completed' })}\n\n`,
+    `data: ${JSON.stringify({ type: 'finish' })}\n\n`,
+    `data: [DONE]\n\n`,
+  ]
+
+  const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      controller.enqueue(encoder.encode(text))
-      controller.close()
+      let i = 0
+      const pump = () => {
+        if (i >= chunks.length) {
+          controller.close()
+          return
+        }
+        controller.enqueue(encoder.encode(chunks[i++]))
+        // Gentle pacing for UX parity with dev route
+        setTimeout(pump, 120)
+      }
+      pump()
     },
   })
-}
 
-export function provideDevFallbackStream(text: string): Response {
-  return new Response(createDevStream(text), {
+  return new Response(stream, {
+    status: 200,
     headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'no-store',
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'x-vercel-ai-ui-message-stream': 'v1',
     },
   })
 }

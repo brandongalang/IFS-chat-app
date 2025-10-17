@@ -9,6 +9,7 @@ import {
 import type { SessionRowV2 } from './data/schema'
 import { enqueueMemoryUpdate } from './memory/queue'
 import { getStorageAdapter, sessionTranscriptPath } from './memory/snapshots/fs-helpers'
+import { getSupabaseServiceRoleKey } from '@/lib/supabase/config'
 import type { Database, SessionMessage, SessionRow, SessionUpdate } from './types/database'
 
 interface StoredTranscript {
@@ -99,7 +100,16 @@ export class ChatSessionService {
       messages: [] as SessionMessage[],
     }
 
-    await this.writeTranscript(session.id, transcript)
+    // Guard transcript storage when service role storage is unavailable
+    try {
+      await this.writeTranscript(session.id, transcript)
+    } catch (err) {
+      console.warn('[sessions] transcript storage skipped', {
+        reason: 'storage_unavailable',
+        hasServiceRole: Boolean(getSupabaseServiceRoleKey()),
+        error: (err as Error)?.message,
+      })
+    }
 
     // TODO(ifs-chat-app-5): Remove dual-write once all readers migrated to PRD sessions_v2
     await this.syncLegacySessionWrite(session.id, session)
@@ -225,7 +235,15 @@ export class ChatSessionService {
       messages: updatedMessages,
     }
 
-    await this.writeTranscript(sessionId, transcript, existingTranscript)
+    try {
+      await this.writeTranscript(sessionId, transcript, existingTranscript)
+    } catch (err) {
+      console.warn('[sessions] transcript update skipped', {
+        reason: 'storage_unavailable',
+        hasServiceRole: Boolean(getSupabaseServiceRoleKey()),
+        error: (err as Error)?.message,
+      })
+    }
 
     // TODO(ifs-chat-app-5): Remove dual-write once all readers migrated to PRD sessions_v2
     await this.syncLegacySessionWrite(sessionId, session, transcript)
@@ -265,7 +283,15 @@ export class ChatSessionService {
       messages: existingTranscript?.messages,
     }
 
-    await this.writeTranscript(sessionId, transcript, existingTranscript)
+    try {
+      await this.writeTranscript(sessionId, transcript, existingTranscript)
+    } catch (err) {
+      console.warn('[sessions] transcript finalize skipped', {
+        reason: 'storage_unavailable',
+        hasServiceRole: Boolean(getSupabaseServiceRoleKey()),
+        error: (err as Error)?.message,
+      })
+    }
 
     // TODO(ifs-chat-app-5): Remove dual-write once all readers migrated to PRD sessions_v2
     await this.syncLegacySessionWrite(sessionId, session, transcript)
