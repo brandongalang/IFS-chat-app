@@ -24,6 +24,7 @@ interface ActiveTool {
   type: ActiveToolType
   state: ActiveToolState
   title?: string
+  subtitle?: string
 }
 
 const ACTIVE_TOOL_STATES: readonly ActiveToolState[] = ["input-streaming", "input-available"] as const
@@ -176,14 +177,17 @@ export function EtherealChat() {
 
         const type = normalizeToolType(toolPart, j)
         const explicitTitle = typeof toolPart.toolName === "string" ? toolPart.toolName.trim() : ""
+        const metaTitle = typeof toolPart.meta?.displayTitle === "string" ? toolPart.meta.displayTitle.trim() : ""
         const fallbackTitle = friendlyToolLabel(type)
-        const title = explicitTitle || (/^\d+$/.test(fallbackTitle) ? "Tool" : fallbackTitle)
+        const titleCandidate = metaTitle || explicitTitle || (/^\d+$/.test(fallbackTitle) ? "Tool" : fallbackTitle)
+        const subtitle = typeof toolPart.meta?.displayNote === "string" ? toolPart.meta.displayNote.trim() : undefined
 
         return {
           id: toolPart.toolCallId ?? `${message.id}-${j}`,
           type,
           state: normalizedState,
-          title,
+          title: titleCandidate,
+          subtitle,
         }
       }
     }
@@ -291,12 +295,13 @@ export function EtherealChat() {
             <form onSubmit={onSubmit} className="space-y-3">
               {activeTool ? (
                 <Tool className="border-white/15 bg-white/10 text-white">
-                  <ToolHeader
-                    type={activeTool.type}
-                    state={activeTool.state}
-                    title={activeTool.title}
-                    className="text-white"
-                  />
+              <ToolHeader
+                type={activeTool.type}
+                state={activeTool.state}
+                title={activeTool.title}
+                subtitle={activeTool.subtitle}
+                className="text-white"
+              />
                 </Tool>
               ) : null}
               <Textarea
