@@ -34,7 +34,7 @@ export function EtherealMessageList({ messages, tasksByMessage, currentStreaming
         const isStreaming = currentStreamingId === message.id
         const containerAlign = isAssistant ? "justify-start" : "justify-end"
         const bubbleClass = cn(
-          "max-w-[min(720px,85%)] rounded-[28px] border px-6 py-5 backdrop-blur-xl transition-colors",
+          "max-w-full rounded-[28px] border px-6 py-5 backdrop-blur-xl transition-colors",
           isAssistant
             ? "bg-white/12 border-white/18 text-white/95 shadow-[0_18px_50px_rgba(5,15,20,0.35)]"
             : "bg-white/8 border-white/12 text-white/85 shadow-[0_12px_36px_rgba(5,5,10,0.25)]",
