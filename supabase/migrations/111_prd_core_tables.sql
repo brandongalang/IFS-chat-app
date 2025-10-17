@@ -6,20 +6,20 @@
 --   * Follow-up migrations will handle renames, data migration, and removal of legacy structures.
 
 -- Ensure helper function exists for updated_at triggers
-DO $$
+DO $func$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_proc WHERE proname = 'update_updated_at_column'
   ) THEN
     CREATE OR REPLACE FUNCTION update_updated_at_column()
-    RETURNS TRIGGER AS $$
+    RETURNS TRIGGER AS $trigger$
     BEGIN
       NEW.updated_at = NOW();
       RETURN NEW;
     END;
-    $$ LANGUAGE plpgsql;
+    $trigger$ LANGUAGE plpgsql;
   END IF;
-END $$;
+END $func$;
 
 -- =============================================================
 -- Parts V2 (PRD-compliant structure)
@@ -74,22 +74,26 @@ COMMENT ON TABLE public.parts_v2 IS 'PRD-compliant parts table supporting placeh
 
 ALTER TABLE public.parts_v2 ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS parts_v2_select_own
+DROP POLICY IF EXISTS parts_v2_select_own ON public.parts_v2;
+CREATE POLICY parts_v2_select_own
   ON public.parts_v2
   FOR SELECT
   USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS parts_v2_insert_own
+DROP POLICY IF EXISTS parts_v2_insert_own ON public.parts_v2;
+CREATE POLICY parts_v2_insert_own
   ON public.parts_v2
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS parts_v2_update_own
+DROP POLICY IF EXISTS parts_v2_update_own ON public.parts_v2;
+CREATE POLICY parts_v2_update_own
   ON public.parts_v2
   FOR UPDATE
   USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS parts_v2_delete_own
+DROP POLICY IF EXISTS parts_v2_delete_own ON public.parts_v2;
+CREATE POLICY parts_v2_delete_own
   ON public.parts_v2
   FOR DELETE
   USING (auth.uid() = user_id);
@@ -140,22 +144,26 @@ COMMENT ON TABLE public.sessions_v2 IS 'Structured session log supporting PRD ag
 
 ALTER TABLE public.sessions_v2 ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS sessions_v2_select_own
+DROP POLICY IF EXISTS sessions_v2_select_own ON public.sessions_v2;
+CREATE POLICY sessions_v2_select_own
   ON public.sessions_v2
   FOR SELECT
   USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS sessions_v2_insert_own
+DROP POLICY IF EXISTS sessions_v2_insert_own ON public.sessions_v2;
+CREATE POLICY sessions_v2_insert_own
   ON public.sessions_v2
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS sessions_v2_update_own
+DROP POLICY IF EXISTS sessions_v2_update_own ON public.sessions_v2;
+CREATE POLICY sessions_v2_update_own
   ON public.sessions_v2
   FOR UPDATE
   USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS sessions_v2_delete_own
+DROP POLICY IF EXISTS sessions_v2_delete_own ON public.sessions_v2;
+CREATE POLICY sessions_v2_delete_own
   ON public.sessions_v2
   FOR DELETE
   USING (auth.uid() = user_id);
@@ -208,22 +216,26 @@ COMMENT ON TABLE public.observations IS 'Raw therapeutic observations captured d
 
 ALTER TABLE public.observations ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS observations_select_own
+DROP POLICY IF EXISTS observations_select_own ON public.observations;
+CREATE POLICY observations_select_own
   ON public.observations
   FOR SELECT
   USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS observations_insert_own
+DROP POLICY IF EXISTS observations_insert_own ON public.observations;
+CREATE POLICY observations_insert_own
   ON public.observations
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS observations_update_own
+DROP POLICY IF EXISTS observations_update_own ON public.observations;
+CREATE POLICY observations_update_own
   ON public.observations
   FOR UPDATE
   USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS observations_delete_own
+DROP POLICY IF EXISTS observations_delete_own ON public.observations;
+CREATE POLICY observations_delete_own
   ON public.observations
   FOR DELETE
   USING (auth.uid() = user_id);
@@ -267,22 +279,26 @@ COMMENT ON TABLE public.part_relationships_v2 IS 'Explicit PRD relationship mapp
 
 ALTER TABLE public.part_relationships_v2 ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS part_relationships_v2_select_own
+DROP POLICY IF EXISTS part_relationships_v2_select_own ON public.part_relationships_v2;
+CREATE POLICY part_relationships_v2_select_own
   ON public.part_relationships_v2
   FOR SELECT
   USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS part_relationships_v2_insert_own
+DROP POLICY IF EXISTS part_relationships_v2_insert_own ON public.part_relationships_v2;
+CREATE POLICY part_relationships_v2_insert_own
   ON public.part_relationships_v2
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS part_relationships_v2_update_own
+DROP POLICY IF EXISTS part_relationships_v2_update_own ON public.part_relationships_v2;
+CREATE POLICY part_relationships_v2_update_own
   ON public.part_relationships_v2
   FOR UPDATE
   USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS part_relationships_v2_delete_own
+DROP POLICY IF EXISTS part_relationships_v2_delete_own ON public.part_relationships_v2;
+CREATE POLICY part_relationships_v2_delete_own
   ON public.part_relationships_v2
   FOR DELETE
   USING (auth.uid() = user_id);
@@ -315,22 +331,26 @@ COMMENT ON TABLE public.timeline_events IS 'Auto-generated timeline milestones f
 
 ALTER TABLE public.timeline_events ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS timeline_events_select_own
+DROP POLICY IF EXISTS timeline_events_select_own ON public.timeline_events;
+CREATE POLICY timeline_events_select_own
   ON public.timeline_events
   FOR SELECT
   USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS timeline_events_insert_own
+DROP POLICY IF EXISTS timeline_events_insert_own ON public.timeline_events;
+CREATE POLICY timeline_events_insert_own
   ON public.timeline_events
   FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS timeline_events_update_own
+DROP POLICY IF EXISTS timeline_events_update_own ON public.timeline_events;
+CREATE POLICY timeline_events_update_own
   ON public.timeline_events
   FOR UPDATE
   USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS timeline_events_delete_own
+DROP POLICY IF EXISTS timeline_events_delete_own ON public.timeline_events;
+CREATE POLICY timeline_events_delete_own
   ON public.timeline_events
   FOR DELETE
   USING (auth.uid() = user_id);
