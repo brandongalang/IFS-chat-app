@@ -1,6 +1,6 @@
 # Parts Systems Architecture Overview
 
-**Last Updated**: 2025-10-17  
+**Last Updated**: 2025-10-19  
 **Status**: Current production architecture
 
 ## Summary
@@ -33,15 +33,13 @@ The parts platform now centers on the PRD schema (`parts_v2`, `part_relationship
 - ✅ Indexed for search and dashboard queries.
 - ✅ All writes and audits funnel through PRD (action logger + Supabase telemetry).
 
-### 2. Snapshot Context (Read-Only Markdown)
+### 2. Snapshot Context (Legacy Markdown)
 **Location**: `lib/memory/`  
-**Purpose**: Hydrate rich context (overview/part markdown) for prompts and legacy session logs  
-**Used By**: IFS chat agent and parts agent snapshot helpers when `IFS_ENABLE_MARKDOWN_CONTEXT` is enabled
+**Purpose**: Historical context for legacy session logs and read-only snapshot queries  
+**Used By**: Legacy utilities and historical data review only; not used by the IFS chat agent
 
 **Key Files**:
 - `lib/memory/read.ts` – Reads overview, part, and relationship markdown sections.
-- `mastra/tools/memory-markdown-tools.ts` – Exposes the read-only `readOverviewSnapshot` tool.
-- `mastra/tools/markdown-tools.ts` – Lists/searches/reads markdown files through the observation research adapter.
 
 **Storage**:
 - Supabase Storage bucket `memory-snapshots` (production).
@@ -49,8 +47,9 @@ The parts platform now centers on the PRD schema (`parts_v2`, `part_relationship
 
 **Characteristics**:
 - ✅ Structured via YAML frontmatter and anchor sections.
-- ✅ Read-only in production flows as of 2025-10-17.
-- ✅ Serves as supplemental context while PRD telemetry achieves parity with historical markdown logs.
+- ✅ Deprecated as of 2025-10-18: markdown tools removed from agent wiring.
+- ✅ Archived for historical review; no new writes by agents.
+- ℹ️ Markdown context tools (`mastra/tools/markdown-tools.ts`, `mastra/tools/memory-markdown-tools.ts`) have been removed; all agent flows now use PRD tables exclusively.
 
 ## Data Flow (Current)
 
@@ -99,16 +98,17 @@ The parts platform now centers on the PRD schema (`parts_v2`, `part_relationship
 | Garden detail / server actions| `lib/data/parts-server.ts`            | Wraps PRD mappers and action logging. |
 | Agent part management         | `mastra/tools/part-tools.mastra`      | Calls `parts-agent` helpers; writes PRD rows. |
 | Relationship management       | `mastra/tools/part-tools.mastra`      | Uses `lib/data/schema/relationships.ts`. |
-| Prompt context hydration      | `mastra/tools/memory-markdown-tools.ts` (read-only) | Pulls overview sections; no writes. |
+| Therapy context & observations| `mastra/tools/therapy-tools.ts`       | PRD-backed tool factory for session analysis and data mutations. |
 
 ## Decommissioned / Legacy Paths
 
 - `lib/data/parts.ts` and `lib/data/parts-query.ts` have been removed (replaced by PRD schema helpers).
 - Markdown write tooling (`mastra/tools/markdown-write-tools.ts`) has been retired. Any future write needs should target PRD tables or explicit Supabase APIs.
+- **Markdown tool modules (2025-10-18)**: `mastra/tools/markdown-tools.ts` and `mastra/tools/memory-markdown-tools.ts` have been removed from the agent wiring. All agent context flows now use PRD tables exclusively. Legacy snapshots remain archived for historical review.
 - The markdown sync pipeline (`lib/memory/parts-sync.ts`) is slated for archival once PRD telemetry fully replaces markdown usage.
 
 ## Upgrade / Rollback Notes
 
-- **Feature flag**: `IFS_ENABLE_MARKDOWN_CONTEXT` controls whether prompts and server-side snapshot hydration run. Disable if markdown storage causes issues; agents continue to operate against PRD.
-- **Rollback**: To revert to the legacy schema, re-enable markdown write tooling and point `lib/data/parts-lite.ts` at `parts`/`part_relationships`. This requires redeploying the prior branch and re-running the markdown sync.
-- **Forward plan**: Migrate remaining consumers of markdown snapshots to PRD observables, then archive the storage bucket.
+- **Feature flag**: `IFS_ENABLE_MARKDOWN_CONTEXT` now defaults to `false` as of 2025-10-18. Agents operate exclusively against the PRD schema by default. To opt-in to optional markdown snapshot enrichment for parts queries, set `IFS_ENABLE_MARKDOWN_CONTEXT=true`.
+- **Rollback**: To revert to the legacy schema and markdown tooling, set `IFS_ENABLE_MARKDOWN_CONTEXT=true`, re-apply markdown tool factories to the agent, and restore the prior git commits. This is not recommended in production; open a support ticket if needed.
+- **Forward plan**: Archive the `memory-snapshots` storage bucket once all stakeholders confirm no dependency on historical markdown snapshots.

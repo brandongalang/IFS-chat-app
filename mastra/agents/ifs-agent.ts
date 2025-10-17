@@ -7,8 +7,6 @@ import { createAssessmentTools } from '../tools/assessment-tools'
 import { createProposalTools } from '../tools/proposal-tools'
 import { createEvidenceTools } from '../tools/evidence-tools'
 import { createMemoryTools } from '../tools/memory-tools'
-import { createMarkdownTools } from '../tools/markdown-tools'
-import { createMemoryMarkdownTools } from '../tools/memory-markdown-tools'
 import { createUpdateSyncTools } from '../tools/update-sync-tools'
 import { createTherapyTools } from '../tools/therapy-tools'
 import { generateSystemPrompt, type IFSAgentProfile } from './ifs_agent_prompt'
@@ -41,8 +39,6 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
         } as const)
       : undefined
 
-  const markdownTools = env.ifsMarkdownContextEnabled ? createMarkdownTools(userId ?? null) : null
-  const memoryMarkdownTools = env.ifsMarkdownContextEnabled ? createMemoryMarkdownTools(userId ?? null) : null
   const updateSyncTools = createUpdateSyncTools(userId)
   const therapyTools = createTherapyTools(userId ?? undefined)
 
@@ -58,8 +54,6 @@ export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {
       ...createMemoryTools(userId), // Memory and conversation search tools
       ...updateSyncTools, // Update sync workflow tools
       ...therapyTools, // PRD schema therapy data tools
-      ...(markdownTools ?? {}),
-      ...(memoryMarkdownTools ?? {}),
     },
   })
 }
