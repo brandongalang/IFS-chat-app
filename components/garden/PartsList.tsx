@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { getPartById } from '@/lib/data/parts-lite'
 import type { PartRowV2 } from '@/lib/data/schema/types'
 import type { PartCategory } from '@/lib/types/database'
 import { Badge } from '@/components/ui/badge'
@@ -47,6 +49,32 @@ export function PartsList({ parts, isLoading }: PartsListProps) {
   const [selectedCategories, setSelectedCategories] = useState<Set<PartCategory>>(
     new Set(CATEGORIES)
   )
+  const router = useRouter()
+  const prefetchedIdsRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (isLoading) return
+    const prefetched = prefetchedIdsRef.current
+    const limit = 8
+    const targets = parts.slice(0, limit)
+
+    targets.forEach((part) => {
+      const partId = part.id
+      if (!partId || prefetched.has(partId)) return
+
+      prefetched.add(partId)
+      void (async () => {
+        try {
+          await Promise.all([
+            router.prefetch(`/garden/${partId}`),
+            getPartById({ partId }),
+          ])
+        } catch {
+          prefetched.delete(partId)
+        }
+      })()
+    })
+  }, [isLoading, parts, router])
 
   const toggleCategory = useCallback((category: PartCategory) => {
     const newSelected = new Set(selectedCategories)
