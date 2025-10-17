@@ -1,3 +1,5 @@
+import type { ToolActivityEntry } from '@/types/chat'
+
 const TOOL_COPY_RULES: Array<{
   match: RegExp
   title: string
@@ -77,4 +79,65 @@ export function friendlyLabelFromType(toolType?: string | null): string {
   if (!cleaned) return "Tool"
   const titled = titleCase(cleaned)
   return titled || "Tool"
+}
+
+export function normalizeToolSubtitle(subtitle?: string | null): string | undefined {
+  if (!subtitle) return undefined
+  const trimmed = subtitle.trim()
+  if (!trimmed) return undefined
+  if (/^(limit|offset|page)\s*\d+$/i.test(trimmed)) {
+    return undefined
+  }
+  return trimmed
+}
+
+type ActivityContext = {
+  part: ToolUIPartLike
+  update: { id: string; status?: string; title?: string }
+  friendlyTitle: string
+  note?: string
+}
+
+export type ToolUIPartLike = {
+  toolCallId?: string
+  toolName?: string
+  state?: string
+  meta?: Record<string, unknown>
+  type?: string
+}
+
+const STATUS_DESCRIPTIONS: Record<string, string> = {
+  pending: 'Queued',
+  working: 'Processing',
+  completed: 'Completed',
+  failed: 'Failed',
+  canceled: 'Canceled',
+}
+
+function buildActivityText(ctx: ActivityContext): string | undefined {
+  const status = ctx.update.status ?? ''
+  if (ctx.note) return ctx.note
+  if (ctx.part.meta && typeof ctx.part.meta.displayNote === 'string') {
+    const normalized = normalizeToolSubtitle(ctx.part.meta.displayNote)
+    if (normalized) return normalized
+  }
+  if (STATUS_DESCRIPTIONS[status]) {
+    return STATUS_DESCRIPTIONS[status]
+  }
+  return undefined
+}
+
+export function toActivityEntry(ctx: ActivityContext): ToolActivityEntry | undefined {
+  const text = buildActivityText(ctx)
+  if (!text) return undefined
+  const status = ctx.update.status ?? 'working'
+  const toolTitle = ctx.friendlyTitle || ctx.update.title
+  const key = ctx.part.toolCallId ?? ctx.update.id
+  return {
+    id: `${key}-${status}-${Date.now()}`,
+    text,
+    status,
+    timestamp: Date.now(),
+    toolTitle,
+  }
 }
