@@ -53,18 +53,18 @@ export function BottomTabs() {
             <span className="text-xs">Chat</span>
           </Link>
 
-          {/* Journey */}
+          {/* Garden */}
           <GuardedLink
             href="/garden"
             className={
               baseItem + ' ' + (isActive('/garden') ? 'text-foreground' : 'text-muted-foreground')
             }
             aria-current={isActive('/garden') ? 'page' : undefined}
-            aria-label="Journey"
-            data-testid="nav-journey"
+            aria-label="Garden"
+            data-testid="nav-garden"
           >
             <Map className="w-6 h-6" />
-            <span className="text-xs">Journey</span>
+            <span className="text-xs">Garden</span>
           </GuardedLink>
         </div>
       </div>

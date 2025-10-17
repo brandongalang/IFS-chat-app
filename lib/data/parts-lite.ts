@@ -20,7 +20,7 @@ import {
   parseRelationshipObservations,
   toV2RelationshipType,
 } from './schema/legacy-mappers'
-import type { PartRowV2, PartRelationshipRowV2 } from './schema/types'
+import { partRowSchema, type PartRowV2, type PartRelationshipRowV2 } from './schema/types'
 
 type SupabaseDatabaseClient = SupabaseClient<Database>
 
@@ -90,6 +90,48 @@ export async function searchParts(input: SearchPartsInput, deps: PartsLiteDepend
 
     const rows = Array.isArray(data) ? (data as PartRowV2[]) : []
     return rows.map(mapPartRowFromV2)
+  })
+}
+
+export async function searchPartsV2(input: SearchPartsInput, deps: PartsLiteDependencies = {}): Promise<PartRowV2[]> {
+  return runWithClient(searchPartsSchema, input, deps, async (validated, supabase) => {
+    const userId = await requireUserId(supabase)
+
+    let query = supabase
+      .from('parts_v2')
+      .select('*')
+      .eq('user_id', userId)
+      .order('last_active', { ascending: false, nullsFirst: false })
+
+    if (validated.query) {
+      const pattern = `%${validated.query.replace(/([%_])/g, '\\$1')}%`
+      query = query.or(`name.ilike.${pattern},placeholder.ilike.${pattern},data->>role.ilike.${pattern}`)
+    }
+
+    if (validated.category) {
+      query = query.eq('category', validated.category)
+    }
+
+    if (validated.status) {
+      query = query.eq('status', validated.status)
+    }
+
+    query = query.limit(validated.limit ?? 20)
+
+    const { data, error } = await query
+    if (error) {
+      throw new Error(`Database error: ${error.message}`)
+    }
+
+    const rows = Array.isArray(data) ? data : []
+    return rows.map((row) => {
+      try {
+        return partRowSchema.parse(row)
+      } catch (err) {
+        console.error('Failed to parse part row:', row, err)
+        throw err
+      }
+    })
   })
 }
 
