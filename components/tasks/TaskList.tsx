@@ -5,7 +5,7 @@ import type { HTMLAttributes } from "react"
 import { Tool, ToolHeader } from "@/components/ai-elements/tool"
 import type { ToolHeaderProps } from "@/components/ai-elements/tool"
 import { cn } from "@/lib/utils"
-import type { TaskEvent } from "@/types/chat"
+import type { TaskEvent, TaskEventMeta, ToolActivityEntry } from "@/types/chat"
 
 type ToolState = ToolHeaderProps["state"]
 type ToolType = ToolHeaderProps["type"]
@@ -96,6 +96,44 @@ export interface TaskListProps extends HTMLAttributes<HTMLDivElement> {
   progressBarClassName?: string
 }
 
+function mergeActivityLog(entries: ToolActivityEntry[] = []): ToolActivityEntry[] {
+  const sorted = [...entries].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
+  const unique: ToolActivityEntry[] = []
+  for (const entry of sorted) {
+    const key = `${entry.toolTitle ?? ''}|${entry.status}|${entry.text}`
+    if (!unique.some((item) => `${item.toolTitle ?? ''}|${item.status}|${item.text}` === key)) {
+      unique.push(entry)
+    }
+  }
+  return unique.slice(0, 5)
+}
+
+function reduceTasks(tasks: TaskEvent[]): TaskEvent {
+  if (tasks.length === 1) return tasks[0]
+  return tasks.reduce((acc, task) => {
+    const meta: TaskEventMeta = {
+      ...(acc.meta ?? {}),
+      ...(task.meta ?? {}),
+    }
+    const activityLog = mergeActivityLog([...(acc.meta?.activityLog ?? []), ...(task.meta?.activityLog ?? [])])
+    if (activityLog.length > 0) meta.activityLog = activityLog
+    if ((task.meta?.displayNote ?? '').trim()) meta.displayNote = task.meta?.displayNote
+    if ((task.meta?.displayTitle ?? '').trim()) meta.displayTitle = task.meta?.displayTitle
+    if ((task.meta?.statusCopy ?? '').trim()) meta.statusCopy = task.meta?.statusCopy
+    if ((task.meta?.toolState ?? '').trim()) meta.toolState = task.meta?.toolState
+    if ((task.meta?.toolType ?? '').trim()) meta.toolType = task.meta?.toolType
+    return {
+      ...acc,
+      id: task.id,
+      title: task.title || acc.title,
+      status: task.status,
+      progress: task.progress ?? acc.progress,
+      details: task.details ?? acc.details,
+      meta,
+    }
+  })
+}
+
 export function TaskList({
   tasks,
   className,
@@ -107,11 +145,20 @@ export function TaskList({
 }: TaskListProps) {
   if (!tasks || tasks.length === 0) return null
 
+  const byType = tasks.reduce<Record<string, TaskEvent[]>>((acc, task) => {
+    const type = typeForTask(task)
+    acc[type] = acc[type] ? [...acc[type], task] : [task]
+    return acc
+  }, {})
+
+  const combined = Object.entries(byType).map(([type, list]) => {
+    return { type: type as ToolType, task: reduceTasks(list) }
+  })
+
   return (
     <div className={cn("flex flex-col gap-2", className)} {...props}>
-      {tasks.map((task) => {
+      {combined.map(({ type, task }) => {
         const toolState = toolStateForTask(task)
-        const toolType = typeForTask(task)
         const statusLabel = statusLabelForTask(task)
         const displayTitle = typeof task.meta?.displayTitle === "string" && task.meta.displayTitle.trim().length > 0
           ? task.meta.displayTitle.trim()
@@ -131,11 +178,13 @@ export function TaskList({
         const showProgress = progressValue !== undefined
         const showDetails = detailItems.length > 0
         const showStatusCopy = Boolean(statusCopy)
-        const showContent = showProgress || showDetails || hasFiles || showStatusCopy
+        const activityLog = task.meta?.activityLog ?? []
+        const showActivity = activityLog.length > 0
+        const showContent = showProgress || showDetails || hasFiles || showStatusCopy || showActivity
 
         return (
           <Tool
-            key={task.id}
+            key={type}
             className={cn(
               "rounded-xl border border-white/15 bg-white/10 text-white",
               itemClassName,
@@ -143,7 +192,7 @@ export function TaskList({
           >
             <div className="flex items-center gap-3 px-3 pt-3">
               <ToolHeader
-                type={toolType}
+                type={type}
                 state={toolState}
                 title={displayTitle ?? task.title ?? "Tool"}
                 subtitle={subtitle}
@@ -160,6 +209,16 @@ export function TaskList({
             </div>
             {showContent ? (
               <div className="space-y-2 px-3 pb-3">
+                {showActivity ? (
+                  <div className="space-y-1 text-xs text-white/70">
+                    {activityLog.slice(0, 3).map((entry) => (
+                      <div key={entry.id} className="flex items-center gap-2">
+                        <span className="inline-flex size-1.5 rounded-full bg-white/60" />
+                        <span className="leading-4">{entry.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 {showStatusCopy ? (
                   <p className="text-xs leading-4 text-white/70">{statusCopy}</p>
                 ) : null}

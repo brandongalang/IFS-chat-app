@@ -1,13 +1,32 @@
+export type ToolActivityEntry = {
+  id: string
+  text: string
+  status: TaskEvent['status']
+  timestamp: number
+  toolTitle?: string
+}
+
+export interface TaskEventMeta {
+  files?: Array<{ name: string }>
+  toolType?: string
+  toolState?: string
+  displayTitle?: string
+  displayNote?: string
+  statusCopy?: string
+  error?: string
+  providerExecuted?: boolean
+  activityLog?: ToolActivityEntry[]
+  lastUpdated?: number
+  [key: string]: unknown
+}
+
 export interface TaskEvent {
-  id: string;
-  title: string;
-  status: 'pending' | 'working' | 'completed' | 'failed' | 'canceled';
-  progress?: number;
-  details?: string | string[];
-  meta?: {
-    files?: Array<{ name: string }>
-    [key: string]: unknown;
-  };
+  id: string
+  title: string
+  status: 'pending' | 'working' | 'completed' | 'failed' | 'canceled'
+  progress?: number
+  details?: string | string[]
+  meta?: TaskEventMeta
 }
 
 export type TaskEventUpdate = Partial<TaskEvent> & { id: string };

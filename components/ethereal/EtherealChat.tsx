@@ -6,7 +6,6 @@ import { isToolOrDynamicToolUIPart } from "ai"
 import { useChat } from "@/hooks/useChat"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { ActiveTaskOverlay } from "./ActiveTaskOverlay"
 import { PageContainer } from "@/components/common/PageContainer"
 import { EtherealMessageList } from "./EtherealMessageList"
 import { Tool, ToolHeader, friendlyToolLabel } from "@/components/ai-elements/tool"
@@ -159,8 +158,6 @@ export function EtherealChat() {
     }
   }, [messages?.length, sendMessage, needsAuth, authLoading])
 
-  const currentTasks = currentStreamingId ? tasksByMessage?.[currentStreamingId] : undefined
-
   const activeTool = useMemo<ActiveTool | undefined>(() => {
     for (let i = uiMessages.length - 1; i >= 0; i -= 1) {
       const message = uiMessages[i]
@@ -273,11 +270,6 @@ export function EtherealChat() {
       {/* Messages area */}
       <div className="relative z-10 flex-1 overflow-y-auto overscroll-contain pb-[140px] pt-[calc(env(safe-area-inset-top)+40px)]">
         <PageContainer className="flex flex-col gap-6">
-          {currentTasks?.length ? (
-            <div className="sticky top-[calc(env(safe-area-inset-top)+32px)] z-20 mb-4">
-              <ActiveTaskOverlay tasks={currentTasks} />
-            </div>
-          ) : null}
           <EtherealMessageList
             messages={messages}
             uiMessages={uiMessages}

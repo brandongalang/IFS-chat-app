@@ -1,7 +1,7 @@
 import { isToolOrDynamicToolUIPart, type UIMessage } from 'ai'
 
-import { getToolDisplayCopy } from '@/app/_shared/utils/toolDisplay'
-import type { Message, TaskEvent, TaskEventUpdate } from '@/types/chat'
+import { getToolDisplayCopy, normalizeToolSubtitle, toActivityEntry } from '@/app/_shared/utils/toolDisplay'
+import type { Message, TaskEvent, TaskEventMeta, TaskEventUpdate, ToolActivityEntry } from '@/types/chat'
 
 export type UIPart = UIMessage['parts'][number]
 
@@ -44,23 +44,32 @@ function humanizeToolName(rawName?: string | null): string {
     .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : ''))
     .join(' ')
 }
-function previewValue(value: unknown, limit = 280): string | undefined {
-  if (value === null || value === undefined) return undefined
-  if (typeof value === 'string') {
-    const text = value.trim()
-    if (!text) return undefined
-    return text.length > limit ? `${text.slice(0, limit - 1).trimEnd()}…` : text
+function mergeActivityLog(existing: ToolActivityEntry[] = [], nextEntry?: ToolActivityEntry): ToolActivityEntry[] {
+  if (!nextEntry) return existing
+  const keyOf = (entry: ToolActivityEntry) => `${entry.toolTitle ?? ''}|${entry.status}|${entry.text}`
+  const timestamped: ToolActivityEntry = {
+    ...nextEntry,
+    timestamp: nextEntry.timestamp ?? Date.now(),
   }
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value)
+  const deduped = [timestamped, ...existing].filter((entry, index, arr) => {
+    const key = keyOf(entry)
+    return arr.findIndex((candidate) => keyOf(candidate) === key) === index
+  })
+  return deduped.slice(0, 5)
+}
+
+function withActivityMeta(meta: TaskEventMeta | undefined, update: ToolActivityEntry | undefined): TaskEventMeta | undefined {
+  if (!update && !meta) return undefined
+  const base: TaskEventMeta = { ...(meta ?? {}) }
+  if (update) {
+    const activityLog = mergeActivityLog(base.activityLog ?? [], update)
+    base.activityLog = activityLog
+    if (update.toolTitle && !base.displayTitle) {
+      base.displayTitle = update.toolTitle
+    }
   }
-  try {
-    const serialized = JSON.stringify(value, null, 2)
-    if (!serialized) return undefined
-    return serialized.length > limit ? `${serialized.slice(0, limit - 1).trimEnd()}…` : serialized
-  } catch {
-    return undefined
-  }
+  base.lastUpdated = Date.now()
+  return Object.keys(base).length > 0 ? base : undefined
 }
 
 function normalizeToolState(state?: string): ToolState {
@@ -126,8 +135,6 @@ export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: 
   let toolState = rawState ? normalizeToolState(rawState) : undefined
   const toolType = normalizeToolType(part, index)
 
-  const inputPreview = previewValue(part.input)
-  const outputPreview = previewValue(part.output, 320)
   let errorText = typeof part.errorText === 'string' ? part.errorText : undefined
   let statusCopy = displayCopy.statusCopy
 
@@ -169,21 +176,29 @@ export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: 
     update.details = details
   }
 
-  const meta: TaskEvent['meta'] = {}
+  const meta: TaskEventMeta = {}
   if (toolState) meta.toolState = toolState
   meta.toolType = toolType
   meta.displayTitle = friendlyTitle
-  meta.displayNote = displayCopy.note
-  if (!displayCopy.note && inputPreview) meta.displayNote = inputPreview
+  const note = normalizeToolSubtitle(displayCopy.note)
+  if (note) meta.displayNote = note
   if (statusCopy) meta.statusCopy = statusCopy
   if (typeof part.providerExecuted !== 'undefined') {
     meta.providerExecuted = part.providerExecuted
   }
   if (errorText) meta.error = errorText
-  if (!meta.displayNote && outputPreview) meta.displayNote = outputPreview
 
-  if (Object.keys(meta).length > 0) {
-    update.meta = meta
+  const activityEntry = toActivityEntry({
+    part,
+    update,
+    friendlyTitle,
+    note,
+  })
+
+  const metaWithActivity = withActivityMeta(meta, activityEntry)
+
+  if (metaWithActivity && Object.keys(metaWithActivity).length > 0) {
+    update.meta = metaWithActivity
   }
 
   return update

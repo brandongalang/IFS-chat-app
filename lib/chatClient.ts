@@ -2,7 +2,7 @@ export type BasicMessage = { role: 'user' | 'assistant' | 'system'; content: str
 
 export type Profile = { name: string; bio: string }
 
-import type { TaskEvent, TaskEventUpdate } from '@/types/chat'
+import type { TaskEvent, TaskEventMeta, TaskEventUpdate } from '@/types/chat'
 
 export async function streamFromMastra(params: {
   messages: BasicMessage[]
@@ -201,7 +201,7 @@ function handleUiEvent(obj: unknown, onTask?: (e: TaskEventUpdate) => void): boo
       id: String(o.toolCallId ?? name),
       title: name,
       status: st,
-      meta: { input: o.input, output: o.output, providerExecuted: o.providerExecuted },
+      meta: normalizeToolMeta(o),
     }
     onTask(ev)
     return true
@@ -240,6 +240,15 @@ function handleUiEvent(obj: unknown, onTask?: (e: TaskEventUpdate) => void): boo
   }
 
   return false
+}
+
+function normalizeToolMeta(raw: Record<string, unknown>): TaskEventMeta | undefined {
+  if (!raw) return undefined
+  const meta: TaskEventMeta = {}
+  if ('input' in raw) meta.input = raw.input
+  if ('output' in raw) meta.output = raw.output
+  if ('providerExecuted' in raw) meta.providerExecuted = Boolean(raw.providerExecuted)
+  return Object.keys(meta).length > 0 ? meta : undefined
 }
 
 function parseProgressValue(value: unknown): number | undefined {
