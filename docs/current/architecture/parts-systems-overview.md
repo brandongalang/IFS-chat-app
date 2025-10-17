@@ -1,6 +1,6 @@
 # Parts Systems Architecture Overview
 
-**Last Updated**: 2025-10-18  
+**Last Updated**: 2025-10-19  
 **Status**: Current production architecture
 
 ## Summary
@@ -109,6 +109,6 @@ The parts platform now centers on the PRD schema (`parts_v2`, `part_relationship
 
 ## Upgrade / Rollback Notes
 
-- **Feature flag**: `IFS_ENABLE_MARKDOWN_CONTEXT` has been removed as of 2025-10-18. Agents now operate exclusively against the PRD schema; no configuration is needed.
-- **Rollback**: To revert to the legacy schema and markdown tooling, you must re-apply markdown tool factories to the agent and restore the prior git commits. This is not recommended in production; open a support ticket if needed.
+- **Feature flag**: `IFS_ENABLE_MARKDOWN_CONTEXT` now defaults to `false` as of 2025-10-18. Agents operate exclusively against the PRD schema by default. To opt-in to optional markdown snapshot enrichment for parts queries, set `IFS_ENABLE_MARKDOWN_CONTEXT=true`.
+- **Rollback**: To revert to the legacy schema and markdown tooling, set `IFS_ENABLE_MARKDOWN_CONTEXT=true`, re-apply markdown tool factories to the agent, and restore the prior git commits. This is not recommended in production; open a support ticket if needed.
 - **Forward plan**: Archive the `memory-snapshots` storage bucket once all stakeholders confirm no dependency on historical markdown snapshots.

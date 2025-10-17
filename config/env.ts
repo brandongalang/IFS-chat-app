@@ -87,7 +87,7 @@ export const env = {
   ifsDisablePolarizationUpdate: toBool(raw.IFS_DISABLE_POLARIZATION_UPDATE),
   ifsMarkdownContextEnabled:
     raw.IFS_ENABLE_MARKDOWN_CONTEXT === undefined
-      ? true
+      ? false
       : toBool(raw.IFS_ENABLE_MARKDOWN_CONTEXT),
   ifsForceNoSupabase:
     toBool(raw.IFS_DEV_FORCE_NO_SUPABASE) ||

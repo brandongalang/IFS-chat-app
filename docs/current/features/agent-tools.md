@@ -2,7 +2,7 @@
 title: Feature: Agent Tools
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-18
+last_updated: 2025-10-19
 feature_flag: null
 code_paths:
   - mastra/tools/assessment-tools.ts
@@ -74,7 +74,7 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 - Provider configuration centralized in `config/model.ts` and `mastra/index.ts`
 - Agents default to the hard-coded `OPENROUTER_API_BASE_URL` (`https://openrouter.ai/api/v1`); only `IFS_MODEL` and `IFS_TEMPERATURE` remain configurable via env vars
 - Agents share the single `openrouter` provider created during Mastra bootstrap
-- All agents now use PRD-backed tools exclusively; legacy markdown context configuration has been removed
+- All agents now use PRD-backed tools exclusively; `IFS_ENABLE_MARKDOWN_CONTEXT` now defaults to `false`. Set to `true` to opt-in to optional markdown snapshot enrichment for parts queries (e.g., `getPartById` hydration)
 
 ## Testing
 - Unit tests for tool logic; integration tests via smoke scripts (scripts/smoke-*)
