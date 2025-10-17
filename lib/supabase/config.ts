@@ -47,7 +47,9 @@ export function getSupabaseUrl(): string | undefined {
   const targetEnv = resolveTargetEnv()
 
   if (targetEnv === 'prod') {
-    const prodUrl = normalizeUrl(process.env.NEXT_PUBLIC_PROD_SUPABASE_URL)
+    const prodUrl = normalizeUrl(
+      process.env.NEXT_PUBLIC_PROD_SUPABASE_URL ?? process.env.PROD_PUBLIC_SUPABASE_URL
+    )
 
     if (!prodUrl) {
       warnMissingProdConfig('url')
@@ -65,7 +67,9 @@ export function getSupabaseKey(): string | undefined {
   const targetEnv = resolveTargetEnv()
 
   if (targetEnv === 'prod') {
-    const prodKey = normalizeKey(process.env.NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY)
+    const prodKey = normalizeKey(
+      process.env.NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY ?? process.env.PROD_SUPABASE_ANON_KEY
+    )
 
     if (!prodKey) {
       warnMissingProdConfig('key')
@@ -84,7 +88,11 @@ export function getSupabaseServiceRoleKey(): string | undefined {
   
   // Use production credentials when TARGET_ENV=prod
   if (targetEnv === 'prod') {
-    return normalizeKey(process.env.PROD_SUPABASE_SERVICE_ROLE_KEY)
+    return (
+      normalizeKey(process.env.PROD_SUPABASE_SERVICE_ROLE_KEY) ||
+      // Fallback: allow using SUPABASE_SERVICE_ROLE_KEY in prod if prod var is not set
+      normalizeKey(process.env.SUPABASE_SERVICE_ROLE_KEY)
+    )
   }
   
   // Default: use standard env vars (local or standard deployment)
