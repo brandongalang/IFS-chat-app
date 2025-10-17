@@ -18,6 +18,7 @@ export const Tool = ({ className, ...props }: ToolProps) => (
 // Header props remain the same for type safety
 export type ToolHeaderProps = {
   title?: string;
+  subtitle?: string;
   type: ToolUIPart["type"];
   state: ToolUIPart["state"];
   className?: string;
@@ -66,6 +67,7 @@ export function friendlyToolLabel(type: ToolHeaderProps["type"]): string {
 export const ToolHeader = ({
   className,
   title,
+  subtitle,
   type,
   state,
   ...props
@@ -75,6 +77,13 @@ export const ToolHeader = ({
     {...props}
   >
     {iconForToolState(state)}
-    <span className="font-medium">{title ?? friendlyToolLabel(type)}</span>
+    <div className="flex flex-col">
+      <span className="font-medium leading-tight">{title ?? friendlyToolLabel(type)}</span>
+      {subtitle ? (
+        <span className="text-xs font-normal text-muted-foreground/80 leading-tight">
+          {subtitle}
+        </span>
+      ) : null}
+    </div>
   </div>
 );

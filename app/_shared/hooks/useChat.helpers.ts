@@ -1,5 +1,6 @@
 import { isToolOrDynamicToolUIPart, type UIMessage } from 'ai'
 
+import { getToolDisplayCopy } from '@/app/_shared/utils/toolDisplay'
 import type { Message, TaskEvent, TaskEventUpdate } from '@/types/chat'
 
 export type UIPart = UIMessage['parts'][number]
@@ -15,6 +16,7 @@ export type ToolUIPart = UIPart & {
   output?: unknown
   errorText?: string
   providerExecuted?: boolean
+  meta?: Record<string, unknown>
 }
 
 export function isDataUIPart(part: UIPart): part is UIPart & { type: `data-${string}`; data: unknown } {
@@ -85,18 +87,6 @@ function toolStateToStatus(state?: string): TaskEvent['status'] {
   }
 }
 
-function statusCopyForState(state?: string): string | undefined {
-  if (!state) return undefined
-  const lower = state.toLowerCase()
-  if (lower.startsWith('input')) {
-    return 'Looking through my notes…'
-  }
-  if (lower.startsWith('output') && lower !== 'output-error') {
-    return 'Writing notes…'
-  }
-  return undefined
-}
-
 function slugifyToolSegment(value: string): string {
   return value
     .toLowerCase()
@@ -128,6 +118,8 @@ export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: 
       ? part.toolCallId
       : `${messageId}-tool-${index}`
 
+  const displayCopy = getToolDisplayCopy(part.toolName, part.type)
+  const friendlyTitle = displayCopy.title || humanizeToolName(rawName)
   let status = toolStateToStatus(part.state)
   const title = humanizeToolName(rawName)
   const rawState = typeof part.state === 'string' ? part.state : undefined
@@ -137,7 +129,7 @@ export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: 
   const inputPreview = previewValue(part.input)
   const outputPreview = previewValue(part.output, 320)
   let errorText = typeof part.errorText === 'string' ? part.errorText : undefined
-  let statusCopy = statusCopyForState(rawState)
+  let statusCopy = displayCopy.statusCopy
 
   if (!errorText && part.output && typeof part.output === 'object') {
     const outputObj = part.output as Record<string, unknown>
@@ -168,10 +160,7 @@ export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: 
   if (errorText) {
     details.push(errorText)
   } else {
-    if (outputPreview) details.push(outputPreview)
-    if (inputPreview && inputPreview !== outputPreview) {
-      details.push(`Input preview: ${inputPreview}`)
-    }
+    if (displayCopy.note) details.push(displayCopy.note)
   }
 
   if (details.length === 1) {
@@ -183,13 +172,15 @@ export function buildToolTaskUpdate(messageId: string, part: ToolUIPart, index: 
   const meta: TaskEvent['meta'] = {}
   if (toolState) meta.toolState = toolState
   meta.toolType = toolType
+  meta.displayTitle = friendlyTitle
+  meta.displayNote = displayCopy.note
+  if (!displayCopy.note && inputPreview) meta.displayNote = inputPreview
   if (statusCopy) meta.statusCopy = statusCopy
-  if (inputPreview) meta.inputPreview = inputPreview
-  if (outputPreview) meta.outputPreview = outputPreview
   if (typeof part.providerExecuted !== 'undefined') {
     meta.providerExecuted = part.providerExecuted
   }
   if (errorText) meta.error = errorText
+  if (!meta.displayNote && outputPreview) meta.displayNote = outputPreview
 
   if (Object.keys(meta).length > 0) {
     update.meta = meta
@@ -207,10 +198,10 @@ export function signatureForToolUpdate(part: ToolUIPart, update: TaskEventUpdate
     typeof update.meta?.toolState === 'string' ? update.meta.toolState : ''
   const statusCopy =
     typeof update.meta?.statusCopy === 'string' ? update.meta.statusCopy : ''
-  const inputPreview =
-    typeof update.meta?.inputPreview === 'string' ? update.meta.inputPreview : ''
-  const outputPreview =
-    typeof update.meta?.outputPreview === 'string' ? update.meta.outputPreview : ''
+  const displayTitle =
+    typeof update.meta?.displayTitle === 'string' ? update.meta.displayTitle : ''
+  const displayNote =
+    typeof update.meta?.displayNote === 'string' ? update.meta.displayNote : ''
   const metaType =
     typeof update.meta?.toolType === 'string' ? update.meta.toolType : ''
   const error =
@@ -219,7 +210,7 @@ export function signatureForToolUpdate(part: ToolUIPart, update: TaskEventUpdate
       : typeof update.meta?.error === 'string'
       ? (update.meta.error as string)
       : ''
-  return [state, status, details, metaState, statusCopy, inputPreview, outputPreview, error, metaType].join('|')
+  return [state, status, details, metaState, statusCopy, displayTitle, displayNote, error, metaType].join('|')
 }
 
 export function signatureForTaskUpdate(update: TaskEventUpdate): string {

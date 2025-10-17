@@ -113,6 +113,12 @@ export function TaskList({
         const toolState = toolStateForTask(task)
         const toolType = typeForTask(task)
         const statusLabel = statusLabelForTask(task)
+        const displayTitle = typeof task.meta?.displayTitle === "string" && task.meta.displayTitle.trim().length > 0
+          ? task.meta.displayTitle.trim()
+          : undefined
+        const subtitle = typeof task.meta?.displayNote === "string" && task.meta.displayNote.trim().length > 0
+          ? task.meta.displayNote.trim()
+          : undefined
         const { value: progressValue, label: progressLabel } = getProgressData(task.progress)
         const statusCopy = typeof task.meta?.statusCopy === "string" ? task.meta.statusCopy : undefined
         const detailItems = Array.isArray(task.details)
@@ -139,7 +145,8 @@ export function TaskList({
               <ToolHeader
                 type={toolType}
                 state={toolState}
-                title={task.title ?? "Tool"}
+                title={displayTitle ?? task.title ?? "Tool"}
+                subtitle={subtitle}
                 className="flex-1 p-0 text-white"
               />
               <span
