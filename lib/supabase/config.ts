@@ -84,7 +84,11 @@ export function getSupabaseServiceRoleKey(): string | undefined {
   
   // Use production credentials when TARGET_ENV=prod
   if (targetEnv === 'prod') {
-    return normalizeKey(process.env.PROD_SUPABASE_SERVICE_ROLE_KEY)
+    return (
+      normalizeKey(process.env.PROD_SUPABASE_SERVICE_ROLE_KEY) ||
+      // Fallback to service role key if only standard var is provided in prod environment
+      normalizeKey(process.env.SUPABASE_SERVICE_ROLE_KEY)
+    )
   }
   
   // Default: use standard env vars (local or standard deployment)

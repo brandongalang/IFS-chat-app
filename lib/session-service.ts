@@ -99,7 +99,16 @@ export class ChatSessionService {
       messages: [] as SessionMessage[],
     }
 
-    await this.writeTranscript(session.id, transcript)
+    // Best-effort: writing transcript requires Supabase Storage service role.
+    // If missing/misconfigured in certain deploys, do not fail session start.
+    try {
+      await this.writeTranscript(session.id, transcript)
+    } catch (error) {
+      console.warn('[sessions] writeTranscript failed at startSession; continuing without storage', {
+        sessionId: session.id,
+        error,
+      })
+    }
 
     // TODO(ifs-chat-app-5): Remove dual-write once all readers migrated to PRD sessions_v2
     await this.syncLegacySessionWrite(session.id, session)
@@ -225,7 +234,14 @@ export class ChatSessionService {
       messages: updatedMessages,
     }
 
-    await this.writeTranscript(sessionId, transcript, existingTranscript)
+    try {
+      await this.writeTranscript(sessionId, transcript, existingTranscript)
+    } catch (error) {
+      console.warn('[sessions] writeTranscript failed at addMessage; message persisted in DB only', {
+        sessionId,
+        error,
+      })
+    }
 
     // TODO(ifs-chat-app-5): Remove dual-write once all readers migrated to PRD sessions_v2
     await this.syncLegacySessionWrite(sessionId, session, transcript)
@@ -265,7 +281,14 @@ export class ChatSessionService {
       messages: existingTranscript?.messages,
     }
 
-    await this.writeTranscript(sessionId, transcript, existingTranscript)
+    try {
+      await this.writeTranscript(sessionId, transcript, existingTranscript)
+    } catch (error) {
+      console.warn('[sessions] writeTranscript failed at endSession; continuing', {
+        sessionId,
+        error,
+      })
+    }
 
     // TODO(ifs-chat-app-5): Remove dual-write once all readers migrated to PRD sessions_v2
     await this.syncLegacySessionWrite(sessionId, session, transcript)
