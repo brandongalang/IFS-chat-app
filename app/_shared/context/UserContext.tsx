@@ -33,7 +33,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         try {
           const { data, error } = await supabase
             .from('users')
-            .select('name, bio, avatar_url')
+            .select('name, avatar_url')
             .eq('id', user.id)
             .maybeSingle()
 
@@ -41,10 +41,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
             console.error('Failed to load user profile', error)
           }
 
+          const bio =
+            typeof (user as { user_metadata?: Record<string, unknown> }).user_metadata?.bio === 'string'
+              ? ((user as { user_metadata?: { bio?: string } }).user_metadata?.bio as string)
+              : ''
+
           setProfile({
             id: user.id,
             name: data?.name || '',
-            bio: data?.bio || '',
+            bio,
             avatarUrl: data?.avatar_url?.trim() || null,
           })
         } catch (error) {
