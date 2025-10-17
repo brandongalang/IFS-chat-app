@@ -10,7 +10,7 @@ import { useChatSession } from './useChatSession'
 import { useToast } from './use-toast'
 import { useUser } from '@/context/UserContext'
 import { getPartById } from '@/lib/data/parts-lite'
-import type { Message, TaskEvent, TaskEventUpdate } from '@/types/chat'
+import type { Message, TaskEvent, TaskEventMeta, TaskEventUpdate, ToolActivityEntry } from '@/types/chat'
 
 import {
   buildToolTaskUpdate,
@@ -168,8 +168,31 @@ export function useChat(): ChatHookReturn {
         if (update.status !== undefined) base.status = update.status
         if ('progress' in update) base.progress = update.progress
         if ('details' in update) base.details = update.details
-        if ('meta' in update) {
-          base.meta = update.meta ? { ...(current?.meta ?? {}), ...update.meta } : undefined
+
+        const existingMeta = current?.meta ?? {}
+        const nextMeta = update.meta
+
+        if (nextMeta || Object.keys(existingMeta).length > 0) {
+          const mergedMeta: TaskEventMeta = {
+            ...existingMeta,
+            ...(nextMeta ?? {}),
+          }
+
+          const existingLog = Array.isArray(existingMeta.activityLog) ? existingMeta.activityLog : []
+          const incomingLog = Array.isArray(nextMeta?.activityLog) ? nextMeta.activityLog : []
+          const combinedLog = [...incomingLog, ...existingLog]
+
+          if (combinedLog.length > 0) {
+            const keyOf = (entry: ToolActivityEntry) => `${entry.toolTitle ?? ''}|${entry.status}|${entry.text}`
+            const uniqueLog = combinedLog
+              .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
+              .filter((entry, index, arr) => arr.findIndex((candidate) => keyOf(candidate) === keyOf(entry)) === index)
+              .slice(0, 5)
+            mergedMeta.activityLog = uniqueLog
+          }
+
+          mergedMeta.lastUpdated = Date.now()
+          base.meta = mergedMeta
         }
 
         return base
