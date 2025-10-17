@@ -295,7 +295,7 @@ GRANT SELECT ON public.user_context_cache TO service_role;
 -- -----------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.refresh_user_context_cache()
-RETURNS VOID AS $$
+RETURNS VOID AS $refresh_func$
 BEGIN
   BEGIN
     REFRESH MATERIALIZED VIEW CONCURRENTLY public.user_context_cache;
@@ -304,7 +304,7 @@ BEGIN
       REFRESH MATERIALIZED VIEW public.user_context_cache;
   END;
 END;
-$$ LANGUAGE plpgsql;
+$refresh_func$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION public.refresh_user_context_cache() IS 'Refreshes user_context_cache matview with concurrent fallback for first-run scenarios.';
 

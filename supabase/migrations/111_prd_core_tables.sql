@@ -6,20 +6,20 @@
 --   * Follow-up migrations will handle renames, data migration, and removal of legacy structures.
 
 -- Ensure helper function exists for updated_at triggers
-DO $$
+DO $func$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_proc WHERE proname = 'update_updated_at_column'
   ) THEN
     CREATE OR REPLACE FUNCTION update_updated_at_column()
-    RETURNS TRIGGER AS $$
+    RETURNS TRIGGER AS $trigger$
     BEGIN
       NEW.updated_at = NOW();
       RETURN NEW;
     END;
-    $$ LANGUAGE plpgsql;
+    $trigger$ LANGUAGE plpgsql;
   END IF;
-END $$;
+END $func$;
 
 -- =============================================================
 -- Parts V2 (PRD-compliant structure)
