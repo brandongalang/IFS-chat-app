@@ -10,7 +10,7 @@ CREATE INDEX IF NOT EXISTS idx_part_notes_part_id ON part_notes(part_id);
 
 ALTER TABLE part_notes ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view notes for own parts"
+CREATE POLICY IF NOT EXISTS "Users can view notes for own parts"
   ON part_notes FOR SELECT
   USING (
     EXISTS (
@@ -21,7 +21,7 @@ CREATE POLICY "Users can view notes for own parts"
     )
   );
 
-CREATE POLICY "Users can add notes for own parts"
+CREATE POLICY IF NOT EXISTS "Users can add notes for own parts"
   ON part_notes FOR INSERT
   WITH CHECK (
     EXISTS (
