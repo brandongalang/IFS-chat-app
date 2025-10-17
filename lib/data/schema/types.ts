@@ -45,9 +45,36 @@ function toIsoString(value: unknown): string | null {
   if (value == null) return null
   if (value instanceof Date) return value.toISOString()
   if (typeof value === 'string') {
-    const d = new Date(value)
-    if (!Number.isNaN(d.getTime())) return d.toISOString()
-    return value
+    let raw = value.trim()
+    if (raw.length === 0) return null
+
+    // Convert common Postgres formats like "2025-10-18 12:34:56.789+00"
+    if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/.test(raw)) {
+      raw = raw.replace(' ', 'T')
+    }
+
+    // Normalise timezone offsets lacking colon or containing leading spaces, e.g. "+00", "+0000", " +00"
+    raw = raw.replace(/\s*([+-])(\d{2})(?::?(\d{2}))?$/, (
+      _match: string,
+      sign: string,
+      hours: string,
+      minutes?: string,
+    ) => {
+      const mins = minutes ?? '00'
+      return `${sign}${hours}:${mins}`
+    })
+
+    // If the string has no timezone, assume UTC
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(raw)) {
+      raw = `${raw}Z`
+    }
+
+    const date = new Date(raw)
+    if (!Number.isNaN(date.getTime())) {
+      return date.toISOString()
+    }
+
+    return raw
   }
   return null
 }
