@@ -36,7 +36,7 @@ The parts platform now centers on the PRD schema (`parts_v2`, `part_relationship
 ### 2. Snapshot Context (Read-Only Markdown)
 **Location**: `lib/memory/`  
 **Purpose**: Hydrate rich context (overview/part markdown) for prompts and legacy session logs  
-**Used By**: IFS chat agent when `IFS_ENABLE_MARKDOWN_CONTEXT` is enabled
+**Used By**: IFS chat agent and parts agent snapshot helpers when `IFS_ENABLE_MARKDOWN_CONTEXT` is enabled
 
 **Key Files**:
 - `lib/memory/read.ts` – Reads overview, part, and relationship markdown sections.
@@ -109,6 +109,6 @@ The parts platform now centers on the PRD schema (`parts_v2`, `part_relationship
 
 ## Upgrade / Rollback Notes
 
-- **Feature flag**: `IFS_ENABLE_MARKDOWN_CONTEXT` controls whether prompts include snapshot context. Disable if markdown storage causes issues; agents continue to operate against PRD.
+- **Feature flag**: `IFS_ENABLE_MARKDOWN_CONTEXT` controls whether prompts and server-side snapshot hydration run. Disable if markdown storage causes issues; agents continue to operate against PRD.
 - **Rollback**: To revert to the legacy schema, re-enable markdown write tooling and point `lib/data/parts-lite.ts` at `parts`/`part_relationships`. This requires redeploying the prior branch and re-running the markdown sync.
 - **Forward plan**: Migrate remaining consumers of markdown snapshots to PRD observables, then archive the storage bucket.
