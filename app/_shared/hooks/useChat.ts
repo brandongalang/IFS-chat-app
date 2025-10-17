@@ -61,6 +61,7 @@ export function useChat(): ChatHookReturn {
   const [hasActiveSession, setHasActiveSession] = useState<boolean>(Boolean(getSessionId()))
   const [sessionId, setSessionId] = useState<string | null>(getSessionId())
   const [sessionEnded, setSessionEnded] = useState(false)
+  const warmupAttemptedRef = useRef(false)
   const [tasksByMessage, setTasksByMessage] = useState<Record<string, TaskEvent[]>>({})
 
   const transport = useMemo(() => new DefaultChatTransport({ api: '/api/chat' }), [])
@@ -238,6 +239,16 @@ export function useChat(): ChatHookReturn {
     },
     [authLoading, ensureSession, needsAuth, persistMessage, profile, sdkSendMessage, sessionId, status, stop],
   )
+
+  useEffect(() => {
+    if (authLoading || needsAuth) return
+    if (warmupAttemptedRef.current) return
+    warmupAttemptedRef.current = true
+    void ensureSession().catch((error) => {
+      warmupAttemptedRef.current = false
+      console.warn('[chat] warm session failed', error)
+    })
+  }, [authLoading, ensureSession, needsAuth])
 
   const clearChat = useCallback(() => {
     void stop()
