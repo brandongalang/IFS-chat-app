@@ -34,6 +34,8 @@ export const partRowSchema = z
     last_active: z.string().datetime().nullable(),
     created_at: z.string().datetime(),
     updated_at: z.string().datetime(),
+    // Generated column in DB; present in SELECT * but not used by app logic
+    search_vector: z.any().optional(),
   })
   .strict()
 
@@ -74,6 +76,8 @@ export const observationRowSchema = z
     entities: z.array(z.string().uuid()),
     created_at: z.string().datetime(),
     updated_at: z.string().datetime(),
+    // Generated column present in SELECT *
+    search_vector: z.any().optional(),
   })
   .strict()
 
