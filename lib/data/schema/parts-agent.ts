@@ -1,8 +1,8 @@
 import 'server-only'
 
 import { requiresUserConfirmation, devLog, dev } from '@/config/dev'
+import { env } from '@/config/env'
 import { getSupabaseServiceRoleKey } from '@/lib/supabase/config'
-import { isMemoryV2Enabled } from '@/lib/memory/config'
 import { recordSnapshotUsage } from '@/lib/memory/observability'
 import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
 import type {
@@ -170,7 +170,7 @@ export async function getPartById(
 
   const mapped = mapPartRowFromV2(part)
 
-  if (typeof window === 'undefined' && isMemoryV2Enabled()) {
+  if (typeof window === 'undefined' && env.ifsMarkdownContextEnabled) {
     const t0 = Date.now()
     try {
       const { readPartProfileSections } = await import('@/lib/memory/read')
@@ -236,7 +236,7 @@ export async function getPartDetail(
   let partProfileSections: unknown
   let relationshipProfiles: Record<string, unknown> | undefined
 
-  if (typeof window === 'undefined' && isMemoryV2Enabled()) {
+  if (typeof window === 'undefined' && env.ifsMarkdownContextEnabled) {
     const t0 = Date.now()
     try {
       const { readOverviewSections, readPartProfileSections, readRelationshipProfileSections } = await import('@/lib/memory/read')
@@ -585,7 +585,7 @@ export async function getPartRelationships(
   }
 
   let snapshotSections: Array<unknown> | undefined
-  if (typeof window === 'undefined' && isMemoryV2Enabled()) {
+  if (typeof window === 'undefined' && env.ifsMarkdownContextEnabled) {
     try {
       const { readRelationshipProfileSections } = await import('@/lib/memory/read')
       snapshotSections = await Promise.all(
