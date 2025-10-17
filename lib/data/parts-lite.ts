@@ -20,7 +20,7 @@ import {
   parseRelationshipObservations,
   toV2RelationshipType,
 } from './schema/legacy-mappers'
-import { partRowSchema, type PartRowV2, type PartRelationshipRowV2 } from './schema/types'
+import { normalizePartRowDates, partRowSchema, type PartRowV2, type PartRelationshipRowV2 } from './schema/types'
 
 type SupabaseDatabaseClient = SupabaseClient<Database>
 
@@ -89,7 +89,7 @@ export async function searchParts(input: SearchPartsInput, deps: PartsLiteDepend
     }
 
     const rows = Array.isArray(data) ? (data as PartRowV2[]) : []
-    return rows.map(mapPartRowFromV2)
+    return rows.map((row) => mapPartRowFromV2(partRowSchema.parse(normalizePartRowDates(row))))
   })
 }
 
@@ -126,7 +126,7 @@ export async function searchPartsV2(input: SearchPartsInput, deps: PartsLiteDepe
     const rows = Array.isArray(data) ? data : []
     return rows.map((row) => {
       try {
-        return partRowSchema.parse(row)
+        return partRowSchema.parse(normalizePartRowDates(row))
       } catch (err) {
         console.error('Failed to parse part row:', row, err)
         throw err
@@ -154,7 +154,7 @@ export async function getPartById(input: GetPartByIdInput, deps: PartsLiteDepend
       return null
     }
 
-    return mapPartRowFromV2(data as PartRowV2)
+    return mapPartRowFromV2(partRowSchema.parse(normalizePartRowDates(data as PartRowV2)))
   })
 }
 
