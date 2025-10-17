@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { resolveUserId } from '@/config/dev'
 import { withSupabaseOrDev } from '@/lib/api/supabaseGuard'
 import { jsonResponse, errorResponse } from '@/lib/api/response'
+import { getServiceClient } from '@/lib/supabase/clients'
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,8 +18,10 @@ export async function POST(req: NextRequest) {
       const { createChatSessionService } = await import('../../../../lib/session-service')
 
       if (ctx.type === 'authed') {
+        // Use service-role client on the server to avoid RLS/DDL differences across envs
+        const admin = getServiceClient()
         const sessionService = createChatSessionService({
-          supabase: ctx.supabase,
+          supabase: admin,
           userId: ctx.userId,
         })
         const sessionId = await sessionService.startSession()
