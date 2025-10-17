@@ -269,7 +269,7 @@ export function EtherealChat() {
 
       {/* Messages area */}
       <div className="relative z-10 flex-1 overflow-y-auto overscroll-contain pb-[140px] pt-[calc(env(safe-area-inset-top)+40px)]">
-        <PageContainer className="flex flex-col gap-6">
+        <div className="mx-auto w-full max-w-[52rem] px-4 sm:px-6 lg:px-8 flex flex-col gap-6">
           <EtherealMessageList
             messages={messages}
             uiMessages={uiMessages}
@@ -277,7 +277,7 @@ export function EtherealChat() {
             currentStreamingId={currentStreamingId}
           />
           <div ref={messagesEndRef} />
-        </PageContainer>
+        </div>
       </div>
 
       {/* Translucent input bar (always visible) */}
