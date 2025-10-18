@@ -2,7 +2,7 @@
 title: Feature: Agent Tools
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-19
+last_updated: 2025-10-20
 feature_flag: null
 code_paths:
   - mastra/tools/assessment-tools.ts
@@ -16,6 +16,8 @@ code_paths:
   - mastra/tools/update-sync-tools.ts
   - mastra/tools/therapy-tools.ts
   - mastra/agents/*.ts
+  - mastra/agents/ifs_agent_prompt.ts
+  - mastra/agents/inbox-observation.ts
   - lib/data/schema/parts-agent.ts
   - lib/data/schema/therapy-tools.schema.ts
   - lib/data/therapy-tools.ts
@@ -23,6 +25,7 @@ code_paths:
   - lib/memory/markdown/frontmatter.ts
   - lib/insights/generator.ts
   - lib/memory/overview.ts
+  - lib/inbox/search/checkins.ts
   - app/api/chat/logic.ts
   - components/ethereal/EtherealChat.tsx
 related_prs:
@@ -37,6 +40,7 @@ related_prs:
   - '#338'
   - '#339'
   - '#340'
+  - '#357'
 ---
 
 ## What
@@ -47,7 +51,7 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 
 ## How it works
 - **Therapy tools integration (PR #330)**: New therapy-focused tools have been added to support therapy-related data management and session context insights. The `mastra/tools/therapy-tools.ts` provides tools for creating, querying, and updating therapy-related items with robust input validation. Session context insights include time since last contact, recent topics, open threads, active parts, suggested focus areas, and reminders. These tools are integrated into the IFS agent for seamless in-app access during therapy sessions.
-- Inbox observation tooling now lives in `mastra/tools/inbox-observation-tools.ts`; it exposes list/search/read helpers for sessions and check-ins (including `listSessions`, `getSessionDetail`, `listCheckIns`, `getCheckInDetail`) so agents can enumerate context before fetching details.
+- **Inbox observation tooling refactor (PR #357)**: Inbox observation agent now uses Supabase-backed tools instead of markdown files. The `mastra/tools/inbox-observation-tools.ts` exposes `searchParts`, `getPartById`, `getPartDetail` for accessing part data; `queryTherapyData`, `writeTherapyData`, `updateTherapyData` for therapy-related observations; and `listCheckIns`, `searchCheckIns`, `getCheckInDetail` for check-in data. This enables observations to be generated from structured database records rather than markdown files, providing more reliable and auditable insights.
 - **Markdown tools removal (2025-10-17)**: Legacy markdown tools (`mastra/tools/markdown-tools.ts` and `mastra/tools/memory-markdown-tools.ts`) have been deprecated and removed. The IFS chat agent now operates exclusively with PRD-backed tools (therapy tools, memory tools, update sync tools). All agent context flows through the PRD schema (`observations`, `timeline_events`).
 - **Logging instrumentation**: The active agent path uses PRD tables (`observations`, `timeline_events`) for all change tracking and context hydration. Background digests are recorded via Supabase; markdown snapshots remain read-only for legacy queries but are no longer written by agents.
 - **System 1 cleanup (2025-01-14)**: Removed orphaned `mastra/tools/part-content-tools.ts` which was never registered with any agent. All part operations now use System 2 (`lib/memory/`) with frontmatter support.
