@@ -17,11 +17,11 @@ interface EtherealMessageListProps {
 }
 
 const taskListCustomVariables = {
-  '--muted-foreground': '0 0% 80%',
-  '--foreground': '0 0% 100%',
-  '--secondary': '0 0% 100% / 0.08',
-  '--secondary-foreground': '0 0% 100%',
-  '--border': '0 0% 100% / 0.15',
+  '--muted-foreground': 'var(--muted-foreground)',
+  '--foreground': 'var(--foreground)',
+  '--secondary': 'var(--secondary)',
+  '--secondary-foreground': 'var(--secondary-foreground)',
+  '--border': 'var(--border)',
 } as const
 
 const taskListStyleVariables = taskListCustomVariables as unknown as CSSProperties
@@ -34,11 +34,11 @@ export function EtherealMessageList({ messages, tasksByMessage, currentStreaming
         const isStreaming = currentStreamingId === message.id
         const containerAlign = isAssistant ? "justify-start" : "justify-end"
         const bubbleClass = cn(
-          "max-w-full rounded-[28px] border px-6 py-5 backdrop-blur-xl transition-colors",
+          "max-w-full rounded-xl border px-5 py-4 shadow-sm transition-colors",
           isAssistant
-            ? "bg-white/12 border-white/18 text-white/95 shadow-[0_18px_50px_rgba(5,15,20,0.35)]"
-            : "bg-white/8 border-white/12 text-white/85 shadow-[0_12px_36px_rgba(5,5,10,0.25)]",
-          isStreaming && isAssistant ? "border-white/35 shadow-[0_0_42px_rgba(180,220,255,0.35)]" : undefined
+            ? "bg-card/90 border-border/50 text-foreground"
+            : "bg-primary/10 border-primary/20 text-foreground",
+          isStreaming && isAssistant ? "border-primary/50 shadow-md" : undefined
         )
 
         const tasks = isAssistant ? tasksByMessage?.[message.id] : undefined
@@ -52,17 +52,15 @@ export function EtherealMessageList({ messages, tasksByMessage, currentStreaming
             className={cn("flex", containerAlign)}
           >
             <div className={bubbleClass}>
-              <div className={cn("space-y-4", isAssistant ? "text-[20px] leading-[1.4] font-light italic" : "text-sm sm:text-base leading-7 font-light")}
-                style={isAssistant ? { letterSpacing: "0.015em" } : undefined}
-              >
+              <div className={cn("space-y-3", isAssistant ? "text-base leading-7" : "text-sm sm:text-base leading-6 font-medium text-foreground")}>
                 {isAssistant && tasks?.length ? (
                   <TaskList
                     tasks={tasks}
-                    className="mb-3 rounded-2xl border border-white/15 bg-white/6 p-3 text-white"
-                    itemClassName="border-white/20 bg-white/12"
-                    statusClassName="text-white/75"
-                    progressTrackClassName="bg-white/20"
-                    progressBarClassName="bg-white"
+                    className="mb-3 rounded-lg border border-border/40 bg-secondary/10 text-foreground"
+                    itemClassName="border-border/40 bg-background/80 text-foreground"
+                    statusClassName="text-muted-foreground"
+                    progressTrackClassName="bg-secondary/30"
+                    progressBarClassName="bg-primary"
                     style={taskListStyleVariables}
                   />
                 ) : null}
@@ -70,7 +68,7 @@ export function EtherealMessageList({ messages, tasksByMessage, currentStreaming
                 {isAssistant ? (
                   <StreamingMarkdown text={message.content} />
                 ) : (
-                  <p className="whitespace-pre-wrap text-[15px] sm:text-[16px] lowercase tracking-wide text-white/90">
+                  <p className="whitespace-pre-wrap text-[15px] sm:text-[16px] tracking-normal">
                     {message.content}
                   </p>
                 )}
