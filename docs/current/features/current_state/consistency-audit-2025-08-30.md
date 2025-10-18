@@ -25,7 +25,7 @@ Summary of findings
   - mastra/workflows/generate-insight-workflow.ts: multiple signature/typing issues with Step/execute and tool context shapes (missing limit/lookbackDays, input typing)
 
 - Lint: warnings and at least 1 error
-  - components/garden/PartActions.tsx: react-hooks/rules-of-hooks (useToast called at top level)
+  - components/garden/PartSidebarActions.tsx (formerly PartActions.tsx): react-hooks/rules-of-hooks (useToast called at top level)
   - multiple @typescript-eslint/no-explicit-any and no-unused-vars warnings across API routes and components
 
 - Build: failing with webpack module-not-found
@@ -73,7 +73,7 @@ Details
   - Step definitions missing input/output schemas; execute signature mismatch; tool context invocations missing required fields (limit, lookbackDays)
 
 2) Lint (condensed)
-- React hooks rule violation: components/garden/PartActions.tsx uses useToast outside component/hook
+- React hooks rule violation: components/garden/PartSidebarActions.tsx (formerly PartActions.tsx) uses useToast outside component/hook
 - Various @typescript-eslint warnings: any/no-unused-vars in cron and insights routes
 
 3) Build failures (webpack)

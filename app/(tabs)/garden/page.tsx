@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { searchPartsV2 } from '@/lib/data/parts-lite'
 import type { PartRowV2 } from '@/lib/data/schema/types'
 import { PartsList } from '@/components/garden/PartsList'
+import { PageContainer } from '@/components/common/PageContainer'
 
 export default function GardenPage() {
   const [parts, setParts] = useState<PartRowV2[]>([])
@@ -43,8 +44,6 @@ export default function GardenPage() {
     }
   }, [])
 
-
-
   const totalParts = parts.length
   const establishedCount = parts.filter(
     (p) => p.status === 'acknowledged' || p.status === 'active' || p.status === 'integrated'
@@ -59,51 +58,53 @@ export default function GardenPage() {
     : 0
 
   return (
-    <div className="container mx-auto p-4 md:p-6 h-full flex flex-col">
-      <header className="mb-8">
-        <h1 className="text-4xl font-bold tracking-tight">Your Inner Garden</h1>
-        <p className="text-muted-foreground mt-2">
-          {isLoading ? '—' : totalParts} parts discovered • {isLoading ? '—' : activeToday} active today
-        </p>
+    <div className="min-h-screen flex flex-col">
+      <PageContainer className="flex-1 py-6 md:py-8 space-y-8">
+        <header>
+          <h1 className="text-4xl font-bold tracking-tight">Your Inner Garden</h1>
+          <p className="text-muted-foreground mt-2">
+            {isLoading ? '—' : totalParts} parts discovered • {isLoading ? '—' : activeToday} active today
+          </p>
 
-        {/* Stats Banner */}
-        {!isLoading && (
-          <div
-            className="mt-4 rounded-xl border border-border/40 bg-card/20 p-4 backdrop-blur grid grid-cols-3 gap-4"
-            aria-live="polite"
-          >
-            <div>
-              <p className="text-xs font-medium uppercase text-muted-foreground tracking-wide">
-                Total Parts
-              </p>
-              <p className="text-2xl font-bold mt-1">{totalParts}</p>
+          {/* Stats Banner */}
+          {!isLoading && (
+            <div
+              className="mt-6 rounded-lg border border-border/40 bg-card/20 p-5 backdrop-blur grid grid-cols-3 gap-4 md:gap-6"
+              aria-live="polite"
+            >
+              <div>
+                <p className="text-xs font-medium uppercase text-muted-foreground tracking-wider">
+                  Total Parts
+                </p>
+                <p className="text-2xl md:text-3xl font-bold mt-2">{totalParts}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase text-muted-foreground tracking-wider">
+                  Established
+                </p>
+                <p className="text-2xl md:text-3xl font-bold mt-2">{establishedCount}</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">avg {avgConfidence}% sure</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase text-muted-foreground tracking-wider">
+                  Active Today
+                </p>
+                <p className="text-2xl md:text-3xl font-bold mt-2">{activeToday}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-medium uppercase text-muted-foreground tracking-wide">
-                Established
-              </p>
-              <p className="text-2xl font-bold mt-1">{establishedCount}</p>
-              <p className="text-xs text-muted-foreground/70">avg {avgConfidence}% sure</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium uppercase text-muted-foreground tracking-wide">
-                Active Today
-              </p>
-              <p className="text-2xl font-bold mt-1">{activeToday}</p>
-            </div>
-          </div>
-        )}
-      </header>
+          )}
+        </header>
 
-      <main className="flex-grow">
-        {error && (
-          <div className="text-red-500 text-center p-4">
-            <p>Could not load garden: {error}</p>
-          </div>
-        )}
+        <main className="flex-grow">
+          {error && (
+            <div className="text-red-500 text-center p-6 rounded-lg border border-red-500/20 bg-red-500/5">
+              <p>Could not load garden: {error}</p>
+            </div>
+          )}
 
-        {!error && <PartsList parts={parts} isLoading={isLoading} />}
-      </main>
+          {!error && <PartsList parts={parts} isLoading={isLoading} />}
+        </main>
+      </PageContainer>
     </div>
   )
 }

@@ -767,7 +767,7 @@ ALTER TABLE check_ins
 - `lib/data/parts-lite.ts`
 - `lib/data/parts-server.ts`
 - `lib/data/parts-query.ts`
-- `components/garden/PartActions.tsx` (after rewrite)
+- `components/garden/PartActions.tsx` (after rewrite; superseded by EditPartDetails + PartSidebarActions)
 
 ### Code to REMOVE:
 

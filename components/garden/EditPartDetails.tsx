@@ -13,10 +13,10 @@ import {
   DialogFooter,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
-import { EmojiPicker } from '@/components/common/EmojiPicker'
+import { Input } from '@/components/ui/input'
+import { EmojiPicker } from '@/components/garden/EmojiPicker'
 import { Pencil } from 'lucide-react'
 
 interface EditPartDetailsProps {
@@ -85,22 +85,10 @@ export function EditPartDetails({ part }: EditPartDetailsProps) {
               className="col-span-3"
             />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="emoji" className="text-right">
-              Emoji
-            </Label>
-            <Input
-              id="emoji"
-              value={emoji}
-              onChange={(e) => setEmoji(e.target.value)}
-              className="col-span-3"
-              maxLength={2} // Emojis can sometimes be 2 chars
-            />
-          </div>
           <div className="grid grid-cols-4 items-start gap-4">
-            <Label className="text-right pt-2">Suggestions</Label>
+            <Label className="text-right pt-2">Emoji</Label>
             <div className="col-span-3">
-              <EmojiPicker selectedEmoji={emoji} onSelect={setEmoji} />
+              <EmojiPicker value={emoji} onChange={setEmoji} />
             </div>
           </div>
         </div>

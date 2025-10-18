@@ -2,18 +2,20 @@
 title: Feature: Parts Garden
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-13
+last_updated: 2025-10-18
 feature_flag: ENABLE_GARDEN
 code_paths:
   - app/garden/page.tsx
   - app/garden/[partId]/page.tsx
-  - components/garden/PartActions.tsx
+  - components/garden/EditPartDetails.tsx
+  - components/garden/PartSidebarActions.tsx
+  - components/garden/EmojiPicker.tsx
   - mastra/tools/part-tools.ts
   - lib/memory/storage/supabase-storage-adapter.ts
 related_prs:
   - #41
   - #305
-  - #TBD
+  - #362
 ---
 
 ## What
@@ -28,7 +30,7 @@ Offers a spatial/visual way to understand internal parts and relationships.
   - Supports YAML frontmatter format with emoji and metadata
   - Reads DB-backed fields (visualization, relationships, notes) via `@/lib/data/parts-server`
 - The `parts-repository` uses a storage adapter to list and read markdown files. The Supabase storage adapter performs a recursive file listing to support the nested directory structure of part profiles.
-- PartActions server actions import from `@/lib/data/parts-server` and update DB attributes (e.g., name/emoji via visualization)
+- EditPartDetails and PartSidebarActions route through server actions in `@/app/garden/actions`, allowing name/emoji updates and note creation without exposing raw Supabase calls to the client
 - Part tool invocations route through tightened Zod schemas and an injected Supabase client, preventing untrusted payloads from mutating data
 
 ## Data model
