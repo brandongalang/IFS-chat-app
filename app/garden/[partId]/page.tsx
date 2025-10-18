@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
-import { PartActions } from '@/components/garden/PartActions'
+import { EditPartDetails } from '@/components/garden/EditPartDetails'
+import { PartSidebarActions } from '@/components/garden/PartSidebarActions'
 
 // Define the props for the page, including the dynamic parameter
 interface PartDetailPageProps {
@@ -129,8 +130,11 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <span className="text-6xl">{headerEmoji}</span>
-          <div>
-            <h1 className="text-4xl font-bold">{part.name}</h1>
+          <div className="flex-grow">
+            <div className="flex items-center gap-4">
+              <h1 className="text-4xl font-bold">{part.name}</h1>
+              <EditPartDetails part={part} />
+            </div>
             <div className="flex items-center gap-2 mt-2">
               <Badge className="capitalize text-base" variant="default">
                 {part.category}
@@ -228,7 +232,7 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
           </Card>
 
           {/* Actions Card */}
-          <PartActions part={part} />
+          <PartSidebarActions part={part} />
         </aside>
       </div>
     </div>
