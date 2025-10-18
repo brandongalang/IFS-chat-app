@@ -26,25 +26,50 @@ async function main() {
   const expectedBioString = `- Bio: \`\`\`${maliciousProfile.bio}\`\`\``;
   assert(prompt.includes(expectedBioString), `Prompt should contain the sanitized user bio. Got: ${prompt}`);
 
-  const overviewPrompt = generateSystemPrompt({
+  const unifiedPrompt = generateSystemPrompt({
     name: 'Test User',
     bio: 'Curious explorer',
-    overviewSnapshot: {
-      created: false,
-      fragments: [
-        { anchor: 'identity v1', heading: 'Identity', text: '- User ID: test-user' },
-        { anchor: 'current_focus v1', heading: 'Current Focus', text: '- Exploring new tools' }
+    unifiedContext: {
+      userMemory: {
+        version: 1,
+        last_updated_by: 'system',
+        summary: 'User is exploring their internal parts.',
+        parts: {
+          'inner-critic': {
+            name: 'Inner Critic',
+            status: 'active',
+            recency_score: 0.8,
+            influence_score: 0.9,
+            goals: [{ goal: 'Maintain high standards' }]
+          }
+        },
+        triggers_and_goals: [
+          {
+            trigger: 'Making mistakes',
+            desired_outcome: 'Maintain control and perfectionism',
+            related_parts: ['inner-critic']
+          }
+        ],
+        safety_notes: 'Be mindful of perfectionist patterns.'
+      },
+      currentFocus: 'Exploring new tools',
+      recentChanges: [
+        '- 2025-01-15T10:30:00Z: Started exploring parts around perfectionism'
       ]
     }
   });
 
   assert(
-    overviewPrompt.includes('## User Overview Snapshot:'),
-    `Prompt should include the overview snapshot header. Got: ${overviewPrompt}`
+    unifiedPrompt.includes('## User Memory & Current Activity:'),
+    `Prompt should include the unified context header. Got: ${unifiedPrompt}`
   );
   assert(
-    overviewPrompt.includes('[//]: # (anchor: identity v1)'),
-    `Prompt should preserve overview anchors. Got: ${overviewPrompt}`
+    unifiedPrompt.includes('Current Focus:'),
+    `Prompt should include the current focus. Got: ${unifiedPrompt}`
+  );
+  assert(
+    unifiedPrompt.includes('Inner Critic'),
+    `Prompt should include active parts. Got: ${unifiedPrompt}`
   );
 
   console.log('Prompt injection unit test passed.');
