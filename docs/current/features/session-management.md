@@ -2,7 +2,7 @@
 title: Feature: Session Management API
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-12
+last_updated: 2025-10-18
 feature_flag: null
 code_paths:
   - app/api/session/start/route.ts
@@ -24,6 +24,8 @@ Provide session lifecycle management for the chat interface, ensuring proper tra
 - **POST /api/session/end** - Marks a session as completed
 - **POST /api/session/message** - Adds a message to an existing session
 - Supports both authenticated users and development mode
+- Legacy dual-write path now reuses `mapPrdSessionToLegacy` when syncing to the `sessions` table so transcript metadata and
+  payload fields stay consistent across storage backends.
 
 ## Data model
 - `sessions` table for session metadata

@@ -99,13 +99,17 @@ export interface TaskListProps extends HTMLAttributes<HTMLDivElement> {
 function mergeActivityLog(entries: ToolActivityEntry[] = []): ToolActivityEntry[] {
   const sorted = [...entries].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
   const unique: ToolActivityEntry[] = []
+  const seenKeys = new Set<string>()
+
   for (const entry of sorted) {
-    const key = `${entry.toolTitle ?? ''}|${entry.status}|${entry.text}`
-    if (!unique.some((item) => `${item.toolTitle ?? ''}|${item.status}|${item.text}` === key)) {
-      unique.push(entry)
-    }
+    const key = `${entry.toolTitle ?? ''}|${entry.status}|${entry.text ?? ''}`
+    if (seenKeys.has(key)) continue
+    seenKeys.add(key)
+    unique.push(entry)
+    if (unique.length === 5) break
   }
-  return unique.slice(0, 5)
+
+  return unique
 }
 
 function reduceTasks(tasks: TaskEvent[]): TaskEvent {

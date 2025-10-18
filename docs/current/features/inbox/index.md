@@ -51,6 +51,8 @@ The Inbox surface ships incrementally: a pragmatic Next.js API route that unbloc
 
 ## Frontend Shelf Implementation
 - Today page replaces the meditation card with `InboxShelf`, a reusable surface in `components/inbox/` backed by `useInboxFeed`.
+- `InboxShelf` centralizes analytics payload construction via `emitEnvelopeEvent(...)`, preventing drift in `emitInboxEvent`
+  metadata across open, dismiss, and CTA flows.
 - Shared typing contracts live in `types/inbox.ts`, with analytics stubs and normalization utilities ensuring resilient rendering.
 - Insight spotlight and nudge cards include accessible modal detail views styled with Tailwind tokens.
 - CTA envelopes render via `CallToActionCard`, trigger `recordCta` in `useInboxFeed`, fire an `inbox_cta_clicked` analytics event, and persist `actioned` events through `/api/inbox/events`.
