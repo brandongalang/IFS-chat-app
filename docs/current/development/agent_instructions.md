@@ -29,7 +29,8 @@ feature_flag: ENABLE_GARDEN
 code_paths:
   - app/garden/page.tsx
   - app/garden/[partId]/page.tsx
-  - components/garden/PartActions.tsx
+  - components/garden/EditPartDetails.tsx
+  - components/garden/PartSidebarActions.tsx
   - mastra/tools/part-tools.ts
 related_prs:
   - #41
@@ -46,4 +47,3 @@ Doc map and CI
 
 Libraries and correctness
 - When touching external libraries, resolve the correct, current docs via your tooling and verify API usage; link upstream docs in the feature page.
-

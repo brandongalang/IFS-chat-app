@@ -10,8 +10,10 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { PageContainer } from '@/components/common/PageContainer'
 import { ArrowLeft } from 'lucide-react'
-import { PartActions } from '@/components/garden/PartActions'
+import { EditPartDetails } from '@/components/garden/EditPartDetails'
+import { PartSidebarActions } from '@/components/garden/PartSidebarActions'
 import { getStatusStyle } from '@/lib/garden/status-styles'
+import { cn } from '@/lib/utils'
 
 interface PartDetailPageProps {
   params: Promise<{
@@ -117,9 +119,9 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
     <div className="min-h-screen flex flex-col">
       <PageContainer className="flex-1 py-6 md:py-8">
         {/* Header */}
-        <header className="mb-8 space-y-4">
+        <header className="mb-10 space-y-6">
           <div>
-            <Button asChild variant="ghost" size="sm" className="mb-4">
+            <Button asChild variant="ghost" size="sm" className="mb-2">
               <Link href="/garden">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Garden
@@ -128,16 +130,21 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 pb-6 border-b border-border/40">
             <div className="text-7xl md:text-8xl">{headerEmoji}</div>
-            <div className="flex-1">
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">{part.name}</h1>
-              <div className="flex items-center gap-2 mt-4 flex-wrap">
+            <div className="flex-1 space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tight">{part.name}</h1>
+                <EditPartDetails part={part} />
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
                 <Badge className="capitalize text-base" variant="default">
                   {part.category}
                 </Badge>
-                <Badge className={cn(
-                  "capitalize text-base",
-                  statusStyle.accentColor.replace('text-', 'bg-').replace('-300', '-500/20')
-                )}>
+                <Badge
+                  className={cn(
+                    'capitalize text-base',
+                    statusStyle.accentColor.replace('text-', 'bg-').replace('-300', '-500/20')
+                  )}
+                >
                   {part.status}
                 </Badge>
               </div>
@@ -231,14 +238,10 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
             </Card>
 
             {/* Actions Card */}
-            <PartActions part={part} />
+            <PartSidebarActions part={part} />
           </aside>
         </div>
       </PageContainer>
     </div>
   )
-}
-
-function cn(...classes: (string | undefined | boolean)[]) {
-  return classes.filter(Boolean).join(' ')
 }
