@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
+import { EmojiPicker } from './EmojiPicker'
 
 interface PartActionsProps {
   part: PartRow
@@ -50,7 +51,6 @@ export function PartActions({ part }: PartActionsProps) {
         })
         setIsOpen(false)
       } else {
-        // Handle both string errors and validation errors
         const errorMessage = typeof result.error === 'string'
           ? result.error
           : 'Validation failed. Please check your input.'
@@ -114,40 +114,33 @@ export function PartActions({ part }: PartActionsProps) {
             <DialogTrigger asChild>
               <Button variant="outline" className="w-full">Edit Name & Emoji</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Edit Part</DialogTitle>
                 <DialogDescription>
                   Update the name and emoji for your part.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Name
-                  </Label>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
                   <Input
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="col-span-3"
+                    placeholder="Part name"
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="emoji" className="text-right">
-                    Emoji
-                  </Label>
-                  <Input
-                    id="emoji"
+                <div className="space-y-2">
+                  <EmojiPicker
                     value={emoji}
-                    onChange={(e) => setEmoji(e.target.value)}
-                    className="col-span-3"
-                    maxLength={2} // Emojis can sometimes be 2 chars
+                    onChange={setEmoji}
+                    label="Emoji"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleSave} disabled={isUpdatePending}>
+                <Button onClick={handleSave} disabled={isUpdatePending} className="w-full">
                   {isUpdatePending ? 'Saving...' : 'Save Changes'}
                 </Button>
               </DialogFooter>
