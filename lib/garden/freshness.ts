@@ -9,7 +9,7 @@ interface FreshnessState {
   color: string
 }
 
-export function getFreshness(lastActive: string | null): FreshnessState {
+export function getFreshness(lastActive: string | null, now: Date = new Date()): FreshnessState {
   if (!lastActive) {
     return {
       label: 'Never active',
@@ -18,7 +18,6 @@ export function getFreshness(lastActive: string | null): FreshnessState {
     }
   }
 
-  const now = new Date()
   const then = new Date(lastActive)
   const msAgo = now.getTime() - then.getTime()
   const hoursAgo = msAgo / (1000 * 60 * 60)

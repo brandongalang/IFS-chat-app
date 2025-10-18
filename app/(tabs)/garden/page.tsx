@@ -63,31 +63,36 @@ export default function GardenPage() {
       <header className="mb-8">
         <h1 className="text-4xl font-bold tracking-tight">Your Inner Garden</h1>
         <p className="text-muted-foreground mt-2">
-          {totalParts} parts discovered • {activeToday} active today
+          {isLoading ? '—' : totalParts} parts discovered • {isLoading ? '—' : activeToday} active today
         </p>
 
         {/* Stats Banner */}
-        <div className="mt-4 rounded-xl border border-border/40 bg-card/20 p-4 backdrop-blur grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-xs font-medium uppercase text-muted-foreground tracking-wide">
-              Total Parts
-            </p>
-            <p className="text-2xl font-bold mt-1">{totalParts}</p>
+        {!isLoading && (
+          <div
+            className="mt-4 rounded-xl border border-border/40 bg-card/20 p-4 backdrop-blur grid grid-cols-3 gap-4"
+            aria-live="polite"
+          >
+            <div>
+              <p className="text-xs font-medium uppercase text-muted-foreground tracking-wide">
+                Total Parts
+              </p>
+              <p className="text-2xl font-bold mt-1">{totalParts}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase text-muted-foreground tracking-wide">
+                Established
+              </p>
+              <p className="text-2xl font-bold mt-1">{establishedCount}</p>
+              <p className="text-xs text-muted-foreground/70">avg {avgConfidence}% sure</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase text-muted-foreground tracking-wide">
+                Active Today
+              </p>
+              <p className="text-2xl font-bold mt-1">{activeToday}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs font-medium uppercase text-muted-foreground tracking-wide">
-              Established
-            </p>
-            <p className="text-2xl font-bold mt-1">{establishedCount}</p>
-            <p className="text-xs text-muted-foreground/70">avg {avgConfidence}% sure</p>
-          </div>
-          <div>
-            <p className="text-xs font-medium uppercase text-muted-foreground tracking-wide">
-              Active Today
-            </p>
-            <p className="text-2xl font-bold mt-1">{activeToday}</p>
-          </div>
-        </div>
+        )}
       </header>
 
       <main className="flex-grow">

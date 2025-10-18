@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import { getPartById } from '@/lib/data/parts-lite'
 import type { PartRowV2 } from '@/lib/data/schema/types'
 import type { PartCategory } from '@/lib/types/database'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -52,14 +51,16 @@ export function PartsList({ parts, isLoading }: PartsListProps) {
   }, [isLoading, parts, router])
 
   const toggleCategory = useCallback((category: PartCategory) => {
-    const newSelected = new Set(selectedCategories)
-    if (newSelected.has(category)) {
-      newSelected.delete(category)
-    } else {
-      newSelected.add(category)
-    }
-    setSelectedCategories(newSelected)
-  }, [selectedCategories])
+    setSelectedCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(category)) {
+        next.delete(category)
+      } else {
+        next.add(category)
+      }
+      return next
+    })
+  }, [])
 
   const filteredParts = useMemo(() => {
     return parts
@@ -73,7 +74,12 @@ export function PartsList({ parts, isLoading }: PartsListProps) {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        role="status"
+        aria-busy="true"
+        aria-label="Loading parts"
+      >
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
@@ -143,11 +149,18 @@ export function PartsList({ parts, isLoading }: PartsListProps) {
                 <div className="p-5 space-y-3">
                   {/* Emoji with Evidence Badge */}
                   <div className="relative inline-block">
-                    <span className={cn('text-5xl', statusStyle.emojiOpacity)}>
+                    <span
+                      className={cn('text-5xl', statusStyle.emojiOpacity)}
+                      role="img"
+                      aria-label={`${part.name} emoji`}
+                    >
                       {emoji}
                     </span>
                     {part.evidence_count > 0 && (
-                      <div className="absolute -bottom-2 -right-2 bg-blue-500/80 rounded-full px-2 py-1 text-xs font-semibold text-white shadow-sm">
+                      <div
+                        className="absolute -bottom-2 -right-2 bg-blue-500/80 rounded-full px-2 py-1 text-xs font-semibold text-white shadow-sm"
+                        aria-label={`${part.evidence_count} evidence items`}
+                      >
                         {part.evidence_count}
                       </div>
                     )}
@@ -161,7 +174,9 @@ export function PartsList({ parts, isLoading }: PartsListProps) {
                   {/* Role/Purpose if available */}
                   {role && (
                     <p className={cn('text-sm italic line-clamp-2', statusStyle.accentColor)}>
-                      "{role}"
+                      <span aria-hidden="true">“</span>
+                      {role}
+                      <span aria-hidden="true">”</span>
                     </p>
                   )}
 
@@ -174,8 +189,8 @@ export function PartsList({ parts, isLoading }: PartsListProps) {
                   <div className="text-xs text-muted-foreground space-y-1">
                     <p>Built from {part.evidence_count} {part.evidence_count === 1 ? 'observation' : 'observations'}</p>
                     <div className="flex items-center gap-2">
-                      <span className={freshness.color}>{freshness.emoji}</span>
-                      <span>{freshness.label}</span>
+                      <span aria-hidden="true">{freshness.emoji}</span>
+                      <span className={freshness.color}>{freshness.label}</span>
                     </div>
                   </div>
                 </div>

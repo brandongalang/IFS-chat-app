@@ -3,9 +3,9 @@
  * Maps part.status to visual properties that convey lifecycle stage
  */
 
-import type { PartStatus } from '@/lib/types/database'
+import type { PartStatus, PartCategory } from '@/lib/types/database'
 
-interface StatusStyle {
+export interface StatusStyle {
   background: string
   border: string
   emojiOpacity: string
@@ -14,7 +14,7 @@ interface StatusStyle {
   description: string
 }
 
-export const statusStyles: Record<PartStatus, StatusStyle> = {
+export const statusStyles: Readonly<Record<PartStatus, StatusStyle>> = Object.freeze({
   emerging: {
     background: 'bg-card/20',
     border: 'border-border/30',
@@ -47,19 +47,19 @@ export const statusStyles: Record<PartStatus, StatusStyle> = {
     label: 'Well integrated',
     description: 'Well integrated — harmonious role in the system',
   },
-}
+})
 
 export function getStatusStyle(status: PartStatus): StatusStyle {
   return statusStyles[status]
 }
 
-export const categoryColors: Record<string, string> = {
+export const categoryColors: Readonly<Record<PartCategory | 'unknown', string>> = Object.freeze({
   manager: 'bg-violet-900/40 text-violet-300 border-violet-700/40',
   firefighter: 'bg-red-900/40 text-red-300 border-red-700/40',
   exile: 'bg-blue-900/40 text-blue-300 border-blue-700/40',
   unknown: 'bg-gray-800/40 text-gray-400 border-gray-700/40',
-}
+})
 
-export function getCategoryColor(category: string): string {
+export function getCategoryColor(category: PartCategory | 'unknown'): string {
   return categoryColors[category] || categoryColors.unknown
 }
