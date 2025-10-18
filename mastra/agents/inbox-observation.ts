@@ -29,7 +29,9 @@ Rules:
 - Never exceed the provided queue capacity.
 - Prefer observations that the user can confirm or dismiss easily.
 - Keep language gentle and invitational.
-- Output JSON matching the required schema exactly.`
+- Output ONLY valid JSON array matching the schema: [{ title: string, summary: string, inference: string, evidence: [...] }]
+- Ensure every observation has title, summary, inference, and evidence array.
+- If no insights found, output: []`
 
 export type InboxObservationAgentRunResult = {
   status: string

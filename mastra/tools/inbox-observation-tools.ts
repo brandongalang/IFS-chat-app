@@ -13,24 +13,17 @@ import {
   writeTherapyData,
   queryTherapyData,
   updateTherapyData,
-  getSessionContext,
 } from '@/lib/data/therapy-tools'
 import {
   searchPartsSchema,
   getPartByIdSchema,
   getPartDetailSchema,
 } from './part-schemas'
-import type {
-  WriteTherapyDataInput,
-  QueryTherapyDataInput,
-  UpdateTherapyDataInput,
-  GetSessionContextInput,
-} from '@/lib/data/therapy-tools.schema'
+import type { WriteTherapyDataInput, QueryTherapyDataInput, UpdateTherapyDataInput } from '@/lib/data/therapy-tools.schema'
 import {
   writeTherapyDataSchema,
   queryTherapyDataSchema,
   updateTherapyDataSchema,
-  getSessionContextSchema,
 } from '@/lib/data/therapy-tools.schema'
 
 type ToolRuntime = { userId?: string }
@@ -43,7 +36,8 @@ export function createObservationResearchTools(
   const resolveUser = (runtime?: ToolRuntime) => resolveToolUserId(normalizedBaseUserId, runtime)
 
   async function resolveSupabase(runtime?: ToolRuntime) {
-    const supabase = await getServerSupabaseClient()
+    // Force user-scoped client to keep RLS/tenant boundaries intact.
+    const supabase = await getServerSupabaseClient({ useServiceRole: false })
     const userId = resolveUser(runtime)
     return { supabase, userId }
   }
