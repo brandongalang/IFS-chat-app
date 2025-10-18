@@ -46,21 +46,14 @@ export class ChatSessionService {
     transcript?: StoredTranscript
   ): Promise<void> {
     try {
+      const basePayload = this.mapPrdSessionToLegacy(prdSession)
       const legacyPayload = {
+        ...basePayload,
         id: sessionId,
-        user_id: prdSession.user_id,
-        start_time: prdSession.started_at,
-        end_time: prdSession.ended_at,
-        duration: prdSession.ended_at
-          ? Math.floor(
-              (new Date(prdSession.ended_at).getTime() - new Date(prdSession.started_at).getTime()) / 1000
-            )
-          : null,
-        messages: transcript?.messages ?? [],
-        processed: false,
-        processed_at: null,
-        created_at: prdSession.created_at,
-        updated_at: prdSession.updated_at,
+        start_time: transcript?.start_time ?? basePayload.start_time,
+        end_time: transcript?.end_time ?? basePayload.end_time,
+        duration: transcript?.duration ?? basePayload.duration,
+        messages: transcript?.messages ?? basePayload.messages ?? [],
       }
 
       await this.supabase.from('sessions').upsert(legacyPayload, { onConflict: 'id' })

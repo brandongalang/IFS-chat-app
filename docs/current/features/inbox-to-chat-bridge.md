@@ -1,7 +1,7 @@
 # Inbox-to-Chat Bridge
 
 **Status**: Implemented
-**Last Updated**: 2025-10-13
+**Last Updated**: 2025-10-18
 **Related PRs**: #308, #309, #310
 
 ## Overview
@@ -117,6 +117,7 @@ Orchestrates the bridge workflow:
 - Calls `packChatContext()` when user clicks "Explore in chat"
 - Saves context to sessionStorage
 - Navigates to `/chat` route
+- Uses a shared `emitEnvelopeEvent` helper to ensure analytics payloads stay aligned for open, dismiss, and CTA click events.
 - Card remains visible after action (not dismissed)
 
 #### `app/_shared/hooks/useInboxFeed.ts`

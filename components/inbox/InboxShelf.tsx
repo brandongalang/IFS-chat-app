@@ -32,6 +32,22 @@ interface InboxShelfProps {
 
 type CtaEnvelope = Extract<InboxEnvelope, { type: 'cta' }>
 
+type InboxEventName = Parameters<typeof emitInboxEvent>[0]
+
+function emitEnvelopeEvent(
+  eventName: InboxEventName,
+  envelope: InboxEnvelope,
+  metadata?: Record<string, unknown>
+) {
+  emitInboxEvent(eventName, {
+    envelopeId: envelope.id,
+    sourceId: envelope.sourceId ?? envelope.id,
+    messageType: envelope.type,
+    source: envelope.source,
+    metadata,
+  })
+}
+
 export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps) {
   const {
     status,
@@ -57,25 +73,13 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
   const handleOpen = (envelope: InboxEnvelope) => {
     markAsRead(envelope.id)
     setActiveEnvelope(envelope)
-    emitInboxEvent('inbox_card_opened', {
-      envelopeId: envelope.id,
-      sourceId: envelope.sourceId ?? envelope.id,
-      messageType: envelope.type,
-      source: envelope.source,
-      metadata: { variant: activeVariant },
-    })
+    emitEnvelopeEvent('inbox_card_opened', envelope, { variant: activeVariant })
   }
 
   const closeActiveEnvelope = (options?: { trackDismiss?: boolean }) => {
     const trackDismiss = options?.trackDismiss ?? true
     if (trackDismiss && activeEnvelope) {
-      emitInboxEvent('inbox_card_dismissed', {
-        envelopeId: activeEnvelope.id,
-        sourceId: activeEnvelope.sourceId ?? activeEnvelope.id,
-        messageType: activeEnvelope.type,
-        source: activeEnvelope.source,
-        metadata: { variant: activeVariant },
-      })
+      emitEnvelopeEvent('inbox_card_dismissed', activeEnvelope, { variant: activeVariant })
     }
     setActiveEnvelope(null)
   }
@@ -114,13 +118,7 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
     try {
       const ctx = packChatContext(envelope, reaction)
       saveContextToSession(ctx)
-      emitInboxEvent('inbox_cta_clicked', {
-        envelopeId: envelope.id,
-        sourceId: envelope.sourceId ?? envelope.id,
-        messageType: envelope.type,
-        source: envelope.source,
-        metadata: { reaction },
-      })
+      emitEnvelopeEvent('inbox_cta_clicked', envelope, { reaction })
       router.push('/chat')
     } catch (error) {
       console.warn('[inbox] failed to prepare chat context', error)
