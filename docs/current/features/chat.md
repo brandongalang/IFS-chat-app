@@ -62,12 +62,10 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
 - Ensure action logging remains enabled for auditability
 
 ## UI/UX notes
-- Chat layout (2025-10-18) now uses shared `PageContainer` spacing, neutral card surfaces, and standard button/textarea variants so the interface matches Today/Garden visual language while still respecting safe areas.
-- Assistant/user bubbles share the default typography stack and rely on card + primary accent tokens rather than translucent whites; tool/task overlays adopt muted/border tokens for contrast.
 - Messages area top padding increased from 16px to 40px (2025-01-11) to prevent first message from being cut off at viewport edge
 - Active task overlay position adjusted proportionally to align with new padding
 
-## Markdown Rendering (2025-10-11, refreshed 2025-10-18)
+## Markdown Rendering (2025-10-11)
 - **Assistant messages** now render markdown using `streamdown` v1.4.0 (Vercel's streaming-optimized markdown renderer)
 - **User messages** remain plain text with no markdown processing
 - **Progressive streaming**: Markdown renders incrementally as content streams in from the AI
@@ -82,7 +80,10 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
   - Fenced code blocks with syntax highlighting via `CodeBlock` component
     - Supports multiple languages (TypeScript, JavaScript, Python, Bash, etc.)
     - Copy-to-clipboard button in white/translucent style
-- **Visual treatment**: Markdown elements now inherit the shared foreground/muted palette; backgrounds leverage card and accent tokens instead of translucent whites so chat matches the rest of the application shell.
+- **Ethereal theming**: All markdown elements styled with white/translucent colors to match the ethereal aesthetic
+  - White text with varying opacity levels (90-100%)
+  - Translucent backgrounds (white/5-10%)
+  - Subtle borders (white/15-30%)
 - **Performance**: Memoized component map prevents unnecessary re-renders during streaming
 - **Accessibility**: Maintains `aria-live="polite"` for screen reader support
 
