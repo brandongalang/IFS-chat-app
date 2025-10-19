@@ -101,7 +101,6 @@ Chat UI detects and consumes inbox context:
 - Agent generates contextual opening instead of generic greeting
 - Emits `chat_started_from_inbox` analytics event
 - **PR #310 refinements**: Removed unused `generateOpeningMessage` import (agent now uses systemContext directly), removed unused `addAssistantMessage` variable
-- **2025-10-18 UI alignment**: Composer and message surfaces now use shared `PageContainer` spacing, standard buttons, and neutral card tokens so inbox-triggered chat sessions visually match the rest of the app while preserving bridge behavior.
 
 #### Inbox Cards
 `components/inbox/cards/InsightSpotlightCard.tsx` and `NudgeCard.tsx`:

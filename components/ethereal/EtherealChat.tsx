@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { motion } from "framer-motion"
 import { isToolOrDynamicToolUIPart } from "ai"
 import { useChat } from "@/hooks/useChat"
 import { Textarea } from "@/components/ui/textarea"
@@ -258,89 +259,185 @@ export function EtherealChat() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background text-foreground">
-      <PageContainer className="flex h-full flex-col gap-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-[calc(env(safe-area-inset-top)+1.5rem)] md:pb-[calc(env(safe-area-inset-bottom)+2rem)]">
-        <section className="flex-1 overflow-hidden rounded-xl border border-border/40 bg-card/30 shadow-sm backdrop-blur-sm">
-          <div className="flex h-full flex-col">
-            <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-6">
-              <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
-                <EtherealMessageList
-                  messages={messages}
-                  uiMessages={uiMessages}
-                  tasksByMessage={tasksByMessage}
-                  currentStreamingId={currentStreamingId}
-                />
-                <div ref={messagesEndRef} />
-              </div>
-            </div>
-          </div>
-        </section>
+    <div className="absolute inset-0 flex flex-col">
+      {/* Background image (optional) with gradient fallback */}
+      <BackgroundImageLayer />
+      <GradientBackdrop />
+      {/* Subtle vignette to improve contrast over bright areas */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.10)_0%,rgba(0,0,0,0.22)_55%,rgba(0,0,0,0.38)_100%)]" />
 
-        <section className="rounded-xl border border-border/40 bg-card/50 shadow-sm backdrop-blur-sm">
-          <form onSubmit={onSubmit} className="flex flex-col gap-4 p-4 sm:p-5">
-            {activeTool ? (
-              <Tool className="rounded-lg border-border/50 bg-secondary/10 text-foreground">
-                <ToolHeader
-                  type={activeTool.type}
-                  state={activeTool.state}
-                  title={activeTool.title}
-                  subtitle={activeTool.subtitle}
-                />
-              </Tool>
-            ) : null}
-            <Textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder="Share what's on your mind…"
-              className="min-h-[56px] max-h-36 resize-none bg-background/80 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0"
-              data-testid="ethereal-input"
-              aria-label="Message"
-              disabled={isLoading || sessionClosed}
-            />
-            {sessionClosed && sessionState !== 'ended' ? (
-              <div
-                className="w-full rounded-full border border-border/40 bg-muted/30 px-3 py-1 text-center text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
-                role="status"
-                aria-live="polite"
-                aria-atomic="true"
-                data-testid="end-session-status"
-              >
-                ending session…
+
+      {/* Messages area */}
+      <div className="relative z-10 flex-1 overflow-y-auto overscroll-contain pb-[140px] pt-[calc(env(safe-area-inset-top)+40px)]">
+        <div className="mx-auto w-full max-w-[52rem] px-4 sm:px-6 lg:px-8 flex flex-col gap-6">
+          <EtherealMessageList
+            messages={messages}
+            uiMessages={uiMessages}
+            tasksByMessage={tasksByMessage}
+            currentStreamingId={currentStreamingId}
+          />
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+
+      {/* Translucent input bar (always visible) */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pb-[calc(12px+env(safe-area-inset-bottom))]">
+        <PageContainer className="pointer-events-auto">
+          <div className="rounded-[30px] border border-white/15 bg-white/10 p-3 backdrop-blur-2xl shadow-[0_12px_42px_rgba(0,0,0,0.28)]">
+            <form onSubmit={onSubmit} className="space-y-3">
+              {activeTool ? (
+                <Tool className="border-white/15 bg-white/10 text-white">
+              <ToolHeader
+                type={activeTool.type}
+                state={activeTool.state}
+                title={activeTool.title}
+                subtitle={activeTool.subtitle}
+                className="text-white"
+              />
+                </Tool>
+              ) : null}
+              <Textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={onKeyDown}
+                placeholder="type your thought…"
+                className="min-h-[48px] max-h-[132px] w-full resize-none border-0 bg-transparent px-3 py-2.5 text-[16px] text-white/90 placeholder:text-white/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 focus:border-0 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.18)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.12)] transition-shadow duration-200"
+                data-testid="ethereal-input"
+                aria-label="Message"
+                disabled={isLoading || sessionClosed}
+              />
+              {sessionClosed && sessionState !== 'ended' ? (
+                <div 
+                  className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-center text-[11px] uppercase tracking-[0.22em] text-white/60"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  data-testid="end-session-status"
+                >
+                  ending session…
+                </div>
+              ) : null}
+              <div className="flex items-center justify-end px-1 pb-1">
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEndSessionRequest}
+                    disabled={sessionClosed || isLoading}
+                    className="min-h-11 h-11 px-4 rounded-full bg-white/5 text-white hover:bg-white/10 active:scale-95 transition-transform"
+                  >
+                    <span className="text-xs uppercase tracking-[0.2em]">end session</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    type="submit"
+                    disabled={!input.trim() || isLoading || sessionClosed}
+                    className="min-h-11 h-11 min-w-11 px-6 rounded-full bg-white/18 text-white hover:bg-white/28 active:scale-95 transition-transform"
+                  >
+                    {isLoading ? (
+                      <span className="flex items-center gap-2 text-[13px] uppercase tracking-[0.2em]">
+                        <span className="relative flex size-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/50" />
+                          <span className="relative inline-flex size-2 rounded-full bg-white" />
+                        </span>
+                        sending
+                      </span>
+                    ) : (
+                      <span className="text-[13px] uppercase tracking-[0.2em]">send</span>
+                    )}
+                  </Button>
+                </div>
               </div>
-            ) : null}
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleEndSessionRequest}
-                disabled={sessionClosed || isLoading}
-              >
-                End session
-              </Button>
-              <Button
-                type="submit"
-                disabled={!input.trim() || isLoading || sessionClosed}
-              >
-                {isLoading ? (
-                  <span className="flex items-center gap-2 text-sm">
-                    <span className="relative flex size-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/40" />
-                      <span className="relative inline-flex size-2 rounded-full bg-primary" />
-                    </span>
-                    Sending…
-                  </span>
-                ) : (
-                  "Send"
-                )}
-              </Button>
-            </div>
-          </form>
-        </section>
-      </PageContainer>
+            </form>
+          </div>
+        </PageContainer>
+      </div>
     </div>
   )
 }
 
 const END_SESSION_PROMPT = "I want to end this session. Can you close out and take any notes from this conversation?"
+
+function GradientBackdrop() {
+  // animated blurred blobs using framer-motion; colors tuned to teal-gray ambiance
+  const blobs = useMemo(
+    () => [
+      { x: -140, y: -80, size: 520, color: "#1f3a3f" }, // deep teal
+      { x: 140, y: 60, size: 460, color: "#2a4d52" },  // mid teal
+      { x: 20, y: 180, size: 620, color: "#d39a78" },  // warm peach accent
+    ],
+    []
+  )
+
+  const [reduceMotion, setReduceMotion] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('matchMedia' in window)) return
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const handler = () => setReduceMotion(mq.matches)
+    handler()
+    mq.addEventListener?.('change', handler)
+    return () => mq.removeEventListener?.('change', handler)
+  }, [])
+
+  return (
+    <div className="absolute inset-0">
+      {blobs.map((b, i) => (
+        reduceMotion ? (
+          <div
+            key={i}
+          className="absolute -z-20 blur-3xl"
+            style={{
+              opacity: 0.5,
+              width: b.size,
+              height: b.size,
+              left: `calc(50% - ${b.size / 2}px)`,
+              top: `calc(50% - ${b.size / 2}px)`,
+              borderRadius: b.size,
+              background: `radial-gradient(closest-side, ${b.color} 0%, rgba(0,0,0,0) 70%)`,
+              filter: "blur(60px)",
+            }}
+          />
+        ) : (
+          <motion.div
+            key={i}
+          initial={{ x: b.x, y: b.y, opacity: 0.4 }}
+            animate={{
+              x: [b.x, b.x + (i % 2 === 0 ? 30 : -20), b.x],
+              y: [b.y, b.y + (i % 2 === 0 ? -20 : 30), b.y],
+              transition: { duration: 20 + i * 3, repeat: Infinity, ease: "easeInOut" },
+            }}
+            className="absolute -z-10 blur-3xl"
+            style={{
+              width: b.size,
+              height: b.size,
+              left: `calc(50% - ${b.size / 2}px)`,
+              top: `calc(50% - ${b.size / 2}px)`,
+              borderRadius: b.size,
+              background: `radial-gradient(closest-side, ${b.color} 0%, rgba(0,0,0,0) 70%)`,
+              filter: "blur(60px)",
+            }}
+          />
+        )
+      ))}
+    </div>
+  )
+}
+
+function BackgroundImageLayer() {
+  // Attempts to show /ethereal-bg.jpg; remains silent if not found
+  return (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/ethereal-bg.jpg"
+        alt="background"
+        className="absolute inset-0 h-full w-full object-cover z-0 blur-xl scale-105 opacity-90"
+        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+        loading="eager"
+        draggable={false}
+      />
+    </>
+  )
+}
