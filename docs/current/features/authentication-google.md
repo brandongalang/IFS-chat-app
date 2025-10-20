@@ -2,7 +2,7 @@
 title: Feature: Authentication (Google Sign-In)
 owner: @brandongalang
 status: shipped
-last_updated: 2025-09-26
+last_updated: 2025-10-19
 feature_flag: null
 code_paths:
   - components/auth/login-form.tsx
@@ -10,6 +10,11 @@ code_paths:
   - components/auth/supabase-session-listener.tsx
   - lib/hooks/use-google-auth.ts
   - app/auth/callback/route.ts
+  - app/auth/demo-login/route.ts
+  - config/demo-auth.ts
+  - config/env.ts
+  - scripts/tests/unit/demo-auth-config.test.ts
+  - scripts/tests/unit/demo-auth-route.test.ts
   - supabase/migrations/007_handle_new_users.sql
 related_prs:
   - #30
@@ -28,6 +33,7 @@ Lower-friction sign-in and account creation with secure provider flows.
 - Client-side Supabase session listener mirrors browser auth state into server cookies via `/auth/callback`
 - Server-side session writes now use the shared Supabase client factory (`lib/supabase/clients`) so cookies are managed consistently across features
 - Callback route validates origins, events, and refresh tokens before persisting sessions through `supabase.auth.setSession`
+- Optional demo mode exposes `/auth/demo-login` (flagged via env) which signs into a pre-provisioned shared Supabase user and mirrors the returned session to both server cookies and the browser client.
 
 ### Session synchronization lifecycle
 1. User signs in or out through GIS-driven components.
@@ -44,6 +50,11 @@ Lower-friction sign-in and account creation with secure provider flows.
 - `NEXT_PUBLIC_GOOGLE_CLIENT_ID`: Google OAuth Client ID for native sign-in
 - `BASE_URL` / `APP_BASE_URL` / `NEXT_PUBLIC_APP_URL`: used by the callback to compute an origin allowlist.
 - `SUPABASE_SERVICE_ROLE_KEY`: required server-side to exchange auth codes and validate sessions.
+- Demo mode:
+  - `IFS_DEMO_AUTH_ENABLED`: server-side toggle to provision and authenticate with the shared demo user.
+  - `NEXT_PUBLIC_IFS_DEMO_AUTH_ENABLED`: build-time flag to expose the “Try the demo” CTA in the login UI.
+  - `IFS_DEMO_AUTH_EMAIL` / `IFS_DEMO_AUTH_PASSWORD`: credentials for the shared Supabase user; stored server-side only.
+  - Demo accounts require the Supabase service-role key so the route can provision the user if it is missing.
 - Ensure Google Client ID is configured in Supabase Dashboard for token validation.
 - For local Supabase, keep `skip_nonce_check = false` and `enable_refresh_token_rotation = true` so refresh tokens are issued for session sync.
 
@@ -53,6 +64,7 @@ Lower-friction sign-in and account creation with secure provider flows.
 ## Operational notes
 - Verify redirect URIs and provider credentials across environments.
 - Session listener is mounted globally in `app/layout.tsx`; keep it client-side to avoid hydration warnings.
+- Demo mode grants full read/write capabilities to the shared account; plan a manual reset cadence if the sandbox data needs to stay pristine. Avoid storing private information when exercising the shared user.
 - When adding new origins (preview URLs, staging), update environment variables so the callback allowlist accepts them.
 - Refresh token reuse is guarded; missing refresh tokens will abort the sync with a 400 response.
 
