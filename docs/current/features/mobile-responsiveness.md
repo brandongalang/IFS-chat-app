@@ -55,7 +55,8 @@ Added CSS utilities to handle safe areas on devices with notches or home indicat
 - Added `active:scale-95 transition-transform` for tactile feedback
 
 #### Mobile-Optimized Layout
-- Changed viewport height from `min-h-dvh h-dvh` to `min-h-[100dvh] h-[100dvh]` to account for dynamic mobile browser chrome
+- Chat page now locks its viewport height with a `useLockedViewportHeight` hook (`app/chat/page.tsx`), holding the layout to the largest measured `visualViewport.height` so the on-screen keyboard can overlap without forcing the conversation to jump upward.
+- Fallbacks to `100vh` ensure older browsers without `VisualViewport` support keep working.
 - Added `overscroll-contain` to prevent rubber-banding on iOS
 - Increased bottom padding from `pb-[120px]` to `pb-[140px]` to accommodate larger touch targets
 
@@ -103,9 +104,9 @@ Added CSS utilities to handle safe areas on devices with notches or home indicat
 - ✓ Smooth transitions provide tactile feedback
 - ✓ Screen readers announce selection changes on all devices
 
-### 7. Dynamic Viewport Height (`app/chat/page.tsx`)
+### 7. Locked Viewport Height (`app/chat/page.tsx`)
 
-Changed from Tailwind's `dvh` shorthand to explicit `[100dvh]` class for better browser support with dynamic viewport units.
+Replaced the prior `100dvh` approach with a runtime hook (`useLockedViewportHeight`) that records the largest visual viewport height and reapplies it while the keyboard is visible. Orientation changes reset the lock, while browsers without `VisualViewport` gracefully fall back to `100vh`. This keeps the chat page anchored when the composer receives focus on mobile.
 
 ### 8. Check-In Layout Density (`components/check-in/CheckInLayout.tsx`)
 
@@ -146,7 +147,7 @@ Test the following in Chrome DevTools with device emulation (Pixel 9 Pro, 412×9
 
 3. **Chat Interface**
    - ✓ Input area is accessible and not obscured by keyboard
-   - ✓ Messages remain visible while typing
+   - ✓ Messages remain visible while typing; keyboard overlay no longer forces the conversation to jump upward
    - ✓ Scrolling is smooth with overscroll-contain
    - ✓ Textarea doesn't trigger iOS zoom (16px font-size)
 
