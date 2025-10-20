@@ -21,12 +21,18 @@ const etherealTextStyle = {
   color: 'rgba(255,255,255,var(--eth-user-opacity))',
 } as const
 
+const DEMO_AUTH_ENABLED =
+  process.env.NEXT_PUBLIC_IFS_DEMO_AUTH_ENABLED === 'true' ||
+  process.env.NEXT_PUBLIC_IFS_DEMO_AUTH_ENABLED === '1' ||
+  process.env.NEXT_PUBLIC_IFS_DEMO_AUTH_ENABLED === 'on'
+
 export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isDemoLoading, setIsDemoLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -98,7 +104,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
               {error && (
                 <p className="text-sm text-red-500">{error}</p>
               )}
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading || isDemoLoading}>
                 {isLoading ? 'Logging in...' : 'Login'}
               </Button>
             </form>
@@ -162,6 +168,68 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
                 Sign up
               </Link>
             </div>
+            {DEMO_AUTH_ENABLED ? (
+              <div className="flex flex-col gap-2">
+                <div className="text-center text-xs uppercase text-muted-foreground">Preview the app</div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full"
+                  disabled={isDemoLoading || isLoading || isGoogleLoading}
+                  onClick={async () => {
+                    setError(null)
+                    setIsDemoLoading(true)
+                    try {
+                      const response = await fetch('/auth/demo-login', {
+                        method: 'POST',
+                      })
+                      const payload = (await response.json().catch(() => null)) as
+                        | {
+                            session?: {
+                              access_token: string
+                              refresh_token: string
+                            }
+                            error?: string
+                          }
+                        | null
+
+                      if (!response.ok) {
+                        const message = payload && typeof payload.error === 'string'
+                          ? payload.error
+                          : 'Demo login failed. Please try again later.'
+                        throw new Error(message)
+                      }
+
+                      if (!payload?.session) {
+                        throw new Error('Demo login did not return a session.')
+                      }
+
+                      const { error: sessionError } = await supabase.auth.setSession({
+                        access_token: payload.session.access_token,
+                        refresh_token: payload.session.refresh_token,
+                      })
+
+                      if (sessionError) {
+                        throw sessionError
+                      }
+
+                      router.push('/')
+                    } catch (err) {
+                      console.error('Demo login error', err)
+                      setError(
+                        err instanceof Error
+                          ? err.message
+                          : 'Demo login failed. Please try again later.'
+                      )
+                    } finally {
+                      setIsDemoLoading(false)
+                    }
+                  }}
+                >
+                  {isDemoLoading ? 'Entering demo...' : 'Try the demo'}
+                </Button>
+              </div>
+            ) : null}
           </div>
         </CardContent>
       </Card>

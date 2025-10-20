@@ -22,6 +22,10 @@ const EnvSchema = z.object({
   IFS_VERBOSE: z.string().optional(),
   IFS_DISABLE_POLARIZATION_UPDATE: z.string().optional(),
   IFS_ENABLE_MARKDOWN_CONTEXT: z.string().optional(),
+  IFS_DEMO_AUTH_ENABLED: z.string().optional(),
+  NEXT_PUBLIC_IFS_DEMO_AUTH_ENABLED: z.string().optional(),
+  IFS_DEMO_AUTH_EMAIL: z.string().email().optional(),
+  IFS_DEMO_AUTH_PASSWORD: z.string().optional(),
   // Dev overrides
   IFS_DEV_FORCE_NO_SUPABASE: z.string().optional(),
 
@@ -54,6 +58,10 @@ const raw = EnvSchema.parse({
   IFS_VERBOSE: process.env.IFS_VERBOSE,
   IFS_DISABLE_POLARIZATION_UPDATE: process.env.IFS_DISABLE_POLARIZATION_UPDATE,
   IFS_ENABLE_MARKDOWN_CONTEXT: process.env.IFS_ENABLE_MARKDOWN_CONTEXT,
+  IFS_DEMO_AUTH_ENABLED: process.env.IFS_DEMO_AUTH_ENABLED,
+  NEXT_PUBLIC_IFS_DEMO_AUTH_ENABLED: process.env.NEXT_PUBLIC_IFS_DEMO_AUTH_ENABLED,
+  IFS_DEMO_AUTH_EMAIL: process.env.IFS_DEMO_AUTH_EMAIL,
+  IFS_DEMO_AUTH_PASSWORD: process.env.IFS_DEMO_AUTH_PASSWORD,
   // Dev overrides
   IFS_DEV_FORCE_NO_SUPABASE: process.env.IFS_DEV_FORCE_NO_SUPABASE,
 
@@ -89,6 +97,16 @@ export const env = {
     raw.IFS_ENABLE_MARKDOWN_CONTEXT === undefined
       ? false
       : toBool(raw.IFS_ENABLE_MARKDOWN_CONTEXT),
+  ifsDemoAuthEnabled:
+    raw.IFS_DEMO_AUTH_ENABLED === undefined
+      ? false
+      : toBool(raw.IFS_DEMO_AUTH_ENABLED),
+  nextPublicIfsDemoAuthEnabled:
+    raw.NEXT_PUBLIC_IFS_DEMO_AUTH_ENABLED === undefined
+      ? false
+      : toBool(raw.NEXT_PUBLIC_IFS_DEMO_AUTH_ENABLED),
+  ifsDemoAuthEmail: raw.IFS_DEMO_AUTH_EMAIL ?? null,
+  ifsDemoAuthPassword: raw.IFS_DEMO_AUTH_PASSWORD ?? null,
   ifsForceNoSupabase:
     toBool(raw.IFS_DEV_FORCE_NO_SUPABASE) ||
     !raw.NEXT_PUBLIC_SUPABASE_URL ||
