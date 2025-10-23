@@ -4,6 +4,10 @@ import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
 import { errorResponse } from '@/lib/api/response'
 import { getUserIdFromSupabase, provideDevFallbackStream, handleAgentStream } from './logic'
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const maxDuration = 60
+
 function normalizeProfile(
   rawProfile: unknown,
   sessionUserId: string | undefined,
