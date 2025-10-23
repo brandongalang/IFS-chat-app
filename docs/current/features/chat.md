@@ -2,7 +2,7 @@
 title: Feature: Chat
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-18
+last_updated: 2025-10-19
 feature_flag: null
 code_paths:
   - app/chat/page.tsx
@@ -36,6 +36,7 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
 
 ## How it works
 - UI at app/chat/page.tsx with streaming responses
+- `useLockedViewportHeight` hook in `app/chat/page.tsx` keeps the chat viewport anchored to the largest measured height so the mobile keyboard can overlay without pushing the conversation upward.
 - `useChat` consumes AI SDK UI message parts (text/tool/data) and streams via `DefaultChatTransport`, yielding a single assistant response per turn while preserving token-by-token rendering; tool/dynamic parts now map into Task events keyed by tool call, with simplified status copy (`Looking through my notes…`, `Writing notes…`) and previews sourced from tool input/output.
 - Task activity logs now deduplicate entries via a Set-backed merge routine, keeping render performance predictable even with
   large tool histories while still capping to the five most recent unique updates.
@@ -87,8 +88,8 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
 - **Performance**: Memoized component map prevents unnecessary re-renders during streaming
 - **Accessibility**: Maintains `aria-live="polite"` for screen reader support
 
-## Mobile Responsiveness (PR #267)
-- **Chat page layout**: Uses dynamic viewport height (`dvh`) to accommodate mobile browser chrome (address bar, bottom nav)
+## Mobile Responsiveness (PR #267, updated 2025-10-19)
+- **Chat page layout**: Locks the viewport height to the largest measured visual viewport value (`useLockedViewportHeight`) so that opening the on-screen keyboard no longer shifts the entire conversation upward; falls back to `100vh` on browsers without `VisualViewport` support.
 - **Touch targets**: Send button (56×56px) and End Session button (48px height, full width) meet WCAG 2.5.5 AA guidelines (44×44px minimum)
 - **Input ergonomics**: Textarea min-height 52px with 14px base font prevents zoom on iOS; rounded corners (12px) improve visual comfort
 - **Session state**: Removed redundant `isClosing` checks from disabled conditions—`sessionClosed` already captures all non-idle states

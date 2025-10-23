@@ -35,15 +35,15 @@ export function createDevStream(text: string): ReadableStream<Uint8Array> {
 }
 
 export function provideDevFallbackStream(text: string): Response {
-  return new Response(createDevStream(text), {
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'no-store',
-    },
-  })
+  return uiMessageSseFromTextStream(createDevStream(text))
 }
 
-const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' } as const
+const SSE_HEADERS = {
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache, no-transform',
+  Connection: 'keep-alive',
+  'x-vercel-ai-ui-message-stream': 'v1',
+} as const
 
 export async function handleAgentStream(
   messages: unknown,
@@ -150,11 +150,11 @@ export function resolveStreamResponse(candidate: unknown): Response | undefined 
 function tryInvokeReadable(candidate: unknown): Response | undefined {
   const stream = invokeMethod(candidate, 'toReadableStream') as ReadableStream<Uint8Array> | undefined
   if (stream) {
-    return new Response(stream, { headers: NO_STORE_HEADERS })
+    return uiMessageSseFromTextStream(stream)
   }
 
   if (candidate instanceof ReadableStream) {
-    return new Response(candidate, { headers: NO_STORE_HEADERS })
+    return uiMessageSseFromTextStream(candidate)
   }
   return undefined
 }
@@ -171,16 +171,57 @@ function responseFromAsyncIterable(candidate: unknown): Response | undefined {
   if (!(Symbol.asyncIterator in (candidate as Record<PropertyKey, unknown>))) {
     return undefined
   }
+  return uiMessageSseFromAsyncIterable(candidate as AsyncIterable<unknown>)
+}
+
+function uiMessageSseFromTextStream(source: ReadableStream<Uint8Array>): Response {
   const encoder = new TextEncoder()
-  const asyncIterable = candidate as AsyncIterable<unknown>
+  const decoder = new TextDecoder()
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      for await (const chunk of asyncIterable) {
-        const text = typeof chunk === 'string' ? chunk : JSON.stringify(chunk)
-        controller.enqueue(encoder.encode(text))
+      const push = (obj: unknown) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`))
+      const reader = source.getReader()
+      const messageId = `msg-${Math.random().toString(36).slice(2)}`
+      try {
+        push({ type: 'start', messageId })
+        push({ type: 'text-start', id: 'text-1' })
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const delta = decoder.decode(value, { stream: true })
+          if (delta) push({ type: 'text-delta', id: 'text-1', delta })
+        }
+        const remaining = decoder.decode()
+        if (remaining) push({ type: 'text-delta', id: 'text-1', delta: remaining })
+        push({ type: 'text-end', id: 'text-1' })
+        push({ type: 'finish' })
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+      } finally {
+        reader.releaseLock()
+        controller.close()
       }
+    },
+  })
+  return new Response(stream, { headers: SSE_HEADERS })
+}
+
+function uiMessageSseFromAsyncIterable(iterable: AsyncIterable<unknown>): Response {
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const push = (obj: unknown) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`))
+      const messageId = `msg-${Math.random().toString(36).slice(2)}`
+      push({ type: 'start', messageId })
+      push({ type: 'text-start', id: 'text-1' })
+      for await (const chunk of iterable) {
+        const delta = typeof chunk === 'string' ? chunk : JSON.stringify(chunk)
+        if (delta) push({ type: 'text-delta', id: 'text-1', delta })
+      }
+      push({ type: 'text-end', id: 'text-1' })
+      push({ type: 'finish' })
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'))
       controller.close()
     },
   })
-  return new Response(stream, { headers: NO_STORE_HEADERS })
+  return new Response(stream, { headers: SSE_HEADERS })
 }
