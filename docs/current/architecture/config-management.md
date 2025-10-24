@@ -2,7 +2,7 @@
 title: Configuration Management
 category: architecture
 status: active
-last_updated: 2025-01-14
+last_updated: 2025-10-23
 ---
 
 # Configuration Management
@@ -115,7 +115,7 @@ const model = env.ifsModel                   // string
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `IFS_MODEL` | `string` | `'grok-4-fast'` | AI model to use via OpenRouter |
+| `IFS_MODEL` | `string` | `'google/gemini-2.5-flash-preview-09-2025'` | AI model to use via OpenRouter |
 | `IFS_TEMPERATURE` | `number` | `0.3` | Temperature for AI responses (0-2) |
 | `OPENROUTER_API_KEY` | `string` | - | OpenRouter API key (required) |
 

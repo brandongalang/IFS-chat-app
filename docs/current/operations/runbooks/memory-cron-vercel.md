@@ -14,10 +14,10 @@ This runbook explains how to operate the daily `/api/cron/memory-update` job now
   - **No-op guard:** Summarizer skips mutation when no new sessions, insights, or check-ins are present to avoid empty version bumps.
   - **Context cache:** After memory updates are processed, schedule `SELECT refresh_user_context_cache();` (migration 113) in follow-up cron if fresh agent warm-start data is required.
 
-## Prerequisites (updated 2025-10-07)
+## Prerequisites (updated 2025-10-23)
 - `CRON_SECRET` defined for Production & Preview environments in Vercel project settings.
 - `SUPABASE_SERVICE_ROLE_KEY` available to the app runtime (needed for memory service writes).
-- Shared Mastra provider env (`IFS_MODEL`, `IFS_TEMPERATURE`, `OPENROUTER_API_KEY`) configured so the summarizer agents can run (default model is now `x-ai/grok-4-fast`).
+- Shared Mastra provider env (`IFS_MODEL`, `IFS_TEMPERATURE`, `OPENROUTER_API_KEY`) configured so the summarizer agents can run (default model is now `google/gemini-2.5-flash-preview-09-2025`).
 - Vercel project has Cron feature enabled (Billing → Cron Jobs).
 
 ## Operating procedures

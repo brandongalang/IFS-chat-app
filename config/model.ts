@@ -1,16 +1,21 @@
+export const DEFAULT_MODEL_KEY = 'gemini-2.5-flash-preview-09-2025'
+
 export const MODEL_MAP = {
+  [DEFAULT_MODEL_KEY]: { id: 'google/gemini-2.5-flash-preview-09-2025' },
   'grok-4-fast': { id: 'x-ai/grok-4-fast' },
   'glm-4.5-air': { id: 'z-ai/glm-4.5-air' },
   'claude-3.7-sonnet': { id: 'anthropic/claude-3-7-sonnet' },
   'o3-mini': { id: 'openai/o3-mini' },
 } as const
 
+export const DEFAULT_MODEL_ID = MODEL_MAP[DEFAULT_MODEL_KEY].id
+
 export type ModelKey = keyof typeof MODEL_MAP
 export type ModelId = string
 
 export function resolveModel(key?: string): ModelId {
   if (!key) {
-    return MODEL_MAP['grok-4-fast'].id
+    return DEFAULT_MODEL_ID
   }
 
   const normalized = key.trim()
@@ -24,7 +29,7 @@ export function resolveModel(key?: string): ModelId {
   }
 
   if (process.env.NODE_ENV !== 'test') {
-    console.warn(`[Model Config] Unknown model "${key}", falling back to grok-4-fast`)
+    console.warn(`[Model Config] Unknown model "${key}", falling back to ${DEFAULT_MODEL_KEY}`)
   }
-  return MODEL_MAP['grok-4-fast'].id
+  return DEFAULT_MODEL_ID
 }

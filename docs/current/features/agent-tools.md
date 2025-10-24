@@ -2,7 +2,7 @@
 title: Feature: Agent Tools
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-20
+last_updated: 2025-10-23
 feature_flag: null
 code_paths:
   - mastra/tools/assessment-tools.ts
@@ -28,6 +28,8 @@ code_paths:
   - lib/inbox/search/checkins.ts
   - app/api/chat/logic.ts
   - components/ethereal/EtherealChat.tsx
+  - config/env.ts
+  - config/model.ts
 related_prs:
   - #35
   - #285
@@ -77,6 +79,7 @@ Encapsulates privileged operations (e.g., db mutations) behind auditable tools, 
 ## Configuration
 - Provider configuration centralized in `config/model.ts` and `mastra/index.ts`
 - Agents default to the hard-coded `OPENROUTER_API_BASE_URL` (`https://openrouter.ai/api/v1`); only `IFS_MODEL` and `IFS_TEMPERATURE` remain configurable via env vars
+- Default `IFS_MODEL` resolves to `google/gemini-2.5-flash-preview-09-2025` unless overridden; `config/env.ts` and `config/model.ts` maintain the fallback mapping.
 - Agents share the single `openrouter` provider created during Mastra bootstrap
 - All agents now use PRD-backed tools exclusively; `IFS_ENABLE_MARKDOWN_CONTEXT` now defaults to `false`. Set to `true` to opt-in to optional markdown snapshot enrichment for parts queries (e.g., `getPartById` hydration)
 

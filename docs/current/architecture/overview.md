@@ -27,7 +27,7 @@ This document provides a high-level overview of Trailhead's technical architectu
 
 ### Model Access Layer
 
-- **Provider**: OpenRouter API (primary model: `x-ai/grok-4-fast`)
+- **Provider**: OpenRouter API (primary model: `google/gemini-2.5-flash-preview-09-2025`)
 - **Proxy**: LiteLLM for:
   - Prompt injection detection
   - Model fallback handling

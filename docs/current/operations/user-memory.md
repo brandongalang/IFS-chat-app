@@ -27,14 +27,14 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
   - Checks for pending queue items and, if present, runs a scoped `summarizePendingUpdates({ userId })`
   - Returns `{ ok, processed, pending }` so the UI can warn if preflight failed
 
-## Environment variables (updated 2025-10-13)
+## Environment variables (updated 2025-10-23)
 - Required on server:
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `SUPABASE_SERVICE_ROLE_KEY` (used for Memory V2 Supabase Storage access and database operations)
   - `CRON_SECRET` (shared secret for the cron endpoint)
 - Optional:
   - `OPENROUTER_API_KEY` (LLM for summarization; falls back if unset)
-  - `IFS_MODEL`, `IFS_TEMPERATURE` (shared Mastra provider config; now defaults to `grok-4-fast` via OpenRouter)
+  - `IFS_MODEL`, `IFS_TEMPERATURE` (shared Mastra provider config; now defaults to `google/gemini-2.5-flash-preview-09-2025` via OpenRouter)
   - `USER_MEMORY_CHECKPOINT_EVERY` (default 50)
   - `MEMORY_AGENTIC_V2_ENABLED` (default true) - Enables Memory V2 markdown-based storage
   - `TARGET_ENV` / `NEXT_PUBLIC_TARGET_ENV` (set to `prod` for local development against production Supabase; production deployments should not set these)

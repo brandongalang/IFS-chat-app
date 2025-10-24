@@ -7,6 +7,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { generateObject } from 'ai'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { enqueueMemoryUpdate } from './queue'
+import { DEFAULT_MODEL_ID } from '@/config/model'
 
 const CHECKPOINT_FREQUENCY = Number(process.env.USER_MEMORY_CHECKPOINT_EVERY || 50)
 const DEFAULT_IDLE_MINUTES = Number(process.env.MEMORY_SESSION_IDLE_MINUTES || 30)
@@ -204,7 +205,7 @@ Output constraints:
     ].join('\n')
 
     const { object } = await generateObject({
-      model: provider('x-ai/grok-4-fast'),
+      model: provider(DEFAULT_MODEL_ID),
       system,
       prompt,
       schema: userMemorySchema,
