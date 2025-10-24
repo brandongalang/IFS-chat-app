@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import { existsSync } from 'fs'
 import { createClient } from '@supabase/supabase-js'
 import { TEST_PERSONAS, type TestPersona, getPersonaUserId } from '../config/personas'
+import { DEFAULT_MODEL_ID } from '../config/model'
 
 const envPath = existsSync('.env.local') ? '.env.local' : '.env'
 dotenv.config({ path: envPath })
@@ -82,7 +83,7 @@ async function callOpenRouter(openrouterKey: string, systemPrompt: string, userP
       'X-Title': 'IFS Mock Session Seeder'
     },
     body: JSON.stringify({
-      model: 'x-ai/grok-4-fast',
+      model: DEFAULT_MODEL_ID,
       temperature: 0.8,
       max_tokens: 1400,
       messages: [
@@ -279,4 +280,3 @@ async function main() {
 }
 
 main().catch((e) => { console.error('❌ Generation failed:', e?.message || e); process.exit(1) })
-

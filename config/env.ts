@@ -5,7 +5,7 @@ const EnvSchema = z.object({
 
   // Providers / Secrets
   OPENROUTER_API_KEY: z.string().optional(),
-  IFS_MODEL: z.string().default('grok-4-fast'),
+  IFS_MODEL: z.string().default('google/gemini-2.5-flash-preview-09-2025'),
   IFS_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.3),
 
   // Supabase
