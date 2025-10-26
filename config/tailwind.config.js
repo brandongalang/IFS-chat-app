@@ -17,6 +17,9 @@ module.exports = {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)'
       },
+      fontFamily: {
+        'redesign-display': ['Epilogue', 'sans-serif']
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -50,7 +53,16 @@ module.exports = {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))'
-        }
+        },
+        'redesign-primary': '#bca37f',
+        'redesign-background-light': '#fdfaf6',
+        'redesign-background-dark': '#1e1b18',
+        'redesign-text-light': '#4a443c',
+        'redesign-text-dark': '#e0dcd7',
+        'redesign-card-light': '#f8f5f0',
+        'redesign-card-dark': '#2a2622',
+        'redesign-accent-light': '#d4c3a7',
+        'redesign-accent-dark': '#a38e6d'
       }
     }
   },

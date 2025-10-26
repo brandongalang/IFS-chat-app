@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { GuardedLink } from '@/components/common/GuardedLink'
-import { PageContainer } from '@/components/common/PageContainer'
 import PersonaSwitcher from '@/components/dev/PersonaSwitcher'
 import { showDevToggle, isInboxEnabled } from '@/config/features'
 import { CheckInSlots } from '@/components/home/CheckInSlots'
@@ -11,6 +10,7 @@ import { useUser } from '@/context/UserContext'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Inbox } from '@/components/inbox/Inbox'
 import { User as UserIcon } from 'lucide-react'
+import { BottomNavigation } from '@/components/common/BottomNavigation'
 
 export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -24,112 +24,61 @@ export default function HomePage() {
   // Get current time for greeting
   const now = new Date()
   const hour = now.getHours()
-  const greeting = hour < 12 ? 'good morning.' : hour < 17 ? 'good afternoon.' : 'good evening.'
+  const greeting = hour < 12 ? 'Good morning.' : hour < 17 ? 'Good afternoon.' : 'Good evening.'
 
   return (
-    <div
-      className="min-h-screen text-foreground flex flex-col"
-      style={{
-        color: 'rgba(255,255,255,var(--eth-user-opacity))',
-        letterSpacing: 'var(--eth-letter-spacing-user)',
-      }}
-    >
+    <div className="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden pb-24 bg-redesign-background-light dark:bg-redesign-background-dark font-redesign-display text-redesign-text-light dark:text-redesign-text-dark">
       {/* Header */}
-      <header className="pt-6 pb-2">
-        <PageContainer>
-          <div
-            className="flex items-center justify-between text-sm"
-            style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.75))' }}
+      <div className="flex items-center p-4 pb-2 justify-between sticky top-0 bg-redesign-background-light/80 dark:bg-redesign-background-dark/80 backdrop-blur-sm z-10">
+        <div className="flex size-12 shrink-0 items-center justify-center">
+          <span className="material-symbols-outlined text-redesign-text-light dark:text-redesign-text-dark" style={{ fontSize: 32, fontVariationSettings: "'wght' 300, 'opsz' 48" }}>
+            psychology
+          </span>
+        </div>
+        <h1 className="text-redesign-text-light dark:text-redesign-text-dark text-xl font-bold leading-tight tracking-tight flex-1 text-center">Trailhead</h1>
+        <div className="flex w-12 items-center justify-end">
+          <GuardedLink
+            href="/settings"
+            aria-label="Open settings"
+            title="Settings"
+            className="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-12 bg-transparent text-redesign-text-light dark:text-redesign-text-dark gap-2 text-base font-bold leading-normal tracking-[0.015em] min-w-0 p-0"
           >
-            <span className="font-medium" style={{ color: 'rgba(255,255,255,var(--eth-user-opacity))' }}>{greeting}</span>
-            <GuardedLink
-              href="/profile"
-              aria-label="Open profile"
-              title={trimmedName || 'Profile'}
-              className="h-8 w-8 rounded-full border border-border/40 bg-card/20 backdrop-blur flex items-center justify-center overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-            >
-              <Avatar className="h-full w-full bg-card/40">
-                {profile?.avatarUrl ? (
-                  <AvatarImage src={profile.avatarUrl} alt={avatarAlt} decoding="async" />
-                ) : null}
-                <AvatarFallback
-                  aria-hidden="true"
-                  className="flex items-center justify-center bg-transparent text-[10px] font-medium uppercase text-foreground/70"
-                >
-                  {userInitial ?? <UserIcon aria-hidden="true" className="h-4 w-4" />}
-                </AvatarFallback>
-              </Avatar>
-            </GuardedLink>
-          </div>
-          <div className="mt-2 flex items-center gap-2">
-            {showDevToggle && (
-              <button
-                type="button"
-                className="text-xs underline"
-                style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.7))' }}
-                onClick={() => {
-                  try {
-                    localStorage.setItem('IFS_DEV_MODE', 'true')
-                  } catch {}
-                  location.reload()
-                }}
-              >
-                Enable Dev Mode
-              </button>
-            )}
-            <div className="ml-auto">
-              <PersonaSwitcher />
-            </div>
-          </div>
-        </PageContainer>
-      </header>
+            <span className="material-symbols-outlined text-redesign-text-light dark:text-redesign-text-dark">settings</span>
+          </GuardedLink>
+        </div>
+      </div>
 
-      {/* Week Selector with Streak System */}
-      <PageContainer className="mt-2">
-        <WeekSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
-      </PageContainer>
+      <div className="p-4">
+        {/* Today's Check-ins */}
+        <h2 className="text-redesign-text-light dark:text-redesign-text-dark text-2xl font-bold leading-tight tracking-tight px-4 pb-3 pt-5">Today's Check-ins</h2>
 
-      {/* Action cards */}
-      <main className="flex-1 py-6">
-        <PageContainer className="grid grid-cols-2 gap-3">
-          <CheckInSlots selectedDate={selectedDate} />
+        {/* For this example, we'll just wrap the existing components and assume they will be styled later */}
+        <div className="p-4 @container">
+            <CheckInSlots selectedDate={selectedDate} />
+        </div>
 
+        <div className="p-4">
           {inboxEnabled ? <Inbox /> : <DailyMeditationsCard />}
-        </PageContainer>
-      </main>
+        </div>
+      </div>
+
+      {/* Bottom Navigation */}
+      <BottomNavigation />
     </div>
   )
 }
 
 function DailyMeditationsCard() {
   return (
-    <div className="col-span-2 mt-2 rounded-xl border border-border/40 bg-card/20 p-4 backdrop-blur">
-      <div
-        className="text-xs font-semibold"
-        style={{
-          color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.75))',
-          letterSpacing: 'var(--eth-letter-spacing-user)',
-        }}
-      >
-        DAILY MEDITATIONS
-      </div>
-      <div className="mt-3 text-sm">
-        <blockquote className="italic">
-          “So whatever you want to do, just do it… Making a damn fool of yourself is absolutely essential.”
-        </blockquote>
-        <div
-          className="mt-2 text-xs"
-          style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.65))' }}
-        >
-          — Gloria Steinem
-        </div>
+    <div className="relative flex items-stretch justify-between gap-4 rounded-xl bg-redesign-card-light dark:bg-redesign-card-dark p-4 shadow-md transition-shadow duration-300 hover:shadow-lg">
+      <div className="flex flex-col gap-2 flex-[2_2_0px] justify-center">
+        <p className="text-redesign-text-light dark:text-redesign-text-dark text-base font-bold leading-tight">Your Trailhead Guide</p>
+        <p className="text-redesign-primary dark:text-redesign-accent-dark text-sm font-normal leading-normal">I was just thinking about our last conversation...</p>
       </div>
       <div
-        className="mt-3 text-xs"
-        style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.65))' }}
-      >
-        Tap to explore more insights
-      </div>
+        className="w-24 h-24 bg-center bg-no-repeat bg-cover rounded-lg flex-shrink-0"
+        style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBMWuGB5bX3CW9Mp8FLzo8gRJjgDOeyajWBVHT8r8DnDBN3KYJOJHRcH8NE6CW7HnJNAkipwWCtQZJzQ8LunMdvKAKDd_YMrNM0W355RosjefhcpvsDy5_itrgcY-HbpgrIVyaKmB37CPTrms0A2SjMff10QcIscnGMIGJM0Ye8xNhRVwmzl5o5QG-hfNGHX6kBjgTcVPgPsLurY0d3GFZuHZyIwtemikBSj2WHn8jFN2XNv_Ot3mapO2A0_XhwIdCnAzreCzeGqCD7")' }}
+      ></div>
     </div>
   )
 }
