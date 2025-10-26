@@ -1,7 +1,7 @@
 # Inbox-to-Chat Bridge
 
 **Status**: Implemented
-**Last Updated**: 2025-10-18
+**Last Updated**: 2025-10-17
 **Related PRs**: #308, #309, #310
 
 ## Overview
@@ -119,6 +119,7 @@ Orchestrates the bridge workflow:
 - Navigates to `/chat` route
 - Uses a shared `emitEnvelopeEvent` helper to ensure analytics payloads stay aligned for open, dismiss, and CTA click events.
 - Card remains visible after action (not dismissed)
+- Trailhead refresh (2025-10-17): Inbox shelf now renders as a warm parchment card with preview badges and Trailhead typography so the bridge matches the redesigned Today feed.
 
 #### `app/_shared/hooks/useInboxFeed.ts`
 Manages inbox feed state:

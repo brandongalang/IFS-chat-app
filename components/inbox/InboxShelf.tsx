@@ -135,21 +135,28 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
   return (
     <section
       className={cn(
-        'col-span-2 rounded-xl border border-border/40 bg-card/20 backdrop-blur p-4 mt-2',
+        'rounded-3xl bg-card shadow-lg shadow-primary/5 ring-1 ring-border/60 p-6',
         className,
       )}
-      aria-labelledby="today-inbox-heading"
+      aria-labelledby="trailhead-inbox-heading"
     >
-      <div className="flex items-center justify-between gap-2">
-        <h2
-          id="today-inbox-heading"
-          className="text-xs font-semibold tracking-[0.24em] text-foreground/70"
-        >
-          INBOX
-        </h2>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <span className="inline-flex items-center rounded-full bg-accent/30 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+            Agent inbox
+          </span>
+          <div>
+            <h2 id="trailhead-inbox-heading" className="text-2xl font-semibold text-foreground">
+              Your Trailhead Guide
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Notes, prompts, and next steps arrive here when your guide spots something helpful.
+            </p>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           {hasPreviewBadge ? (
-            <span className="rounded-full border border-border/60 px-2 py-1 text-[10px] uppercase tracking-wide text-foreground/60">
+            <span className="rounded-full bg-muted px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Preview data
             </span>
           ) : null}
@@ -157,7 +164,7 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
             <button
               type="button"
               onClick={reload}
-              className="text-[11px] underline text-foreground/70 hover:text-foreground"
+              className="text-xs font-semibold text-primary underline-offset-4 hover:underline"
             >
               Retry
             </button>
@@ -165,27 +172,27 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
         </div>
       </div>
 
-      <div className="mt-3 space-y-3">
+      <div className="mt-5 space-y-4">
         {status === 'loading' ? (
-          <div className="animate-pulse rounded-lg border border-border/30 bg-card/10 p-4 text-sm text-foreground/50">
+          <div className="animate-pulse rounded-2xl border border-border/40 bg-card/60 p-5 text-sm text-muted-foreground">
             Loading inbox…
           </div>
         ) : null}
 
         {status === 'error' ? (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-5 text-sm text-destructive">
             We could not reach your inbox. Please retry in a moment.
           </div>
         ) : null}
 
         {status === 'empty' ? (
-          <div className="rounded-lg border border-border/30 bg-card/10 p-4 text-sm text-foreground/60">
+          <div className="rounded-2xl border border-border/40 bg-card/60 p-5 text-sm text-muted-foreground">
             Nothing new just yet—check back after your next reflection.
           </div>
         ) : null}
 
         {(status === 'success' || (status === 'loading' && envelopes.length)) ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {envelopes.map((envelope) => (
               <div key={envelope.id}>
                 {renderInboxCard(envelope, {

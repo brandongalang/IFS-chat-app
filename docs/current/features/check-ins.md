@@ -2,7 +2,7 @@
 title: Feature: Guided Check-ins
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-11
+last_updated: 2025-10-17
 feature_flag: null
 code_paths:
   - app/check-in/morning/page.tsx
@@ -16,6 +16,7 @@ code_paths:
   - components/check-in/CheckInLayout.tsx
   - components/check-in/PartsPicker.tsx
   - components/home/CheckInSlots.tsx
+  - components/home/WeekSelector.tsx
   - app/_shared/hooks/useDailyCheckIns.ts
   - app/check-in/actions.ts
   - app/api/check-ins/overview/route.ts
@@ -75,6 +76,12 @@ Provides a gentle, repeatable practice to capture mood, intentions, and observat
 
 ## UI/UX notes
 
+### Trailhead dashboard cards (2025-10-17 refresh)
+- Morning and evening tiles now render as warm, image-backed cards with rounded 24px corners, Trailhead typography, and color-coded status tags (`success`, `notice`, `muted`).
+- Streak banner surfaces above the cards when the user is on a run, using a subtle gold border instead of the prior translucent panel.
+- Weekly tracker pills (`components/home/WeekSelector.tsx`) gained tap-to-select behavior, Material-inspired icons, and an explicit "Today" shortcut for mobile ergonomics.
+- Draft detection logic is unchanged: `CheckInSlots` still reads the `CHECK_IN_DRAFT_PREFIX` keys from `localStorage` and maps them to the new card layout.
+
 ### Slider-based Interface (PR #297)
 - **Professional sliders**: Replaced emoji button groups with horizontal sliders for mood, energy, and intention ratings
 - **Single-page form**: Consolidated multi-step wizard into one page, removing progress bars and review step
@@ -98,8 +105,8 @@ Provides a gentle, repeatable practice to capture mood, intentions, and observat
   - `EmojiScale` automatically extracts endpoint labels from first and last `EmojiOption` in the options array
   - Internal `abbreviateLabel` helper derives mobile-friendly short versions without breaking existing APIs
 
-## Mobile Responsiveness (PR #267, PR #298, PR #299, PR #300, PR #301)
-- **Dashboard slots** (`CheckInSlots.tsx`): Buttons increased to 52px height with 18px font size and 16px icon size for comfortable thumb tapping on mobile devices
+## Mobile Responsiveness (PR #267, PR #298, PR #299, PR #300, PR #301, 2025-10-17 refresh)
+- **Dashboard cards** (`components/home/CheckInSlots.tsx`): Trailhead cards maintain ≥48px controls, swap layout based on breakpoint (stacked on small screens, split media/text on lg), and expose status/draft states with color-coded badges.
 - **Slider scales** (`SliderScale.tsx`): Mobile-first responsive design:
   - **Endpoint labels**: Abbreviated on mobile (<768px) to 1-2 words; full descriptive text on desktop (≥768px)
   - **Label positioning**: Positioned 24px above slider track (`pt-6` on container) to prevent overlap with thumb at extremes

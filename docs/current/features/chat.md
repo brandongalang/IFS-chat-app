@@ -2,7 +2,7 @@
 title: Feature: Chat
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-19
+last_updated: 2025-10-20
 feature_flag: null
 code_paths:
   - app/chat/page.tsx
@@ -65,26 +65,28 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
 ## UI/UX notes
 - Messages area top padding increased from 16px to 40px (2025-01-11) to prevent first message from being cut off at viewport edge
 - Active task overlay position adjusted proportionally to align with new padding
+- Trailhead refresh (2025-10-20): chat page now layers warm parchment gradients (`TrailheadBackdrop`) with animated amber glows, Trailhead cards for message bubbles, and a parchment composer housing the textarea, tool status, and buttons. Assistant/user bubbles pull from the shared palette (card + primary tokens) so the chat matches the Today dashboard rather than the retired teal ethereal gradient.
+- Composer buttons adopt rounded Trailhead geometry with uppercase tracking to align with home cards while preserving 44×44px tap targets.
 
-## Markdown Rendering (2025-10-11)
-- **Assistant messages** now render markdown using `streamdown` v1.4.0 (Vercel's streaming-optimized markdown renderer)
+## Markdown Rendering (2025-10-20 refresh)
+- **Assistant messages** render markdown using `streamdown` v1.4.0 (Vercel's streaming-optimized markdown renderer)
 - **User messages** remain plain text with no markdown processing
 - **Progressive streaming**: Markdown renders incrementally as content streams in from the AI
 - **Supported markdown features**:
-  - Headings (h1-h6) with stepped sizing and white text
+  - Headings (h1-h6) with stepped sizing and Trailhead font weights
   - Text formatting: **bold**, *italic*, inline `code`
-  - Links with hover states and focus rings for accessibility
-  - Ordered and unordered lists
-  - Blockquotes with subtle background and left border
-  - Tables with striped rows and bordered cells
+  - Links with hover states and warm focus rings for accessibility
+  - Ordered and unordered lists with primary-colored markers
+  - Blockquotes with gold-accented parchment backgrounds
+  - Tables with accent header rows and bordered cells
   - Horizontal rules
   - Fenced code blocks with syntax highlighting via `CodeBlock` component
     - Supports multiple languages (TypeScript, JavaScript, Python, Bash, etc.)
-    - Copy-to-clipboard button in white/translucent style
-- **Ethereal theming**: All markdown elements styled with white/translucent colors to match the ethereal aesthetic
-  - White text with varying opacity levels (90-100%)
-  - Translucent backgrounds (white/5-10%)
-  - Subtle borders (white/15-30%)
+    - Copy-to-clipboard button inherits muted-foreground text with accent hover
+- **Trailhead theming**: Markdown elements now inherit the warm Trailhead palette
+  - Headings/body copy use `text-foreground` / `text-foreground/90`
+  - Inline code + tables pull from `primary`/`accent` tones for highlights instead of white overlays
+  - Blockquotes and task callouts use parchment backgrounds with gold borders for continuity with the dashboard cards
 - **Performance**: Memoized component map prevents unnecessary re-renders during streaming
 - **Accessibility**: Maintains `aria-live="polite"` for screen reader support
 

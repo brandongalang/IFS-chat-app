@@ -15,6 +15,14 @@ The app was not mobile-friendly due to:
 
 ## Solution
 
+### 0. Trailhead Visual Refresh (2025-10-20)
+
+- **Global shell (`app/layout.tsx`)** now loads the Epilogue display family and Material Symbols via `next/font`, removes the ethereal backdrop controller, and applies the parchment Trailhead background on `<body>`.
+- **Design tokens (`app/globals.css`, `config/tailwind.config.js`)** define warm light/dark palettes, rounded 12px radii, Material-safe focus rings, and expose `font-trailhead`, `text-trailhead-primary`, and card accent colors for Tailwind.
+- **Surface components (`components/home/CheckInSlots.tsx`, `components/home/WeekSelector.tsx`, `components/inbox/InboxShelf.tsx`)** now render responsive 3D cards with imagery, large touch targets, and typography that matches the Trailhead concept shared with product.
+- **Navigation (`components/nav/BottomTabs.tsx`)** adopts Material Symbols, four-tab layout, and safe-area-aware padding while retaining guarded navigation for gated features.
+- **Chat surfaces (`components/ethereal/EtherealChat.tsx`, `components/ethereal/EtherealMessageList.tsx`, `components/ethereal/markdown/StreamingMarkdown.tsx`)** swap the teal/white glassmorphism for Trailhead parchment cards, warm ambient glows, and markdown styles derived from the shared design tokens.
+
 ### 1. Viewport Configuration (`app/layout.tsx`)
 
 Added proper viewport configuration using Next.js 15's `Viewport` type:
@@ -49,39 +57,41 @@ Added CSS utilities to handle safe areas on devices with notches or home indicat
 
 ### 3. Chat Interface Improvements (`components/ethereal/EtherealChat.tsx`)
 
-#### Enhanced Touch Targets
-- **Send button**: Increased from `h-9` to `min-h-11 h-11 min-w-11` (44×44px minimum)
-- **End session button**: Increased from `h-9` to `min-h-11 h-11` with `px-4` for comfortable tapping
-- Added `active:scale-95 transition-transform` for tactile feedback
+#### Enhanced Touch Targets & Trailhead styling
+- **Send button**: Increased from `h-9` to `min-h-11 h-11 min-w-12` (44×44px minimum) with Trailhead gold background + uppercase tracking.
+- **End session button**: Increased from `h-9` to `min-h-11 h-11` with `px-4`, parchment fill, and warmed border focus states for comfortable tapping.
+- Added `active:scale-95 transition-transform` for tactile feedback on both buttons.
 
 #### Mobile-Optimized Layout
 - Chat page now locks its viewport height with a `useLockedViewportHeight` hook (`app/chat/page.tsx`), holding the layout to the largest measured `visualViewport.height` so the on-screen keyboard can overlap without forcing the conversation to jump upward.
 - Fallbacks to `100vh` ensure older browsers without `VisualViewport` support keep working.
-- Added `overscroll-contain` to prevent rubber-banding on iOS
-- Increased bottom padding from `pb-[120px]` to `pb-[140px]` to accommodate larger touch targets
+- Added `overscroll-contain` to prevent rubber-banding on iOS.
+- Increased bottom padding from `pb-[120px]` to `pb-[140px]` to accommodate larger touch targets.
+- Trailhead composer container now uses a rounded parchment card (`bg-card/95`, `border-border/60`, warm shadow) so chat matches the Today dashboard aesthetic.
 
 #### Typography
-- Textarea maintains `text-[16px]` to prevent iOS auto-zoom on focus
-- Button text increased from `text-[11px]` to `text-xs` for better readability
+- Textarea maintains `text-[16px]` to prevent iOS auto-zoom on focus while inheriting Trailhead foreground/placeholder colors.
+- Button text increased from `text-[11px]` to `text-xs` for better readability and uses uppercase tracking for the Trailhead art direction.
 
 ### 4. Bottom Navigation (`components/nav/BottomTabs.tsx`)
 
-#### Touch Target Improvements
-- Tab links increased from `min-h-[56px]` to `min-h-14` (56px)
-- Icons increased from `w-5 h-5` to `w-6 h-6` for better visibility
-- Labels explicitly set to `text-xs` for consistency
+- Rebuilt with Material Symbols (`home`, `edit_note`, `hub`, `school`) rendered through `next/font` so icons are crisp on all DPIs.
+- Tabs render as rounded 2xl pills with `bg-primary/15` highlight, 44px minimum height, and font-weight adjustments via `fontVariationSettings` for filled/outlined states.
+- Navigation rail floats on a translucent parchment surface (`bg-background/85`) and still honors safe areas through `pb-safe`.
 
-#### Safe-Area Support
-- Navigation container now uses `pb-safe` class instead of `pb-2`
-- Properly respects safe-area-inset-bottom on devices with home indicators
+### 5. Check-In Cards (`components/home/CheckInSlots.tsx`)
 
-### 5. Check-In Buttons (`components/home/CheckInSlots.tsx`)
+- Morning and evening slots now appear as illustrated cards with responsive media columns, warm status pills, and 48px rounded buttons to match Trailhead art direction.
+- Draft/completed states surface with color-coded tags (`success`, `notice`, `muted`) while preserving existing draft detection logic.
+- Streak banner upgraded to a bordered parchment strip with gold accent to reinforce progress without overwhelming the feed.
 
-- Begin/Resume buttons increased to `min-h-12 py-3` (48px height)
-- GuardedLink wrapper now `w-full` to ensure full-width tap target
-- Maintains responsive grid layout (single column on mobile, 2 columns on md+)
+### 6. Weekly Tracker (`components/home/WeekSelector.tsx`)
 
-### 6. Check-In Emoji Slider Scales (`components/check-in/SliderScale.tsx`)
+- Converted the prior outline grid into rounded pill buttons sized 44×44px with hover elevation and status dots for recorded activity.
+- Added explicit week range label and quick “Today” shortcut, all styled with the new palette.
+- Keeps the Supabase-backed activity fetch while allowing tap-to-select navigation for each day.
+
+### 7. Check-In Emoji Slider Scales (`components/check-in/SliderScale.tsx`)
 
 #### Mobile-First Label Strategy
 - **Problem**: Multi-word tick labels (e.g., "Running on empty", "Bright and open") created text overlap and visual clutter on mobile screens
@@ -104,11 +114,11 @@ Added CSS utilities to handle safe areas on devices with notches or home indicat
 - ✓ Smooth transitions provide tactile feedback
 - ✓ Screen readers announce selection changes on all devices
 
-### 7. Locked Viewport Height (`app/chat/page.tsx`)
+### 8. Locked Viewport Height (`app/chat/page.tsx`)
 
 Replaced the prior `100dvh` approach with a runtime hook (`useLockedViewportHeight`) that records the largest visual viewport height and reapplies it while the keyboard is visible. Orientation changes reset the lock, while browsers without `VisualViewport` gracefully fall back to `100vh`. This keeps the chat page anchored when the composer receives focus on mobile.
 
-### 8. Check-In Layout Density (`components/check-in/CheckInLayout.tsx`)
+### 9. Check-In Layout Density (`components/check-in/CheckInLayout.tsx`)
 
 - Card padding: `p-4 md:p-6` (16px mobile, 24px desktop)
 - Outer container: `p-4 md:p-6 lg:p-10` (16px → 24px → 40px)
@@ -118,12 +128,17 @@ Replaced the prior `100dvh` approach with a runtime hook (`useLockedViewportHeig
 
 The following files were modified:
 
-- `app/layout.tsx` - Added viewport configuration
-- `app/globals.css` - Added safe-area utility classes
-- `app/chat/page.tsx` - Updated to use dynamic viewport height
-- `components/ethereal/EtherealChat.tsx` - Improved mobile ergonomics and touch targets
-- `components/nav/BottomTabs.tsx` - Enhanced navigation with proper safe-area support
-- `components/home/CheckInSlots.tsx` - Increased button tap targets
+- `app/layout.tsx` - Viewport configuration, Trailhead font loading, and global providers
+- `app/globals.css` - Safe-area utilities, Trailhead palette, focus styles, Material font support
+- `config/tailwind.config.js` - Tailwind color/font extensions for Trailhead tokens
+- `app/chat/page.tsx` - Dynamic viewport height with Trailhead font inheritance
+- `components/ethereal/EtherealChat.tsx` - Trailhead composer, glow backdrop, and touch-target refinements
+- `components/ethereal/EtherealMessageList.tsx` - Assistant/user bubble palette updated to shared Trailhead tokens
+- `components/ethereal/markdown/StreamingMarkdown.tsx` - Markdown typographic system aligned to Trailhead colors
+- `components/nav/BottomTabs.tsx` - Material bottom navigation with safe-area support
+- `components/home/CheckInSlots.tsx` - Trailhead card layout and touch targets
+- `components/home/WeekSelector.tsx` - Responsive weekly tracker pills
+- `components/inbox/InboxShelf.tsx` - Trailhead inbox card styling
 - `components/check-in/SliderScale.tsx` - Mobile-first label display with progressive disclosure
 - `components/check-in/CheckInExperience.tsx` - Responsive spacing between scales
 - `components/check-in/CheckInLayout.tsx` - Progressive padding density

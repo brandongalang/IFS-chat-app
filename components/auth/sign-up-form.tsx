@@ -16,11 +16,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-const etherealTextStyle = {
-  letterSpacing: 'var(--eth-letter-spacing-user)',
-  color: 'rgba(255,255,255,var(--eth-user-opacity))',
-} as const
-
 export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -62,18 +57,14 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
-      <Card variant="ethereal">
-        <CardHeader>
-          <CardTitle className="text-2xl" style={etherealTextStyle}>
-            Sign up
-          </CardTitle>
-          <CardDescription style={etherealTextStyle}>
-            Create a new account
-          </CardDescription>
+      <Card className="rounded-3xl border-border/60 bg-card/95 shadow-xl shadow-primary/10 ring-1 ring-border/60">
+        <CardHeader className="space-y-2 pb-0">
+          <CardTitle className="text-2xl font-semibold text-foreground">Create your account</CardTitle>
+          <CardDescription>Welcome to Trailhead—let&apos;s get you set up.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6 pt-6">
           <div className="flex flex-col gap-6">
-            <form onSubmit={handleSignUp} className="flex flex-col gap-6">
+            <form onSubmit={handleSignUp} className="flex flex-col gap-5">
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -110,9 +101,9 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                 />
               </div>
               {error && (
-                <p className="text-sm text-red-500">{error}</p>
+                <p className="text-sm text-destructive">{error}</p>
               )}
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full rounded-full" disabled={isLoading}>
                 {isLoading ? 'Creating an account...' : 'Sign up'}
               </Button>
             </form>
@@ -127,7 +118,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
             <Button
               type="button"
               variant="outline"
-              className="w-full"
+              className="w-full rounded-full border-border/50"
               disabled={isGoogleLoading || isLoading}
               onClick={async () => {
                 setIsGoogleLoading(true)
@@ -172,7 +163,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
             </Button>
             <div className="text-center text-sm">
               Already have an account?{' '}
-              <Link href="/auth/login" className="underline underline-offset-4">
+              <Link href="/auth/login" className="font-semibold text-primary underline-offset-4 hover:underline">
                 Login
               </Link>
             </div>

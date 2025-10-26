@@ -2,11 +2,13 @@
 title: Feature: Authentication (Google Sign-In)
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-19
+last_updated: 2025-10-17
 feature_flag: null
 code_paths:
   - components/auth/login-form.tsx
   - components/auth/sign-up-form.tsx
+  - app/auth/login/page.tsx
+  - app/auth/sign-up/page.tsx
   - components/auth/supabase-session-listener.tsx
   - lib/hooks/use-google-auth.ts
   - app/auth/callback/route.ts
@@ -34,6 +36,11 @@ Lower-friction sign-in and account creation with secure provider flows.
 - Server-side session writes now use the shared Supabase client factory (`lib/supabase/clients`) so cookies are managed consistently across features
 - Callback route validates origins, events, and refresh tokens before persisting sessions through `supabase.auth.setSession`
 - Optional demo mode exposes `/auth/demo-login` (flagged via env) which signs into a pre-provisioned shared Supabase user and mirrors the returned session to both server cookies and the browser client.
+
+### Trailhead UI refresh (2025-10-17)
+- Login and sign-up cards now use the Trailhead palette (rounded 24px cards, Epilogue typography, and pill-shaped primary/secondary buttons) instead of the ethereal glassmorphism variant.
+- Global auth wrappers (`app/auth/login/page.tsx`, `app/auth/sign-up/page.tsx`) no longer rely on `--eth-letter-spacing-*`; they inherit the Trailhead font stack and parchment background for consistency with the dashboard.
+- Demo CTA and Google OAuth buttons remain, but adopt rounded-full shapes and the warm border treatments defined in `app/globals.css`.
 
 ### Session synchronization lifecycle
 1. User signs in or out through GIS-driven components.

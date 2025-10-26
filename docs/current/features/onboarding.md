@@ -59,3 +59,7 @@ A staged onboarding experience that gathers core context, adapts follow-up quest
 - Markdown write paths have been removed from onboarding completion; verification should look for a new `observations` row rather than markdown file mutations.
 - Observation metadata now stores the full Q/A pairs (`question_answers`) alongside the structured summary for downstream agents; keep this shape in sync when adding or renaming questions.
 - Capture updated screenshots of the completion summary for product/marketing docs whenever major copy changes land.
+
+## UI polish (2025-10-17)
+- `/onboarding` landing now inherits the Trailhead palette with a parchment card surrounding the wizard (`app/onboarding/page.tsx`).
+- The header copy uses Epilogue typography and warm body text, aligning the onboarding entry experience with the redesigned dashboard.

@@ -1,10 +1,7 @@
 "use client"
 
 import { Suspense, useEffect, useMemo, useState } from "react"
-import { Inter } from "next/font/google"
 import { EtherealChat } from "@/components/ethereal/EtherealChat"
-
-const inter = Inter({ subsets: ["latin"], weight: ["100", "300", "400", "600"], variable: "--font-ethereal" })
 
 export default function ChatPage() {
   const lockedHeight = useLockedViewportHeight()
@@ -16,7 +13,7 @@ export default function ChatPage() {
   return (
     <Suspense fallback={null}>
       <div
-        className={`${inter.variable} font-sans min-h-screen h-screen relative overflow-hidden`}
+        className="font-trailhead min-h-screen h-screen relative overflow-hidden bg-transparent"
         style={containerStyle}
       >
         <EtherealChat />

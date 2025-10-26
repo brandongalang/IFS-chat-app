@@ -13,13 +13,13 @@ export default async function OnboardingPage() {
   void h
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10" style={{ letterSpacing: 'var(--eth-letter-spacing-user)' }}>
-      <h1 className="text-2xl font-thin" style={{ letterSpacing: 'var(--eth-letter-spacing-assistant)', color: 'rgba(255,255,255,var(--eth-assistant-opacity))' }}>onboarding</h1>
-      <p className="mt-2 text-sm" style={{ color: 'rgba(255,255,255,var(--eth-user-opacity))' }}>
-        let&apos;s get to know your system. this short, kind check-in helps tailor your support.
+    <main className="mx-auto max-w-2xl px-4 py-10 text-foreground sm:px-6">
+      <h1 className="text-3xl font-semibold">Let&apos;s get to know your system</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        This gentle check-in helps Trailhead tailor support to the parts that need the most care.
       </p>
 
-      <section className="mt-6">
+      <section className="mt-8 rounded-3xl bg-card shadow-lg shadow-primary/10 ring-1 ring-border/60 p-6">
         <OnboardingWizard />
       </section>
     </main>

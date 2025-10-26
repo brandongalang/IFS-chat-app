@@ -3,8 +3,8 @@ import { BottomTabs } from '@/components/nav/BottomTabs'
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen text-foreground flex flex-col">
-      <div className="flex-1 flex flex-col pb-20 bg-background/50 backdrop-blur">{children}</div>
+    <div className="relative flex min-h-screen flex-col">
+      <div className="flex flex-1 flex-col pb-24 lg:pb-28">{children}</div>
       <BottomTabs />
     </div>
   )

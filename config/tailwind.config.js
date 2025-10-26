@@ -17,6 +17,10 @@ module.exports = {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)'
       },
+      fontFamily: {
+        trailhead: ['var(--font-epilogue)', 'sans-serif'],
+        symbols: ['var(--font-material-symbols)', 'sans-serif']
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -50,7 +54,12 @@ module.exports = {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))'
-        }
+        },
+        'card-light': '#f8f5f0',
+        'card-dark': '#2a2622',
+        'trailhead-primary': '#bca37f',
+        'trailhead-accent-light': '#d4c3a7',
+        'trailhead-accent-dark': '#a38e6d'
       }
     }
   },

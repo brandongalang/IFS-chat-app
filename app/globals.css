@@ -4,68 +4,86 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
+    --background: 34.3 63.6% 97.8%;
+    --foreground: 34.3 10.5% 26.3%;
+    --muted: 37.3 34.0% 91.0%;
+    --muted-foreground: 34.3 9.5% 36.0%;
+    --popover: 37.5 36.4% 95.7%;
+    --popover-foreground: 34.3 10.5% 26.3%;
+    --card: 37.5 36.4% 95.7%;
+    --card-foreground: 34.3 10.5% 26.3%;
+    --border: 34.3 24% 86%;
+    --input: 34.3 24% 86%;
+    --primary: 35.4 31.3% 61.8%;
+    --primary-foreground: 32 27% 18%;
+    --secondary: 37.3 34.4% 74.3%;
+    --secondary-foreground: 32 22% 22%;
+    --accent: 37.3 34.4% 74.3%;
+    --accent-foreground: 32 22% 22%;
+    --destructive: 3 72% 55%;
     --destructive-foreground: 0 0% 98%;
-    --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
-    
-    /* Ethereal focus styling variables */
-    --ethereal-focus-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
-    --ethereal-hover-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+    --ring: 35.4 31.3% 61.8%;
+    --radius: 0.75rem;
+
+    --trailhead-body-min-height: 884px;
+    --trailhead-background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Cg fill-rule="evenodd"%3E%3Cg fill="%23f3eee8" fill-opacity="0.4"%3E%3Cpath opacity=".5" d="M96 95h4v1h-4v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9zm-1 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9 v9zm10 0h9v-9h-9v9zm9-10v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm9-10v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm9-10v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9z"/%3E%3Cpath d="M6 5V0h1v5h5v1H6v5H5V6H0V5h5z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');
+
+    /* Streaming text defaults (kept for compatibility) */
+    --eth-word-duration: 140;
+    --eth-char-duration: 28;
+    --eth-stream-tick: 150;
+    --eth-stream-chars: 8;
+    --eth-letter-spacing-assistant: 0;
+    --eth-letter-spacing-user: 0;
+    --eth-user-opacity: 0.88;
+    --eth-assistant-opacity: 0.82;
   }
 
   .dark {
-    --background: 240 10% 10%;
-    --foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --popover: 240 10% 10%;
-    --popover-foreground: 0 0% 98%;
-    --card: 240 10% 10%;
-    --card-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --primary: 240 4.8% 20%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --ring: 240 4.9% 83.9%;
+    --background: 30 11.1% 10.6%;
+    --foreground: 33.3 12.7% 86.1%;
+    --muted: 30 10.5% 22%;
+    --muted-foreground: 33.3 12% 76%;
+    --popover: 30 10.5% 18%;
+    --popover-foreground: 33.3 12.7% 86.1%;
+    --card: 30 10.5% 18%;
+    --card-foreground: 33.3 12.7% 86.1%;
+    --border: 30 10% 26%;
+    --input: 30 10% 26%;
+    --primary: 36.7 22.7% 53.3%;
+    --primary-foreground: 26 26% 12%;
+    --secondary: 35 20% 32%;
+    --secondary-foreground: 36 30% 88%;
+    --accent: 36.7 22.7% 53.3%;
+    --accent-foreground: 26 26% 12%;
+    --destructive: 3 72% 52%;
+    --destructive-foreground: 26 30% 12%;
+    --ring: 36.7 22.7% 53.3%;
+    --trailhead-background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Cg fill-rule="evenodd"%3E%3Cg fill="%232a2622" fill-opacity="0.4"%3E%3Cpath opacity=".5" d="M96 95h4v1h-4v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9zm-1 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm9-10v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm9-10v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm9-10v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9z"/%3E%3Cpath d="M6 5V0h1v5h5v1H6v5H5V6H0V5h5z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');
   }
 
   body {
     @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))];
+    background-image: var(--trailhead-background-image);
+    background-color: hsl(var(--background));
+    background-repeat: repeat;
+    background-size: 100px 100px;
+    min-height: max(var(--trailhead-body-min-height), 100vh);
+  }
+
+  .trailhead-body {
+    font-family: var(--font-epilogue), sans-serif;
   }
 }
 
 @layer components {
-  /* Ethereal focus styles - override default harsh focus rings */
-  .ethereal-focus {
-    @apply focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 focus:border-0;
-    @apply focus:shadow-[var(--ethereal-focus-shadow)] hover:shadow-[var(--ethereal-hover-shadow)];
-    @apply transition-shadow duration-200;
+  .trailhead-focus {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+    --tw-ring-color: hsl(var(--primary) / 0.45);
+    --tw-ring-offset-color: hsl(var(--background));
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
   }
-  
-  /* Apply ethereal focus to common form elements */
+
   input[type="text"],
   input[type="email"],
   input[type="password"],
@@ -75,21 +93,33 @@
   input[type="number"],
   textarea,
   select {
-    @apply ethereal-focus;
+    @apply trailhead-focus;
   }
-  
-  /* Specific overrides for shadcn components */
+
   .focus-visible\:ring-2 {
-    @apply ethereal-focus;
+    @apply trailhead-focus;
   }
-  
-  /* Safe area utilities for mobile notches and home indicators */
+
+  .material-symbols-outlined {
+    font-family: var(--font-material-symbols);
+    font-weight: 300;
+    font-style: normal;
+    font-size: 1.5rem;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+  }
+
   @supports (padding: env(safe-area-inset-bottom)) {
     .pb-safe {
-      padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
     }
     .pt-safe {
-      padding-top: max(0.5rem, env(safe-area-inset-top));
+      padding-top: max(0.75rem, env(safe-area-inset-top));
     }
   }
 }

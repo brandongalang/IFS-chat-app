@@ -16,11 +16,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-const etherealTextStyle = {
-  letterSpacing: 'var(--eth-letter-spacing-user)',
-  color: 'rgba(255,255,255,var(--eth-user-opacity))',
-} as const
-
 const DEMO_AUTH_ENABLED =
   process.env.NEXT_PUBLIC_IFS_DEMO_AUTH_ENABLED === 'true' ||
   process.env.NEXT_PUBLIC_IFS_DEMO_AUTH_ENABLED === '1' ||
@@ -60,18 +55,18 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
-      <Card variant="ethereal">
-        <CardHeader>
-          <CardTitle className="text-2xl" style={etherealTextStyle}>
-            Login
+      <Card className="rounded-3xl border-border/60 bg-card/95 shadow-xl shadow-primary/10 ring-1 ring-border/60">
+        <CardHeader className="space-y-2 pb-0">
+          <CardTitle className="text-2xl font-semibold text-foreground">
+            Welcome back
           </CardTitle>
-          <CardDescription style={etherealTextStyle}>
-            Enter your email below to login to your account
+          <CardDescription>
+            Enter your email to continue exploring your inner landscape.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6 pt-6">
           <div className="flex flex-col gap-6">
-            <form onSubmit={handleLogin} className="flex flex-col gap-6">
+            <form onSubmit={handleLogin} className="flex flex-col gap-5">
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -102,9 +97,9 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
                 />
               </div>
               {error && (
-                <p className="text-sm text-red-500">{error}</p>
+                <p className="text-sm text-destructive">{error}</p>
               )}
-              <Button type="submit" className="w-full" disabled={isLoading || isDemoLoading}>
+              <Button type="submit" className="w-full rounded-full" disabled={isLoading || isDemoLoading}>
                 {isLoading ? 'Logging in...' : 'Login'}
               </Button>
             </form>
@@ -119,7 +114,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
             <Button
               type="button"
               variant="outline"
-              className="w-full"
+              className="w-full rounded-full border-border/50"
               disabled={isGoogleLoading || isLoading}
               onClick={async () => {
                 setIsGoogleLoading(true)
@@ -164,7 +159,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
             </Button>
             <div className="text-center text-sm">
               Don&apos;t have an account?{' '}
-              <Link href="/auth/sign-up" className="underline underline-offset-4">
+              <Link href="/auth/sign-up" className="font-semibold text-primary underline-offset-4 hover:underline">
                 Sign up
               </Link>
             </div>
@@ -174,7 +169,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
                 <Button
                   type="button"
                   variant="secondary"
-                  className="w-full"
+                  className="w-full rounded-full"
                   disabled={isDemoLoading || isLoading || isGoogleLoading}
                   onClick={async () => {
                     setError(null)

@@ -1,11 +1,25 @@
 import type { Metadata, Viewport } from 'next'
+import { Epilogue, Material_Symbols_Outlined } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ComingSoonProvider } from '@/components/common/ComingSoonProvider'
-import { GlobalBackdrop } from '@/components/ethereal/GlobalBackdrop'
-import { ThemeController } from '@/components/ethereal/ThemeController'
 import { SupabaseSessionListener } from '@/components/auth/supabase-session-listener'
 import { UserProvider } from '@/context/UserContext'
+
+const epilogue = Epilogue({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-epilogue',
+})
+
+const materialSymbols = Material_Symbols_Outlined({
+  subsets: ['latin'],
+  weight: '300',
+  display: 'swap',
+  variable: '--font-material-symbols',
+  style: 'normal',
+  axes: ['FILL', 'GRAD', 'opsz', 'wght'],
+})
 
 export const metadata: Metadata = {
   title: 'IFS Therapy Companion',
@@ -25,14 +39,15 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="bg-background text-foreground">
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${epilogue.variable} ${materialSymbols.variable}`}
+    >
+      <body className="trailhead-body font-trailhead bg-background text-foreground antialiased">
         <ThemeProvider>
           <ComingSoonProvider>
             <UserProvider>
-              {/* Global ethereal backdrop & theme controller */}
-              <GlobalBackdrop />
-              <ThemeController />
               <SupabaseSessionListener />
               {children}
             </UserProvider>

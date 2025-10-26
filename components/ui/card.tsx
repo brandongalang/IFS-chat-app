@@ -9,7 +9,7 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const cardVariants: Record<CardVariant, string> = {
-  default: "bg-card border-border",
+  default: "bg-card/95 border-border/60 ring-1 ring-border/60 shadow-lg shadow-primary/10",
   ethereal: "bg-card/20 border-border/40 backdrop-blur-md",
 }
 
@@ -18,7 +18,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     <div
       ref={ref}
       className={cn(
-        "rounded-lg border text-card-foreground shadow-sm",
+        "rounded-3xl border text-card-foreground",
         cardVariants[variant],
         className
       )}
