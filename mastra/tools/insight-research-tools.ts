@@ -1,8 +1,12 @@
 import { createTool } from '@mastra/core'
 import { z } from 'zod'
 import { resolveUserId } from '@/config/dev'
-import type { SessionRow, PartRow, PartRelationshipRow, InsightRow, ToolResult } from '@/lib/types/database'
-import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
+import { getServerSupabaseClient } from '@/lib/supabase/clients'
+import { searchParts, listPartDisplayRecords } from '@/lib/data/schema/server'
+import { listRelationships } from '@/lib/data/schema/relationships'
+import type { SessionRowV2, PartRowV2, PartRelationshipRowV2 } from '@/lib/data/schema/types'
+import type { PartDisplayRow } from '@/lib/data/schema/context'
+import type { InsightRow } from '@/lib/types/database'
 
 // Input schemas for tool validation
 const getRecentSessionsSchema = z.object({
@@ -28,73 +32,96 @@ const getRecentInsightsSchema = z.object({
 });
 
 
-export async function getRecentSessions(input: z.infer<typeof getRecentSessionsSchema>): Promise<ToolResult<SessionRow[]>> {
+export async function getRecentSessions(input: z.infer<typeof getRecentSessionsSchema> & { userId?: string }): Promise<SessionRowV2[]> {
   try {
     const validated = getRecentSessionsSchema.parse(input)
-    const userId = resolveUserId(validated.userId)
-    const storage = await getStorageAdapter()
+    const userId = resolveUserId(validated.userId || input.userId)
+    const supabase = await getServerSupabaseClient()
     const lookbackDate = new Date()
     lookbackDate.setDate(lookbackDate.getDate() - validated.lookbackDays)
 
-    const prefix = `users/${userId}/sessions/`
-    const paths = await storage.list(prefix)
-    const sessions: SessionRow[] = []
+    const { data: sessions, error } = await supabase
+      .from('sessions_v2')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('created_at', lookbackDate.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(validated.limit)
 
-    for (const p of paths) {
-      try {
-        const text = await storage.getText(p)
-        if (!text) continue
-        const session = JSON.parse(text) as SessionRow
-        const start = session.start_time
-        if (start && new Date(start) >= lookbackDate) {
-          sessions.push(session)
-        }
-      } catch {
-        /* ignore parse errors */
-      }
+    if (error) {
+      throw new Error(`Failed to fetch recent sessions: ${error.message}`)
     }
 
-    sessions.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
-    return { success: true, data: sessions.slice(0, validated.limit), confidence: 1.0 }
+    return sessions || []
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
-    return { success: false, error: errMsg }
+    throw new Error(errMsg)
   }
 }
 
-export async function getActiveParts(input: z.infer<typeof getActivePartsSchema>): Promise<ToolResult<PartRow[]>> {
+export async function getActiveParts(input: z.infer<typeof getActivePartsSchema> & { userId?: string }): Promise<PartDisplayRow[]> {
   try {
     const validated = getActivePartsSchema.parse(input)
-    resolveUserId(validated.userId)
-    await getStorageAdapter()
-    return { success: true, data: [], confidence: 1.0 }
+    const userId = resolveUserId(validated.userId || input.userId)
+    
+    // Get parts with recent activity (parts with recent observations or session references)  
+    const parts = await listPartDisplayRecords({ userId }, validated.limit)
+    
+    return parts
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
-    return { success: false, error: errMsg }
+    throw new Error(errMsg)
   }
 }
 
-export async function getPolarizedRelationships(input: z.infer<typeof getPolarizedRelationshipsSchema>): Promise<ToolResult<PartRelationshipRow[]>> {
+export async function getPolarizedRelationships(input: z.infer<typeof getPolarizedRelationshipsSchema> & { userId?: string }): Promise<PartRelationshipRowV2[]> {
   try {
     const validated = getPolarizedRelationshipsSchema.parse(input)
-    resolveUserId(validated.userId)
-    await getStorageAdapter()
-    return { success: true, data: [], confidence: 1.0 }
+    const userId = resolveUserId(validated.userId || input.userId)
+    const supabase = await getServerSupabaseClient()
+    
+    // Get relationships that are marked as 'conflicts' (corresponds to legacy 'polarized')
+    const polarizedRelationships = await listRelationships(
+      { client: supabase, userId }, 
+      { type: 'conflicts' }
+    )
+    
+    // Filter by relationships with high tension/strength (> 0.5) if strength is available
+    const highTensionRelationships = polarizedRelationships.filter(rel => 
+      !rel.strength || rel.strength > 0.5
+    )
+    
+    return highTensionRelationships.slice(0, validated.limit)
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
-    return { success: false, error: errMsg }
+    throw new Error(errMsg)
   }
 }
 
-export async function getRecentInsights(input: z.infer<typeof getRecentInsightsSchema>): Promise<ToolResult<InsightRow[]>> {
+export async function getRecentInsights(input: z.infer<typeof getRecentInsightsSchema> & { userId?: string }): Promise<InsightRow[]> {
   try {
     const validated = getRecentInsightsSchema.parse(input)
-    resolveUserId(validated.userId)
-    await getStorageAdapter()
-    return { success: true, data: [], confidence: 1.0 }
+    const userId = resolveUserId(validated.userId || input.userId)
+    const supabase = await getServerSupabaseClient()
+    const lookbackDate = new Date()
+    lookbackDate.setDate(lookbackDate.getDate() - validated.lookbackDays)
+
+    const { data: insights, error } = await supabase
+      .from('insights')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('created_at', lookbackDate.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(validated.limit)
+
+    if (error) {
+      throw new Error(`Failed to fetch recent insights: ${error.message}`)
+    }
+
+    return insights || []
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
-    return { success: false, error: errMsg }
+    throw new Error(errMsg)
   }
 }
 
@@ -105,9 +132,8 @@ export const getRecentSessionsTool = createTool({
   description: 'Retrieves the most recent chat sessions for a user within a given lookback period.',
   inputSchema: getRecentSessionsSchema,
   execute: async ({ context }) => {
-    const result = await getRecentSessions(context);
-    if (!result.success) throw new Error(result.error);
-    return result.data;
+    const userId = resolveUserId(context.userId);
+    return await getRecentSessions({ ...context, userId });
   }
 });
 
@@ -116,9 +142,8 @@ export const getActivePartsTool = createTool({
   description: 'Retrieves the most active or recently updated parts for a user.',
   inputSchema: getActivePartsSchema,
   execute: async ({ context }) => {
-    const result = await getActiveParts(context);
-    if (!result.success) throw new Error(result.error);
-    return result.data;
+    const userId = resolveUserId(context.userId);
+    return await getActiveParts({ ...context, userId });
   }
 });
 
@@ -127,9 +152,8 @@ export const getPolarizedRelationshipsTool = createTool({
   description: 'Retrieves part relationships that are marked as polarized.',
   inputSchema: getPolarizedRelationshipsSchema,
   execute: async ({ context }) => {
-    const result = await getPolarizedRelationships(context);
-    if (!result.success) throw new Error(result.error);
-    return result.data;
+    const userId = resolveUserId(context.userId);
+    return await getPolarizedRelationships({ ...context, userId });
   }
 });
 
@@ -138,11 +162,19 @@ export const getRecentInsightsTool = createTool({
   description: 'Retrieves the most recent insights that have been generated for a user.',
   inputSchema: getRecentInsightsSchema,
   execute: async ({ context }) => {
-    const result = await getRecentInsights(context);
-    if (!result.success) throw new Error(result.error);
-    return result.data;
+    const userId = resolveUserId(context.userId);
+    return await getRecentInsights({ ...context, userId });
   }
 });
+
+export function createInsightResearchTools(userId?: string) {
+  return {
+    getRecentSessions: getRecentSessionsTool,
+    getActiveParts: getActivePartsTool,  
+    getPolarizedRelationships: getPolarizedRelationshipsTool,
+    getRecentInsights: getRecentInsightsTool,
+  }
+}
 
 export const insightResearchTools = {
   getRecentSessions: getRecentSessionsTool,

@@ -38,7 +38,8 @@ if (process.env.NODE_ENV !== 'test') {
 let mastraInstance: any = null
 
 export function createMastra(profile: Profile = null) {
-  const insightGeneratorAgent = createInsightGeneratorAgent(agentConfig)
+  const userId = profile?.userId
+  const insightGeneratorAgent = createInsightGeneratorAgent(userId, agentConfig)
   const inboxObservationAgent = createInboxObservationAgent(profile, agentConfig)
 
   return new Mastra({

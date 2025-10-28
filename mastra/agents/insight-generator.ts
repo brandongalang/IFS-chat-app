@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
 import { resolveAgentModel } from '@/config/model'
 import type { AgentModelConfig } from './ifs-agent'
-import { insightResearchTools } from '../tools/insight-research-tools'
+import { createInsightResearchTools } from '../tools/insight-research-tools'
 
 export const insightSchema = z.object({
   type: z.enum(['session_summary', 'nudge', 'follow_up', 'observation', 'question']),
@@ -54,9 +54,9 @@ After completing your research, analyze your findings to identify opportunities 
 - The insights you generate must be valid JSON objects matching the provided schema.
 `
 
-export type InsightGeneratorAgent = Agent<'insightGeneratorAgent', typeof insightResearchTools>
+export type InsightGeneratorAgent = Agent<'insightGeneratorAgent', ReturnType<typeof createInsightResearchTools>>
 
-export function createInsightGeneratorAgent(overrides: AgentModelConfig = {}): InsightGeneratorAgent {
+export function createInsightGeneratorAgent(userId?: string, overrides: AgentModelConfig = {}): InsightGeneratorAgent {
   const modelId = overrides.modelId ?? resolveAgentModel()
   const temperature = overrides.temperature ?? ENV.IFS_TEMPERATURE
   const baseURL = overrides.baseURL ?? OPENROUTER_API_BASE_URL
@@ -75,10 +75,12 @@ export function createInsightGeneratorAgent(overrides: AgentModelConfig = {}): I
         } as const)
       : undefined
 
+  const insightTools = createInsightResearchTools(userId)
+
   return new Agent({
     name: 'insightGeneratorAgent',
     instructions: systemPrompt,
-    tools: insightResearchTools,
+    tools: insightTools,
     model: openrouter(modelId, modelSettings),
   })
 }
