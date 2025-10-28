@@ -2,6 +2,9 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { dev } from '@/config/dev'
+import { resolveUserId } from '@/config/dev'
+import { getCurrentPersona, TEST_PERSONAS } from '@/config/personas'
 
 export interface UserProfile {
   id: string
@@ -25,6 +28,29 @@ export function UserProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const fetchProfile = async () => {
       setLoading(true)
+
+      // DEV MODE: Inject mock profile based on persona
+      if (dev.enabled) {
+        try {
+          const userId = resolveUserId()
+          const persona = getCurrentPersona()
+          const personaConfig = TEST_PERSONAS[persona]
+
+          setProfile({
+            id: userId,
+            name: personaConfig.name,
+            bio: personaConfig.description || '',
+            avatarUrl: null,
+          })
+        } catch (error) {
+          console.error('Failed to create dev mode profile', error)
+          setProfile(null)
+        }
+        setLoading(false)
+        return
+      }
+
+      // PRODUCTION: Use Supabase auth
       const {
         data: { user },
       } = await supabase.auth.getUser()
