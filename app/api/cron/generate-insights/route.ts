@@ -84,7 +84,8 @@ export async function GET(request: Request) {
     }
 
     console.log(`[Cron] Processing user ${userId}.`)
-    const mastra = getMastra()
+    // Create a scoped Mastra instance with userId for proper tool binding
+    const mastra = getMastra({ userId })
     const insightWorkflow = mastra.getWorkflow('generateInsightWorkflow')
     const workflowRun = await insightWorkflow.execute({
       input: { userId },

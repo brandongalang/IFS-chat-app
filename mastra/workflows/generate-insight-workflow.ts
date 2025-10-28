@@ -1,6 +1,6 @@
 import { createWorkflow } from '@mastra/core';
 import { z } from 'zod';
-import { insightResearchTools, getRecentSessions, getActiveParts, getPolarizedRelationships, getRecentInsights } from '../tools/insight-research-tools';
+import { createInsightResearchTools, getRecentSessions, getActiveParts, getPolarizedRelationships, getRecentInsights } from '../tools/insight-research-tools';
 import type { InsightGeneratorAgent } from '../agents/insight-generator';
 
 const workflowInputSchema = z.object({
@@ -24,6 +24,7 @@ export function createGenerateInsightWorkflow(insightGeneratorAgent: InsightGene
       }),
       async execute(input: any) {
         console.log('Workflow: Starting research step for user', input.userId);
+        const insightTools = createInsightResearchTools(input.userId);
         const [recentSessions, activeParts, polarizedRelationships, recentInsights] = await Promise.all([
           getRecentSessions({ userId: input.userId, lookbackDays: 7, limit: 10 }),
           getActiveParts({ userId: input.userId, limit: 10 }),
