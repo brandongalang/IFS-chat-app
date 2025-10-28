@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/memory-update",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/update-digest",
+      "schedule": "10 8 * * *"
+    },
+    {
+      "path": "/api/cron/generate-insights",
+      "schedule": "30 8 * * *"
     }
   ]
 }

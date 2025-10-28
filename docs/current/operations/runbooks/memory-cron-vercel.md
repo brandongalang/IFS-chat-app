@@ -3,8 +3,8 @@
 This runbook explains how to operate the daily `/api/cron/memory-update` job now scheduled through Vercel Cron.
 
 ## Overview
-- **Schedule:** 08:00 UTC daily (configured in `vercel.json`).
-- **Endpoint:** `POST /api/cron/memory-update` (app router handler).
+- **Schedule:** 08:00 UTC daily (configured in `vercel.json`). Follow-on jobs run at 08:10 (`/api/cron/update-digest`) and 08:30 (`/api/cron/generate-insights`) to consume the fresh memory data.
+- **Endpoint:** `GET /api/cron/memory-update` (also accepts `POST` for manual invocations).
 - **Auth:** Requires `CRON_SECRET` provided via either `Authorization: Bearer <secret>` or `x-vercel-cron-secret: <secret>` header.
 - **Purpose:**
   - Reconstruct and persist `user_memory_snapshots` for users active in the last 24 hours
@@ -23,15 +23,20 @@ This runbook explains how to operate the daily `/api/cron/memory-update` job now
 ## Operating procedures
 ### Manual trigger (production)
 ```bash
-curl -X POST https://<production-host>/api/cron/memory-update \
+curl -X GET https://<production-host>/api/cron/memory-update \
   -H "x-vercel-cron-secret: $CRON_SECRET"
 ```
 
 ### Manual trigger (preview/staging)
 ```bash
-curl -X POST https://<preview-host>/api/cron/memory-update \
+curl -X GET https://<preview-host>/api/cron/memory-update \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
+
+### Downstream cron coordination (new 2025-10-24)
+- `/api/cron/update-digest` runs at 08:10 UTC to drain the `memory_updates` queue once memory snapshots finish.
+- `/api/cron/generate-insights` runs at 08:30 UTC to launch the Mastra insight workflow using the latest digests.
+- Monitor all three jobs in Vercel Cron dashboard; failures upstream can cascade, so remediate memory-update issues first.
 
 ### Context cache refresh (new 2025-10-15)
 - After the cron completes, optionally schedule a follow-up task (cron or manual) to refresh the PRD warm-start cache:
