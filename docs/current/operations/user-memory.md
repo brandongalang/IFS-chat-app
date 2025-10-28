@@ -20,12 +20,8 @@ This backend feature maintains an evolving, agent-readable "user memory" hub. It
 - `GET /api/cron/memory-update` (also accepts `POST` for manual triggers)
   - Header: `Authorization: Bearer <CRON_SECRET>`
   - Finds users active in last 24h, runs the update pipeline for each
-  - **Enhanced**: Finalizes stale sessions, enqueues queue entries, and processes pending memory updates for all users
-  - Returns per-user result, latest version if saved, queue summary, and change-log stats
-- `GET /api/cron/update-digest` (also accepts `POST`)
-  - Header: `Authorization: Bearer <CRON_SECRET>`
-  - Iterates over users with pending `memory_updates`, executes Mastra summarizer workflow, and records digest telemetry
-  - Returns `{ processed, results }` including per-user success or error payloads for observability
+  - **Enhanced**: Finalizes stale sessions, enqueues queue entries, processes pending memory updates for all users, and runs digest summarization
+  - Returns per-user result, latest version if saved, queue summary, digest summary, and change-log stats
 - `POST /api/memory/preflight`
   - Authenticated user endpoint invoked before chat agent boot
   - Checks for pending queue items and, if present, runs a scoped `summarizePendingUpdates({ userId })`
@@ -57,9 +53,8 @@ The Memory V2 system stores part profiles, relationships, and user context as ma
 
 ## Scheduling
 - Primary scheduler: **Vercel Cron** configured in `vercel.json`.
-  - 08:00 UTC — `/api/cron/memory-update`
-  - 08:10 UTC — `/api/cron/update-digest`
-  - 08:30 UTC — `/api/cron/generate-insights` (insights pipeline consumes the fresh digests)
+  - 08:00 UTC — `/api/cron/memory-update` (handles memory snapshots and digest summarization)
+  - 08:10 UTC — `/api/cron/generate-insights` (insights pipeline consumes the fresh digests)
 - Secrets live in Vercel project settings:
   - `CRON_SECRET`: shared between the cron definition and the Next.js runtime.
   - `APP_BASE_URL` / `BASE_URL`: used by the cron handler for absolute links and logging.

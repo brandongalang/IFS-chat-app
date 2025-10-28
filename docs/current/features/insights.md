@@ -28,7 +28,8 @@ Surface trends and patterns across sessions and parts over time.
 - insights table (or equivalent) reserved; exact schema may evolve
 
 ## Configuration
-- Daily Vercel Cron schedule hits `/api/cron/generate-insights` at **08:30 UTC** (`vercel.json`)
+- Daily Vercel Cron schedule hits `/api/cron/generate-insights` at **08:10 UTC** (`vercel.json`)
+- Runs shortly after the 08:00 UTC memory-update job completes (which handles memory snapshots and digest updates)
 - Cron requests reuse the shared `CRON_SECRET` header handled by `requireCronAuth`
 
 ## Testing
