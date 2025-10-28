@@ -1,7 +1,7 @@
 import { Agent } from '@mastra/core'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { ENV, OPENROUTER_API_BASE_URL, env } from '@/config/env'
-import { resolveModel } from '@/config/model'
+import { resolveChatModel } from '@/config/model'
 import { getPartTools } from '../tools/part-tools.mastra'
 import { createAssessmentTools } from '../tools/assessment-tools'
 import { createProposalTools } from '../tools/proposal-tools'
@@ -21,7 +21,7 @@ type Profile = IFSAgentProfile
 
 export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {}) {
   const userId = profile?.userId
-  const modelId = overrides.modelId ?? resolveModel(ENV.IFS_MODEL)
+  const modelId = overrides.modelId ?? resolveChatModel()
   const temperature = overrides.temperature ?? ENV.IFS_TEMPERATURE
   const baseURL = overrides.baseURL ?? OPENROUTER_API_BASE_URL
 

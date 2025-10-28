@@ -1,7 +1,7 @@
 import { Mastra } from '@mastra/core'
 import { PinoLogger } from '@mastra/loggers'
 import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
-import { resolveModel } from '@/config/model'
+import { resolveChatModel, resolveAgentModel } from '@/config/model'
 import { createIfsAgent } from './agents/ifs-agent'
 import { createInsightGeneratorAgent } from './agents/insight-generator'
 import { createUpdateSummarizerAgent } from './agents/update-summarizer'
@@ -16,15 +16,20 @@ type AgentRuntimeConfig = {
   temperature: number
 }
 
-const defaultModelId = resolveModel(ENV.IFS_MODEL)
+const chatConfig: AgentRuntimeConfig = {
+  modelId: resolveChatModel(),
+  temperature: ENV.IFS_TEMPERATURE,
+}
+
 const agentConfig: AgentRuntimeConfig = {
-  modelId: defaultModelId,
+  modelId: resolveAgentModel(),
   temperature: ENV.IFS_TEMPERATURE,
 }
 
 if (process.env.NODE_ENV !== 'test') {
   console.info('[Mastra] Agent configuration', {
-    modelId: agentConfig.modelId,
+    chatModelId: chatConfig.modelId,
+    agentModelId: agentConfig.modelId,
     temperature: agentConfig.temperature,
     baseURL: OPENROUTER_API_BASE_URL,
   })
@@ -43,7 +48,7 @@ export function createMastra(profile: Profile = null) {
     }),
     // Expose agents and workflows to the Mastra runtime
     agents: {
-      ifsAgent: createIfsAgent(profile, agentConfig),
+      ifsAgent: createIfsAgent(profile, chatConfig),
       insightGeneratorAgent,
       updateSummarizerAgent: createUpdateSummarizerAgent(agentConfig),
       inboxObservationAgent,

@@ -2,7 +2,7 @@ import { Agent } from '@mastra/core'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 
 import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
-import { resolveModel } from '@/config/model'
+import { resolveAgentModel } from '@/config/model'
 import { createObservationResearchTools, type ObservationResearchTools } from '../tools/inbox-observation-tools'
 import type { ObservationBatch } from '@/lib/inbox/observation-schema'
 
@@ -48,7 +48,7 @@ export function createInboxObservationAgent(
   profile: Profile = null,
   config: InboxObservationAgentConfig = {},
 ): InboxObservationAgent {
-  const modelId = config.modelId ?? resolveModel(ENV.IFS_MODEL)
+  const modelId = config.modelId ?? resolveAgentModel()
   const temperature = typeof config.temperature === 'number' ? config.temperature : ENV.IFS_TEMPERATURE
   const baseURL = config.baseURL ?? OPENROUTER_API_BASE_URL
 
