@@ -23,7 +23,8 @@
       "paths": ["supabase/migrations/**"],
       "docs": [
         "docs/current/operations/user-memory.md",
-        "docs/current/operations/memory-cron-vercel.md"
+        "docs/current/operations/memory-cron-vercel.md",
+        "docs/current/architecture/database-performance.md"
       ]
     },
     {
