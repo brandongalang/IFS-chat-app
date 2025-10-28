@@ -4,7 +4,7 @@ import dotenv from 'dotenv'
 import { existsSync } from 'fs'
 import { createClient } from '@supabase/supabase-js'
 import { TEST_PERSONAS, type TestPersona, getPersonaUserId } from '../config/personas'
-import { DEFAULT_MODEL_ID } from '../config/model'
+import { resolveChatModel } from '../config/model'
 
 const envPath = existsSync('.env.local') ? '.env.local' : '.env'
 dotenv.config({ path: envPath })
@@ -83,7 +83,7 @@ async function callOpenRouter(openrouterKey: string, systemPrompt: string, userP
       'X-Title': 'IFS Mock Session Seeder'
     },
     body: JSON.stringify({
-      model: DEFAULT_MODEL_ID,
+      model: resolveChatModel(),
       temperature: 0.8,
       max_tokens: 1400,
       messages: [
