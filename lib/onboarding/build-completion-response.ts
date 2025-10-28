@@ -26,7 +26,7 @@ export function buildCompletionResponse(
 
   if (options.setCompletionCookie ?? true) {
     try {
-      res.cookies.set('ifs_onb', '0', {
+      res.cookies.set('ifs_onb', '1', {
         path: '/',
         httpOnly: false,
         sameSite: 'lax',

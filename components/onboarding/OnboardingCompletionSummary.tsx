@@ -34,7 +34,7 @@ export function OnboardingCompletionSummary({ summary, onContinue }: OnboardingC
             {themeChips.map(theme => (
               <span
                 key={theme.id}
-                className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
+                className="inline-flex items-center rounded-full bg-primary/20 px-3 py-1 text-xs font-medium text-primary-foreground border border-primary/30"
               >
                 {theme.label} · {theme.score}%
               </span>
