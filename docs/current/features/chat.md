@@ -2,12 +2,13 @@
 title: Feature: Chat
 owner: @brandongalang
 status: shipped
-last_updated: 2025-10-19
+last_updated: 2025-10-24
 feature_flag: null
 code_paths:
   - app/chat/page.tsx
   - app/api/chat/route.ts
   - app/api/chat/logic.ts
+  - app/api/chat/stream-pacing.ts
   - app/_shared/hooks/useChat.ts
   - app/_shared/hooks/useDailyCheckIns.ts
   - components/ethereal/EtherealChat.tsx
@@ -16,6 +17,10 @@ code_paths:
   - components/tasks/TaskList.tsx
   - components/ai-elements/tool.tsx
   - components/ai-elements/code-block.tsx
+  - config/chat-streaming.ts
+  - config/tailwind.config.js
+  - package.json
+  - scripts/tests/unit/chat-streaming-pacing.test.ts
 related_prs:
   - #34
   - #292
@@ -38,6 +43,7 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
 - UI at app/chat/page.tsx with streaming responses
 - `useLockedViewportHeight` hook in `app/chat/page.tsx` keeps the chat viewport anchored to the largest measured height so the mobile keyboard can overlay without pushing the conversation upward.
 - `useChat` consumes AI SDK UI message parts (text/tool/data) and streams via `DefaultChatTransport`, yielding a single assistant response per turn while preserving token-by-token rendering; tool/dynamic parts now map into Task events keyed by tool call, with simplified status copy (`Looking through my notes…`, `Writing notes…`) and previews sourced from tool input/output.
+- **Server-side pacing (2025-10-24)**: `uiMessageSseFromTextStream` and `uiMessageSseFromAsyncIterable` wrap agent deltas with a configurable pacer (`config/chat-streaming.ts`), delaying pushes just enough to target the configured tokens-per-second rate while still emitting `[DONE]` immediately at completion.
 - Task activity logs now deduplicate entries via a Set-backed merge routine, keeping render performance predictable even with
   large tool histories while still capping to the five most recent unique updates.
 - End-session requests now run through a lightweight state machine (`'idle'` → `'closing'` → `'cleanup'` → `'ended'` → `'idle'`) so the composer locks while the closing prompt streams, then automatically resets after 1.5s to allow starting a new session without page refresh, preventing stuck input when streaming completes or fails.
@@ -54,6 +60,7 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
 
 ## Configuration
 - Env vars for model/provider configuration (names only in code); see project env
+- `IFS_STREAM_TOKENS_PER_SECOND` (optional) overrides the gentle default (12 TPS) defined in `config/chat-streaming.ts`; set to `0` or omit to disable pacing.
 
 ## Testing
 - Unit tests around parsing/format functions where present
@@ -65,6 +72,7 @@ Enables guided self-reflection, parts work, and agent-assisted workflows.
 ## UI/UX notes
 - Messages area top padding increased from 16px to 40px (2025-01-11) to prevent first message from being cut off at viewport edge
 - Active task overlay position adjusted proportionally to align with new padding
+- Assistant bubbles gain a soft pulse and radial glow while streaming, and markdown content eases into place with reduced-motion awareness (2025-10-24).
 
 ## Markdown Rendering (2025-10-11)
 - **Assistant messages** now render markdown using `streamdown` v1.4.0 (Vercel's streaming-optimized markdown renderer)
