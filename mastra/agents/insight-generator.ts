@@ -2,7 +2,7 @@ import { Agent } from '@mastra/core'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { z } from 'zod'
 import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
-import { resolveModel } from '@/config/model'
+import { resolveAgentModel } from '@/config/model'
 import type { AgentModelConfig } from './ifs-agent'
 import { insightResearchTools } from '../tools/insight-research-tools'
 
@@ -57,7 +57,7 @@ After completing your research, analyze your findings to identify opportunities 
 export type InsightGeneratorAgent = Agent<'insightGeneratorAgent', typeof insightResearchTools>
 
 export function createInsightGeneratorAgent(overrides: AgentModelConfig = {}): InsightGeneratorAgent {
-  const modelId = overrides.modelId ?? resolveModel(ENV.IFS_MODEL)
+  const modelId = overrides.modelId ?? resolveAgentModel()
   const temperature = overrides.temperature ?? ENV.IFS_TEMPERATURE
   const baseURL = overrides.baseURL ?? OPENROUTER_API_BASE_URL
 

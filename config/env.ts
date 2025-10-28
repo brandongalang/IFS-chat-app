@@ -5,7 +5,8 @@ const EnvSchema = z.object({
 
   // Providers / Secrets
   OPENROUTER_API_KEY: z.string().optional(),
-  IFS_MODEL: z.string().default('google/gemini-2.5-flash-preview-09-2025'),
+  IFS_CHAT_MODEL: z.string().default('google/gemini-2.5-flash-lite-preview-09-2025'),
+  IFS_AGENT_MODEL: z.string().default('google/gemini-2.5-flash-lite-preview-09-2025'),
   IFS_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.3),
 
   // Supabase
@@ -41,7 +42,8 @@ const raw = EnvSchema.parse({
 
   // Providers / Secrets
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
-  IFS_MODEL: process.env.IFS_MODEL || undefined,
+  IFS_CHAT_MODEL: process.env.IFS_CHAT_MODEL,
+  IFS_AGENT_MODEL: process.env.IFS_AGENT_MODEL,
   IFS_TEMPERATURE: process.env.IFS_TEMPERATURE,
 
   // Supabase
@@ -83,7 +85,7 @@ const defaultDevMode = raw.NODE_ENV === 'development' || raw.NODE_ENV === 'test'
 export const ENV = raw
 
 export const env = {
-  ...raw,
+  ...ENV,
   NEXT_PUBLIC_SUPABASE_URL: raw.NEXT_PUBLIC_SUPABASE_URL ?? '',
   NEXT_PUBLIC_SUPABASE_ANON_KEY: raw.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
   isProd: raw.NODE_ENV === 'production',
@@ -111,7 +113,8 @@ export const env = {
     toBool(raw.IFS_DEV_FORCE_NO_SUPABASE) ||
     !raw.NEXT_PUBLIC_SUPABASE_URL ||
     !raw.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  ifsModel: raw.IFS_MODEL,
+  ifsChatModel: raw.IFS_CHAT_MODEL,
+  ifsAgentModel: raw.IFS_AGENT_MODEL,
   ifsTemperature: raw.IFS_TEMPERATURE,
   // Memory storage config
   memoryV2Enabled:
