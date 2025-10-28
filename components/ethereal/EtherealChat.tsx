@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation"
 import type { ToolUIPart } from "@/app/_shared/hooks/useChat.helpers"
 import { readAndClearContextFromSession } from "@/lib/inbox/chat-bridge"
 import { emitInboxEvent } from "@/lib/analytics/inbox"
+import { EndSessionDialog } from "./EndSessionDialog"
 
 type ActiveToolState = ToolHeaderProps["state"]
 type ActiveToolType = ToolHeaderProps["type"]
@@ -74,6 +75,7 @@ export function EtherealChat() {
     isLoading,
     hasActiveSession,
     endSession,
+    clearChat,
     tasksByMessage,
     currentStreamingId,
     needsAuth,
@@ -87,6 +89,12 @@ export function EtherealChat() {
   const [sessionState, setSessionState] = useState<'idle' | 'closing' | 'cleanup' | 'ended'>('idle')
   const sessionClosed = sessionState !== 'idle'
   const isClosing = sessionState === 'closing'
+  const [showEndSessionDialog, setShowEndSessionDialog] = useState(false)
+
+  // Track whether user has sent at least one message
+  const hasUserMessages = useMemo(() => {
+    return messages.some(msg => msg.role === 'user')
+  }, [messages])
 
   // redirect to login if auth required
   useEffect(() => {
@@ -233,18 +241,19 @@ export function EtherealChat() {
     }
   }, [sessionState, isLoading, currentStreamingId, endSession])
 
-  // Separate effect to handle the 'ended' -> 'idle' transition
+  // Show modal when session ends
   useEffect(() => {
-    if (sessionState !== 'ended') return
-
-    const timer = setTimeout(() => {
+    if (sessionState === 'ended') {
+      setShowEndSessionDialog(true)
       setSessionState('idle')
-    }, 1500)
-
-    return () => {
-      clearTimeout(timer)
     }
   }, [sessionState])
+
+  const handleStartNewSession = useCallback(() => {
+    setShowEndSessionDialog(false)
+    clearChat()
+    setSessionState('idle')
+  }, [clearChat])
 
   const onSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
     if (sessionClosed || isClosing) {
@@ -325,8 +334,10 @@ export function EtherealChat() {
                     variant="ghost"
                     size="sm"
                     onClick={handleEndSessionRequest}
-                    disabled={sessionClosed || isLoading}
-                    className="min-h-11 h-11 px-4 rounded-full bg-white/5 text-white hover:bg-white/10 active:scale-95 transition-transform"
+                    disabled={sessionClosed || isLoading || !hasUserMessages}
+                    className="min-h-11 h-11 px-4 rounded-full bg-white/5 text-white hover:bg-white/10 active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={!hasUserMessages ? "Send a message to start your session" : "End session"}
+                    aria-label={!hasUserMessages ? "End session disabled - send a message first" : "End session"}
                   >
                     <span className="text-xs uppercase tracking-[0.2em]">end session</span>
                   </Button>
@@ -354,6 +365,13 @@ export function EtherealChat() {
           </div>
         </PageContainer>
       </div>
+      
+      {/* End Session Modal */}
+      <EndSessionDialog
+        open={showEndSessionDialog}
+        onOpenChange={setShowEndSessionDialog}
+        onStartNewSession={handleStartNewSession}
+      />
     </div>
   )
 }
