@@ -15,10 +15,17 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
   webServer: {
-    command: 'bash -c "npm run build && npm run start"',
+    command: 'npm run dev:flow',
     url: BASE_URL,
     timeout: 120_000,
     reuseExistingServer: true,
+    env: {
+      ...process.env,
+      IFS_DEV_MODE: 'true',
+      NEXT_PUBLIC_IFS_DEV_MODE: 'true',
+      IFS_TEST_PERSONA: process.env.IFS_TEST_PERSONA ?? 'beginner',
+      NEXT_PUBLIC_IFS_TEST_PERSONA: process.env.NEXT_PUBLIC_IFS_TEST_PERSONA ?? 'beginner',
+    },
   },
 });
 

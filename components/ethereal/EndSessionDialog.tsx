@@ -1,9 +1,7 @@
 "use client"
 
-import * as React from 'react'
-import { useRouter } from 'next/navigation'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 interface EndSessionDialogProps {
   open: boolean
@@ -11,42 +9,26 @@ interface EndSessionDialogProps {
   onStartNewSession: () => void
 }
 
-export function EndSessionDialog({
-  open,
-  onOpenChange,
-  onStartNewSession,
-}: EndSessionDialogProps) {
-  const router = useRouter()
-
-  const handleBackToToday = () => {
-    // Navigate to the Today page root
-    router.push('/')
-  }
-
+export function EndSessionDialog({ open, onOpenChange, onStartNewSession }: EndSessionDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent data-testid="end-session-dialog">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Session Ended</DialogTitle>
-          <DialogDescription>
-            Your notes have been saved. Ready to return to your Today page?
-          </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
-          <Button
-            variant="outline"
-            onClick={onStartNewSession}
-            data-testid="start-new-session"
-          >
-            Start New Session
-          </Button>
-          <Button
-            onClick={handleBackToToday}
-            data-testid="back-to-today"
-          >
-            Back to Today
-          </Button>
-        </DialogFooter>
+        <div className="py-4">
+          <p className="text-muted-foreground mb-4">
+            Your session has been successfully ended. Would you like to start a new session?
+          </p>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+            <Button onClick={onStartNewSession}>
+              Start New Session
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   )

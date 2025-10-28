@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import { isToolOrDynamicToolUIPart } from "ai"
 import { useChat } from "@/hooks/useChat"
+import { dev } from "@/config/dev"
+import { getCurrentPersona as getClientPersona, TEST_PERSONAS } from "@/config/personas"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { PageContainer } from "@/components/common/PageContainer"
@@ -83,6 +85,7 @@ export function EtherealChat() {
     sendMessage,
   } = useChat()
   const { push } = useRouter()
+  const devModeEnabled = dev.enabled
   // UI state
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -96,12 +99,13 @@ export function EtherealChat() {
     return messages.some(msg => msg.role === 'user')
   }, [messages])
 
-  // redirect to login if auth required
+  // redirect to login if auth required (but not in dev mode)
   useEffect(() => {
-    if (!authLoading && needsAuth) {
+    // In dev mode, needsAuth should always be false due to mock profile
+    if (!authLoading && needsAuth && !devModeEnabled) {
       push('/auth/login')
     }
-  }, [authLoading, needsAuth, push])
+  }, [authLoading, needsAuth, push, devModeEnabled])
 
   // End any active session when this component unmounts
   useEffect(() => {
@@ -267,11 +271,29 @@ export function EtherealChat() {
     return null
   }
 
+  let devPersonaLabel: string | null = null
+  if (devModeEnabled) {
+    const persona = getClientPersona()
+    const personaConfig = TEST_PERSONAS[persona]
+    devPersonaLabel = personaConfig?.name || `${persona} (Missing)`
+  }
+
   return (
     <div className="absolute inset-0 flex flex-col">
       {/* Background image (optional) with gradient fallback */}
       <BackgroundImageLayer />
       <GradientBackdrop />
+      
+      {/* Dev Mode Indicator */}
+      {devPersonaLabel && (
+        <div className="absolute top-2 left-2 z-30">
+          <div className="bg-green-500/20 backdrop-blur-sm border border-green-500/30 rounded-full px-3 py-1.5">
+            <p className="text-xs text-green-300 font-medium">
+              Dev Mode: {devPersonaLabel}
+            </p>
+          </div>
+        </div>
+      )}
       {/* Subtle vignette to improve contrast over bright areas */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.10)_0%,rgba(0,0,0,0.22)_55%,rgba(0,0,0,0.38)_100%)]" />
 
