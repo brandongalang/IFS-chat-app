@@ -8,6 +8,7 @@ const EnvSchema = z.object({
   IFS_CHAT_MODEL: z.string().default('google/gemini-2.5-flash-lite-preview-09-2025'),
   IFS_AGENT_MODEL: z.string().default('google/gemini-2.5-flash-lite-preview-09-2025'),
   IFS_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.3),
+  IFS_STREAM_TOKENS_PER_SECOND: z.coerce.number().min(0).optional(),
 
   // Supabase
   NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
@@ -45,6 +46,7 @@ const raw = EnvSchema.parse({
   IFS_CHAT_MODEL: process.env.IFS_CHAT_MODEL,
   IFS_AGENT_MODEL: process.env.IFS_AGENT_MODEL,
   IFS_TEMPERATURE: process.env.IFS_TEMPERATURE,
+  IFS_STREAM_TOKENS_PER_SECOND: process.env.IFS_STREAM_TOKENS_PER_SECOND,
 
   // Supabase
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -116,6 +118,7 @@ export const env = {
   ifsChatModel: raw.IFS_CHAT_MODEL,
   ifsAgentModel: raw.IFS_AGENT_MODEL,
   ifsTemperature: raw.IFS_TEMPERATURE,
+  ifsStreamTokensPerSecond: raw.IFS_STREAM_TOKENS_PER_SECOND ?? null,
   // Memory storage config
   memoryV2Enabled:
     raw.MEMORY_AGENTIC_V2_ENABLED === undefined

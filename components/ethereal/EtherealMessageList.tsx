@@ -38,7 +38,9 @@ export function EtherealMessageList({ messages, tasksByMessage, currentStreaming
           isAssistant
             ? "bg-white/12 border-white/18 text-white/95 shadow-[0_18px_50px_rgba(5,15,20,0.35)]"
             : "bg-white/8 border-white/12 text-white/85 shadow-[0_12px_36px_rgba(5,5,10,0.25)]",
-          isStreaming && isAssistant ? "border-white/35 shadow-[0_0_42px_rgba(180,220,255,0.35)]" : undefined
+          isStreaming && isAssistant
+            ? "border-white/35 shadow-[0_0_42px_rgba(180,220,255,0.35)] animate-softPulse"
+            : undefined
         )
 
         const tasks = isAssistant ? tasksByMessage?.[message.id] : undefined
@@ -68,7 +70,15 @@ export function EtherealMessageList({ messages, tasksByMessage, currentStreaming
                 ) : null}
 
                 {isAssistant ? (
-                  <StreamingMarkdown text={message.content} />
+                  <div className={cn("relative", isStreaming ? "overflow-hidden" : undefined)}>
+                    {isStreaming ? (
+                      <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-[-1.25rem] rounded-[32px] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.28),rgba(255,255,255,0)_65%)] opacity-70 transition-opacity duration-500"
+                      />
+                    ) : null}
+                    <StreamingMarkdown text={message.content} isStreaming={isStreaming} className="relative z-10" />
+                  </div>
                 ) : (
                   <p className="whitespace-pre-wrap text-[15px] sm:text-[16px] lowercase tracking-wide text-white/90">
                     {message.content}

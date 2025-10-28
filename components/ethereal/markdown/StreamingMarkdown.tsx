@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { motion, useAnimation, useReducedMotion } from 'framer-motion'
 import { Streamdown } from 'streamdown'
 import { cn } from '@/lib/utils'
 import { CodeBlock, CodeBlockCopyButton } from '@/components/ai-elements/code-block'
@@ -13,6 +14,8 @@ interface StreamingMarkdownProps {
   text: string
   /** Optional className for styling */
   className?: string
+  /** Whether the markdown is actively streaming */
+  isStreaming?: boolean
 }
 
 /**
@@ -26,7 +29,31 @@ interface StreamingMarkdownProps {
  * @param props - The component props
  * @returns A React component that renders styled markdown content
  */
-export function StreamingMarkdown({ text, className }: StreamingMarkdownProps) {
+export function StreamingMarkdown({ text, className, isStreaming = false }: StreamingMarkdownProps) {
+  const controls = useAnimation()
+  const prefersReducedMotion = useReducedMotion()
+  const previousLengthRef = useRef(0)
+  const shouldAnimate = isStreaming && !prefersReducedMotion
+
+  useEffect(() => {
+    controls.set({ opacity: 1, y: 0 })
+  }, [controls])
+
+  useEffect(() => {
+    if (!shouldAnimate) {
+      controls.set({ opacity: 1, y: 0 })
+      previousLengthRef.current = text.length
+      return
+    }
+
+    if (text.length > previousLengthRef.current) {
+      controls.set({ opacity: 0.72, y: 6 })
+      controls.start({ opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } })
+    }
+
+    previousLengthRef.current = text.length
+  }, [text, controls, shouldAnimate])
+
   // Memoize components map for performance
   const components = useMemo(() => ({
     // Headings
@@ -165,7 +192,12 @@ export function StreamingMarkdown({ text, className }: StreamingMarkdownProps) {
 
   return (
     <div className={cn('text-white/90', className)} aria-live="polite">
-      <Streamdown components={components}>{text}</Streamdown>
+      <motion.div
+        initial={false}
+        animate={shouldAnimate ? controls : { opacity: 1, y: 0 }}
+      >
+        <Streamdown components={components}>{text}</Streamdown>
+      </motion.div>
     </div>
   )
 }

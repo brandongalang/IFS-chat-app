@@ -17,6 +17,15 @@ module.exports = {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)'
       },
+      keyframes: {
+        softPulse: {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.88', transform: 'scale(1.01)' }
+        }
+      },
+      animation: {
+        softPulse: 'softPulse 3.2s ease-in-out infinite'
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',

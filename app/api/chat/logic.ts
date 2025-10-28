@@ -1,4 +1,6 @@
+import { chatStreamingConfig } from '@/config/chat-streaming'
 import { env } from '@/config/env'
+import { createStreamPacer } from './stream-pacing'
 import { loadUnifiedUserContext } from '@/lib/memory/unified-loader'
 import { getUserClient } from '@/lib/supabase/clients'
 import { getSupabaseKey, getSupabaseUrl } from '@/lib/supabase/config'
@@ -180,6 +182,12 @@ function uiMessageSseFromTextStream(source: ReadableStream<Uint8Array>): Respons
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const push = (obj: unknown) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`))
+      const pace = createStreamPacer({ tokensPerSecond: chatStreamingConfig.tokensPerSecond })
+      const pushDelta = async (delta: string) => {
+        if (!delta) return
+        await pace(delta)
+        push({ type: 'text-delta', id: 'text-1', delta })
+      }
       const reader = source.getReader()
       const messageId = `msg-${Math.random().toString(36).slice(2)}`
       try {
@@ -189,10 +197,10 @@ function uiMessageSseFromTextStream(source: ReadableStream<Uint8Array>): Respons
           const { done, value } = await reader.read()
           if (done) break
           const delta = decoder.decode(value, { stream: true })
-          if (delta) push({ type: 'text-delta', id: 'text-1', delta })
+          await pushDelta(delta)
         }
         const remaining = decoder.decode()
-        if (remaining) push({ type: 'text-delta', id: 'text-1', delta: remaining })
+        await pushDelta(remaining)
         push({ type: 'text-end', id: 'text-1' })
         push({ type: 'finish' })
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
@@ -210,12 +218,18 @@ function uiMessageSseFromAsyncIterable(iterable: AsyncIterable<unknown>): Respon
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const push = (obj: unknown) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`))
+      const pace = createStreamPacer({ tokensPerSecond: chatStreamingConfig.tokensPerSecond })
+      const pushDelta = async (delta: string) => {
+        if (!delta) return
+        await pace(delta)
+        push({ type: 'text-delta', id: 'text-1', delta })
+      }
       const messageId = `msg-${Math.random().toString(36).slice(2)}`
       push({ type: 'start', messageId })
       push({ type: 'text-start', id: 'text-1' })
       for await (const chunk of iterable) {
         const delta = typeof chunk === 'string' ? chunk : JSON.stringify(chunk)
-        if (delta) push({ type: 'text-delta', id: 'text-1', delta })
+        await pushDelta(delta)
       }
       push({ type: 'text-end', id: 'text-1' })
       push({ type: 'finish' })
