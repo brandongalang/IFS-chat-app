@@ -33,10 +33,26 @@ async function saveInsightsToDb(
   return true
 }
 
+export const dynamic = 'force-dynamic' // Prevents caching
+
 export async function GET(request: Request) {
+  const authHeader = request.headers.get('authorization')
+  const cronHeader = request.headers.get('x-vercel-cron-secret')
+  console.log('[CRON] Insights auth check', {
+    authPresent: !!authHeader,
+    authStart: authHeader?.substring(0, 20) + '...',
+    cronPresent: !!cronHeader, 
+    cronStart: cronHeader?.substring(0, 15) + '...',
+    envHasCronSecret: !!process.env.CRON_SECRET,
+    envCronSecretLength: process.env.CRON_SECRET?.length || 0
+  })
+  
   if (!requireCronAuth(request)) {
+    console.log('[CRON] Insights auth FAILED')
     return errorResponse('Unauthorized', 401)
   }
+  
+  console.log('[CRON] Insights auth PASSED')
 
   console.log('[Cron] Starting daily insight generation job.')
   const supabase = getServiceClient()
