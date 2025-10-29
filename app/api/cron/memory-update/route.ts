@@ -50,11 +50,30 @@ async function runDailyMemoryUpdate(): Promise<Response> {
   })
 }
 
+export const dynamic = 'force-dynamic' // Prevents caching
+
 export async function GET(req: Request) {
-  if (!requireCronAuth(req)) return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
+  const authHeader = req.headers.get('authorization')
+  const cronHeader = req.headers.get('x-vercel-cron-secret')
+  console.log('[CRON] Memory-update auth check', {
+    authPresent: !!authHeader,
+    authStart: authHeader?.substring(0, 20) + '...',
+    cronPresent: !!cronHeader, 
+    cronStart: cronHeader?.substring(0, 15) + '...',
+    envHasCronSecret: !!process.env.CRON_SECRET,
+    envCronSecretLength: process.env.CRON_SECRET?.length || 0
+  })
+  
+  if (!requireCronAuth(req)) {
+    console.log('[CRON] Memory-update auth FAILED')
+    return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
+  }
+  
+  console.log('[CRON] Memory-update auth PASSED')
   try {
     return await runDailyMemoryUpdate()
   } catch (e: unknown) {
+    console.log('[CRON] Memory-update execution failed', { error: e instanceof Error ? e.message : 'unknown' })
     const message = e instanceof Error ? e.message : 'Internal Error'
     return errorResponse(message, HTTP_STATUS.INTERNAL_SERVER_ERROR)
   }
