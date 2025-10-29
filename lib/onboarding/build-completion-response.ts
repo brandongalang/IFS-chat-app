@@ -11,10 +11,17 @@ export function buildCompletionResponse(
   options: BuildCompletionResponseOptions = {}
 ): NextResponse<CompletionResponse> {
   const redirectBase = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const isHttps = (() => {
+    try {
+      return new URL(redirectBase).protocol === 'https:';
+    } catch {
+      return process.env.NODE_ENV === 'production';
+    }
+  })();
 
   const response: CompletionResponse = {
     ok: true,
-    redirect: `${redirectBase}/`,
+    redirect: `${redirectBase}/chat`,
     completed_at: completedAt,
   };
 
@@ -30,7 +37,8 @@ export function buildCompletionResponse(
         path: '/',
         httpOnly: false,
         sameSite: 'lax',
-        secure: true,
+        secure: isHttps,
+        maxAge: 60 * 60 * 6,
       });
     } catch {}
   }

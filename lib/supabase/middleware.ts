@@ -65,6 +65,10 @@ export async function updateSession(request: NextRequest) {
 
   // If unauthenticated and not in dev persona mode, redirect to login (except /auth and /login)
   if (!session && !isDevPersona) {
+    // Allow cron endpoints without authentication
+    if (path.startsWith('/api/cron/')) {
+      return supabaseResponse
+    }
     if (!path.startsWith('/login') && !path.startsWith('/auth')) {
       const url = request.nextUrl.clone()
       url.pathname = '/auth/login'
@@ -113,7 +117,7 @@ export async function updateSession(request: NextRequest) {
 
       // Prevent loop: if user completed but hits /onboarding, send to home
       if (path.startsWith('/onboarding') && isCompleted) {
-        const redirect = NextResponse.redirect(new URL('/', request.url))
+        const redirect = NextResponse.redirect(new URL('/chat', request.url))
         for (const c of supabaseResponse.cookies.getAll()) {
           redirect.cookies.set(c)
         }

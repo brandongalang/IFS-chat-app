@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     if (userState.status === 'completed') {
       const completedAt = userState.completed_at ?? new Date().toISOString();
       const summary = await buildOnboardingSummary(supabase, user.id);
-      return buildCompletionResponse(completedAt, { setCompletionCookie: false, summary });
+      return buildCompletionResponse(completedAt, { setCompletionCookie: true, summary });
     }
 
     // Version conflict check
