@@ -117,7 +117,7 @@ export async function updateSession(request: NextRequest) {
 
       // Prevent loop: if user completed but hits /onboarding, send to home
       if (path.startsWith('/onboarding') && isCompleted) {
-        const redirect = NextResponse.redirect(new URL('/', request.url))
+        const redirect = NextResponse.redirect(new URL('/chat', request.url))
         for (const c of supabaseResponse.cookies.getAll()) {
           redirect.cookies.set(c)
         }
