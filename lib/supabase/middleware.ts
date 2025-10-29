@@ -65,6 +65,10 @@ export async function updateSession(request: NextRequest) {
 
   // If unauthenticated and not in dev persona mode, redirect to login (except /auth and /login)
   if (!session && !isDevPersona) {
+    // Allow cron endpoints without authentication
+    if (path.startsWith('/api/cron/')) {
+      return supabaseResponse
+    }
     if (!path.startsWith('/login') && !path.startsWith('/auth')) {
       const url = request.nextUrl.clone()
       url.pathname = '/auth/login'
