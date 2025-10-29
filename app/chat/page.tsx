@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { Inter } from "next/font/google"
 import { EtherealChat } from "@/components/ethereal/EtherealChat"
 
@@ -19,6 +20,12 @@ export default function ChatPage() {
         className={`${inter.variable} font-sans min-h-screen h-screen relative overflow-hidden`}
         style={containerStyle}
       >
+        <Link
+          href="/today"
+          className="absolute left-3 top-3 z-10 inline-flex items-center rounded-md border border-border/40 bg-card/20 px-3 py-1.5 text-xs text-foreground/80 backdrop-blur transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+        >
+          Home
+        </Link>
         <EtherealChat />
       </div>
     </Suspense>

@@ -21,7 +21,7 @@ export function buildCompletionResponse(
 
   const response: CompletionResponse = {
     ok: true,
-    redirect: `${redirectBase}/chat`,
+    redirect: `${redirectBase}/today`,
     completed_at: completedAt,
   };
 
