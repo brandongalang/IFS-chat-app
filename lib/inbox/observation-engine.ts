@@ -652,5 +652,5 @@ function computeMessageClassification(candidate: ObservationCandidate): MessageC
   return 'Observation'
 }
 
-export type { ObservationTrace, ObservationTraceResolvers, MessageClassification }
+export type { ObservationTrace, ObservationTraceResolvers }
 
