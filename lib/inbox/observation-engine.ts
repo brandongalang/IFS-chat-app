@@ -35,6 +35,10 @@ export interface ObservationEngineOptions {
   now?: Date
   metadata?: Record<string, unknown>
   traceResolvers?: Partial<ObservationTraceResolvers> | null
+  telemetry?: {
+    enabled?: boolean
+    runId?: string
+  }
 }
 
 export interface InsertedObservationSummary {
@@ -58,6 +62,64 @@ export interface ObservationEngineResult {
 
 const DEFAULT_QUEUE_LIMIT = 3
 const DEFAULT_LOOKBACK_DAYS = 14
+
+const QUESTION_INTERROGATIVE_WORDS = new Set([
+  'how',
+  'what',
+  'why',
+  'when',
+  'where',
+  'which',
+  'who',
+])
+
+const QUESTION_AUXILIARY_WORDS = new Set([
+  'am',
+  'are',
+  'can',
+  'could',
+  'did',
+  'do',
+  'does',
+  'had',
+  'has',
+  'have',
+  'is',
+  'may',
+  'might',
+  'shall',
+  'should',
+  'was',
+  'were',
+  'will',
+  'would',
+])
+
+const QUESTION_PRONOUNS = new Set([
+  'i',
+  'you',
+  'he',
+  'she',
+  'we',
+  'they',
+  'it',
+  'me',
+  'my',
+  'mine',
+  'your',
+  'yours',
+  'our',
+  'ours',
+  'their',
+  'theirs',
+  'his',
+  'her',
+  'hers',
+  'its',
+  'them',
+  'us',
+  'there',
+])
 
 type ObservationCandidateWithHash = ObservationCandidate & { semanticHash: string }
 
@@ -88,6 +150,20 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
   const now = options.now ?? new Date()
 
   const queue = await getInboxQueueSnapshot(supabase, userId, { limit: queueLimit })
+  if (options.telemetry?.enabled) {
+    await supabase.from('inbox_observation_telemetry').insert({
+      user_id: userId,
+      tool: 'inbox_engine.queue_snapshot',
+      duration_ms: 0,
+      metadata: {
+        runId: options.telemetry?.runId ?? null,
+        total: queue.total,
+        available: queue.available,
+        limit: queue.limit,
+        hasCapacity: queue.hasCapacity,
+      },
+    })
+  }
   if (!queue.hasCapacity) {
     return {
       status: 'skipped',
@@ -99,6 +175,17 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
   }
 
   const history = await getRecentObservationHistory(supabase, userId, { lookbackDays })
+  if (options.telemetry?.enabled) {
+    await supabase.from('inbox_observation_telemetry').insert({
+      user_id: userId,
+      tool: 'inbox_engine.history_summary',
+      duration_ms: 0,
+      metadata: {
+        runId: options.telemetry?.runId ?? null,
+        historyCount: history.length,
+      },
+    })
+  }
   const historyHashes = new Set(history.map((entry) => entry.semanticHash).filter(Boolean) as string[])
   const remaining = Math.min(queue.available, queueLimit)
 
@@ -116,6 +203,15 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
 
   let agentRun: InboxObservationAgentRunResult
   try {
+    const agentStartedAt = Date.now()
+    if (options.telemetry?.enabled) {
+      await supabase.from('inbox_observation_telemetry').insert({
+        user_id: userId,
+        tool: 'inbox_agent.invoke',
+        duration_ms: 0,
+        metadata: { runId: options.telemetry?.runId ?? null },
+      })
+    }
     agentRun = await agent.run({
       input: prompt,
       context: {
@@ -124,7 +220,28 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         metadata: options.metadata ?? {},
       },
     })
+    if (options.telemetry?.enabled) {
+      await supabase.from('inbox_observation_telemetry').insert({
+        user_id: userId,
+        tool: 'inbox_agent.output_received',
+        duration_ms: Date.now() - agentStartedAt,
+        metadata: {
+          runId: options.telemetry?.runId ?? null,
+          status: agentRun?.status ?? 'unknown',
+          hasOutput: Boolean(agentRun?.output),
+        },
+      })
+    }
   } catch (error) {
+    if (options.telemetry?.enabled) {
+      await supabase.from('inbox_observation_telemetry').insert({
+        user_id: userId,
+        tool: 'inbox_agent.error',
+        duration_ms: 0,
+        metadata: { runId: options.telemetry?.runId ?? null },
+        error: error instanceof Error ? error.message : 'unknown agent failure',
+      })
+    }
     return {
       status: 'error',
       queue,
@@ -148,6 +265,15 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
   const parsed = observationBatchSchema.safeParse(agentRun.output)
   if (!parsed.success) {
     const error = new Error('Failed to parse observation agent output')
+    if (options.telemetry?.enabled) {
+      await supabase.from('inbox_observation_telemetry').insert({
+        user_id: userId,
+        tool: 'inbox_engine.parse.error',
+        duration_ms: 0,
+        metadata: { runId: options.telemetry?.runId ?? null },
+        error: error.message,
+      })
+    }
     return {
       status: 'error',
       queue,
@@ -160,6 +286,19 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
 
   const candidates = parsed.data.observations
   const filtered = filterObservationCandidates(candidates, historyHashes, remaining)
+  if (options.telemetry?.enabled) {
+    await supabase.from('inbox_observation_telemetry').insert({
+      user_id: userId,
+      tool: 'inbox_engine.filter.summary',
+      duration_ms: 0,
+      metadata: {
+        runId: options.telemetry?.runId ?? null,
+        candidateCount: (candidates ?? []).length,
+        filteredCount: filtered.length,
+        remaining,
+      },
+    })
+  }
 
   const traceResolvers = options.traceResolvers === null
     ? null
@@ -179,6 +318,14 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
   )
 
   if (!augmentedCandidates.length) {
+    if (options.telemetry?.enabled) {
+      await supabase.from('inbox_observation_telemetry').insert({
+        user_id: userId,
+        tool: 'inbox_engine.no_candidates',
+        duration_ms: 0,
+        metadata: { runId: options.telemetry?.runId ?? null },
+      })
+    }
     return {
       status: 'skipped',
       queue,
@@ -196,6 +343,17 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
       now,
       metadata: options.metadata,
     })
+    if (options.telemetry?.enabled) {
+      await supabase.from('inbox_observation_telemetry').insert({
+        user_id: userId,
+        tool: 'inbox_engine.persist.success',
+        duration_ms: 0,
+        metadata: {
+          runId: options.telemetry?.runId ?? null,
+          insertedCount: inserted.length,
+        },
+      })
+    }
 
     return {
       status: 'success',
@@ -204,6 +362,15 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
       historyCount: history.length,
     }
   } catch (error) {
+    if (options.telemetry?.enabled) {
+      await supabase.from('inbox_observation_telemetry').insert({
+        user_id: userId,
+        tool: 'inbox_engine.persist.error',
+        duration_ms: 0,
+        metadata: { runId: options.telemetry?.runId ?? null },
+        error: error instanceof Error ? error.message : 'Failed to persist observations',
+      })
+    }
     return {
       status: 'error',
       queue,
@@ -610,31 +777,70 @@ function sanitizeMarkdownPath(path: string): string {
 
 export type MessageClassification = 'Observation' | 'Question' | 'Label'
 
+function looksLikeStructuredQuestion(tokens: string[]): boolean {
+  if (!tokens.length) {
+    return false
+  }
+
+  const [first, ...rest] = tokens
+
+  if (QUESTION_AUXILIARY_WORDS.has(first)) {
+    if (!rest.length) {
+      return false
+    }
+    const window = rest.slice(0, 5)
+    const hasPronoun = window.some((token) => QUESTION_PRONOUNS.has(token))
+    const hasInterrogative = window.some((token) => QUESTION_INTERROGATIVE_WORDS.has(token))
+    return hasPronoun || hasInterrogative
+  }
+
+  if (!QUESTION_INTERROGATIVE_WORDS.has(first)) {
+    return false
+  }
+
+  const restWindow = rest.slice(0, 4)
+  if (restWindow.some((token) => QUESTION_AUXILIARY_WORDS.has(token))) {
+    return true
+  }
+
+  if (rest.length >= 2 && QUESTION_PRONOUNS.has(rest[0])) {
+    const pronounWindow = rest.slice(1, 4)
+    if (pronounWindow.some((token) => QUESTION_AUXILIARY_WORDS.has(token))) {
+      return true
+    }
+  }
+
+  return false
+}
+
 function computeMessageClassification(candidate: ObservationCandidate): MessageClassification {
   const { title, summary, inference, tags } = candidate
   const fields = [title, summary, inference].filter(
     (v): v is string => typeof v === 'string' && v.trim().length > 0,
   )
 
-  // Check if any field contains a question mark
-  const hasQuestionMark = fields.some((f) => f.includes('?'))
+  const endsWithQuestionMark = fields.some((f) => f.trim().endsWith('?'))
+  const startsWithInterrogative = fields.some((field) => {
+    const normalizedTokens = field
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean)
+    return looksLikeStructuredQuestion(normalizedTokens)
+  })
 
-  // Negative patterns that should NOT be questions (even with ?)
   const nonQuestionPatterns = [
     /^\s*how to\b/i,
     /^\s*what\s+(we|i)\s+(learned|noticed|found)\b/i,
   ]
-
   const isNonQuestionPhrase = fields.some((f) =>
     nonQuestionPatterns.some((pattern) => pattern.test(f))
   )
 
-  // Only classify as Question if it has "?" AND is not a negative pattern
-  if (hasQuestionMark && !isNonQuestionPhrase) {
+  if ((endsWithQuestionMark || startsWithInterrogative) && !isNonQuestionPhrase) {
     return 'Question'
   }
 
-  // Label detection
   const text = `${title ?? ''} ${summary ?? ''} ${inference ?? ''}`.toLowerCase()
   const isLabel =
     /\b(pattern|type|kind|category|class|label|identify|recognize)\b/.test(text) ||
@@ -648,9 +854,7 @@ function computeMessageClassification(candidate: ObservationCandidate): MessageC
     return 'Label'
   }
 
-  // Default to Observation
   return 'Observation'
 }
 
 export type { ObservationTrace, ObservationTraceResolvers }
-

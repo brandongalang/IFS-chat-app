@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
         source: 'api',
         runId,
       },
+      telemetry: { enabled: true, runId },
     })
 
     const durationMs = Date.now() - startedAt
