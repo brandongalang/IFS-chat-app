@@ -247,7 +247,15 @@ ${historySummary}
 Rules:
 - Use the provided tools to gather check-ins, sessions, and markdown context.
 - Skip generation entirely if there is no new, novel inference to offer.
-- Output valid JSON matching the required schema.`
+- Output valid JSON matching the required schema.
+
+Classification Guidance:
+Observations will be automatically classified as:
+- Question: Only if the title/summary/inference ends with "?" or clearly asks a question
+  - Avoid: "How to build a habit" or "What we learned this week" (these are NOT questions)
+  - Include: "What did I miss?" or "When should I exercise?" (clear interrogatives with ?)
+- Label: If identifying patterns, types, categories (e.g., "Pattern detected: recurring late-night browsing")
+- Observation: Default for insights, reflections, and learnings without question marks`
 }
 
 function filterObservationCandidates(
@@ -374,9 +382,11 @@ function buildObservationMetadata(
   candidate: ObservationCandidate & { semanticHash?: string },
   additional?: Record<string, unknown>,
 ): Record<string, unknown> {
+  const classification = computeMessageClassification(candidate)
   return {
     kind: 'observation',
     insight_type: 'observation',
+    classification,
     inference: candidate.inference,
     rationale: candidate.rationale ?? null,
     confidence: candidate.confidence ?? null,
@@ -598,5 +608,77 @@ function sanitizeMarkdownPath(path: string): string {
   return trimmed
 }
 
-export type { ObservationTrace, ObservationTraceResolvers }
+export type MessageClassification = 'Observation' | 'Question' | 'Label'
+
+function computeMessageClassification(candidate: ObservationCandidate): MessageClassification {
+  const { title, summary, inference, tags } = candidate
+  const fields = [title, summary, inference].filter(
+    (v): v is string => typeof v === 'string' && v.trim().length > 0,
+  )
+
+  // Rule 1: Any field that ends with a question mark => clear Question.
+  if (fields.some((f) => f.trim().endsWith('?'))) {
+    return 'Question'
+  }
+
+  // Rule 2: Begins with an interrogative + has a question mark near the end.
+  // Negative heuristics: if there is no '?', don't classify as Question even if it starts with interrogatives like:
+  // "how to ...", "what we learned ...", "what I noticed ...".
+  const interrogativeStart = /^(how|what|why|when|where|which|who|whom|whose|can|could|would|should|is|are|do|does|did|will|may|might|am|was|were|have|has|had)\b/i
+  const disqualifyWithoutQuestion = [
+    /^\s*how to\b/i,
+    /^\s*what\s+(we|i)\s+(learned|noticed)\b/i,
+  ]
+
+  const hasQuestionNearEnd = (s: string) => {
+    const t = s.trim()
+    const idx = t.lastIndexOf('?')
+    if (idx === -1) return false
+    const len = t.length
+    // "Near the end" = within the last max(5 chars, 25% of length)
+    const window = Math.max(5, Math.floor(len * 0.25))
+    return idx >= len - window
+  }
+
+  const startsWithInterrogative = (s: string) =>
+    interrogativeStart.test(s.trim())
+
+  const isExplicitlyNonQuestionPhrase = (s: string) =>
+    disqualifyWithoutQuestion.some((re) => re.test(s))
+
+  if (
+    fields.some(
+      (f) =>
+        startsWithInterrogative(f) &&
+        hasQuestionNearEnd(f) &&
+        !isExplicitlyNonQuestionPhrase(f),
+    )
+  ) {
+    return 'Question'
+  }
+
+  // Label detection: keep similar to existing, but evaluated after Question.
+  const text = `${title ?? ''} ${summary ?? ''} ${inference ?? ''}`.toLowerCase()
+  const isLabel =
+    /\b(pattern|type|kind|category|class|label|identify|recognize)\b/.test(text) ||
+    (Array.isArray(tags) &&
+      tags.some((tag) => {
+        const t = tag?.toLowerCase?.() ?? ''
+        return t.includes('pattern') || t.includes('type')
+      }))
+
+  if (isLabel) {
+    return 'Label'
+  }
+
+  // Negative heuristic default: if it looks like "how to ..." etc, and no '?', default to Observation
+  if (fields.some((f) => isExplicitlyNonQuestionPhrase(f))) {
+    return 'Observation'
+  }
+
+  // Default
+  return 'Observation'
+}
+
+export type { ObservationTrace, ObservationTraceResolvers, MessageClassification }
 

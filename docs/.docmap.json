@@ -61,6 +61,10 @@
       "docs": ["docs/current/operations/runbooks/inbox-observation-job.md"]
     },
     {
+      "paths": ["app/api/inbox/**"],
+      "docs": ["docs/current/operations/runbooks/inbox-observation-job.md"]
+    },
+    {
       "paths": [
         "lib/inbox/chat-bridge.ts",
         "app/api/chat/route.ts",

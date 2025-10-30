@@ -11,6 +11,13 @@ import type {
   InboxQuickActionValue,
 } from '@/types/inbox'
 
+export interface InboxQueueStatus {
+  total: number
+  available: number
+  limit: number
+  hasCapacity: boolean
+}
+
 export interface InboxFeedState {
   status: 'loading' | 'success' | 'empty' | 'error'
   envelopes: InboxEnvelope[]
@@ -20,6 +27,9 @@ export interface InboxFeedState {
   reason?: string
   generatedAt?: string
   nextCursor?: string | null
+  queueStatus?: InboxQueueStatus
+  isGenerating: boolean
+  lastGeneratedAt?: string
 }
 
 export interface UseInboxFeedOptions {
@@ -34,6 +44,7 @@ interface UseInboxFeedReturn extends InboxFeedState {
   markAsRead: (envelopeId: string) => void
   submitAction: (envelopeId: string, action: InboxQuickActionValue, notes?: string) => Promise<void>
   recordCta: (envelope: CtaEnvelope) => Promise<void>
+  generateObservations: () => Promise<void>
 }
 
 export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedReturn {
@@ -56,6 +67,9 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
     reason: undefined,
     generatedAt: undefined,
     nextCursor: null,
+    queueStatus: undefined,
+    isGenerating: false,
+    lastGeneratedAt: undefined,
   })
 
   const runFetch = useCallback(async () => {
@@ -63,7 +77,8 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
     const controller = new AbortController()
     controllerRef.current = controller
 
-    setState({
+    setState((prev) => ({
+      ...prev,
       status: 'loading',
       envelopes: [],
       error: null,
@@ -72,7 +87,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
       reason: undefined,
       generatedAt: undefined,
       nextCursor: null,
-    })
+    }))
 
     try {
       const result = await fetchInboxFeed(variant, { signal: controller.signal })
@@ -329,11 +344,64 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
     [markAsRead, state.source, variant],
   )
 
+  const generateObservations = useCallback(async () => {
+    if (state.isGenerating) {
+      return
+    }
+
+    setState((prev) => ({ ...prev, isGenerating: true }))
+
+    try {
+      const response = await fetch('/api/inbox/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.error || `Failed to generate observations (${response.status})`
+
+        // Handle friendly error messages
+        if (response.status === 429) {
+          throw new Error('Please wait 24 hours between manual syncs.')
+        }
+        if (response.status === 500 && errorMessage.includes('Service role key missing')) {
+          throw new Error('Server misconfigured: manual generation requires a service role key. Please contact the admin.')
+        }
+
+        throw new Error(errorMessage)
+      }
+
+      const result = await response.json()
+      const generatedAt = new Date().toISOString()
+
+      setState((prev) => ({
+        ...prev,
+        isGenerating: false,
+        lastGeneratedAt: generatedAt,
+        queueStatus: result.queueStatus,
+      }))
+
+      // Auto-reload the feed after successful generation
+      await runFetch()
+    } catch (error) {
+      setState((prev) => ({
+        ...prev,
+        isGenerating: false,
+        error: error instanceof Error ? error : new Error('Failed to generate observations'),
+      }))
+      throw error
+    }
+  }, [state.isGenerating, runFetch])
+
   return {
     ...state,
     reload,
     markAsRead,
     submitAction,
     recordCta,
+    generateObservations,
   }
 }

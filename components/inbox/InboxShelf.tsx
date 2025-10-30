@@ -58,6 +58,10 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
     markAsRead,
     submitAction,
     recordCta,
+    generateObservations,
+    isGenerating,
+    queueStatus,
+    lastGeneratedAt,
   } = useInboxFeed({ variant })
   const router = useRouter()
   const [activeEnvelope, setActiveEnvelope] = useState<InboxEnvelope | null>(null)
@@ -132,6 +136,32 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
     }
   }
 
+  const handleSyncInbox = async () => {
+    try {
+      await generateObservations()
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[inbox] sync failed', error)
+      }
+      // Error is already set in state by the hook
+    }
+  }
+
+  const canSync = useMemo(() => {
+    if (isGenerating) return false
+    if (queueStatus && !queueStatus.hasCapacity) return false
+
+    // Check 24-hour cooldown
+    if (lastGeneratedAt) {
+      const lastGenTime = new Date(lastGeneratedAt).getTime()
+      const now = Date.now()
+      const hoursSinceLastGen = (now - lastGenTime) / (1000 * 60 * 60)
+      if (hoursSinceLastGen < 24) return false
+    }
+
+    return true
+  }, [isGenerating, queueStatus, lastGeneratedAt])
+
   return (
     <section
       className={cn(
@@ -162,6 +192,28 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
               Retry
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={handleSyncInbox}
+            disabled={!canSync}
+            className={cn(
+              'text-[11px] underline transition',
+              canSync
+                ? 'text-foreground/70 hover:text-foreground'
+                : 'text-foreground/30 cursor-not-allowed',
+            )}
+            title={
+              isGenerating
+                ? 'Syncing...'
+                : !queueStatus?.hasCapacity
+                ? 'Inbox is full'
+                : lastGeneratedAt && (Date.now() - new Date(lastGeneratedAt).getTime()) / (1000 * 60 * 60) < 24
+                ? 'Wait 24 hours between syncs'
+                : 'Sync new observations'
+            }
+          >
+            {isGenerating ? 'Syncing...' : 'Sync Inbox'}
+          </button>
         </div>
       </div>
 
