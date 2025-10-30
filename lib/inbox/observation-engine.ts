@@ -247,7 +247,15 @@ ${historySummary}
 Rules:
 - Use the provided tools to gather check-ins, sessions, and markdown context.
 - Skip generation entirely if there is no new, novel inference to offer.
-- Output valid JSON matching the required schema.`
+- Output valid JSON matching the required schema.
+
+Classification Guidance:
+Observations will be automatically classified as:
+- Question: Only if the title/summary/inference ends with "?" or clearly asks a question
+  - Avoid: "How to build a habit" or "What we learned this week" (these are NOT questions)
+  - Include: "What did I miss?" or "When should I exercise?" (clear interrogatives with ?)
+- Label: If identifying patterns, types, categories (e.g., "Pattern detected: recurring late-night browsing")
+- Observation: Default for insights, reflections, and learnings without question marks`
 }
 
 function filterObservationCandidates(
@@ -374,9 +382,11 @@ function buildObservationMetadata(
   candidate: ObservationCandidate & { semanticHash?: string },
   additional?: Record<string, unknown>,
 ): Record<string, unknown> {
+  const classification = computeMessageClassification(candidate)
   return {
     kind: 'observation',
     insight_type: 'observation',
+    classification,
     inference: candidate.inference,
     rationale: candidate.rationale ?? null,
     confidence: candidate.confidence ?? null,
@@ -596,6 +606,50 @@ function extractMarkdownPath(evidence: ObservationEvidence): string | null {
 function sanitizeMarkdownPath(path: string): string {
   const trimmed = path.trim().replace(/^\/+/, '')
   return trimmed
+}
+
+export type MessageClassification = 'Observation' | 'Question' | 'Label'
+
+function computeMessageClassification(candidate: ObservationCandidate): MessageClassification {
+  const { title, summary, inference, tags } = candidate
+  const fields = [title, summary, inference].filter(
+    (v): v is string => typeof v === 'string' && v.trim().length > 0,
+  )
+
+  // Check if any field contains a question mark
+  const hasQuestionMark = fields.some((f) => f.includes('?'))
+
+  // Negative patterns that should NOT be questions (even with ?)
+  const nonQuestionPatterns = [
+    /^\s*how to\b/i,
+    /^\s*what\s+(we|i)\s+(learned|noticed|found)\b/i,
+  ]
+
+  const isNonQuestionPhrase = fields.some((f) =>
+    nonQuestionPatterns.some((pattern) => pattern.test(f))
+  )
+
+  // Only classify as Question if it has "?" AND is not a negative pattern
+  if (hasQuestionMark && !isNonQuestionPhrase) {
+    return 'Question'
+  }
+
+  // Label detection
+  const text = `${title ?? ''} ${summary ?? ''} ${inference ?? ''}`.toLowerCase()
+  const isLabel =
+    /\b(pattern|type|kind|category|class|label|identify|recognize)\b/.test(text) ||
+    (Array.isArray(tags) &&
+      tags.some((tag) => {
+        const t = tag?.toLowerCase?.() ?? ''
+        return t.includes('pattern') || t.includes('type')
+      }))
+
+  if (isLabel) {
+    return 'Label'
+  }
+
+  // Default to Observation
+  return 'Observation'
 }
 
 export type { ObservationTrace, ObservationTraceResolvers }

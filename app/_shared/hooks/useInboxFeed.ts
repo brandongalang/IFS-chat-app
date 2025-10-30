@@ -20,6 +20,7 @@ export interface InboxFeedState {
   reason?: string
   generatedAt?: string
   nextCursor?: string | null
+  isGenerating: boolean
 }
 
 export interface UseInboxFeedOptions {
@@ -34,6 +35,7 @@ interface UseInboxFeedReturn extends InboxFeedState {
   markAsRead: (envelopeId: string) => void
   submitAction: (envelopeId: string, action: InboxQuickActionValue, notes?: string) => Promise<void>
   recordCta: (envelope: CtaEnvelope) => Promise<void>
+  generateObservations: () => Promise<void>
 }
 
 export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedReturn {
@@ -56,6 +58,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
     reason: undefined,
     generatedAt: undefined,
     nextCursor: null,
+    isGenerating: false,
   })
 
   const runFetch = useCallback(async () => {
@@ -63,7 +66,8 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
     const controller = new AbortController()
     controllerRef.current = controller
 
-    setState({
+    setState((prev) => ({
+      ...prev,
       status: 'loading',
       envelopes: [],
       error: null,
@@ -72,7 +76,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
       reason: undefined,
       generatedAt: undefined,
       nextCursor: null,
-    })
+    }))
 
     try {
       const result = await fetchInboxFeed(variant, { signal: controller.signal })
@@ -89,6 +93,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
           reason: result.reason,
           generatedAt: result.generatedAt,
           nextCursor: null,
+          isGenerating: false,
         })
         return
       }
@@ -102,6 +107,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
         reason: result.reason,
         generatedAt: result.generatedAt,
         nextCursor: result.nextCursor ?? null,
+        isGenerating: false,
       })
       emitInboxEvent('inbox_feed_loaded', {
         envelopeId: result.envelopes[0]?.id ?? 'unknown',
@@ -126,6 +132,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
           reason: 'client_error',
           generatedAt: undefined,
           nextCursor: null,
+          isGenerating: false,
         })
         emitInboxEvent('inbox_feed_loaded', {
           envelopeId: fallbackEnvelopes[0]?.id ?? 'unknown',
@@ -144,6 +151,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
           reason: error instanceof Error ? error.message : 'unknown_error',
           generatedAt: undefined,
           nextCursor: null,
+          isGenerating: false,
         })
       }
     }
@@ -329,11 +337,45 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
     [markAsRead, state.source, variant],
   )
 
+  const generateObservations = useCallback(async () => {
+    if (state.isGenerating) {
+      return
+    }
+
+    setState((prev) => ({ ...prev, isGenerating: true }))
+
+    try {
+      const response = await fetch('/api/inbox/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.error || `Failed to generate observations (${response.status})`
+        throw new Error(errorMessage)
+      }
+
+      // Auto-reload the feed after successful generation
+      await runFetch()
+    } catch (error) {
+      setState((prev) => ({
+        ...prev,
+        isGenerating: false,
+        error: error instanceof Error ? error : new Error('Failed to generate observations'),
+      }))
+      throw error
+    }
+  }, [state.isGenerating, runFetch])
+
   return {
     ...state,
     reload,
     markAsRead,
     submitAction,
     recordCta,
+    generateObservations,
   }
 }

@@ -58,6 +58,8 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
     markAsRead,
     submitAction,
     recordCta,
+    generateObservations,
+    isGenerating,
   } = useInboxFeed({ variant })
   const router = useRouter()
   const [activeEnvelope, setActiveEnvelope] = useState<InboxEnvelope | null>(null)
@@ -132,6 +134,17 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
     }
   }
 
+  const handleSyncInbox = async () => {
+    try {
+      await generateObservations()
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[inbox] sync failed', error)
+      }
+      // Error is already set in state by the hook
+    }
+  }
+
   return (
     <section
       className={cn(
@@ -162,6 +175,20 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
               Retry
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={handleSyncInbox}
+            disabled={isGenerating}
+            className={cn(
+              'text-[11px] underline transition',
+              isGenerating
+                ? 'text-foreground/30 cursor-not-allowed'
+                : 'text-foreground/70 hover:text-foreground',
+            )}
+            title={isGenerating ? 'Syncing...' : 'Sync new observations'}
+          >
+            {isGenerating ? 'Syncing...' : 'Sync Inbox'}
+          </button>
         </div>
       </div>
 
