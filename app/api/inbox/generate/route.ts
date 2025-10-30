@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
   const cooldownDate = new Date()
   cooldownDate.setHours(cooldownDate.getHours() - COOLDOWN_HOURS)
 
-  const { data: recentGeneration } = await admin
+  const { data: recentGenerations } = await admin
     .from('inbox_observations')
     .select('created_at')
     .eq('user_id', userId)
@@ -70,9 +70,8 @@ export async function POST(request: NextRequest) {
     .gte('created_at', cooldownDate.toISOString())
     .order('created_at', { ascending: false })
     .limit(1)
-    .single()
 
-  if (recentGeneration) {
+  if (recentGenerations && recentGenerations.length > 0) {
     return errorResponse(
       'Manual generation cooldown active. Please wait 24 hours between manual syncs.',
       HTTP_STATUS.TOO_MANY_REQUESTS,

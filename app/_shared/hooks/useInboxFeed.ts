@@ -11,13 +11,6 @@ import type {
   InboxQuickActionValue,
 } from '@/types/inbox'
 
-export interface InboxQueueStatus {
-  total: number
-  available: number
-  limit: number
-  hasCapacity: boolean
-}
-
 export interface InboxFeedState {
   status: 'loading' | 'success' | 'empty' | 'error'
   envelopes: InboxEnvelope[]
@@ -27,9 +20,7 @@ export interface InboxFeedState {
   reason?: string
   generatedAt?: string
   nextCursor?: string | null
-  queueStatus?: InboxQueueStatus
   isGenerating: boolean
-  lastGeneratedAt?: string
 }
 
 export interface UseInboxFeedOptions {
@@ -67,9 +58,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
     reason: undefined,
     generatedAt: undefined,
     nextCursor: null,
-    queueStatus: undefined,
     isGenerating: false,
-    lastGeneratedAt: undefined,
   })
 
   const runFetch = useCallback(async () => {
@@ -104,6 +93,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
           reason: result.reason,
           generatedAt: result.generatedAt,
           nextCursor: null,
+          isGenerating: false,
         })
         return
       }
@@ -117,6 +107,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
         reason: result.reason,
         generatedAt: result.generatedAt,
         nextCursor: result.nextCursor ?? null,
+        isGenerating: false,
       })
       emitInboxEvent('inbox_feed_loaded', {
         envelopeId: result.envelopes[0]?.id ?? 'unknown',
@@ -141,6 +132,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
           reason: 'client_error',
           generatedAt: undefined,
           nextCursor: null,
+          isGenerating: false,
         })
         emitInboxEvent('inbox_feed_loaded', {
           envelopeId: fallbackEnvelopes[0]?.id ?? 'unknown',
@@ -159,6 +151,7 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
           reason: error instanceof Error ? error.message : 'unknown_error',
           generatedAt: undefined,
           nextCursor: null,
+          isGenerating: false,
         })
       }
     }
@@ -362,27 +355,8 @@ export function useInboxFeed(options: UseInboxFeedOptions = {}): UseInboxFeedRet
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         const errorMessage = errorData.error || `Failed to generate observations (${response.status})`
-
-        // Handle friendly error messages
-        if (response.status === 429) {
-          throw new Error('Please wait 24 hours between manual syncs.')
-        }
-        if (response.status === 500 && errorMessage.includes('Service role key missing')) {
-          throw new Error('Server misconfigured: manual generation requires a service role key. Please contact the admin.')
-        }
-
         throw new Error(errorMessage)
       }
-
-      const result = await response.json()
-      const generatedAt = new Date().toISOString()
-
-      setState((prev) => ({
-        ...prev,
-        isGenerating: false,
-        lastGeneratedAt: generatedAt,
-        queueStatus: result.queueStatus,
-      }))
 
       // Auto-reload the feed after successful generation
       await runFetch()

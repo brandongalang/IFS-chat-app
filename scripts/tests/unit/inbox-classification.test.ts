@@ -14,31 +14,25 @@ function computeMessageClassification(candidate: Candidate): Classification {
     (v): v is string => typeof v === 'string' && v.trim().length > 0,
   )
 
-  if (fields.some((f) => f.trim().endsWith('?'))) {
-    return 'Question'
-  }
+  // Check if any field contains a question mark
+  const hasQuestionMark = fields.some((f) => f.includes('?'))
 
-  const interrogativeStart = /^(how|what|why|when|where|which|who|whom|whose|can|could|would|should|is|are|do|does|did|will|may|might|am|was|were|have|has|had)\b/i
-  const disqualifyWithoutQuestion = [
+  // Negative patterns that should NOT be questions (even with ?)
+  const nonQuestionPatterns = [
     /^\s*how to\b/i,
-    /^\s*what\s+(we|i)\s+(learned|noticed)\b/i,
+    /^\s*what\s+(we|i)\s+(learned|noticed|found)\b/i,
   ]
-  const hasQuestionNearEnd = (s: string) => {
-    const t = s.trim()
-    const idx = t.lastIndexOf('?')
-    if (idx === -1) return false
-    const len = t.length
-    const window = Math.max(5, Math.floor(len * 0.25))
-    return idx >= len - window
-  }
-  const startsWithInterrogative = (s: string) => interrogativeStart.test(s.trim())
-  const isExplicitlyNonQuestionPhrase = (s: string) =>
-    disqualifyWithoutQuestion.some((re) => re.test(s))
 
-  if (fields.some((f) => startsWithInterrogative(f) && hasQuestionNearEnd(f))) {
+  const isNonQuestionPhrase = fields.some((f) =>
+    nonQuestionPatterns.some((pattern) => pattern.test(f))
+  )
+
+  // Only classify as Question if it has "?" AND is not a negative pattern
+  if (hasQuestionMark && !isNonQuestionPhrase) {
     return 'Question'
   }
 
+  // Label detection
   const text = `${title ?? ''} ${summary ?? ''} ${inference ?? ''}`.toLowerCase()
   const isLabel =
     /\b(pattern|type|kind|category|class|label|identify|recognize)\b/.test(text) ||
@@ -49,7 +43,8 @@ function computeMessageClassification(candidate: Candidate): Classification {
       }))
 
   if (isLabel) return 'Label'
-  if (fields.some((f) => isExplicitlyNonQuestionPhrase(f))) return 'Observation'
+
+  // Default to Observation
   return 'Observation'
 }
 
