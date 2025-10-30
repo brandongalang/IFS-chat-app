@@ -5,6 +5,8 @@ import { getSupabaseServiceRoleKey } from '@/lib/supabase/config'
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 import { createInboxObservationAgent } from '@/mastra/agents/inbox-observation'
 import { runObservationEngine } from '@/lib/inbox/observation-engine'
+import { logInboxTelemetry } from '@/lib/inbox/telemetry'
+import { randomUUID } from 'node:crypto'
 
 const requestSchema = z.object({
   userId: z.string().uuid().optional(),
@@ -78,6 +80,16 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  const runId = randomUUID()
+  const startedAt = Date.now()
+
+  // Log start of manual generation
+  await logInboxTelemetry(admin, {
+    userId,
+    tool: 'inbox_manual_generate.start',
+    metadata: { runId, route: 'POST /api/inbox/generate' },
+  })
+
   try {
     // 5) Use service-role client for all DB work inside the engine
     const agent = createInboxObservationAgent({ userId })
@@ -90,6 +102,29 @@ export async function POST(request: NextRequest) {
       metadata: {
         trigger: 'manual',
         source: 'api',
+        runId,
+      },
+    })
+
+    const durationMs = Date.now() - startedAt
+
+    // Log success/skip with summary
+    await logInboxTelemetry(admin, {
+      userId,
+      tool: 'inbox_manual_generate.result',
+      durationMs,
+      metadata: {
+        runId,
+        status: result.status,
+        reason: result.reason ?? null,
+        insertedCount: result.inserted.length,
+        historyCount: result.historyCount,
+        queue: {
+          total: result.queue.total,
+          available: result.queue.available,
+          limit: result.queue.limit,
+          hasCapacity: result.queue.hasCapacity,
+        },
       },
     })
 
@@ -103,9 +138,19 @@ export async function POST(request: NextRequest) {
         hasCapacity: result.queue.hasCapacity,
       },
       reason: result.reason,
+      runId,
+      durationMs,
     })
   } catch (error) {
+    const durationMs = Date.now() - startedAt
     console.error('Failed to generate observations manually:', error)
+    await logInboxTelemetry(admin, {
+      userId,
+      tool: 'inbox_manual_generate.error',
+      durationMs,
+      metadata: { runId },
+      error: error instanceof Error ? error.message : String(error),
+    })
     return errorResponse(
       'Failed to generate observations',
       HTTP_STATUS.INTERNAL_SERVER_ERROR,
