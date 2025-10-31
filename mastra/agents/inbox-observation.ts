@@ -71,6 +71,17 @@ export function createInboxObservationAgent(
     model: openrouter(modelId, modelSettings),
   }) as InboxObservationAgent
 
+  try {
+    if (process.env.IFS_VERBOSE === 'true') {
+      console.log('[agent:init] inboxObservationAgent', {
+        modelId,
+        temperature,
+        baseURL,
+        hasTools: true,
+      })
+    }
+  } catch {}
+
   return agent
 }
 

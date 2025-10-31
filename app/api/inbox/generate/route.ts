@@ -15,6 +15,13 @@ const requestSchema = z.object({
 const COOLDOWN_HOURS = 24
 
 export async function POST(request: NextRequest) {
+  // Verbose log: route triggered (safe, no secrets)
+  try {
+    console.log('[inbox:generate] TRIGGERED', {
+      ts: new Date().toISOString(),
+      runtime: 'nodejs',
+    })
+  } catch {}
   // 1) Use user client strictly for auth
   const userSupabase = getUserClient()
   const {
@@ -90,6 +97,15 @@ export async function POST(request: NextRequest) {
     metadata: { runId, route: 'POST /api/inbox/generate' },
   })
 
+  // Console breadcrumb for Vercel logs
+  try {
+    console.log('[inbox:generate] AGENT_INIT', {
+      ts: new Date().toISOString(),
+      userId,
+      runId,
+    })
+  } catch {}
+
   try {
     // 5) Use service-role client for all DB work inside the engine
     const agent = createInboxObservationAgent({ userId })
@@ -108,6 +124,26 @@ export async function POST(request: NextRequest) {
     })
 
     const durationMs = Date.now() - startedAt
+
+    // Console breadcrumb for Vercel logs
+    try {
+      console.log('[inbox:generate] AGENT_DONE', {
+        ts: new Date().toISOString(),
+        runId,
+        userId,
+        status: result.status,
+        reason: result.reason ?? null,
+        insertedCount: result.inserted.length,
+        historyCount: result.historyCount,
+        queue: result.queue ? {
+          total: result.queue.total,
+          available: result.queue.available,
+          limit: result.queue.limit,
+          hasCapacity: result.queue.hasCapacity,
+        } : null,
+        durationMs,
+      })
+    } catch {}
 
     // Log success/skip with summary
     await logInboxTelemetry(admin, {
@@ -145,6 +181,15 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const durationMs = Date.now() - startedAt
     console.error('Failed to generate observations manually:', error)
+    try {
+      console.error('[inbox:generate] AGENT_ERROR', {
+        ts: new Date().toISOString(),
+        runId,
+        userId,
+        durationMs,
+        message: error instanceof Error ? error.message : String(error),
+      })
+    } catch {}
     await logInboxTelemetry(admin, {
       userId,
       tool: 'inbox_manual_generate.error',
