@@ -15,6 +15,13 @@ const requestSchema = z.object({
 const COOLDOWN_HOURS = 24
 
 export async function POST(request: NextRequest) {
+  // Verbose log: route triggered (safe, no secrets)
+  try {
+    console.log('[inbox:generate] TRIGGERED', {
+      ts: new Date().toISOString(),
+      runtime: 'nodejs',
+    })
+  } catch {}
   // 1) Use user client strictly for auth
   const userSupabase = getUserClient()
   const {
@@ -80,19 +87,31 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  const headerRequestId = request.headers.get('x-request-id') || undefined
   const runId = randomUUID()
+  const requestId = headerRequestId ?? runId
   const startedAt = Date.now()
 
   // Log start of manual generation
   await logInboxTelemetry(admin, {
     userId,
     tool: 'inbox_manual_generate.start',
-    metadata: { runId, route: 'POST /api/inbox/generate' },
+    metadata: { runId, requestId, route: 'POST /api/inbox/generate' },
   })
+
+  // Console breadcrumb for Vercel logs
+  try {
+    console.log('[inbox:generate] AGENT_INIT', {
+      ts: new Date().toISOString(),
+      userId,
+      runId,
+      requestId,
+    })
+  } catch {}
 
   try {
     // 5) Use service-role client for all DB work inside the engine
-    const agent = createInboxObservationAgent({ userId })
+    const agent = createInboxObservationAgent({ userId }, { requestId, runId })
     const result = await runObservationEngine({
       supabase: admin,
       agent,
@@ -103,11 +122,33 @@ export async function POST(request: NextRequest) {
         trigger: 'manual',
         source: 'api',
         runId,
+        requestId,
       },
       telemetry: { enabled: true, runId },
     })
 
     const durationMs = Date.now() - startedAt
+
+    // Console breadcrumb for Vercel logs
+    try {
+      console.log('[inbox:generate] AGENT_DONE', {
+        ts: new Date().toISOString(),
+        runId,
+        requestId,
+        userId,
+        status: result.status,
+        reason: result.reason ?? null,
+        insertedCount: result.inserted.length,
+        historyCount: result.historyCount,
+        queue: result.queue ? {
+          total: result.queue.total,
+          available: result.queue.available,
+          limit: result.queue.limit,
+          hasCapacity: result.queue.hasCapacity,
+        } : null,
+        durationMs,
+      })
+    } catch {}
 
     // Log success/skip with summary
     await logInboxTelemetry(admin, {
@@ -145,11 +186,21 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const durationMs = Date.now() - startedAt
     console.error('Failed to generate observations manually:', error)
+    try {
+      console.error('[inbox:generate] AGENT_ERROR', {
+        ts: new Date().toISOString(),
+        runId,
+        requestId,
+        userId,
+        durationMs,
+        message: error instanceof Error ? error.message : String(error),
+      })
+    } catch {}
     await logInboxTelemetry(admin, {
       userId,
       tool: 'inbox_manual_generate.error',
       durationMs,
-      metadata: { runId },
+      metadata: { runId, requestId },
       error: error instanceof Error ? error.message : String(error),
     })
     return errorResponse(

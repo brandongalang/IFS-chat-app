@@ -30,8 +30,22 @@ type ToolRuntime = { userId?: string }
 
 export function createObservationResearchTools(
   baseUserId: string | null | undefined,
+  ctx?: { requestId?: string; runId?: string },
 ) {
+  const verbose = process.env.IFS_VERBOSE === 'true'
   const normalizedBaseUserId = typeof baseUserId === 'string' && baseUserId.trim().length ? baseUserId.trim() : null
+  const reqId = ctx?.requestId
+  const runId = ctx?.runId
+
+  const countItems = (out: unknown): number | undefined => {
+    if (Array.isArray(out)) return out.length
+    if (out && typeof out === 'object') {
+      const o = out as Record<string, unknown>
+      if (Array.isArray(o.items)) return (o.items as unknown[]).length
+      if (Array.isArray(o.matches)) return (o.matches as unknown[]).length
+    }
+    return undefined
+  }
 
   const resolveUser = (runtime?: ToolRuntime) => resolveToolUserId(normalizedBaseUserId, runtime)
 
@@ -47,9 +61,18 @@ export function createObservationResearchTools(
     description: 'Search for parts by name, status, or characteristics.',
     inputSchema: searchPartsSchema,
     execute: async ({ context, runtime }: { context: z.infer<typeof searchPartsSchema>; runtime?: ToolRuntime }) => {
+      const started = Date.now()
       const { supabase, userId } = await resolveSupabase(runtime)
       const input = searchPartsSchema.parse(context)
-      return searchParts(input, { client: supabase, userId })
+      try {
+        if (verbose) console.log('[agent:tool_use] searchParts:start', { requestId: reqId, runId, userId, args: input })
+        const out = await searchParts(input, { client: supabase, userId })
+        if (verbose) console.log('[agent:tool_use] searchParts:done', { requestId: reqId, runId, userId, ms: Date.now() - started, count: countItems(out) })
+        return out
+      } catch (err) {
+        console.error('[agent:tool_use] searchParts:error', { requestId: reqId, runId, userId, ms: Date.now() - started, err: err instanceof Error ? err.message : String(err) })
+        throw err
+      }
     },
   })
 
@@ -58,9 +81,18 @@ export function createObservationResearchTools(
     description: 'Get a specific part by its ID.',
     inputSchema: getPartByIdSchema,
     execute: async ({ context, runtime }: { context: z.infer<typeof getPartByIdSchema>; runtime?: ToolRuntime }) => {
+      const started = Date.now()
       const { supabase, userId } = await resolveSupabase(runtime)
       const input = getPartByIdSchema.parse(context)
-      return getPartById(input, { client: supabase, userId })
+      try {
+        if (verbose) console.log('[agent:tool_use] getPartById:start', { requestId: reqId, runId, userId, args: input })
+        const out = await getPartById(input, { client: supabase, userId })
+        if (verbose) console.log('[agent:tool_use] getPartById:done', { requestId: reqId, runId, userId, ms: Date.now() - started })
+        return out
+      } catch (err) {
+        console.error('[agent:tool_use] getPartById:error', { requestId: reqId, runId, userId, ms: Date.now() - started, err: err instanceof Error ? err.message : String(err) })
+        throw err
+      }
     },
   })
 
@@ -69,9 +101,18 @@ export function createObservationResearchTools(
     description: 'Get detailed information about a part including relationships and history.',
     inputSchema: getPartDetailSchema,
     execute: async ({ context, runtime }: { context: z.infer<typeof getPartDetailSchema>; runtime?: ToolRuntime }) => {
+      const started = Date.now()
       const { supabase, userId } = await resolveSupabase(runtime)
       const input = getPartDetailSchema.parse(context)
-      return getPartDetail(input, { client: supabase, userId })
+      try {
+        if (verbose) console.log('[agent:tool_use] getPartDetail:start', { requestId: reqId, runId, userId, args: input })
+        const out = await getPartDetail(input, { client: supabase, userId })
+        if (verbose) console.log('[agent:tool_use] getPartDetail:done', { requestId: reqId, runId, userId, ms: Date.now() - started })
+        return out
+      } catch (err) {
+        console.error('[agent:tool_use] getPartDetail:error', { requestId: reqId, runId, userId, ms: Date.now() - started, err: err instanceof Error ? err.message : String(err) })
+        throw err
+      }
     },
   })
 
@@ -80,9 +121,18 @@ export function createObservationResearchTools(
     description: 'Query therapeutic data (observations, session notes, parts relationships).',
     inputSchema: queryTherapyDataSchema,
     execute: async ({ context, runtime }: { context: QueryTherapyDataInput; runtime?: ToolRuntime }) => {
+      const started = Date.now()
       const { supabase, userId } = await resolveSupabase(runtime)
       const input = queryTherapyDataSchema.parse(context)
-      return queryTherapyData(input, { client: supabase, userId })
+      try {
+        if (verbose) console.log('[agent:tool_use] queryTherapyData:start', { requestId: reqId, runId, userId, args: { ...input, query: typeof (input as any)?.query === 'string' ? (input as any).query.slice(0, 120) : undefined } })
+        const out = await queryTherapyData(input, { client: supabase, userId })
+        if (verbose) console.log('[agent:tool_use] queryTherapyData:done', { requestId: reqId, runId, userId, ms: Date.now() - started, count: countItems(out) })
+        return out
+      } catch (err) {
+        console.error('[agent:tool_use] queryTherapyData:error', { requestId: reqId, runId, userId, ms: Date.now() - started, err: err instanceof Error ? err.message : String(err) })
+        throw err
+      }
     },
   })
 
@@ -91,9 +141,18 @@ export function createObservationResearchTools(
     description: 'Write therapeutic data (observations, parts, relationships, session notes).',
     inputSchema: writeTherapyDataSchema,
     execute: async ({ context, runtime }: { context: WriteTherapyDataInput; runtime?: ToolRuntime }) => {
+      const started = Date.now()
       const { supabase, userId } = await resolveSupabase(runtime)
       const input = writeTherapyDataSchema.parse(context)
-      return writeTherapyData(input, { client: supabase, userId })
+      try {
+        if (verbose) console.log('[agent:tool_use] writeTherapyData:start', { requestId: reqId, runId, userId })
+        const out = await writeTherapyData(input, { client: supabase, userId })
+        if (verbose) console.log('[agent:tool_use] writeTherapyData:done', { requestId: reqId, runId, userId, ms: Date.now() - started })
+        return out
+      } catch (err) {
+        console.error('[agent:tool_use] writeTherapyData:error', { requestId: reqId, runId, userId, ms: Date.now() - started, err: err instanceof Error ? err.message : String(err) })
+        throw err
+      }
     },
   })
 
@@ -102,9 +161,18 @@ export function createObservationResearchTools(
     description: 'Update existing therapeutic data entries.',
     inputSchema: updateTherapyDataSchema,
     execute: async ({ context, runtime }: { context: UpdateTherapyDataInput; runtime?: ToolRuntime }) => {
+      const started = Date.now()
       const { supabase, userId } = await resolveSupabase(runtime)
       const input = updateTherapyDataSchema.parse(context)
-      return updateTherapyData(input, { client: supabase, userId })
+      try {
+        if (verbose) console.log('[agent:tool_use] updateTherapyData:start', { requestId: reqId, runId, userId })
+        const out = await updateTherapyData(input, { client: supabase, userId })
+        if (verbose) console.log('[agent:tool_use] updateTherapyData:done', { requestId: reqId, runId, userId, ms: Date.now() - started })
+        return out
+      } catch (err) {
+        console.error('[agent:tool_use] updateTherapyData:error', { requestId: reqId, runId, userId, ms: Date.now() - started, err: err instanceof Error ? err.message : String(err) })
+        throw err
+      }
     },
   })
 
@@ -128,14 +196,23 @@ export function createObservationResearchTools(
     description: 'Lists recent check-ins with intention and reflection summaries.',
     inputSchema: checkInListSchema,
     execute: async ({ context, runtime }: { context: z.infer<typeof checkInListSchema>; runtime?: ToolRuntime }) => {
+      const started = Date.now()
       const input = checkInListSchema.parse(context)
-      return listCheckIns(
-        {
-          userId: resolveUser(runtime),
-          lookbackDays: input.lookbackDays,
-          limit: input.limit,
-        },
-      )
+      try {
+        if (verbose) console.log('[agent:tool_use] listCheckIns:start', { requestId: reqId, runId, userId: resolveUser(runtime), args: input })
+        const out = await listCheckIns(
+          {
+            userId: resolveUser(runtime),
+            lookbackDays: input.lookbackDays,
+            limit: input.limit,
+          },
+        )
+        if (verbose) console.log('[agent:tool_use] listCheckIns:done', { requestId: reqId, runId, userId: resolveUser(runtime), ms: Date.now() - started, count: countItems(out) })
+        return out
+      } catch (err) {
+        console.error('[agent:tool_use] listCheckIns:error', { requestId: reqId, runId, userId: resolveUser(runtime), ms: Date.now() - started, err: err instanceof Error ? err.message : String(err) })
+        throw err
+      }
     },
   })
 
@@ -144,15 +221,24 @@ export function createObservationResearchTools(
     description: 'Searches check-ins for matching reflections or gratitude notes.',
     inputSchema: checkInSearchSchema,
     execute: async ({ context, runtime }: { context: z.infer<typeof checkInSearchSchema>; runtime?: ToolRuntime }) => {
+      const started = Date.now()
       const input = checkInSearchSchema.parse(context)
-      return searchCheckIns(
-        {
-          userId: resolveUser(runtime),
-          query: input.query,
-          lookbackDays: input.lookbackDays,
-          limit: input.limit,
-        },
-      )
+      try {
+        if (verbose) console.log('[agent:tool_use] searchCheckIns:start', { requestId: reqId, runId, userId: resolveUser(runtime), args: { ...input, query: input.query.slice(0, 120) } })
+        const out = await searchCheckIns(
+          {
+            userId: resolveUser(runtime),
+            query: input.query,
+            lookbackDays: input.lookbackDays,
+            limit: input.limit,
+          },
+        )
+        if (verbose) console.log('[agent:tool_use] searchCheckIns:done', { requestId: reqId, runId, userId: resolveUser(runtime), ms: Date.now() - started, count: countItems(out) })
+        return out
+      } catch (err) {
+        console.error('[agent:tool_use] searchCheckIns:error', { requestId: reqId, runId, userId: resolveUser(runtime), ms: Date.now() - started, err: err instanceof Error ? err.message : String(err) })
+        throw err
+      }
     },
   })
 
@@ -161,13 +247,22 @@ export function createObservationResearchTools(
     description: 'Retrieves the full detail for a specific check-in entry.',
     inputSchema: checkInDetailSchema,
     execute: async ({ context, runtime }: { context: z.infer<typeof checkInDetailSchema>; runtime?: ToolRuntime }) => {
+      const started = Date.now()
       const input = checkInDetailSchema.parse(context)
-      return getCheckInDetail(
-        {
-          userId: resolveUser(runtime),
-          checkInId: input.checkInId,
-        },
-      )
+      try {
+        if (verbose) console.log('[agent:tool_use] getCheckInDetail:start', { requestId: reqId, runId, userId: resolveUser(runtime), args: input })
+        const out = await getCheckInDetail(
+          {
+            userId: resolveUser(runtime),
+            checkInId: input.checkInId,
+          },
+        )
+        if (verbose) console.log('[agent:tool_use] getCheckInDetail:done', { requestId: reqId, runId, userId: resolveUser(runtime), ms: Date.now() - started })
+        return out
+      } catch (err) {
+        console.error('[agent:tool_use] getCheckInDetail:error', { requestId: reqId, runId, userId: resolveUser(runtime), ms: Date.now() - started, err: err instanceof Error ? err.message : String(err) })
+        throw err
+      }
     },
   })
 

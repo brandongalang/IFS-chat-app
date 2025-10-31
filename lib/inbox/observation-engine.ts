@@ -148,6 +148,10 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
     ? options.dedupeWindowDays
     : DEFAULT_LOOKBACK_DAYS
   const now = options.now ?? new Date()
+  const requestId =
+    options.metadata && typeof (options.metadata as any).requestId === 'string'
+      ? ((options.metadata as any).requestId as string)
+      : null
 
   const queue = await getInboxQueueSnapshot(supabase, userId, { limit: queueLimit })
   if (options.telemetry?.enabled) {
@@ -157,6 +161,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
       duration_ms: 0,
       metadata: {
         runId: options.telemetry?.runId ?? null,
+        requestId,
         total: queue.total,
         available: queue.available,
         limit: queue.limit,
@@ -182,6 +187,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
       duration_ms: 0,
       metadata: {
         runId: options.telemetry?.runId ?? null,
+        requestId,
         historyCount: history.length,
       },
     })
@@ -209,7 +215,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         user_id: userId,
         tool: 'inbox_agent.invoke',
         duration_ms: 0,
-        metadata: { runId: options.telemetry?.runId ?? null },
+        metadata: { runId: options.telemetry?.runId ?? null, requestId },
       })
     }
     agentRun = await agent.run({
@@ -227,6 +233,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         duration_ms: Date.now() - agentStartedAt,
         metadata: {
           runId: options.telemetry?.runId ?? null,
+          requestId,
           status: agentRun?.status ?? 'unknown',
           hasOutput: Boolean(agentRun?.output),
         },
@@ -238,7 +245,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         user_id: userId,
         tool: 'inbox_agent.error',
         duration_ms: 0,
-        metadata: { runId: options.telemetry?.runId ?? null },
+        metadata: { runId: options.telemetry?.runId ?? null, requestId },
         error: error instanceof Error ? error.message : 'unknown agent failure',
       })
     }
@@ -270,7 +277,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         user_id: userId,
         tool: 'inbox_engine.parse.error',
         duration_ms: 0,
-        metadata: { runId: options.telemetry?.runId ?? null },
+        metadata: { runId: options.telemetry?.runId ?? null, requestId },
         error: error.message,
       })
     }
@@ -293,6 +300,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
       duration_ms: 0,
       metadata: {
         runId: options.telemetry?.runId ?? null,
+        requestId,
         candidateCount: (candidates ?? []).length,
         filteredCount: filtered.length,
         remaining,
@@ -323,7 +331,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         user_id: userId,
         tool: 'inbox_engine.no_candidates',
         duration_ms: 0,
-        metadata: { runId: options.telemetry?.runId ?? null },
+        metadata: { runId: options.telemetry?.runId ?? null, requestId },
       })
     }
     return {
@@ -350,6 +358,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         duration_ms: 0,
         metadata: {
           runId: options.telemetry?.runId ?? null,
+          requestId,
           insertedCount: inserted.length,
         },
       })
@@ -367,7 +376,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         user_id: userId,
         tool: 'inbox_engine.persist.error',
         duration_ms: 0,
-        metadata: { runId: options.telemetry?.runId ?? null },
+        metadata: { runId: options.telemetry?.runId ?? null, requestId },
         error: error instanceof Error ? error.message : 'Failed to persist observations',
       })
     }
