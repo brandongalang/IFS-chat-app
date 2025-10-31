@@ -37,6 +37,16 @@ export function createObservationResearchTools(
   const reqId = ctx?.requestId
   const runId = ctx?.runId
 
+  const countItems = (out: unknown): number | undefined => {
+    if (Array.isArray(out)) return out.length
+    if (out && typeof out === 'object') {
+      const o = out as Record<string, unknown>
+      if (Array.isArray(o.items)) return (o.items as unknown[]).length
+      if (Array.isArray(o.matches)) return (o.matches as unknown[]).length
+    }
+    return undefined
+  }
+
   const resolveUser = (runtime?: ToolRuntime) => resolveToolUserId(normalizedBaseUserId, runtime)
 
   async function resolveSupabase(runtime?: ToolRuntime) {
@@ -57,7 +67,7 @@ export function createObservationResearchTools(
       try {
         if (verbose) console.log('[agent:tool_use] searchParts:start', { requestId: reqId, runId, userId, args: input })
         const out = await searchParts(input, { client: supabase, userId })
-        if (verbose) console.log('[agent:tool_use] searchParts:done', { requestId: reqId, runId, userId, ms: Date.now() - started, items: Array.isArray(out?.results) ? out.results.length : undefined })
+        if (verbose) console.log('[agent:tool_use] searchParts:done', { requestId: reqId, runId, userId, ms: Date.now() - started, count: countItems(out) })
         return out
       } catch (err) {
         console.error('[agent:tool_use] searchParts:error', { requestId: reqId, runId, userId, ms: Date.now() - started, err: err instanceof Error ? err.message : String(err) })
@@ -117,7 +127,7 @@ export function createObservationResearchTools(
       try {
         if (verbose) console.log('[agent:tool_use] queryTherapyData:start', { requestId: reqId, runId, userId, args: { ...input, query: typeof (input as any)?.query === 'string' ? (input as any).query.slice(0, 120) : undefined } })
         const out = await queryTherapyData(input, { client: supabase, userId })
-        if (verbose) console.log('[agent:tool_use] queryTherapyData:done', { requestId: reqId, runId, userId, ms: Date.now() - started })
+        if (verbose) console.log('[agent:tool_use] queryTherapyData:done', { requestId: reqId, runId, userId, ms: Date.now() - started, count: countItems(out) })
         return out
       } catch (err) {
         console.error('[agent:tool_use] queryTherapyData:error', { requestId: reqId, runId, userId, ms: Date.now() - started, err: err instanceof Error ? err.message : String(err) })
@@ -197,7 +207,7 @@ export function createObservationResearchTools(
             limit: input.limit,
           },
         )
-        if (verbose) console.log('[agent:tool_use] listCheckIns:done', { requestId: reqId, runId, userId: resolveUser(runtime), ms: Date.now() - started, count: Array.isArray(out?.results) ? out.results.length : undefined })
+        if (verbose) console.log('[agent:tool_use] listCheckIns:done', { requestId: reqId, runId, userId: resolveUser(runtime), ms: Date.now() - started, count: countItems(out) })
         return out
       } catch (err) {
         console.error('[agent:tool_use] listCheckIns:error', { requestId: reqId, runId, userId: resolveUser(runtime), ms: Date.now() - started, err: err instanceof Error ? err.message : String(err) })
@@ -223,7 +233,7 @@ export function createObservationResearchTools(
             limit: input.limit,
           },
         )
-        if (verbose) console.log('[agent:tool_use] searchCheckIns:done', { requestId: reqId, runId, userId: resolveUser(runtime), ms: Date.now() - started, count: Array.isArray(out?.results) ? out.results.length : undefined })
+        if (verbose) console.log('[agent:tool_use] searchCheckIns:done', { requestId: reqId, runId, userId: resolveUser(runtime), ms: Date.now() - started, count: countItems(out) })
         return out
       } catch (err) {
         console.error('[agent:tool_use] searchCheckIns:error', { requestId: reqId, runId, userId: resolveUser(runtime), ms: Date.now() - started, err: err instanceof Error ? err.message : String(err) })

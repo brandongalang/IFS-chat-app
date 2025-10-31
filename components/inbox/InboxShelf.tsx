@@ -136,8 +136,9 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
 
   const handleSyncInbox = async () => {
     try {
-      const requestId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
-        ? (crypto as any).randomUUID()
+      const hasCrypto = typeof globalThis !== 'undefined' && typeof globalThis.crypto !== 'undefined'
+      const requestId = hasCrypto && 'randomUUID' in globalThis.crypto
+        ? (globalThis.crypto as Crypto).randomUUID()
         : `${Date.now()}-${Math.random().toString(16).slice(2)}`
       if (process.env.NODE_ENV !== 'production') {
         console.info('[inbox] sync click', { requestId })
@@ -152,8 +153,8 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
         },
         body: JSON.stringify({}),
       })
-      // After completion, reload the feed
-      await generateObservations()
+      // After completion, reload the feed (avoid double POST)
+      await reload()
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {
         console.warn('[inbox] sync failed', error)
