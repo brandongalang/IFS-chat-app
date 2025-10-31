@@ -136,6 +136,23 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
 
   const handleSyncInbox = async () => {
     try {
+      const requestId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+        ? (crypto as any).randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('[inbox] sync click', { requestId })
+      }
+      // generateObservations() will POST to /api/inbox/generate; add a global fetch header
+      // via a one-off call here to ensure the requestId is carried through.
+      await fetch('/api/inbox/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-request-id': requestId,
+        },
+        body: JSON.stringify({}),
+      })
+      // After completion, reload the feed
       await generateObservations()
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {

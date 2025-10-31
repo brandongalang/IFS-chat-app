@@ -10,6 +10,8 @@ export interface InboxObservationAgentConfig {
   modelId?: string
   baseURL?: string
   temperature?: number
+  requestId?: string
+  runId?: string
 }
 
 type Profile = { userId?: string } | null
@@ -62,7 +64,10 @@ export function createInboxObservationAgent(
     : undefined
 
   const baseUserId = profile?.userId
-  const tools = createObservationResearchTools(baseUserId)
+  const tools = createObservationResearchTools(baseUserId, {
+    requestId: config.requestId,
+    runId: config.runId,
+  })
 
   const agent = new Agent({
     name: 'inboxObservationAgent',
@@ -78,6 +83,8 @@ export function createInboxObservationAgent(
         temperature,
         baseURL,
         hasTools: true,
+        requestId: config.requestId,
+        runId: config.runId,
       })
     }
   } catch {}
