@@ -11,6 +11,12 @@ import type {
   NudgeMessage,
   NotificationMessage,
   InsightSpotlightMessage,
+  ObservationMessage,
+  QuestionMessage,
+  PatternMessage,
+  SessionSummaryMessage,
+  FollowUpMessage,
+  EvidenceItem,
 } from '@/types/inbox'
 import type { Database } from '@/lib/types/database'
 
@@ -170,6 +176,15 @@ const buildAcknowledgeActions = (metadata: MetadataRecord): InboxActionSchema =>
 }
 
 const resolveEnvelopeType = (item: InboxItem, metadata: MetadataRecord): InboxMessageType => {
+  // Check unified inbox item type first (new system)
+  const unifiedType = toTrimmedString(metadata.type)
+  if (unifiedType === 'session_summary' || unifiedType === 'nudge' || 
+      unifiedType === 'follow_up' || unifiedType === 'observation' || 
+      unifiedType === 'question' || unifiedType === 'pattern') {
+    return unifiedType as InboxMessageType
+  }
+
+  // Fallback to legacy insight detection (old system)
   const sourceType = item.sourceType
   const metaKind = toTrimmedString(metadata.kind)
   const insightType = toTrimmedString(metadata.insight_type)
@@ -274,6 +289,88 @@ const toNotificationPayload = (content: MetadataRecord, metadata: MetadataRecord
   }
 }
 
+// Unified inbox type payload builders
+
+const toEvidenceArray = (evidence: unknown): EvidenceItem[] | undefined => {
+  if (!Array.isArray(evidence)) return undefined
+  const items = evidence
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null
+      const record = item as MetadataRecord
+      const type = toTrimmedString(record.type)
+      const id = toTrimmedString(record.id)
+      if (!type || !id) return null
+      const context = toTrimmedString(record.context)
+      const result: EvidenceItem = {
+        type: type as EvidenceItem['type'],
+        id,
+      }
+      if (context) {
+        result.context = context
+      }
+      return result
+    })
+    .filter((item): item is EvidenceItem => Boolean(item))
+  return items.length ? items : undefined
+}
+
+const toObservationPayload = (content: MetadataRecord, metadata: MetadataRecord): ObservationMessage => {
+  const title = toTrimmedString(content.title) ?? 'Observation'
+  const summary = toTrimmedString(content.summary) ?? 'An observation from your recent activity'
+  const inference = toTrimmedString(content.inference) ?? toTrimmedString(content.body) ?? ''
+  const evidence = toEvidenceArray(content.evidence ?? metadata.evidence)
+  return {
+    title,
+    summary,
+    inference,
+    evidence,
+  }
+}
+
+const toQuestionPayload = (content: MetadataRecord, metadata: MetadataRecord): QuestionMessage => {
+  const title = toTrimmedString(content.title) ?? 'Question for reflection'
+  const summary = toTrimmedString(content.summary) ?? 'Consider this question'
+  const inference = toTrimmedString(content.inference) ?? toTrimmedString(content.body) ?? ''
+  return {
+    title,
+    summary,
+    inference,
+  }
+}
+
+const toPatternPayload = (content: MetadataRecord, metadata: MetadataRecord): PatternMessage => {
+  const title = toTrimmedString(content.title) ?? 'Pattern detected'
+  const summary = toTrimmedString(content.summary) ?? 'A pattern emerged from your data'
+  const inference = toTrimmedString(content.inference) ?? toTrimmedString(content.body) ?? ''
+  const evidence = toEvidenceArray(content.evidence ?? metadata.evidence)
+  return {
+    title,
+    summary,
+    inference,
+    evidence,
+  }
+}
+
+const toSessionSummaryPayload = (content: MetadataRecord, metadata: MetadataRecord): SessionSummaryMessage => {
+  const title = toTrimmedString(content.title) ?? 'Session summary'
+  const summary = toTrimmedString(content.summary) ?? 'Key themes from your session'
+  return {
+    title,
+    summary,
+  }
+}
+
+const toFollowUpPayload = (content: MetadataRecord, metadata: MetadataRecord): FollowUpMessage => {
+  const title = toTrimmedString(content.title) ?? 'Follow up'
+  const summary = toTrimmedString(content.summary) ?? 'Something to explore further'
+  const body = toTrimmedString(content.body) ?? toTrimmedString(metadata.body) ?? ''
+  return {
+    title,
+    summary,
+    body,
+  }
+}
+
 const normalizeCta = (candidate: unknown): InboxCTA | null => {
   if (!candidate || typeof candidate !== 'object') return null
   const record = candidate as MetadataRecord
@@ -362,6 +459,62 @@ export function mapInboxItemToEnvelope(item: InboxItem): InboxEnvelope | null {
     return {
       ...base,
       type: 'notification',
+      actions,
+      payload,
+    }
+  }
+
+  // Unified inbox types
+  if (messageType === 'observation') {
+    const payload = toObservationPayload(content, metadata)
+    const actions: InboxActionSchema = buildScaleActions(metadata)
+    return {
+      ...base,
+      type: 'observation',
+      actions,
+      payload,
+    }
+  }
+
+  if (messageType === 'question') {
+    const payload = toQuestionPayload(content, metadata)
+    const actions: InboxActionSchema = buildScaleActions(metadata)
+    return {
+      ...base,
+      type: 'question',
+      actions,
+      payload,
+    }
+  }
+
+  if (messageType === 'pattern') {
+    const payload = toPatternPayload(content, metadata)
+    const actions: InboxActionSchema = buildScaleActions(metadata)
+    return {
+      ...base,
+      type: 'pattern',
+      actions,
+      payload,
+    }
+  }
+
+  if (messageType === 'session_summary') {
+    const payload = toSessionSummaryPayload(content, metadata)
+    const actions: InboxActionSchema = buildAcknowledgeActions(metadata)
+    return {
+      ...base,
+      type: 'session_summary',
+      actions,
+      payload,
+    }
+  }
+
+  if (messageType === 'follow_up') {
+    const payload = toFollowUpPayload(content, metadata)
+    const actions: InboxActionSchema = buildScaleActions(metadata)
+    return {
+      ...base,
+      type: 'follow_up',
       actions,
       payload,
     }
