@@ -44,9 +44,9 @@ export async function loadUnifiedUserContext(userId: string | undefined): Promis
       currentFocus = `Next Session: ${contextCache.last_session.next_session}`
     } else if (contextCache?.recent_parts && contextCache.recent_parts.length > 0) {
       const focusedParts = contextCache.recent_parts
-        .filter((p: any) => p.needs_attention)
+        .filter((p: { needs_attention?: boolean }) => p.needs_attention)
         .slice(0, 2)
-        .map((p: any) => p.display_name)
+        .map((p: { display_name?: string }) => p.display_name)
       if (focusedParts.length > 0) {
         currentFocus = `Parts needing attention: ${focusedParts.join(', ')}`
       }
@@ -73,7 +73,7 @@ export async function loadUnifiedUserContext(userId: string | undefined): Promis
  * Load user context cache materialized view.
  * Contains recent parts, follow-ups, and session summary.
  */
-async function loadUserContextCache(supabase: ReturnType<typeof createAdminClient>, userId: string) {
+async function loadUserContextCache(supabase: ReturnType<typeof createAdminClient>, userId: string): Promise<Record<string, unknown> | null> {
   const { data, error } = await supabase
     .from('user_context_cache')
     .select('*')
@@ -85,14 +85,17 @@ async function loadUserContextCache(supabase: ReturnType<typeof createAdminClien
     return null
   }
 
-  return data
+  return data as Record<string, unknown> | null
 }
 
 /**
  * Load recent timeline events from the last 7 days.
  * Converts to simple change format for context.
  */
-async function loadRecentTimelineEvents(supabase: ReturnType<typeof createAdminClient>, userId: string) {
+async function loadRecentTimelineEvents(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string
+): Promise<Array<{ timestamp: string; eventType: string; description: string }>> {
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
@@ -110,7 +113,7 @@ async function loadRecentTimelineEvents(supabase: ReturnType<typeof createAdminC
   }
 
   // Convert timeline events to simple change format
-  return (data || []).map((event: any) => ({
+  return (data || []).map((event: { created_at: string; event_type: string; event_subtype: string; description?: string }) => ({
     timestamp: event.created_at,
     eventType: event.event_type,
     description: event.description || `${event.event_type}: ${event.event_subtype}`,
