@@ -23,6 +23,7 @@ import {
   type CheckInDetail,
   type SessionDetail,
 } from '@/lib/inbox/search'
+import { loadUnifiedUserContext, type UnifiedUserContext } from '@/lib/memory/unified-loader'
 
 type Supabase = SupabaseClient<Database>
 
@@ -205,7 +206,39 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
     }
   }
 
-  const prompt = buildAgentPrompt({ userId, history, remaining, now })
+  // Load unified user context for agent initialization
+  const unifiedContext = await loadUnifiedUserContext(userId)
+
+  // Gather quick stats about recent activity
+  const thirtyDaysAgo = new Date(now)
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+  const [checkInCount, sessionCount] = await Promise.all([
+    supabase
+      .from('check_ins')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('check_in_date', thirtyDaysAgo.toISOString().slice(0, 10))
+      .then(({ count }) => count ?? 0),
+    supabase
+      .from('therapy_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('session_date', thirtyDaysAgo.toISOString().slice(0, 10))
+      .then(({ count }) => count ?? 0),
+  ])
+
+  const prompt = buildAgentPrompt({
+    userId,
+    history,
+    remaining,
+    now,
+    unifiedContext,
+    activityStats: {
+      checkInsLast30Days: checkInCount,
+      sessionsLast30Days: sessionCount,
+    }
+  })
 
   let agentRun: InboxObservationAgentRunResult
   try {
@@ -396,8 +429,13 @@ function buildAgentPrompt(input: {
   history: ObservationHistoryEntry[]
   remaining: number
   now: Date
+  unifiedContext: UnifiedUserContext | null
+  activityStats?: {
+    checkInsLast30Days: number
+    sessionsLast30Days: number
+  }
 }): string {
-  const { userId, history, remaining, now } = input
+  const { userId, history, remaining, now, unifiedContext, activityStats } = input
   const header = `Generate up to ${remaining} fresh observations for user ${userId}. Only fill available inbox slots.`
   const historySummary = history.length
     ? history
@@ -411,6 +449,53 @@ function buildAgentPrompt(input: {
         .join('\n')
     : '• No recent observations in the last 14 days.'
 
+  // Format unified context similar to chat agent
+  let contextSection = ''
+  if (unifiedContext) {
+    contextSection = '\n## User Context:\n\n'
+
+    const { userMemory, currentFocus, recentChanges } = unifiedContext
+
+    // Current Focus
+    if (currentFocus) {
+      contextSection += `**Current Focus:** ${currentFocus}\n\n`
+    }
+
+    // Activity Summary
+    if (activityStats) {
+      contextSection += '**Recent Activity (last 30 days):**\n'
+      contextSection += `- Check-ins: ${activityStats.checkInsLast30Days}\n`
+      contextSection += `- Therapy sessions: ${activityStats.sessionsLast30Days}\n\n`
+    }
+
+    // Active Parts (sorted by recency)
+    const parts = Object.entries(userMemory.parts)
+      .map(([partId, data]) => ({
+        id: partId,
+        name: data.name,
+        status: data.status,
+        recencyScore: data.recency_score ?? 0,
+      }))
+      .sort((a, b) => b.recencyScore - a.recencyScore)
+
+    if (parts.length > 0) {
+      contextSection += '**Active Parts** (by recency):\n'
+      for (const part of parts.slice(0, 10)) { // Top 10 most recent
+        contextSection += `- ${part.name} (${part.status})\n`
+      }
+      contextSection += '\n'
+    }
+
+    // Recent Changes
+    if (recentChanges.length > 0) {
+      contextSection += '**Recent Changes (last 7 days):**\n'
+      for (const change of recentChanges.slice(0, 5)) {
+        contextSection += `${change}\n`
+      }
+      contextSection += '\n'
+    }
+  }
+
   return `${header}
 
 Context:
@@ -419,7 +504,7 @@ Context:
 
 Recent observations (dedupe window):
 ${historySummary}
-
+${contextSection}
 Rules:
 - Use the provided tools to gather check-ins, sessions, and markdown context.
 - Skip generation entirely if there is no new, novel inference to offer.
