@@ -1,3 +1,9 @@
+/**
+ * @deprecated Use `unified-inbox-engine.ts` instead.
+ * This engine is kept for backward compatibility with the old observation-only workflow.
+ * All new code should use runUnifiedInboxEngine and related functions.
+ */
+
 import { createHash } from 'node:crypto'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
