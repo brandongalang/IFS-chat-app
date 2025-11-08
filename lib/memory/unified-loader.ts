@@ -44,9 +44,9 @@ export async function loadUnifiedUserContext(userId: string | undefined): Promis
       currentFocus = `Next Session: ${contextCache.last_session.next_session}`
     } else if (contextCache?.recent_parts && contextCache.recent_parts.length > 0) {
       const focusedParts = contextCache.recent_parts
-        .filter((p: { needs_attention?: boolean }) => p.needs_attention)
+        .filter((p) => p.needs_attention)
         .slice(0, 2)
-        .map((p: { display_name?: string }) => p.display_name)
+        .map((p) => p.display_name)
       if (focusedParts.length > 0) {
         currentFocus = `Parts needing attention: ${focusedParts.join(', ')}`
       }
@@ -69,11 +69,21 @@ export async function loadUnifiedUserContext(userId: string | undefined): Promis
   }
 }
 
+interface ContextCache {
+  last_session?: {
+    next_session?: string
+  }
+  recent_parts?: Array<{
+    display_name?: string
+    needs_attention?: boolean
+  }>
+}
+
 /**
  * Load user context cache materialized view.
  * Contains recent parts, follow-ups, and session summary.
  */
-async function loadUserContextCache(supabase: ReturnType<typeof createAdminClient>, userId: string): Promise<Record<string, unknown> | null> {
+async function loadUserContextCache(supabase: ReturnType<typeof createAdminClient>, userId: string): Promise<ContextCache | null> {
   const { data, error } = await supabase
     .from('user_context_cache')
     .select('*')
@@ -85,7 +95,7 @@ async function loadUserContextCache(supabase: ReturnType<typeof createAdminClien
     return null
   }
 
-  return data as Record<string, unknown> | null
+  return data as ContextCache | null
 }
 
 /**
