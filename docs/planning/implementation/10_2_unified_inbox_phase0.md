@@ -74,9 +74,27 @@ Phase 0 focuses on cleaning up the broken memory update system and establishing 
 ✅ Hourly finalize-sessions cron configured  
 ✅ lint/type checks pass  
 
-## Next Phase (Phase 1)
+## Phase 1 - COMPLETE ✅
 
-After Phase 0 approval, Phase 1 begins:
-- Fix unified context loader
-- Remove markdown reads
-- Use DB views (user_context_cache + timeline_display)
+**Completed:** 2025-11-08
+
+### Changes
+- Replaced `readOverviewSections()` with DB queries
+- Load `user_context_cache` for recent parts and session summary
+- Load `timeline_display` for recent events (last 7 days)
+- Convert timeline events to structured format (timestamp, eventType, description)
+- Extract currentFocus from session.next_session or parts_needing_attention
+
+### Files Modified
+- `lib/memory/unified-loader.ts` - Removed all markdown reads, added DB queries
+
+### Breaking Changes
+- `UnifiedUserContext.recentChanges` now array of objects (was array of strings)
+- All consuming code compatible (array structure maintained)
+
+## Next Phase (Phase 2)
+
+Create unified agent merging insights + observations:
+- Combine 4 insight tools + 9 observation tools
+- Create agent that generates 6 output types (session_summary, nudge, follow_up, observation, question, pattern)
+- Use combined DB tools for research
