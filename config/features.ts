@@ -29,6 +29,8 @@ const gardenFlag = process.env.ENABLE_GARDEN ?? process.env.NEXT_PUBLIC_ENABLE_G
 const gardenStatus: FeatureStatus =
   gardenFlag === undefined ? 'enabled' : isTrue(gardenFlag) ? 'enabled' : 'disabled'
 
+const newUIFlag = process.env.NEXT_PUBLIC_IFS_NEW_UI ?? process.env.IFS_NEW_UI
+
 // Whether to show the "Enable Dev Mode" toggle in the UI.
 // Default behavior: show in development, hide in production unless explicitly enabled.
 export const showDevToggle =
@@ -109,4 +111,20 @@ export function isInboxActionsEnabled(): boolean {
   if (devMode) return true
   if (typeof window !== 'undefined' && clientDevOverride()) return true
   return inboxActionsFlag === undefined ? true : isTrue(inboxActionsFlag)
+}
+
+// New UI redesign feature flag
+export function isNewUIEnabled(): boolean {
+  // Check localStorage first (for easy toggling during development)
+  if (typeof window !== 'undefined') {
+    try {
+      const v = window.localStorage.getItem('IFS_NEW_UI') || undefined
+      if (v !== null) return isTrue(v)
+    } catch {
+      // Ignore localStorage errors
+    }
+  }
+  // Then check environment variable
+  if (devMode) return isTrue(newUIFlag) ?? false
+  return newUIFlag === undefined ? false : isTrue(newUIFlag)
 }

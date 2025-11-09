@@ -1,9 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
+    /* Legacy shadcn variables (kept for compatibility) */
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --muted: 240 4.8% 95.9%;
@@ -24,13 +27,10 @@
     --destructive-foreground: 0 0% 98%;
     --ring: 240 5.9% 10%;
     --radius: 0.5rem;
-    
-    /* Ethereal focus styling variables */
-    --ethereal-focus-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
-    --ethereal-hover-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
   }
 
   .dark {
+    /* Legacy shadcn variables (kept for compatibility) */
     --background: 240 10% 10%;
     --foreground: 0 0% 98%;
     --muted: 240 3.7% 15.9%;
@@ -58,29 +58,13 @@
 }
 
 @layer components {
-  /* Ethereal focus styles - override default harsh focus rings */
-  .ethereal-focus {
-    @apply focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 focus:border-0;
-    @apply focus:shadow-[var(--ethereal-focus-shadow)] hover:shadow-[var(--ethereal-hover-shadow)];
-    @apply transition-shadow duration-200;
-  }
-  
-  /* Apply ethereal focus to common form elements */
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="search"],
-  input[type="url"],
-  input[type="tel"],
-  input[type="number"],
-  textarea,
-  select {
-    @apply ethereal-focus;
-  }
-  
-  /* Specific overrides for shadcn components */
-  .focus-visible\:ring-2 {
-    @apply ethereal-focus;
+  /* Material Symbols icon styling */
+  .material-symbols-outlined {
+    font-variation-settings:
+      'FILL' 0,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 24;
   }
   
   /* Safe area utilities for mobile notches and home indicators */

@@ -5,13 +5,20 @@ import { searchPartsV2 } from '@/lib/data/parts-lite'
 import type { PartRowV2 } from '@/lib/data/schema/types'
 import { PartsList } from '@/components/garden/PartsList'
 import { PageContainer } from '@/components/common/PageContainer'
+import { isNewUIEnabled } from '@/config/features'
+import { GardenPageNew } from './page-new'
 
 export default function GardenPage() {
+  const newUI = isNewUIEnabled()
+  
+  // Always call hooks - they must be called unconditionally
   const [parts, setParts] = useState<PartRowV2[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // Only fetch if using old UI
+    if (newUI) return
     let isActive = true
 
     async function fetchPartsData() {
@@ -42,7 +49,11 @@ export default function GardenPage() {
     return () => {
       isActive = false
     }
-  }, [])
+  }, [newUI])
+
+  if (newUI) {
+    return <GardenPageNew />
+  }
 
   const totalParts = parts.length
   const establishedCount = parts.filter(

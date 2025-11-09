@@ -4,17 +4,27 @@ import { useState } from 'react'
 import { GuardedLink } from '@/components/common/GuardedLink'
 import { PageContainer } from '@/components/common/PageContainer'
 import PersonaSwitcher from '@/components/dev/PersonaSwitcher'
-import { showDevToggle, isInboxEnabled } from '@/config/features'
+import { showDevToggle, isInboxEnabled, isNewUIEnabled } from '@/config/features'
 import { CheckInSlots } from '@/components/home/CheckInSlots'
 import { WeekSelector } from '@/components/home/WeekSelector'
 import { useUser } from '@/context/UserContext'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Inbox } from '@/components/inbox/Inbox'
 import { User as UserIcon } from 'lucide-react'
+import { HomePageNew } from './page-new'
 
 export default function HomePage() {
+  const newUI = isNewUIEnabled()
+  
+  // Always call hooks - they must be called unconditionally
   const [selectedDate, setSelectedDate] = useState(new Date())
   const { profile } = useUser()
+
+  if (newUI) {
+    return <HomePageNew />
+  }
+
+  // Original UI
   const trimmedName = profile?.name?.trim()
   const avatarAlt = trimmedName ? `${trimmedName}'s avatar` : 'User avatar'
   const userInitial = trimmedName?.match(/\p{L}|\p{N}/u)?.[0]?.toUpperCase() ?? null
@@ -115,7 +125,7 @@ function DailyMeditationsCard() {
       </div>
       <div className="mt-3 text-sm">
         <blockquote className="italic">
-          “So whatever you want to do, just do it… Making a damn fool of yourself is absolutely essential.”
+          &ldquo;So whatever you want to do, just do it… Making a damn fool of yourself is absolutely essential.&rdquo;
         </blockquote>
         <div
           className="mt-2 text-xs"
