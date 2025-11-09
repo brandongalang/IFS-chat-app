@@ -53,6 +53,30 @@ export function renderInboxCard(envelope: InboxEnvelope, context: InboxCardRegis
           onVisit={(entry) => context.onCta?.(entry)}
         />
       )
+    // Unified inbox types: reuse InsightSpotlightCard for MVP
+    case 'observation':
+    case 'question':
+    case 'pattern':
+      return (
+        <InsightSpotlightCard
+          key={envelope.id}
+          envelope={envelope as any}
+          onOpen={(entry) => context.onOpen?.(entry)}
+          onQuickAction={(entry, action) => context.onQuickAction?.(entry, action)}
+          onExploreInChat={(entry, reaction) => context.onExploreInChat?.(entry, reaction)}
+        />
+      )
+    case 'session_summary':
+    case 'follow_up':
+      return (
+        <NudgeCard
+          key={envelope.id}
+          envelope={envelope as any}
+          onOpen={(entry) => context.onOpen?.(entry)}
+          onQuickAction={(entry, action) => context.onQuickAction?.(entry, action)}
+          onExploreInChat={(entry, reaction) => context.onExploreInChat?.(entry, reaction)}
+        />
+      )
     default:
       return (
         <div className="rounded-xl border border-border/40 bg-card/10 p-4 text-xs text-foreground/60">

@@ -7,6 +7,7 @@ import { createInsightGeneratorAgent } from './agents/insight-generator'
 import { createUpdateSummarizerAgent } from './agents/update-summarizer'
 import { createGenerateInsightWorkflow } from './workflows/generate-insight-workflow'
 import { createInboxObservationAgent } from './agents/inbox-observation'
+import { createUnifiedInboxAgent } from './agents/unified-inbox'
 
 type Profile = Parameters<typeof createIfsAgent>[0]
 
@@ -41,6 +42,7 @@ export function createMastra(profile: Profile = null) {
   const userId = profile?.userId
   const insightGeneratorAgent = createInsightGeneratorAgent(userId, agentConfig)
   const inboxObservationAgent = createInboxObservationAgent(profile, agentConfig)
+  const unifiedInboxAgent = createUnifiedInboxAgent(profile, agentConfig)
 
   return new Mastra({
     logger: new PinoLogger({
@@ -53,6 +55,7 @@ export function createMastra(profile: Profile = null) {
       insightGeneratorAgent,
       updateSummarizerAgent: createUpdateSummarizerAgent(agentConfig),
       inboxObservationAgent,
+      unifiedInboxAgent,
     },
     workflows: {
       generateInsightWorkflow: createGenerateInsightWorkflow(insightGeneratorAgent as any),

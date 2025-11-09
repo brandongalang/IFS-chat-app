@@ -1,3 +1,9 @@
+/**
+ * @deprecated Use `unified-inbox-schema.ts` instead.
+ * This schema is kept for backward compatibility with the observation-engine.
+ * All new code should use UnifiedInboxBatch and related schemas.
+ */
+
 import { z } from 'zod'
 
 const dateTimeSchema = z

@@ -3,8 +3,8 @@ import { z } from 'zod'
 import { getUserClient, getServiceClient } from '@/lib/supabase/clients'
 import { getSupabaseServiceRoleKey } from '@/lib/supabase/config'
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
-import { createInboxObservationAgent } from '@/mastra/agents/inbox-observation'
-import { runObservationEngine } from '@/lib/inbox/observation-engine'
+import { createUnifiedInboxAgent } from '@/mastra/agents/unified-inbox'
+import { runUnifiedInboxEngine } from '@/lib/inbox/unified-inbox-engine'
 import { logInboxTelemetry } from '@/lib/inbox/telemetry'
 import { randomUUID } from 'node:crypto'
 
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
   cooldownDate.setHours(cooldownDate.getHours() - COOLDOWN_HOURS)
 
   const { data: recentGenerations } = await admin
-    .from('inbox_observations')
+    .from('inbox_items')
     .select('created_at')
     .eq('user_id', userId)
     .eq('metadata->>trigger', 'manual')
@@ -111,12 +111,12 @@ export async function POST(request: NextRequest) {
 
   try {
     // 5) Use service-role client for all DB work inside the engine
-    const agent = createInboxObservationAgent({ userId }, { requestId, runId })
-    const result = await runObservationEngine({
+    const agent = createUnifiedInboxAgent({ userId }, { requestId, runId })
+    const result = await runUnifiedInboxEngine({
       supabase: admin,
       agent,
       userId,
-      queueLimit: 3,
+      queueLimit: 5,
       dedupeWindowDays: 14,
       metadata: {
         trigger: 'manual',

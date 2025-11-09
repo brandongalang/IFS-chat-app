@@ -335,6 +335,14 @@ function renderEnvelopeDetail(envelope: InboxEnvelope) {
       return renderNotificationDetail(envelope)
     case 'cta':
       return renderCtaDetail(envelope)
+    // Unified inbox types
+    case 'observation':
+    case 'question':
+    case 'pattern':
+      return renderObservationDetail(envelope as any)
+    case 'session_summary':
+    case 'follow_up':
+      return renderFollowUpDetail(envelope as any)
     default:
       return (
         <DialogHeader>
@@ -343,6 +351,55 @@ function renderEnvelopeDetail(envelope: InboxEnvelope) {
         </DialogHeader>
       )
   }
+}
+
+// Unified inbox detail renderers
+
+function renderObservationDetail(envelope: any) {
+  const { payload } = envelope
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{payload.title}</DialogTitle>
+        <DialogDescription>{payload.summary}</DialogDescription>
+      </DialogHeader>
+      <ScrollArea className="max-h-64 pr-4 text-sm text-foreground/80">
+        {payload.inference ? (
+          <p className="whitespace-pre-wrap leading-relaxed">{payload.inference}</p>
+        ) : null}
+        {payload.evidence && payload.evidence.length > 0 ? (
+          <div className="mt-4 space-y-2 text-xs">
+            <div className="font-semibold uppercase tracking-wide text-foreground/60">Evidence</div>
+            <ul className="space-y-1">
+              {payload.evidence.map((ev: any, idx: number) => (
+                <li key={`${envelope.id}-evidence-${idx}`} className="text-foreground/70">
+                  {ev.type}: {ev.id}
+                  {ev.context ? ` — ${ev.context}` : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </ScrollArea>
+    </>
+  )
+}
+
+function renderFollowUpDetail(envelope: any) {
+  const { payload } = envelope
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{payload.title}</DialogTitle>
+        <DialogDescription>{payload.summary}</DialogDescription>
+      </DialogHeader>
+      {payload.body ? (
+        <ScrollArea className="max-h-64 pr-4 text-sm text-foreground/80">
+          <p className="whitespace-pre-wrap leading-relaxed">{payload.body}</p>
+        </ScrollArea>
+      ) : null}
+    </>
+  )
 }
 
 function renderInsightDetail(envelope: Extract<InboxEnvelope, { type: 'insight_spotlight' }>) {

@@ -22,8 +22,9 @@ export interface InboxItem {
 }
 
 // Inbox feed envelope types used by client-side normalization helpers
+// Extended to support unified inbox 6 types: session_summary, nudge, follow_up, observation, question, pattern
 
-export type InboxMessageType = 'insight_spotlight' | 'nudge' | 'cta' | 'notification'
+export type InboxMessageType = 'insight_spotlight' | 'nudge' | 'cta' | 'notification' | 'observation' | 'question' | 'pattern' | 'session_summary' | 'follow_up'
 export type InboxEnvelopeSource = 'network' | 'fallback' | 'supabase' | 'edge'
 
 export type InboxEventType = 'delivered' | 'opened' | 'actioned'
@@ -171,11 +172,80 @@ export type NotificationEnvelope = InboxEnvelopeBase & {
   payload: NotificationMessage
 }
 
+// Unified inbox envelope types (supporting 6 types)
+
+export interface EvidenceItem {
+  type: 'session' | 'part' | 'observation' | 'checkin' | 'relationship'
+  id: string
+  context?: string
+}
+
+export interface ObservationMessage {
+  title: string
+  summary: string
+  inference: string
+  evidence?: EvidenceItem[]
+}
+
+export interface QuestionMessage {
+  title: string
+  summary: string
+  inference: string
+}
+
+export interface PatternMessage {
+  title: string
+  summary: string
+  inference: string
+  evidence?: EvidenceItem[]
+}
+
+export interface SessionSummaryMessage {
+  title: string
+  summary: string
+}
+
+export interface FollowUpMessage {
+  title: string
+  summary: string
+  body: string
+}
+
+export type ObservationEnvelope = InboxEnvelopeBase & {
+  type: 'observation'
+  payload: ObservationMessage
+}
+
+export type QuestionEnvelope = InboxEnvelopeBase & {
+  type: 'question'
+  payload: QuestionMessage
+}
+
+export type PatternEnvelope = InboxEnvelopeBase & {
+  type: 'pattern'
+  payload: PatternMessage
+}
+
+export type SessionSummaryEnvelope = InboxEnvelopeBase & {
+  type: 'session_summary'
+  payload: SessionSummaryMessage
+}
+
+export type FollowUpEnvelope = InboxEnvelopeBase & {
+  type: 'follow_up'
+  payload: FollowUpMessage
+}
+
 export type InboxEnvelope =
   | InsightSpotlightEnvelope
   | NudgeEnvelope
   | CallToActionEnvelope
   | NotificationEnvelope
+  | ObservationEnvelope
+  | QuestionEnvelope
+  | PatternEnvelope
+  | SessionSummaryEnvelope
+  | FollowUpEnvelope
 
 export type InboxFeedVariant = 'pragmatic' | 'clean'
 

@@ -1,12 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/memory-update",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/generate-insights",
-      "schedule": "10 8 * * *"
+      "path": "/api/cron/finalize-sessions",
+      "schedule": "0 0 * * *"
     }
   ]
 }

@@ -1,3 +1,12 @@
+/**
+ * @deprecated Use `createUnifiedInboxAgent` from `./unified-inbox` instead.
+ * This agent is kept for backward compatibility but all new work should use the unified agent.
+ * 
+ * Migration: Replace `createInboxObservationAgent()` with `createUnifiedInboxAgent()`
+ * The unified agent combines observation research with insight generation into a single
+ * research → analysis → generation flow supporting 6 output types.
+ */
+
 import { Agent } from '@mastra/core'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 
