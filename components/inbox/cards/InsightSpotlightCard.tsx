@@ -43,7 +43,7 @@ export function InsightSpotlightCard({ envelope, onOpen, onQuickAction, onExplor
   return (
     <div
       className={cn(
-        'rounded-xl border border-border/40 bg-card/20 backdrop-blur p-4',
+        'w-full rounded-xl border border-border/40 bg-card/20 backdrop-blur p-4',
         actioned && 'opacity-80',
         className,
       )}

@@ -230,9 +230,9 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
         ) : null}
 
         {(status === 'success' || (status === 'loading' && envelopes.length)) ? (
-          <div className="space-y-3">
+          <div className="space-y-3 w-full">
             {envelopes.map((envelope) => (
-              <div key={envelope.id}>
+              <div key={envelope.id} className="w-full">
                 {renderInboxCard(envelope, {
                   onOpen: handleOpen,
                   onQuickAction: (entry, action) => handleQuickAction(entry, action),

@@ -23,7 +23,7 @@ export function CallToActionCard({ envelope, onOpen, onVisit, className }: CallT
   const target = action.target ?? '_self'
 
   return (
-    <div className={cn('rounded-xl border border-border/40 bg-card/20 backdrop-blur p-4', className)}>
+    <div className={cn('w-full rounded-xl border border-border/40 bg-card/20 backdrop-blur p-4', className)}>
       <button
         type="button"
         onClick={() => onOpen?.(envelope)}

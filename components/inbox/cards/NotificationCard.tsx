@@ -20,7 +20,7 @@ export function NotificationCard({ envelope, onOpen, onQuickAction, className }:
   const label = actions?.label ?? 'Got it'
 
   return (
-    <div className={cn('rounded-xl border border-border/40 bg-card/15 backdrop-blur p-4', className)}>
+    <div className={cn('w-full rounded-xl border border-border/40 bg-card/15 backdrop-blur p-4', className)}>
       <div className="text-[10px] font-semibold tracking-[0.24em] text-foreground/60">NOTIFICATION</div>
       <div className="mt-3">
         <p className="text-base font-semibold leading-tight text-foreground">{payload.title}</p>

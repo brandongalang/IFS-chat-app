@@ -44,7 +44,7 @@ export function NudgeCard({ envelope, onOpen, onQuickAction, onExploreInChat, cl
   const actioned = Boolean(reaction)
 
   return (
-    <div className={cn('rounded-xl border border-border/40 bg-card/20 backdrop-blur p-4', actioned && 'opacity-80', className)}>
+    <div className={cn('w-full rounded-xl border border-border/40 bg-card/20 backdrop-blur p-4', actioned && 'opacity-80', className)}>
       <button
         type="button"
         onClick={() => onOpen?.(envelope)}
