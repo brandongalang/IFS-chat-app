@@ -2,80 +2,32 @@ name: Documentation
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-  push:
-    branches: [main]
 
 jobs:
-  docs:
+  docs-reminder:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
-    env:
-      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
     steps:
-      - name: Skip push event
-        if: ${{ github.event_name != 'pull_request' }}
-        run: echo "Docs automation runs only for pull_request events; skipping."
-
       - uses: actions/checkout@v4
-        if: ${{ github.event_name == 'pull_request' }}
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
-        if: ${{ github.event_name == 'pull_request' }}
         with:
           node-version: 20
 
-      - name: Install OpenCode
-        if: ${{ github.event_name == 'pull_request' }}
-        run: |
-          if [ -z "$GOOGLE_API_KEY" ]; then
-            echo "GOOGLE_API_KEY not configured; skipping OpenCode install."
-            exit 0
-          fi
-          npm install -g opencode-ai
-          rm -rf ~/.opencode/config.toml || true
-
-      - name: Analyze and Update Docs via AI
-        id: ai-update
-        if: ${{ github.event_name == 'pull_request' }}
+      - name: Check if docs might need updating
+        id: check-docs
         continue-on-error: true
         env:
-          GOOGLE_API_KEY: ${{ env.GOOGLE_API_KEY }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
-          GITHUB_EVENT_PATH: ${{ github.event_path }}
-        run: |
-          if [ -z "$GOOGLE_API_KEY" ]; then
-            echo "GOOGLE_API_KEY not configured; skipping docs update."
-            exit 0
-          fi
-          node .github/scripts/docs-update-ai.mjs
+        run: node .github/scripts/docs-reminder.mjs
 
-      - name: Check for AI-generated changes
-        id: docs-check
-        if: ${{ github.event_name == 'pull_request' }}
-        run: |
-          if [ -n "$(git diff --name-only docs/)" ]; then
-            echo "has-changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "has-changes=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Commit Documentation Updates
-        if: ${{ github.event_name == 'pull_request' && steps.docs-check.outputs.has-changes == 'true' }}
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action Bot"
-          git add docs/
-          git commit -m "docs: AI-powered documentation updates"
-          git push
-
-      - name: Add PR Comment
-        if: ${{ github.event_name == 'pull_request' && steps.docs-check.outputs.has-changes == 'true' }}
+      - name: Post docs reminder comment
+        if: steps.check-docs.outputs.needs-docs == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -83,13 +35,21 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: "🤖 I've automatically updated the documentation based on your changes."
+              body: `📚 **Documentation Reminder**
+
+This PR modifies code that may require documentation updates. Please check if docs need updating:
+
+1. Review your code changes
+2. Check \`docs/.docmap.json\` for mapped documentation files
+3. Update relevant docs in \`docs/features/\`, \`docs/current/\`, or other relevant sections
+4. If no docs update is needed, add the \`docs:skip\` label with a brief explanation
+
+**Tip:** Use the \`docs:skip\` label if this change doesn't affect user-facing features, behavior, or configuration.`
             })
 
-      - name: Verify Documentation Requirements
-        if: ${{ github.event_name == 'pull_request' && steps.docs-check.outputs.has-changes == 'false' }}
+      - name: Verify docs updated (informational only)
         continue-on-error: true
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
         run: node .github/scripts/docs-check.mjs
