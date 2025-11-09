@@ -2,10 +2,8 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Inter } from "next/font/google"
 import { EtherealChat } from "@/components/ethereal/EtherealChat"
-
-const inter = Inter({ subsets: ["latin"], weight: ["100", "300", "400", "600"], variable: "--font-ethereal" })
+import { MaterialIcon } from "@/components/ui/MaterialIcon"
 
 export default function ChatPage() {
   const lockedHeight = useLockedViewportHeight()
@@ -14,18 +12,39 @@ export default function ChatPage() {
     return { minHeight: lockedHeight, height: lockedHeight }
   }, [lockedHeight])
 
+  const currentDate = new Date().toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  })
+
   return (
     <Suspense fallback={null}>
       <div
-        className={`${inter.variable} font-sans min-h-screen h-screen relative overflow-hidden`}
+        className="font-display min-h-screen h-screen relative overflow-hidden bg-background-light dark:bg-background-dark flex flex-col"
         style={containerStyle}
       >
-        <Link
-          href="/today"
-          className="absolute left-3 top-3 z-10 inline-flex items-center rounded-md border border-border/40 bg-card/20 px-3 py-1.5 text-xs text-foreground/80 backdrop-blur transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-        >
-          Home
-        </Link>
+        {/* Top App Bar */}
+        <header className="flex items-center bg-background-light dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-10 border-b border-gray-200/50 dark:border-gray-700/50">
+          <div className="flex size-12 shrink-0 items-center justify-start">
+            <Link
+              href="/"
+              className="text-text-primary-light dark:text-text-primary-dark"
+              aria-label="Go back"
+            >
+              <MaterialIcon name="arrow_back_ios_new" />
+            </Link>
+          </div>
+          <h2 className="text-text-primary-light dark:text-text-primary-dark text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">
+            {currentDate}
+          </h2>
+          <div className="flex w-12 items-center justify-end">
+            <button className="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-12 bg-transparent text-text-primary-light dark:text-text-primary-dark gap-2 text-base font-bold leading-normal tracking-[0.015em] min-w-0 p-0">
+              <MaterialIcon name="more_vert" />
+            </button>
+          </div>
+        </header>
+
         <EtherealChat />
       </div>
     </Suspense>

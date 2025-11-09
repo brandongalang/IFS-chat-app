@@ -28,20 +28,11 @@ const taskListStyleVariables = taskListCustomVariables as unknown as CSSProperti
 
 export function EtherealMessageList({ messages, tasksByMessage, currentStreamingId }: EtherealMessageListProps) {
   return (
-    <div className="flex flex-col gap-6">
+    <main className="flex-1 overflow-y-auto p-4 space-y-6">
       {messages.map((message) => {
         const isAssistant = message.role === "assistant"
         const isStreaming = currentStreamingId === message.id
-        const containerAlign = isAssistant ? "justify-start" : "justify-end"
-        const bubbleClass = cn(
-          "max-w-full rounded-[28px] border px-6 py-5 backdrop-blur-xl transition-colors",
-          isAssistant
-            ? "bg-white/12 border-white/18 text-white/95 shadow-[0_18px_50px_rgba(5,15,20,0.35)]"
-            : "bg-white/8 border-white/12 text-white/85 shadow-[0_12px_36px_rgba(5,5,10,0.25)]",
-          isStreaming && isAssistant
-            ? "border-white/35 shadow-[0_0_42px_rgba(180,220,255,0.35)] animate-softPulse"
-            : undefined
-        )
+        const senderLabel = isAssistant ? "The Critic" : "Me" // TODO: Get actual part name for assistant messages
 
         const tasks = isAssistant ? tasksByMessage?.[message.id] : undefined
 
@@ -51,44 +42,61 @@ export function EtherealMessageList({ messages, tasksByMessage, currentStreaming
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className={cn("flex", containerAlign)}
+            className={cn("flex items-end gap-3", isAssistant ? "justify-start" : "justify-end")}
           >
-            <div className={bubbleClass}>
-              <div className={cn("space-y-4", isAssistant ? "text-[20px] leading-[1.4] font-light italic" : "text-sm sm:text-base leading-7 font-light")}
-                style={isAssistant ? { letterSpacing: "0.015em" } : undefined}
-              >
-                {isAssistant && tasks?.length ? (
-                  <TaskList
-                    tasks={tasks}
-                    className="mb-3 rounded-2xl border border-white/15 bg-white/6 p-3 text-white"
-                    itemClassName="border-white/20 bg-white/12"
-                    statusClassName="text-white/75"
-                    progressTrackClassName="bg-white/20"
-                    progressBarClassName="bg-white"
-                    style={taskListStyleVariables}
-                  />
-                ) : null}
+            <div className="flex flex-1 flex-col gap-1" style={{ maxWidth: '360px' }}>
+              <p className={cn(
+                "text-[13px] font-normal leading-normal",
+                isAssistant
+                  ? "text-secondary-text-light dark:text-secondary-text-dark text-left"
+                  : "text-secondary-text-light dark:text-secondary-text-dark text-right"
+              )}>
+                {senderLabel}
+              </p>
+              <div className={cn(
+                "rounded-xl px-4 py-3 shadow-soft",
+                isAssistant
+                  ? "bg-card-light dark:bg-card-dark"
+                  : "bg-primary dark:bg-primary"
+              )}>
+                <div className={cn(
+                  "text-base font-normal leading-normal",
+                  isAssistant
+                    ? "text-text-primary-light dark:text-text-primary-dark"
+                    : "text-white"
+                )}>
+                  {isAssistant && tasks?.length ? (
+                    <TaskList
+                      tasks={tasks}
+                      className="mb-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3"
+                      itemClassName="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700"
+                      statusClassName="text-gray-600 dark:text-gray-300"
+                      progressTrackClassName="bg-gray-200 dark:bg-gray-600"
+                      progressBarClassName="bg-primary dark:bg-primary"
+                    />
+                  ) : null}
 
-                {isAssistant ? (
-                  <div className={cn("relative", isStreaming ? "overflow-hidden" : undefined)}>
-                    {isStreaming ? (
-                      <div
-                        aria-hidden
-                        className="pointer-events-none absolute inset-[-1.25rem] rounded-[32px] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.28),rgba(255,255,255,0)_65%)] opacity-70 transition-opacity duration-500"
-                      />
-                    ) : null}
-                    <StreamingMarkdown text={message.content} isStreaming={isStreaming} className="relative z-10" />
-                  </div>
-                ) : (
-                  <p className="whitespace-pre-wrap text-[15px] sm:text-[16px] lowercase tracking-wide text-white/90">
-                    {message.content}
-                  </p>
-                )}
+                  {isAssistant ? (
+                    <div className={cn("relative", isStreaming ? "overflow-hidden" : undefined)}>
+                      {isStreaming ? (
+                        <div
+                          aria-hidden
+                          className="pointer-events-none absolute inset-[-1.25rem] rounded-[32px] bg-[radial-gradient(circle_at_top,rgba(124,154,146,0.2),rgba(124,154,146,0)_65%)] opacity-70 transition-opacity duration-500"
+                        />
+                      ) : null}
+                      <StreamingMarkdown text={message.content} isStreaming={isStreaming} className="relative z-10" />
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-wrap">
+                      {message.content}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
         )
       })}
-    </div>
+    </main>
   )
 }

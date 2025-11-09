@@ -84,11 +84,6 @@ export function CheckInSlots({ selectedDate = new Date() }: CheckInSlotsProps) {
 
   return (
     <>
-      {isViewingToday && streak > 0 ? (
-        <div className="col-span-2">
-          <StreakBanner streak={streak} />
-        </div>
-      ) : null}
       <SlotCard
         variant="morning"
         state={morning}
@@ -133,30 +128,64 @@ function SlotCard({ variant, state, isViewingToday, targetDate, hasDraft }: Slot
   const showAction = state.status === 'available'
   const actionLabel = hasDraft ? 'Resume' : 'Begin'
 
+  const isAvailable = state.status === 'available'
+  const isCompleted = state.status === 'completed'
+  const displayStatusLabel = isCompleted ? statusLabel : 'Not recorded'
+
+  const cardContent = (
+    <>
+      <div className="flex flex-col gap-1">
+        <p className={cn(
+          'text-lg font-bold',
+          isAvailable
+            ? 'text-gray-800 dark:text-gray-100'
+            : 'text-gray-400 dark:text-gray-500'
+        )}>
+          {title}
+        </p>
+        <p className={cn(
+          'text-sm',
+          isAvailable
+            ? 'text-gray-600 dark:text-gray-300'
+            : 'text-gray-400 dark:text-gray-500'
+        )}>
+          {description}
+        </p>
+      </div>
+      <div className={cn(
+        'px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap',
+        'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
+      )}>
+        {displayStatusLabel}
+      </div>
+    </>
+  )
+
+  if (showAction) {
+    return (
+      <GuardedLink href={href} className="block">
+        <div
+          data-slot={variant}
+          className={cn(
+            'flex justify-between items-start gap-4 p-3 rounded-lg cursor-pointer',
+            'bg-gray-100/60 dark:bg-gray-700/40 hover:bg-gray-200/60 dark:hover:bg-gray-700/60 transition-colors'
+          )}
+        >
+          {cardContent}
+        </div>
+      </GuardedLink>
+    )
+  }
+
   return (
     <div
       data-slot={variant}
       className={cn(
-        'col-span-2 md:col-span-1 flex h-full flex-col justify-between rounded-2xl border border-border bg-card/60 p-5 shadow-sm backdrop-blur transition hover:border-border/80',
+        'flex justify-between items-start gap-4 p-3 rounded-lg',
+        'text-gray-400 dark:text-gray-500'
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {variant === 'morning' ? 'Morning' : 'Evening'}
-          </p>
-          <h2 className="mt-1 text-lg font-semibold">{title}</h2>
-        </div>
-        <Badge variant={statusVariant}>{statusLabel}</Badge>
-      </div>
-      <p className="mt-3 text-sm text-muted-foreground">{description}</p>
-      {showAction ? (
-        <GuardedLink href={href} className="mt-5 inline-flex w-full">
-          <Button className="w-full min-h-12 py-3" variant={hasDraft ? 'secondary' : 'default'}>
-            {actionLabel}
-          </Button>
-        </GuardedLink>
-      ) : null}
+      {cardContent}
     </div>
   )
 }

@@ -166,15 +166,15 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
   return (
     <section
       className={cn(
-        'col-span-2 rounded-xl border border-border/40 bg-card/20 backdrop-blur p-4 mt-2',
+        'rounded-xl bg-white dark:bg-[#1C1C1E] p-4 shadow-subtle',
         className,
       )}
       aria-labelledby="today-inbox-heading"
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex justify-between items-center mb-4">
         <h2
           id="today-inbox-heading"
-          className="text-xs font-semibold tracking-[0.24em] text-foreground/70"
+          className="text-xs font-semibold text-gray-500 dark:text-gray-400 tracking-wide"
         >
           INBOX
         </h2>
@@ -210,7 +210,7 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
         </div>
       </div>
 
-      <div className="mt-3 space-y-3">
+      <div className="flex flex-col gap-4">
         {status === 'loading' ? (
           <div className="animate-pulse rounded-lg border border-border/30 bg-card/10 p-4 text-sm text-foreground/50">
             Loading inbox…
