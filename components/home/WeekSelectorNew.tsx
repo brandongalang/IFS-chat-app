@@ -1,8 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 
 interface DayActivity {
@@ -13,13 +11,13 @@ interface DayActivity {
   isCurrentWeek: boolean
 }
 
-interface WeekSelectorProps {
+interface WeekSelectorNewProps {
   selectedDate: Date
   onDateChange: (date: Date) => void
   className?: string
 }
 
-export function WeekSelector({ selectedDate, onDateChange, className }: WeekSelectorProps) {
+export function WeekSelectorNew({ selectedDate, onDateChange, className }: WeekSelectorNewProps) {
   const [weekDays, setWeekDays] = useState<DayActivity[]>([])
   const [_loading, setLoading] = useState(true)
   
@@ -115,110 +113,57 @@ export function WeekSelector({ selectedDate, onDateChange, className }: WeekSele
     onDateChange(newDate)
   }
 
-  const goToToday = () => {
-    onDateChange(new Date())
-  }
-
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   const isCurrentWeekSelected = weekDays.some(day => day.isCurrentWeek)
+
+  const weekStart = weekDays[0] ? new Date(weekDays[0].date + 'T00:00:00') : null
+  const weekEnd = weekDays[6] ? new Date(weekDays[6].date + 'T00:00:00') : null
+  const weekRange = weekStart && weekEnd
+    ? `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+    : ''
 
   return (
     <div className={className}>
       {/* Week Navigation */}
-      <div className="flex items-center justify-between mb-3">
-        <Button
-          variant="ghost"
-          size="sm"
+      <div className="flex justify-between items-center py-2">
+        <button
           onClick={() => navigateWeek('prev')}
-          className="h-8 w-8 p-0 text-white/60 hover:text-white/90 hover:bg-white/10"
+          className="text-2xl text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+          aria-label="Previous week"
         >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+          <span className="material-symbols-outlined">chevron_left</span>
+        </button>
         
-        <div className="flex items-center gap-2">
-          <span 
-            className="text-sm font-medium"
-            style={{ 
-              color: 'rgba(255,255,255,var(--eth-user-opacity))',
-              letterSpacing: 'var(--eth-letter-spacing-user)'
-            }}
-          >
-            {weekDays[0] ? new Date(weekDays[0].date + 'T00:00:00').toLocaleDateString('en-US', { 
-              month: 'short', 
-              day: 'numeric' 
-            }) : ''} - {weekDays[6] ? new Date(weekDays[6].date + 'T00:00:00').toLocaleDateString('en-US', { 
-              month: 'short', 
-              day: 'numeric' 
-            }) : ''}
-          </span>
-          
-          {!isCurrentWeekSelected && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={goToToday}
-              className="h-6 px-2 text-xs text-white/60 hover:text-white/90 hover:bg-white/10"
-            >
-              Today
-            </Button>
-          )}
-        </div>
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+          {weekRange} {isCurrentWeekSelected && <span className="text-gray-500 dark:text-gray-400">Today</span>}
+        </p>
         
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
           onClick={() => navigateWeek('next')}
-          className="h-8 w-8 p-0 text-white/60 hover:text-white/90 hover:bg-white/10"
+          className="text-2xl text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+          aria-label="Next week"
         >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+          <span className="material-symbols-outlined">chevron_right</span>
+        </button>
       </div>
 
       {/* Week Calendar */}
-      <div 
-        className="grid grid-cols-7 gap-2 text-center text-xs"
-        style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.7))' }}
-      >
+      <div className="grid grid-cols-7 gap-2 text-center text-sm">
         {weekDays.map((day, index) => {
           const date = new Date(day.date + 'T00:00:00')
           const dayNumber = date.getDate()
-          const hasActivity = day.hasCheckIn || day.hasChatActivity
           
           return (
-            <div key={day.date} className="flex flex-col gap-1">
-              <span>{dayNames[index]}</span>
-              <div 
-                className={`
-                  relative rounded-md py-2 px-1 transition-all duration-200
-                  ${day.isToday 
-                    ? 'bg-white/20 border border-white/40 shadow-[0_0_0_1px_rgba(255,255,255,0.15)]' 
-                    : 'border border-border/40 bg-card/20 backdrop-blur'
-                  }
-                  ${hasActivity ? 'hover:bg-white/15' : 'hover:bg-white/10'}
-                `}
-                style={{
-                  color: day.isToday 
-                    ? 'rgba(255,255,255,1)' 
-                    : 'rgba(255,255,255,var(--eth-user-opacity))'
-                }}
+            <div key={day.date} className="flex flex-col gap-1 items-center">
+              <span className="text-gray-600 dark:text-gray-400">{dayNames[index]}</span>
+              <div
+                className={`flex items-center justify-center w-9 h-9 rounded-lg ${
+                  day.isToday
+                    ? 'bg-primary dark:bg-primary text-white font-semibold'
+                    : 'bg-gray-200/50 dark:bg-gray-700/50 text-gray-800 dark:text-gray-200'
+                }`}
               >
-                <div className="relative">
-                  {dayNumber}
-                  
-                  {/* Streak indicator */}
-                  {hasActivity && (
-                    <div className="absolute -top-1 -right-1">
-                      <div className="w-2 h-2 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm">
-                        <div className="w-full h-full rounded-full bg-white/30 animate-pulse" />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Current day glow effect */}
-                  {day.isToday && (
-                    <div className="absolute inset-0 rounded-md bg-white/5 animate-pulse" />
-                  )}
-                </div>
+                {dayNumber}
               </div>
             </div>
           )
@@ -227,3 +172,4 @@ export function WeekSelector({ selectedDate, onDateChange, className }: WeekSele
     </div>
   )
 }
+

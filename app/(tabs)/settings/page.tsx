@@ -1,8 +1,20 @@
 'use client'
 
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
+import { isNewUIEnabled } from '@/config/features'
 
 export default function SettingsPage() {
+  const newUI = isNewUIEnabled()
+  
+  if (!newUI) {
+    // Settings page only available in new UI
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Settings coming soon</p>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark flex flex-col">
       {/* Top App Bar */}
@@ -91,4 +103,3 @@ export default function SettingsPage() {
     </div>
   )
 }
-
