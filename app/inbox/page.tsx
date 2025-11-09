@@ -26,7 +26,7 @@ export default function InboxPage() {
   return (
     <main className="min-h-screen bg-background/60 pb-16 pt-10">
       <InboxPageAnalytics />
-      <PageContainer className="flex flex-col gap-6" size="comfortable">
+      <PageContainer className="flex flex-col gap-6" size="full">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">Inbox</h1>
