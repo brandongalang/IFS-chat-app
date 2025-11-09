@@ -19,7 +19,7 @@ interface CheckInSlotsNewProps {
 }
 
 export function CheckInSlotsNew({ selectedDate = new Date() }: CheckInSlotsNewProps) {
-  const { isLoading, error, refetch, isViewingToday, targetDate, morning, evening } =
+  const { isLoading, error, isViewingToday, targetDate, morning, evening } =
     useDailyCheckIns(selectedDate)
 
   const targetDateIso = useMemo(() => targetDate.toISOString().slice(0, 10), [targetDate])

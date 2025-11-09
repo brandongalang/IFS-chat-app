@@ -16,13 +16,15 @@ import { HomePageNew } from './page-new'
 export default function HomePage() {
   const newUI = isNewUIEnabled()
   
+  // Always call hooks - they must be called unconditionally
+  const [selectedDate, setSelectedDate] = useState(new Date())
+  const { profile } = useUser()
+
   if (newUI) {
     return <HomePageNew />
   }
 
   // Original UI
-  const [selectedDate, setSelectedDate] = useState(new Date())
-  const { profile } = useUser()
   const trimmedName = profile?.name?.trim()
   const avatarAlt = trimmedName ? `${trimmedName}'s avatar` : 'User avatar'
   const userInitial = trimmedName?.match(/\p{L}|\p{N}/u)?.[0]?.toUpperCase() ?? null
@@ -123,7 +125,7 @@ function DailyMeditationsCard() {
       </div>
       <div className="mt-3 text-sm">
         <blockquote className="italic">
-          "So whatever you want to do, just do it… Making a damn fool of yourself is absolutely essential."
+          &ldquo;So whatever you want to do, just do it… Making a damn fool of yourself is absolutely essential.&rdquo;
         </blockquote>
         <div
           className="mt-2 text-xs"

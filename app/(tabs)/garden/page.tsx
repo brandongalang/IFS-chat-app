@@ -11,16 +11,14 @@ import { GardenPageNew } from './page-new'
 export default function GardenPage() {
   const newUI = isNewUIEnabled()
   
-  if (newUI) {
-    return <GardenPageNew />
-  }
-
-  // Original UI
+  // Always call hooks - they must be called unconditionally
   const [parts, setParts] = useState<PartRowV2[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // Only fetch if using old UI
+    if (newUI) return
     let isActive = true
 
     async function fetchPartsData() {
@@ -51,7 +49,11 @@ export default function GardenPage() {
     return () => {
       isActive = false
     }
-  }, [])
+  }, [newUI])
+
+  if (newUI) {
+    return <GardenPageNew />
+  }
 
   const totalParts = parts.length
   const establishedCount = parts.filter(

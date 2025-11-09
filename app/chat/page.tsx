@@ -12,16 +12,18 @@ const inter = Inter({ subsets: ["latin"], weight: ["100", "300", "400", "600"], 
 export default function ChatPage() {
   const newUI = isNewUIEnabled()
   
-  if (newUI) {
-    return <ChatPageNew />
-  }
-
-  // Original UI
+  // Always call hooks - they must be called unconditionally
   const lockedHeight = useLockedViewportHeight()
   const containerStyle = useMemo(() => {
     if (typeof lockedHeight !== "number") return undefined
     return { minHeight: lockedHeight, height: lockedHeight }
   }, [lockedHeight])
+
+  if (newUI) {
+    return <ChatPageNew />
+  }
+
+  // Original UI
 
   return (
     <Suspense fallback={null}>
