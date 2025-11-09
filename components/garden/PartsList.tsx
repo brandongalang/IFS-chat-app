@@ -44,7 +44,7 @@ export function PartsList({ parts, isLoading }: PartsListProps) {
     )
   }
 
-  if (filteredParts.length === 0) {
+  if (parts.length === 0) {
     return (
       <div className="col-span-2 text-center py-12">
         <p className="text-text-secondary-light dark:text-text-secondary-dark">No parts found</p>
@@ -54,7 +54,7 @@ export function PartsList({ parts, isLoading }: PartsListProps) {
 
   return (
     <>
-      {filteredParts.map((part) => {
+      {parts.map((part) => {
         const role = (part.data as { role?: string } | null)?.role ?? null
         const description = role || 'Part of your inner system'
 
@@ -72,7 +72,7 @@ export function PartsList({ parts, isLoading }: PartsListProps) {
             </div>
             <div className="mt-auto">
               <p className="text-text-primary-light dark:text-text-primary-dark text-base font-semibold leading-normal">
-                {part.name}
+                {part.name || 'Unnamed Part'}
               </p>
               <p className="text-text-secondary-light dark:text-text-secondary-dark text-sm font-normal leading-normal mt-1">
                 {description}

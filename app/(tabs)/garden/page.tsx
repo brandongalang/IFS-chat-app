@@ -48,7 +48,7 @@ export default function GardenPage() {
 
   const filteredParts = searchQuery
     ? parts.filter((part) =>
-        part.name.toLowerCase().includes(searchQuery.toLowerCase())
+        part.name?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : parts
 
