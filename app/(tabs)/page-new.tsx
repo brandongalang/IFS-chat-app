@@ -85,7 +85,7 @@ export function HomePageNew() {
             <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 tracking-wide px-2 pb-3">
               DAILY JOURNEY
             </h3>
-            <div className="flex flex-col">
+            <div className="grid grid-cols-2 gap-3">
               <CheckInSlotsNew selectedDate={selectedDate} />
             </div>
           </div>

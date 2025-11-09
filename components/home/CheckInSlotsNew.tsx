@@ -60,7 +60,7 @@ export function CheckInSlotsNew({ selectedDate = new Date() }: CheckInSlotsNewPr
 
   if (isLoading) {
     return (
-      <>
+      <div className="contents">
         <div className="flex justify-between items-start gap-4 p-3 rounded-lg bg-gray-100/60 dark:bg-gray-700/40 animate-pulse">
           <div className="flex flex-col gap-1 flex-1">
             <div className="h-5 bg-gray-300 dark:bg-gray-600 rounded w-3/4" />
@@ -75,7 +75,7 @@ export function CheckInSlotsNew({ selectedDate = new Date() }: CheckInSlotsNewPr
           </div>
           <div className="h-6 w-20 bg-gray-200 dark:bg-gray-700 rounded-full" />
         </div>
-      </>
+      </div>
     )
   }
 
@@ -88,7 +88,7 @@ export function CheckInSlotsNew({ selectedDate = new Date() }: CheckInSlotsNewPr
   }
 
   return (
-    <>
+    <div className="contents">
       <SlotCardNew
         variant="morning"
         state={morning}
@@ -103,7 +103,7 @@ export function CheckInSlotsNew({ selectedDate = new Date() }: CheckInSlotsNewPr
         targetDate={targetDate}
         hasDraft={drafts.evening}
       />
-    </>
+    </div>
   )
 }
 
