@@ -28,18 +28,18 @@ export function BottomTabs() {
         isGuarded: false,
       },
       {
-        href: '/garden',
-        label: 'Parts',
-        icon: 'psychology',
-        testId: 'nav-parts',
-        isGuarded: true,
-      },
-      {
         href: '/chat',
         label: 'Journal',
         icon: 'edit_note',
         testId: 'nav-journal',
         isGuarded: false,
+      },
+      {
+        href: '/garden',
+        label: 'Parts',
+        icon: 'psychology',
+        testId: 'nav-parts',
+        isGuarded: true,
       },
       {
         href: '/settings',
