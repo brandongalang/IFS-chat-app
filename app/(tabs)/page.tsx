@@ -104,7 +104,7 @@ export default function HomePage() {
         <PageContainer className="grid grid-cols-2 gap-3">
           <CheckInSlots selectedDate={selectedDate} />
 
-          {inboxEnabled ? <Inbox /> : <DailyMeditationsCard />}
+          {inboxEnabled ? <Inbox className="col-span-2" /> : <DailyMeditationsCard />}
         </PageContainer>
       </main>
     </div>
