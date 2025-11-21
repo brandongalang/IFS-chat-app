@@ -50,7 +50,7 @@ The Inbox surface ships incrementally: a pragmatic Next.js API route that unbloc
 - Supabase client helper: [`supabaseClient.ts`](./clean-backend/supabaseClient.ts)
 
 ## Frontend Shelf Implementation
-- Today page replaces the meditation card with `InboxShelf`, a reusable surface in `components/inbox/` backed by `useInboxFeed`.
+- Today page replaces the meditation card with `InboxShelf`, spanning the full width of the dashboard grid and backed by `useInboxFeed`.
 - `InboxShelf` centralizes analytics payload construction via `emitEnvelopeEvent(...)`, preventing drift in `emitInboxEvent`
   metadata across open, dismiss, and CTA flows.
 - Shared typing contracts live in `types/inbox.ts`, with analytics stubs and normalization utilities ensuring resilient rendering.
