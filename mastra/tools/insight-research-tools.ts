@@ -32,11 +32,12 @@ const getRecentInsightsSchema = z.object({
 });
 
 
-export async function getRecentSessions(input: z.infer<typeof getRecentSessionsSchema> & { userId?: string }): Promise<SessionRowV2[]> {
+export async function getRecentSessions(input: z.infer<typeof getRecentSessionsSchema> & { userId?: string; useServiceRole?: boolean }): Promise<SessionRowV2[]> {
   try {
     const validated = getRecentSessionsSchema.parse(input)
     const userId = resolveUserId(validated.userId || input.userId)
-    const supabase = await getServerSupabaseClient()
+    const useServiceRole = input.useServiceRole ?? false
+    const supabase = await getServerSupabaseClient({ useServiceRole })
     const lookbackDate = new Date()
     lookbackDate.setDate(lookbackDate.getDate() - validated.lookbackDays)
 
@@ -59,13 +60,15 @@ export async function getRecentSessions(input: z.infer<typeof getRecentSessionsS
   }
 }
 
-export async function getActiveParts(input: z.infer<typeof getActivePartsSchema> & { userId?: string }): Promise<PartDisplayRow[]> {
+export async function getActiveParts(input: z.infer<typeof getActivePartsSchema> & { userId?: string; useServiceRole?: boolean }): Promise<PartDisplayRow[]> {
   try {
     const validated = getActivePartsSchema.parse(input)
     const userId = resolveUserId(validated.userId || input.userId)
+    const useServiceRole = input.useServiceRole ?? false
+    const client = await getServerSupabaseClient({ useServiceRole })
     
     // Get parts with recent activity (parts with recent observations or session references)  
-    const parts = await listPartDisplayRecords({ userId }, validated.limit)
+    const parts = await listPartDisplayRecords({ userId, client }, validated.limit)
     
     return parts
   } catch (error) {
@@ -74,11 +77,12 @@ export async function getActiveParts(input: z.infer<typeof getActivePartsSchema>
   }
 }
 
-export async function getPolarizedRelationships(input: z.infer<typeof getPolarizedRelationshipsSchema> & { userId?: string }): Promise<PartRelationshipRowV2[]> {
+export async function getPolarizedRelationships(input: z.infer<typeof getPolarizedRelationshipsSchema> & { userId?: string; useServiceRole?: boolean }): Promise<PartRelationshipRowV2[]> {
   try {
     const validated = getPolarizedRelationshipsSchema.parse(input)
     const userId = resolveUserId(validated.userId || input.userId)
-    const supabase = await getServerSupabaseClient()
+    const useServiceRole = input.useServiceRole ?? false
+    const supabase = await getServerSupabaseClient({ useServiceRole })
     
     // Get relationships that are marked as 'conflicts' (corresponds to legacy 'polarized')
     const polarizedRelationships = await listRelationships(
@@ -98,11 +102,12 @@ export async function getPolarizedRelationships(input: z.infer<typeof getPolariz
   }
 }
 
-export async function getRecentInsights(input: z.infer<typeof getRecentInsightsSchema> & { userId?: string }): Promise<InsightRow[]> {
+export async function getRecentInsights(input: z.infer<typeof getRecentInsightsSchema> & { userId?: string; useServiceRole?: boolean }): Promise<InsightRow[]> {
   try {
     const validated = getRecentInsightsSchema.parse(input)
     const userId = resolveUserId(validated.userId || input.userId)
-    const supabase = await getServerSupabaseClient()
+    const useServiceRole = input.useServiceRole ?? false
+    const supabase = await getServerSupabaseClient({ useServiceRole })
     const lookbackDate = new Date()
     lookbackDate.setDate(lookbackDate.getDate() - validated.lookbackDays)
 
@@ -125,56 +130,72 @@ export async function getRecentInsights(input: z.infer<typeof getRecentInsightsS
   }
 }
 
-// Tool definitions for Mastra
+// Factory for creating tools with configuration
+function createTools(config?: { useServiceRole?: boolean }) {
+  const useServiceRoleConfig = config?.useServiceRole;
 
-export const getRecentSessionsTool = createTool({
-  id: 'getRecentSessions',
-  description: 'Retrieves the most recent chat sessions for a user within a given lookback period.',
-  inputSchema: getRecentSessionsSchema,
-  execute: async ({ context }) => {
-    const userId = resolveUserId(context.userId);
-    return await getRecentSessions({ ...context, userId });
-  }
-});
+  const getRecentSessionsTool = createTool({
+    id: 'getRecentSessions',
+    description: 'Retrieves the most recent chat sessions for a user within a given lookback period.',
+    inputSchema: getRecentSessionsSchema,
+    execute: async ({ context, runtime }: { context: z.infer<typeof getRecentSessionsSchema>; runtime?: { useServiceRole?: boolean } }) => {
+      const userId = resolveUserId(context.userId);
+      const useServiceRole = runtime?.useServiceRole ?? useServiceRoleConfig;
+      return await getRecentSessions({ ...context, userId, useServiceRole });
+    }
+  });
 
-export const getActivePartsTool = createTool({
-  id: 'getActiveParts',
-  description: 'Retrieves the most active or recently updated parts for a user.',
-  inputSchema: getActivePartsSchema,
-  execute: async ({ context }) => {
-    const userId = resolveUserId(context.userId);
-    return await getActiveParts({ ...context, userId });
-  }
-});
+  const getActivePartsTool = createTool({
+    id: 'getActiveParts',
+    description: 'Retrieves the most active or recently updated parts for a user.',
+    inputSchema: getActivePartsSchema,
+    execute: async ({ context, runtime }: { context: z.infer<typeof getActivePartsSchema>; runtime?: { useServiceRole?: boolean } }) => {
+      const userId = resolveUserId(context.userId);
+      const useServiceRole = runtime?.useServiceRole ?? useServiceRoleConfig;
+      return await getActiveParts({ ...context, userId, useServiceRole });
+    }
+  });
 
-export const getPolarizedRelationshipsTool = createTool({
-  id: 'getPolarizedRelationships',
-  description: 'Retrieves part relationships that are marked as polarized.',
-  inputSchema: getPolarizedRelationshipsSchema,
-  execute: async ({ context }) => {
-    const userId = resolveUserId(context.userId);
-    return await getPolarizedRelationships({ ...context, userId });
-  }
-});
+  const getPolarizedRelationshipsTool = createTool({
+    id: 'getPolarizedRelationships',
+    description: 'Retrieves part relationships that are marked as polarized.',
+    inputSchema: getPolarizedRelationshipsSchema,
+    execute: async ({ context, runtime }: { context: z.infer<typeof getPolarizedRelationshipsSchema>; runtime?: { useServiceRole?: boolean } }) => {
+      const userId = resolveUserId(context.userId);
+      const useServiceRole = runtime?.useServiceRole ?? useServiceRoleConfig;
+      return await getPolarizedRelationships({ ...context, userId, useServiceRole });
+    }
+  });
 
-export const getRecentInsightsTool = createTool({
-  id: 'getRecentInsights',
-  description: 'Retrieves the most recent insights that have been generated for a user.',
-  inputSchema: getRecentInsightsSchema,
-  execute: async ({ context }) => {
-    const userId = resolveUserId(context.userId);
-    return await getRecentInsights({ ...context, userId });
-  }
-});
+  const getRecentInsightsTool = createTool({
+    id: 'getRecentInsights',
+    description: 'Retrieves the most recent insights that have been generated for a user.',
+    inputSchema: getRecentInsightsSchema,
+    execute: async ({ context, runtime }: { context: z.infer<typeof getRecentInsightsSchema>; runtime?: { useServiceRole?: boolean } }) => {
+      const userId = resolveUserId(context.userId);
+      const useServiceRole = runtime?.useServiceRole ?? useServiceRoleConfig;
+      return await getRecentInsights({ ...context, userId, useServiceRole });
+    }
+  });
 
-export function createInsightResearchTools(userId?: string) {
   return {
     getRecentSessions: getRecentSessionsTool,
-    getActiveParts: getActivePartsTool,  
+    getActiveParts: getActivePartsTool,
     getPolarizedRelationships: getPolarizedRelationshipsTool,
     getRecentInsights: getRecentInsightsTool,
   }
 }
+
+export function createInsightResearchTools(userId?: string, config?: { useServiceRole?: boolean }) {
+  return createTools(config)
+}
+
+// Default instance for backward compatibility
+const tools = createTools()
+export const getRecentSessionsTool = tools.getRecentSessions
+export const getActivePartsTool = tools.getActiveParts
+export const getPolarizedRelationshipsTool = tools.getPolarizedRelationships
+export const getRecentInsightsTool = tools.getRecentInsights
 
 export const insightResearchTools = {
   getRecentSessions: getRecentSessionsTool,

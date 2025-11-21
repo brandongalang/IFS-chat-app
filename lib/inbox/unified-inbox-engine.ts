@@ -157,14 +157,25 @@ export async function runUnifiedInboxEngine(
       })
     }
 
-    agentRun = await agent.run({
-      input: prompt,
-      context: {
-        userId,
-        maxItems: remaining,
-        metadata: options.metadata ?? {},
-      },
-    })
+    // Use generateVNext directly as agent.run is not available on the base Agent class
+    // @ts-ignore - generateVNext is available on the runtime instance
+    const result = await agent.generateVNext([{ role: 'user', content: prompt }])
+
+    let output: unknown = {}
+    if (result?.text) {
+      // Clean markdown fences if present
+      const text = result.text.replace(/^```json\n?|\n?```$/g, '').trim()
+      try {
+        output = JSON.parse(text)
+      } catch {
+        throw new Error(`Failed to parse JSON from agent output: ${text.slice(0, 100)}...`)
+      }
+    }
+
+    agentRun = {
+      status: 'success',
+      output,
+    }
 
     if (options.telemetry?.enabled) {
       await supabase.from('inbox_observation_telemetry').insert({

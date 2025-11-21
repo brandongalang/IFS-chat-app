@@ -16,10 +16,10 @@ import { createObservationResearchTools, type ObservationResearchTools } from '.
 
 export function createUnifiedInboxTools(
   baseUserId: string | null | undefined,
-  ctx?: { requestId?: string; runId?: string },
+  ctx?: { requestId?: string; runId?: string; useServiceRole?: boolean },
 ) {
   // Get insight tools (4 tools)
-  const insightTools = createInsightResearchTools(baseUserId ?? undefined)
+  const insightTools = createInsightResearchTools(baseUserId ?? undefined, { useServiceRole: ctx?.useServiceRole })
 
   // Get observation tools (9 tools)
   const observationTools = createObservationResearchTools(baseUserId, ctx)

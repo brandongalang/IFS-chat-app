@@ -26,16 +26,17 @@ import {
   updateTherapyDataSchema,
 } from '@/lib/data/therapy-tools.schema'
 
-type ToolRuntime = { userId?: string }
+type ToolRuntime = { userId?: string; useServiceRole?: boolean }
 
 export function createObservationResearchTools(
   baseUserId: string | null | undefined,
-  ctx?: { requestId?: string; runId?: string },
+  ctx?: { requestId?: string; runId?: string; useServiceRole?: boolean },
 ) {
   const verbose = process.env.IFS_VERBOSE === 'true'
   const normalizedBaseUserId = typeof baseUserId === 'string' && baseUserId.trim().length ? baseUserId.trim() : null
   const reqId = ctx?.requestId
   const runId = ctx?.runId
+  const useServiceRoleConfig = ctx?.useServiceRole ?? false
 
   const countItems = (out: unknown): number | undefined => {
     if (Array.isArray(out)) return out.length
@@ -50,8 +51,9 @@ export function createObservationResearchTools(
   const resolveUser = (runtime?: ToolRuntime) => resolveToolUserId(normalizedBaseUserId, runtime)
 
   async function resolveSupabase(runtime?: ToolRuntime) {
-    // Force user-scoped client to keep RLS/tenant boundaries intact.
-    const supabase = await getServerSupabaseClient({ useServiceRole: false })
+    // Use service role if requested (e.g. scripts), otherwise default to user-scoped (cookies)
+    const useServiceRole = runtime?.useServiceRole ?? useServiceRoleConfig
+    const supabase = await getServerSupabaseClient({ useServiceRole })
     const userId = resolveUser(runtime)
     return { supabase, userId }
   }

@@ -2,10 +2,13 @@
 import path from 'node:path'
 import process from 'node:process'
 
+// Bypass server-only check for script execution
+process.env.SERVER_ONLY_DISABLE_GUARD = 'true'
+
 import { config as loadEnv } from 'dotenv'
 
-import { createInboxObservationAgent } from '@/mastra/agents/inbox-observation'
-import { runObservationJob } from '@/lib/inbox/observation-job'
+import { createUnifiedInboxAgent } from '@/mastra/agents/unified-inbox'
+import { runUnifiedInboxEngine } from '@/lib/inbox/unified-inbox-engine'
 import { getServiceClient } from '@/lib/supabase/clients'
 
 loadEnv({ path: path.resolve(process.cwd(), '.env.local') })
@@ -70,32 +73,35 @@ async function main() {
     process.exit(1)
   }
 
-  const agentFactory = (userId: string) => createInboxObservationAgent({ userId })
+  console.log(`Starting unified inbox generation for ${userIds.length} users...`)
 
-  try {
-    const { jobRunId, results, startedAt, finishedAt } = await runObservationJob({
-      supabase,
-      agentFactory,
-      userIds,
-      queueLimit,
-      dedupeWindowDays,
-      metadata: {
-        invokedBy: 'cli',
-        argv: process.argv.slice(2),
-      },
-    })
+  for (const userId of userIds) {
+    try {
+      // Pass useServiceRole: true to agent config for background execution
+      const agent = createUnifiedInboxAgent({ userId }, { useServiceRole: true })
 
-    console.log(`Observation job ${jobRunId} started ${startedAt} finished ${finishedAt}`)
+      const result = await runUnifiedInboxEngine({
+        supabase,
+        agent,
+        userId,
+        queueLimit,
+        dedupeWindowDays,
+        metadata: {
+          trigger: 'script',
+          source: 'cli',
+        },
+      })
 
-    for (const result of results) {
       console.log(
-        `• ${result.userId}: ${result.status} (inserted=${result.inserted.length}, reason=${result.reason ?? 'n/a'})`,
+        `• ${userId}: ${result.status} (inserted=${result.inserted.length}, reason=${result.reason ?? 'n/a'})`,
       )
+      if (result.status === 'error' && result.error) {
+        console.error(`  Error: ${result.error.message}`)
+      }
+    } catch (error) {
+      console.error(`• ${userId}: crashed`)
+      console.error(error)
     }
-  } catch (error) {
-    console.error('Failed to run inbox observation job.')
-    console.error(error)
-    process.exit(1)
   }
 }
 
