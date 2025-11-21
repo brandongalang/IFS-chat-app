@@ -14,15 +14,12 @@
 import { createInsightResearchTools } from './insight-research-tools'
 import { createObservationResearchTools, type ObservationResearchTools } from './inbox-observation-tools'
 
-export function createUnifiedInboxTools(
-  baseUserId: string | null | undefined,
-  ctx?: { requestId?: string; runId?: string },
-) {
+export function createUnifiedInboxTools(baseUserId: string | null | undefined) {
   // Get insight tools (4 tools)
   const insightTools = createInsightResearchTools(baseUserId ?? undefined)
 
   // Get observation tools (9 tools)
-  const observationTools = createObservationResearchTools(baseUserId, ctx)
+  const observationTools = createObservationResearchTools(baseUserId)
 
   // Combine all 13 tools
   return {
