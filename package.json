@@ -35,7 +35,7 @@
     "read:snapshot": "tsx scripts/read-snapshot.ts",
     "scaffold:first-run": "tsx scripts/scaffold-first-run.ts",
     "inbox:author": "tsx scripts/inbox/author-insight.ts",
-    "inbox:generate": "tsx scripts/inbox/generate-observations.ts"
+    "inbox:generate": "SERVER_ONLY_DISABLE_GUARD=true tsx scripts/inbox/generate-observations.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "^2.0.26",

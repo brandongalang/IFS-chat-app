@@ -85,6 +85,7 @@ export interface UnifiedInboxAgentConfig {
   requestId?: string
   runId?: string
   maxOutputItems?: number
+  useServiceRole?: boolean
 }
 
 type Profile = { userId?: string } | null
@@ -177,6 +178,7 @@ export function createUnifiedInboxAgent(
   const tools = createUnifiedInboxTools(baseUserId, {
     requestId: config.requestId,
     runId: config.runId,
+    useServiceRole: config.useServiceRole,
   })
 
   const agent = new Agent({
