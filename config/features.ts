@@ -124,7 +124,7 @@ export function isNewUIEnabled(): boolean {
       // Ignore localStorage errors
     }
   }
-  // Then check environment variable
-  if (devMode) return isTrue(newUIFlag) ?? false
-  return newUIFlag === undefined ? false : isTrue(newUIFlag)
+  // Then check environment variable, default to true (Headspace UI enabled)
+  if (newUIFlag !== undefined) return isTrue(newUIFlag)
+  return true
 }
