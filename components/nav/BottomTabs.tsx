@@ -18,7 +18,7 @@ export function BottomTabs() {
   }
 
   if (newUI) {
-    // New UI with Material Symbols
+    // New UI with Material Symbols - Headspace style
     const navItems = [
       {
         href: '/',
@@ -52,11 +52,11 @@ export function BottomTabs() {
 
     return (
       <nav
-        className="fixed bottom-0 left-0 right-0 z-20 border-t border-gray-200/50 dark:border-gray-700/50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md"
+        className="fixed bottom-0 left-0 right-0 z-20 border-t border-[var(--hs-border-subtle)] bg-[var(--hs-card)]/95 backdrop-blur-lg"
         role="navigation"
         aria-label="Primary navigation"
       >
-        <div className="flex justify-around items-center h-20 pb-safe">
+        <div className="flex justify-around items-center h-18 pb-safe">
           {navItems.map((item) => {
             const active = isActive(item.href)
             const LinkComponent = item.isGuarded ? GuardedLink : Link
@@ -65,21 +65,28 @@ export function BottomTabs() {
               <LinkComponent
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center gap-1 ${
+                className={`flex flex-col items-center justify-center gap-0.5 py-2 px-4 rounded-xl transition-all duration-200 ${
                   active
-                    ? 'text-primary dark:text-primary'
-                    : 'text-[#555555] dark:text-gray-400'
+                    ? 'text-[var(--hs-primary)]'
+                    : 'text-[var(--hs-text-tertiary)] hover:text-[var(--hs-text-secondary)]'
                 }`}
                 aria-current={active ? 'page' : undefined}
                 aria-label={item.label}
                 data-testid={item.testId}
               >
-                <MaterialIcon
-                  name={item.icon}
-                  filled={active}
-                  className="text-2xl"
-                />
-                <span className="text-xs font-medium">{item.label}</span>
+                <div className={`relative ${active ? 'scale-110' : ''} transition-transform duration-200`}>
+                  <MaterialIcon
+                    name={item.icon}
+                    filled={active}
+                    className="text-2xl"
+                  />
+                  {active && (
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--hs-primary)]" />
+                  )}
+                </div>
+                <span className={`text-[10px] font-medium mt-0.5 ${active ? 'font-semibold' : ''}`}>
+                  {item.label}
+                </span>
               </LinkComponent>
             )
           })}

@@ -2,10 +2,12 @@
 
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { isNewUIEnabled } from '@/config/features'
+import { GuardedLink } from '@/components/common/GuardedLink'
+import Link from 'next/link'
 
 export default function SettingsPage() {
   const newUI = isNewUIEnabled()
-  
+
   if (!newUI) {
     // Settings page only available in new UI
     return (
@@ -16,90 +18,136 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark flex flex-col">
-      {/* Top App Bar */}
-      <header className="flex items-center bg-background-light dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-10">
-        <div className="flex size-12 shrink-0 items-center">
-          {/* Placeholder for potential menu icon */}
-        </div>
-        <h1 className="text-text-primary-light dark:text-text-primary-dark text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">
+    <div className="min-h-screen bg-[var(--hs-bg)] flex flex-col hs-animate-in">
+      {/* Header */}
+      <header className="pt-12 pb-6 px-5">
+        <h1 className="text-[28px] font-bold text-[var(--hs-text-primary)] leading-tight">
           Settings
         </h1>
-        <div className="flex w-12 items-center justify-end">
-          <button className="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 w-10 bg-transparent text-text-primary-light dark:text-text-primary-dark">
-            <MaterialIcon name="more_vert" className="text-2xl" />
-          </button>
-        </div>
       </header>
 
       {/* Settings Content */}
-      <main className="flex-1 p-4 pb-24 space-y-4">
-        <div className="rounded-xl bg-white dark:bg-[#1C1C1E] p-4 shadow-subtle">
-          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 tracking-wide mb-4">
-            ACCOUNT
-          </h2>
-          <div className="space-y-3">
-            <button className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-100/60 dark:hover:bg-gray-700/40 transition-colors">
-              <span className="text-text-primary-light dark:text-text-primary-dark text-base font-medium">
-                Profile
-              </span>
-              <MaterialIcon name="chevron_right" className="text-gray-400" />
-            </button>
-            <button className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-100/60 dark:hover:bg-gray-700/40 transition-colors">
-              <span className="text-text-primary-light dark:text-text-primary-dark text-base font-medium">
-                Notifications
-              </span>
-              <MaterialIcon name="chevron_right" className="text-gray-400" />
-            </button>
+      <main className="flex-1 px-5 pb-24 space-y-6">
+        {/* Account Section */}
+        <section className="hs-card p-5">
+          <h2 className="hs-section-title mb-4">Account</h2>
+          <div className="space-y-1">
+            <SettingsItem
+              icon="person"
+              label="Profile"
+              href="/profile"
+            />
+            <SettingsItem
+              icon="notifications"
+              label="Notifications"
+              href="/settings/notifications"
+              comingSoon
+            />
           </div>
-        </div>
+        </section>
 
-        <div className="rounded-xl bg-white dark:bg-[#1C1C1E] p-4 shadow-subtle">
-          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 tracking-wide mb-4">
-            PREFERENCES
-          </h2>
-          <div className="space-y-3">
-            <button className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-100/60 dark:hover:bg-gray-700/40 transition-colors">
-              <span className="text-text-primary-light dark:text-text-primary-dark text-base font-medium">
-                Theme
-              </span>
-              <MaterialIcon name="chevron_right" className="text-gray-400" />
-            </button>
-            <button className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-100/60 dark:hover:bg-gray-700/40 transition-colors">
-              <span className="text-text-primary-light dark:text-text-primary-dark text-base font-medium">
-                Language
-              </span>
-              <MaterialIcon name="chevron_right" className="text-gray-400" />
-            </button>
+        {/* Preferences Section */}
+        <section className="hs-card p-5">
+          <h2 className="hs-section-title mb-4">Preferences</h2>
+          <div className="space-y-1">
+            <SettingsItem
+              icon="palette"
+              label="Theme"
+              href="/settings/theme"
+              comingSoon
+            />
+            <SettingsItem
+              icon="schedule"
+              label="Check-in Reminders"
+              href="/settings/reminders"
+              comingSoon
+            />
           </div>
-        </div>
+        </section>
 
-        <div className="rounded-xl bg-white dark:bg-[#1C1C1E] p-4 shadow-subtle">
-          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 tracking-wide mb-4">
-            ABOUT
-          </h2>
-          <div className="space-y-3">
-            <button className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-100/60 dark:hover:bg-gray-700/40 transition-colors">
-              <span className="text-text-primary-light dark:text-text-primary-dark text-base font-medium">
-                Help & Support
-              </span>
-              <MaterialIcon name="chevron_right" className="text-gray-400" />
-            </button>
-            <button className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-100/60 dark:hover:bg-gray-700/40 transition-colors">
-              <span className="text-text-primary-light dark:text-text-primary-dark text-base font-medium">
-                Privacy Policy
-              </span>
-              <MaterialIcon name="chevron_right" className="text-gray-400" />
-            </button>
-            <button className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-100/60 dark:hover:bg-gray-700/40 transition-colors">
-              <span className="text-text-primary-light dark:text-text-primary-dark text-base font-medium">
-                Terms of Service
-              </span>
-              <MaterialIcon name="chevron_right" className="text-gray-400" />
-            </button>
+        {/* About Section */}
+        <section className="hs-card p-5">
+          <h2 className="hs-section-title mb-4">About</h2>
+          <div className="space-y-1">
+            <SettingsItem
+              icon="help"
+              label="Help & Support"
+              href="/settings/help"
+              comingSoon
+            />
+            <SettingsItem
+              icon="shield"
+              label="Privacy Policy"
+              href="/settings/privacy"
+              comingSoon
+            />
+            <SettingsItem
+              icon="description"
+              label="Terms of Service"
+              href="/settings/terms"
+              comingSoon
+            />
           </div>
+        </section>
+
+        {/* Version info */}
+        <div className="text-center pt-4">
+          <p className="text-xs text-[var(--hs-text-tertiary)]">
+            Version 1.0.0
+          </p>
         </div>
       </main>
     </div>
+  )
+}
+
+interface SettingsItemProps {
+  icon: string
+  label: string
+  href: string
+  comingSoon?: boolean
+}
+
+function SettingsItem({ icon, label, href, comingSoon }: SettingsItemProps) {
+  const content = (
+    <>
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-[var(--hs-surface)] flex items-center justify-center">
+          <MaterialIcon
+            name={icon}
+            className="text-lg text-[var(--hs-text-secondary)]"
+          />
+        </div>
+        <span className="text-[var(--hs-text-primary)] text-base font-medium">
+          {label}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        {comingSoon && (
+          <span className="hs-chip text-[10px]">Soon</span>
+        )}
+        <MaterialIcon
+          name="chevron_right"
+          className="text-[var(--hs-text-tertiary)]"
+        />
+      </div>
+    </>
+  )
+
+  if (comingSoon) {
+    return (
+      <div className="flex items-center justify-between p-3 rounded-xl opacity-60 cursor-not-allowed">
+        {content}
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      href={href}
+      className="flex items-center justify-between p-3 rounded-xl hover:bg-[var(--hs-surface)] transition-colors"
+    >
+      {content}
+    </Link>
   )
 }

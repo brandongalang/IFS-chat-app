@@ -166,7 +166,7 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
   return (
     <section
       className={cn(
-        'rounded-xl bg-white dark:bg-[#1C1C1E] p-4 shadow-subtle',
+        'hs-card p-5',
         className,
       )}
       aria-labelledby="today-inbox-heading"
@@ -174,21 +174,21 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
       <div className="flex justify-between items-center mb-4">
         <h2
           id="today-inbox-heading"
-          className="text-xs font-semibold text-gray-500 dark:text-gray-400 tracking-wide"
+          className="hs-section-title"
         >
           INBOX
         </h2>
         <div className="flex items-center gap-2">
           {hasPreviewBadge ? (
-            <span className="rounded-full border border-border/60 px-2 py-1 text-[10px] uppercase tracking-wide text-foreground/60">
-              Preview data
+            <span className="hs-chip text-[10px]">
+              Preview
             </span>
           ) : null}
           {status === 'error' ? (
             <button
               type="button"
               onClick={reload}
-              className="text-[11px] underline text-foreground/70 hover:text-foreground"
+              className="text-xs font-medium text-[var(--hs-primary)] hover:text-[var(--hs-primary-dark)]"
             >
               Retry
             </button>
@@ -198,34 +198,37 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
             onClick={handleSyncInbox}
             disabled={isGenerating}
             className={cn(
-              'text-[11px] underline transition',
+              'text-xs font-medium transition-colors',
               isGenerating
-                ? 'text-foreground/30 cursor-not-allowed'
-                : 'text-foreground/70 hover:text-foreground',
+                ? 'text-[var(--hs-text-tertiary)] cursor-not-allowed'
+                : 'text-[var(--hs-primary)] hover:text-[var(--hs-primary-dark)]',
             )}
             title={isGenerating ? 'Syncing...' : 'Sync new observations'}
           >
-            {isGenerating ? 'Syncing...' : 'Sync Inbox'}
+            {isGenerating ? 'Syncing...' : 'Sync'}
           </button>
         </div>
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {status === 'loading' ? (
-          <div className="animate-pulse rounded-lg border border-border/30 bg-card/10 p-4 text-sm text-foreground/50">
+          <div className="animate-pulse rounded-xl bg-[var(--hs-surface)] p-4 text-sm text-[var(--hs-text-tertiary)]">
             Loading inbox…
           </div>
         ) : null}
 
         {status === 'error' ? (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+          <div className="rounded-xl border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10 p-4 text-sm text-red-600 dark:text-red-400">
             We could not reach your inbox. Please retry in a moment.
           </div>
         ) : null}
 
         {status === 'empty' ? (
-          <div className="rounded-lg border border-border/30 bg-card/10 p-4 text-sm text-foreground/60">
-            Nothing new just yet—check back after your next reflection.
+          <div className="rounded-xl bg-[var(--hs-surface)] p-6 text-center">
+            <span className="material-symbols-outlined text-3xl text-[var(--hs-text-tertiary)] mb-2">inbox</span>
+            <p className="text-sm text-[var(--hs-text-secondary)]">
+              Nothing new yet—check back after your next reflection.
+            </p>
           </div>
         ) : null}
 

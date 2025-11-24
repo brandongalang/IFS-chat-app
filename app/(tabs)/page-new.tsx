@@ -4,17 +4,20 @@ import { useState } from 'react'
 import { GuardedLink } from '@/components/common/GuardedLink'
 import PersonaSwitcher from '@/components/dev/PersonaSwitcher'
 import { showDevToggle, isInboxEnabled } from '@/config/features'
-import { CheckInSlotsNew } from '@/components/home/CheckInSlotsNew'
-import { WeekSelectorNew } from '@/components/home/WeekSelectorNew'
+import { CheckInCardsHeadspace } from '@/components/home/CheckInCardsHeadspace'
+import { WeekCalendarHeadspace } from '@/components/home/WeekCalendarHeadspace'
 import { useUser } from '@/context/UserContext'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Inbox } from '@/components/inbox/Inbox'
-import { User as UserIcon } from 'lucide-react'
+import { useDailyCheckIns } from '@/hooks/useDailyCheckIns'
 
 export function HomePageNew() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const { profile } = useUser()
+  const { streak } = useDailyCheckIns(selectedDate)
+
   const trimmedName = profile?.name?.trim()
+  const firstName = trimmedName?.split(' ')[0] || ''
   const avatarAlt = trimmedName ? `${trimmedName}'s avatar` : 'User avatar'
   const userInitial = trimmedName?.match(/\p{L}|\p{N}/u)?.[0]?.toUpperCase() ?? null
 
@@ -24,20 +27,45 @@ export function HomePageNew() {
   const now = new Date()
   const hour = now.getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const dateString = now.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric'
+  })
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark flex flex-col">
+    <div className="min-h-screen bg-[var(--hs-bg)] flex flex-col hs-animate-in">
       {/* Header */}
-      <header className="pt-10 pb-4 px-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[#333333] dark:text-white tracking-light text-[32px] font-bold leading-tight">
-            {greeting}
-          </h1>
+      <header className="pt-12 pb-6 px-5">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            {/* Date */}
+            <p className="text-sm font-medium text-[var(--hs-text-secondary)] mb-1">
+              {dateString}
+            </p>
+
+            {/* Greeting */}
+            <h1 className="text-[28px] font-bold text-[var(--hs-text-primary)] leading-tight">
+              {greeting}{firstName ? `, ${firstName}` : ''}
+            </h1>
+
+            {/* Streak indicator */}
+            {streak > 0 && (
+              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--hs-warm-muted)]">
+                <span className="text-lg">🔥</span>
+                <span className="text-sm font-semibold text-[var(--hs-warm-dark)]">
+                  {streak} day streak
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Avatar */}
           <GuardedLink
             href="/profile"
             aria-label="Open profile"
             title={trimmedName || 'Profile'}
-            className="h-8 w-8 rounded-full overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+            className="h-12 w-12 rounded-full overflow-hidden ring-2 ring-[var(--hs-border-subtle)] ring-offset-2 ring-offset-[var(--hs-bg)] focus-visible:outline-none focus-visible:ring-[var(--hs-primary)]"
           >
             <Avatar className="h-full w-full">
               {profile?.avatarUrl ? (
@@ -45,18 +73,22 @@ export function HomePageNew() {
               ) : null}
               <AvatarFallback
                 aria-hidden="true"
-                className="flex items-center justify-center bg-gray-200 dark:bg-gray-700 text-[10px] font-medium uppercase text-gray-600 dark:text-gray-300"
+                className="flex items-center justify-center bg-[var(--hs-primary-muted)] text-base font-semibold text-[var(--hs-primary)]"
               >
-                {userInitial ?? <UserIcon aria-hidden="true" className="h-4 w-4" />}
+                {userInitial ?? (
+                  <span className="material-symbols-outlined text-xl">person</span>
+                )}
               </AvatarFallback>
             </Avatar>
           </GuardedLink>
         </div>
+
+        {/* Dev toggle */}
         {showDevToggle && (
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-4 flex items-center gap-2">
             <button
               type="button"
-              className="text-xs underline text-gray-600 dark:text-gray-400"
+              className="text-xs underline text-[var(--hs-text-tertiary)] hover:text-[var(--hs-text-secondary)]"
               onClick={() => {
                 try {
                   localStorage.setItem('IFS_DEV_MODE', 'true')
@@ -73,32 +105,28 @@ export function HomePageNew() {
         )}
       </header>
 
-      <main className="flex flex-col gap-5 px-4 flex-1">
+      <main className="flex-1 px-5 pb-8 flex flex-col gap-6">
         {/* Week Calendar */}
-        <div className="flex flex-col gap-4">
-          <WeekSelectorNew selectedDate={selectedDate} onDateChange={setSelectedDate} />
-        </div>
+        <section>
+          <WeekCalendarHeadspace
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+          />
+        </section>
 
         {/* Daily Journey Section */}
-        <div className="flex flex-col gap-4 pt-4">
-          <div className="flex flex-col gap-0 rounded-xl bg-white dark:bg-[#1C1C1E] p-4 shadow-subtle overflow-hidden">
-            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 tracking-wide px-2 pb-3">
-              DAILY JOURNEY
-            </h3>
-            <div className="flex flex-col">
-              <CheckInSlotsNew selectedDate={selectedDate} />
-            </div>
-          </div>
-        </div>
+        <section>
+          <h2 className="hs-section-title mb-4 px-1">Your daily journey</h2>
+          <CheckInCardsHeadspace selectedDate={selectedDate} />
+        </section>
 
         {/* Inbox Section */}
         {inboxEnabled && (
-          <div className="flex flex-col gap-4 pt-4">
+          <section>
             <Inbox />
-          </div>
+          </section>
         )}
       </main>
     </div>
   )
 }
-

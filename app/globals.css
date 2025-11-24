@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,54 +7,133 @@
 
 @layer base {
   :root {
+    /* ===== HEADSPACE-INSPIRED DESIGN SYSTEM ===== */
+    --font-sans: 'Inter', system-ui, sans-serif;
+
+    /* Semantic color tokens */
+    --hs-bg: #FBF9F7;
+    --hs-card: #FFFFFF;
+    --hs-surface: #F5F3F0;
+    --hs-text-primary: #2D3436;
+    --hs-text-secondary: #6B7280;
+    --hs-text-tertiary: #9CA3AF;
+    --hs-border: #E5E2DE;
+    --hs-border-subtle: #F0EDE9;
+
+    /* Primary teal */
+    --hs-primary: #3D8B7A;
+    --hs-primary-light: #5BA899;
+    --hs-primary-dark: #2D6B5E;
+    --hs-primary-muted: #E8F4F1;
+
+    /* Warm coral accent */
+    --hs-warm: #F4A261;
+    --hs-warm-light: #F7BC8A;
+    --hs-warm-dark: #E8854A;
+    --hs-warm-muted: #FEF4EB;
+
+    /* Morning theme */
+    --hs-morning-start: #FFE5D4;
+    --hs-morning-mid: #FFECD9;
+    --hs-morning-end: #FFF8F0;
+    --hs-morning-accent: #F4A261;
+
+    /* Evening theme */
+    --hs-evening-start: #E8DFF5;
+    --hs-evening-mid: #DED6F0;
+    --hs-evening-end: #F5F3F8;
+    --hs-evening-accent: #9B8AB8;
+
     /* Legacy shadcn variables (kept for compatibility) */
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --background: 40 20% 98%;
+    --foreground: 192 15% 19%;
+    --muted: 35 15% 95%;
+    --muted-foreground: 220 9% 46%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 192 15% 19%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
+    --card-foreground: 192 15% 19%;
+    --border: 35 12% 89%;
+    --input: 35 12% 89%;
+    --primary: 163 39% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 163 30% 94%;
+    --secondary-foreground: 163 39% 30%;
+    --accent: 30 69% 72%;
+    --accent-foreground: 30 69% 25%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
+    --ring: 163 39% 39%;
+    --radius: 0.75rem;
   }
 
   .dark {
-    /* Legacy shadcn variables (kept for compatibility) */
-    --background: 240 10% 10%;
-    --foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --popover: 240 10% 10%;
-    --popover-foreground: 0 0% 98%;
-    --card: 240 10% 10%;
-    --card-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --primary: 240 4.8% 20%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    /* ===== DARK MODE TOKENS ===== */
+    --hs-bg: #1A1A1A;
+    --hs-card: #262626;
+    --hs-surface: #2D2D2D;
+    --hs-text-primary: #F0EDEB;
+    --hs-text-secondary: #A8A29E;
+    --hs-text-tertiary: #78716C;
+    --hs-border: #3D3D3D;
+    --hs-border-subtle: #333333;
+
+    /* Primary teal (slightly lighter for dark mode) */
+    --hs-primary: #5BA899;
+    --hs-primary-light: #7CBFB1;
+    --hs-primary-dark: #3D8B7A;
+    --hs-primary-muted: #1D3D36;
+
+    /* Warm coral (same as light) */
+    --hs-warm: #F4A261;
+    --hs-warm-light: #F7BC8A;
+    --hs-warm-dark: #E8854A;
+    --hs-warm-muted: #3D2D1F;
+
+    /* Morning theme (dark variants) */
+    --hs-morning-start: #3D2D24;
+    --hs-morning-mid: #332821;
+    --hs-morning-end: #2A231F;
+    --hs-morning-accent: #F4A261;
+
+    /* Evening theme (dark variants) */
+    --hs-evening-start: #2D2636;
+    --hs-evening-mid: #272131;
+    --hs-evening-end: #221D2A;
+    --hs-evening-accent: #B8A4D4;
+
+    /* Legacy shadcn variables */
+    --background: 0 0% 10%;
+    --foreground: 30 15% 94%;
+    --muted: 0 0% 17%;
+    --muted-foreground: 30 5% 65%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 30 15% 94%;
+    --card: 0 0% 15%;
+    --card-foreground: 30 15% 94%;
+    --border: 0 0% 24%;
+    --input: 0 0% 24%;
+    --primary: 163 35% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 163 15% 18%;
+    --secondary-foreground: 163 30% 80%;
+    --accent: 30 50% 50%;
+    --accent-foreground: 30 50% 95%;
+    --destructive: 0 63% 31%;
     --destructive-foreground: 0 0% 98%;
-    --ring: 240 4.9% 83.9%;
+    --ring: 163 35% 50%;
+  }
+
+  * {
+    @apply border-[hsl(var(--border))];
   }
 
   body {
-    @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))];
+    @apply bg-[var(--hs-bg)] text-[var(--hs-text-primary)];
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
@@ -66,7 +146,120 @@
       'GRAD' 0,
       'opsz' 24;
   }
-  
+
+  .material-symbols-outlined.filled {
+    font-variation-settings:
+      'FILL' 1,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 24;
+  }
+
+  /* ===== HEADSPACE COMPONENT STYLES ===== */
+
+  /* Card styles */
+  .hs-card {
+    @apply bg-[var(--hs-card)] rounded-2xl shadow-card;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+
+  .hs-card-interactive {
+    @apply hs-card cursor-pointer;
+  }
+
+  .hs-card-interactive:hover {
+    @apply shadow-card-hover;
+    transform: translateY(-1px);
+  }
+
+  .hs-card-interactive:active {
+    transform: translateY(0);
+  }
+
+  /* Morning gradient card */
+  .hs-card-morning {
+    background: linear-gradient(135deg, var(--hs-morning-start) 0%, var(--hs-morning-mid) 50%, var(--hs-morning-end) 100%);
+  }
+
+  /* Evening gradient card */
+  .hs-card-evening {
+    background: linear-gradient(135deg, var(--hs-evening-start) 0%, var(--hs-evening-mid) 50%, var(--hs-evening-end) 100%);
+  }
+
+  /* Primary button style */
+  .hs-btn-primary {
+    @apply bg-[var(--hs-primary)] text-white font-medium rounded-full px-6 py-3;
+    @apply hover:bg-[var(--hs-primary-dark)] active:bg-[var(--hs-primary-dark)];
+    @apply transition-all duration-200 ease-out;
+    @apply shadow-subtle hover:shadow-soft;
+  }
+
+  /* Secondary button style */
+  .hs-btn-secondary {
+    @apply bg-[var(--hs-surface)] text-[var(--hs-text-primary)] font-medium rounded-full px-6 py-3;
+    @apply hover:bg-[var(--hs-border)] active:bg-[var(--hs-border)];
+    @apply transition-all duration-200 ease-out;
+  }
+
+  /* Warm accent button */
+  .hs-btn-warm {
+    @apply bg-[var(--hs-warm)] text-white font-medium rounded-full px-6 py-3;
+    @apply hover:bg-[var(--hs-warm-dark)] active:bg-[var(--hs-warm-dark)];
+    @apply transition-all duration-200 ease-out;
+    @apply shadow-warm;
+  }
+
+  /* Chip/pill badge */
+  .hs-chip {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+    @apply bg-[var(--hs-primary-muted)] text-[var(--hs-primary)];
+  }
+
+  .hs-chip-warm {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+    @apply bg-[var(--hs-warm-muted)] text-[var(--hs-warm-dark)];
+  }
+
+  /* Section header text */
+  .hs-section-title {
+    @apply text-xs font-semibold uppercase tracking-wider;
+    @apply text-[var(--hs-text-tertiary)];
+  }
+
+  /* Page title */
+  .hs-page-title {
+    @apply text-2xl font-bold text-[var(--hs-text-primary)];
+  }
+
+  /* Subtle divider */
+  .hs-divider {
+    @apply border-t border-[var(--hs-border-subtle)];
+  }
+
+  /* Input field */
+  .hs-input {
+    @apply w-full px-4 py-3 rounded-xl;
+    @apply bg-[var(--hs-surface)] text-[var(--hs-text-primary)];
+    @apply border border-[var(--hs-border-subtle)];
+    @apply placeholder:text-[var(--hs-text-tertiary)];
+    @apply focus:outline-none focus:ring-2 focus:ring-[var(--hs-primary)] focus:border-transparent;
+    @apply transition-all duration-200;
+  }
+
+  /* Progress ring (for streaks/completion) */
+  .hs-progress-ring {
+    @apply relative inline-flex items-center justify-center;
+  }
+
+  .hs-progress-ring svg {
+    transform: rotate(-90deg);
+  }
+
+  /* Animate fade-in for page transitions */
+  .hs-animate-in {
+    animation: fadeIn 0.4s ease-out;
+  }
+
   /* Safe area utilities for mobile notches and home indicators */
   @supports (padding: env(safe-area-inset-bottom)) {
     .pb-safe {
@@ -75,5 +268,37 @@
     .pt-safe {
       padding-top: max(0.5rem, env(safe-area-inset-top));
     }
+  }
+}
+
+@layer utilities {
+  /* Text color utilities using CSS vars */
+  .text-hs-primary {
+    color: var(--hs-text-primary);
+  }
+  .text-hs-secondary {
+    color: var(--hs-text-secondary);
+  }
+  .text-hs-tertiary {
+    color: var(--hs-text-tertiary);
+  }
+
+  /* Background utilities */
+  .bg-hs-bg {
+    background-color: var(--hs-bg);
+  }
+  .bg-hs-card {
+    background-color: var(--hs-card);
+  }
+  .bg-hs-surface {
+    background-color: var(--hs-surface);
+  }
+
+  /* Border utilities */
+  .border-hs {
+    border-color: var(--hs-border);
+  }
+  .border-hs-subtle {
+    border-color: var(--hs-border-subtle);
   }
 }
