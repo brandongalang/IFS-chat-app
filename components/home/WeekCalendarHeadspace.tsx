@@ -126,7 +126,6 @@ export function WeekCalendarHeadspace({
   const isCurrentWeekSelected = weekDays.some(day => day.isCurrentWeek)
 
   const weekStart = weekDays[0] ? new Date(weekDays[0].date + 'T00:00:00') : null
-  const weekEnd = weekDays[6] ? new Date(weekDays[6].date + 'T00:00:00') : null
   const monthYear = weekStart
     ? weekStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : ''

@@ -135,10 +135,8 @@ function CheckInCard({ variant, state, isViewingToday, targetDate, hasDraft }: C
     hasDraft,
   })
 
-  const isAvailable = state.status === 'available'
   const isCompleted = state.status === 'completed'
   const isLocked = state.status === 'locked' || state.status === 'upcoming'
-  const actionLabel = hasDraft ? 'Continue' : 'Begin'
 
   // Completed state
   if (isCompleted) {

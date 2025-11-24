@@ -2,7 +2,6 @@
 
 import { MaterialIcon } from '@/components/ui/MaterialIcon'
 import { isNewUIEnabled } from '@/config/features'
-import { GuardedLink } from '@/components/common/GuardedLink'
 import Link from 'next/link'
 
 export default function SettingsPage() {
