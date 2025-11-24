@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import type { PartRowV2 } from '@/lib/data/schema/types'
 import type { PartCategory } from '@/lib/types/database'
+import { MaterialIcon } from '@/components/ui/MaterialIcon'
 
 interface PartsListNewProps {
   parts: PartRowV2[]
@@ -10,17 +11,41 @@ interface PartsListNewProps {
 }
 
 export function PartsListNew({ parts, isLoading }: PartsListNewProps) {
-  // Map categories to accent colors from mockup
-  const getCategoryDotColor = (category: PartCategory): string => {
+  // Map categories to accent colors and icons
+  const getCategoryConfig = (category: PartCategory) => {
     switch (category) {
       case 'manager':
-        return 'bg-accent-terracotta'
+        return {
+          color: 'bg-accent-terracotta',
+          lightBg: 'bg-accent-terracotta/10',
+          textColor: 'text-accent-terracotta',
+          icon: 'shield',
+          label: 'Manager'
+        }
       case 'firefighter':
-        return 'bg-accent-slate'
+        return {
+          color: 'bg-accent-slate',
+          lightBg: 'bg-accent-slate/10',
+          textColor: 'text-accent-slate',
+          icon: 'local_fire_department',
+          label: 'Firefighter'
+        }
       case 'exile':
-        return 'bg-accent-dusty-blue'
+        return {
+          color: 'bg-accent-dusty-blue',
+          lightBg: 'bg-accent-dusty-blue/10',
+          textColor: 'text-accent-dusty-blue',
+          icon: 'favorite',
+          label: 'Exile'
+        }
       default:
-        return 'bg-accent-sage'
+        return {
+          color: 'bg-accent-sage',
+          lightBg: 'bg-accent-sage/10',
+          textColor: 'text-accent-sage',
+          icon: 'spa',
+          label: 'Part'
+        }
     }
   }
 
@@ -30,12 +55,12 @@ export function PartsListNew({ parts, isLoading }: PartsListNewProps) {
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="flex flex-col gap-3 rounded-xl bg-card-light dark:bg-card-dark p-4 shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] animate-pulse"
+            className="hs-card p-4 animate-pulse"
           >
-            <div className="size-3 rounded-full bg-gray-300 dark:bg-gray-600" />
-            <div className="mt-auto space-y-2">
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+            <div className="w-10 h-10 rounded-xl bg-[var(--hs-surface)] mb-3" />
+            <div className="space-y-2">
+              <div className="h-4 bg-[var(--hs-surface)] rounded w-3/4" />
+              <div className="h-3 bg-[var(--hs-surface)] rounded w-1/2" />
             </div>
           </div>
         ))}
@@ -45,8 +70,14 @@ export function PartsListNew({ parts, isLoading }: PartsListNewProps) {
 
   if (parts.length === 0) {
     return (
-      <div className="col-span-2 text-center py-12">
-        <p className="text-text-secondary-light dark:text-text-secondary-dark">No parts found</p>
+      <div className="col-span-2 hs-card p-8 text-center">
+        <div className="w-16 h-16 mx-auto rounded-full bg-[var(--hs-surface)] flex items-center justify-center mb-4">
+          <MaterialIcon name="psychology" className="text-3xl text-[var(--hs-text-tertiary)]" />
+        </div>
+        <p className="text-[var(--hs-text-secondary)] font-medium">No parts found</p>
+        <p className="text-sm text-[var(--hs-text-tertiary)] mt-1">
+          Start by adding a part to your garden
+        </p>
       </div>
     )
   }
@@ -56,26 +87,38 @@ export function PartsListNew({ parts, isLoading }: PartsListNewProps) {
       {parts.map((part) => {
         const role = (part.data as { role?: string } | null)?.role ?? null
         const description = role || 'Part of your inner system'
+        const config = getCategoryConfig(part.category)
 
         return (
           <Link
             key={part.id}
             href={`/garden/${part.id}`}
-            className="flex flex-col gap-3 rounded-xl bg-card-light dark:bg-card-dark p-4 shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:shadow-lg transition-shadow cursor-pointer"
+            className="hs-card-interactive p-4 flex flex-col"
           >
-            <div className="flex items-start">
-              <div
-                className={`size-3 rounded-full ${getCategoryDotColor(part.category)}`}
-                aria-label={`${part.category} colored dot representing a ${part.category} part category.`}
+            {/* Category icon */}
+            <div className={`w-10 h-10 rounded-xl ${config.lightBg} flex items-center justify-center mb-3`}>
+              <MaterialIcon
+                name={config.icon}
+                className={`text-xl ${config.textColor}`}
               />
             </div>
+
+            {/* Part info */}
             <div className="mt-auto">
-              <p className="text-text-primary-light dark:text-text-primary-dark text-base font-semibold leading-normal">
+              <p className="text-[var(--hs-text-primary)] text-base font-semibold leading-tight">
                 {part.name || 'Unnamed Part'}
               </p>
-              <p className="text-text-secondary-light dark:text-text-secondary-dark text-sm font-normal leading-normal mt-1">
+              <p className="text-[var(--hs-text-secondary)] text-sm mt-1 line-clamp-2">
                 {description}
               </p>
+            </div>
+
+            {/* Category badge */}
+            <div className="mt-3 flex items-center gap-1.5">
+              <div className={`w-2 h-2 rounded-full ${config.color}`} />
+              <span className="text-xs text-[var(--hs-text-tertiary)] capitalize">
+                {config.label}
+              </span>
             </div>
           </Link>
         )
@@ -83,4 +126,3 @@ export function PartsListNew({ parts, isLoading }: PartsListNewProps) {
     </>
   )
 }
-

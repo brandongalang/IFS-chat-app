@@ -13,38 +13,45 @@ export function ChatPageNew() {
   }, [lockedHeight])
 
   const currentDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
     month: 'long',
-    day: 'numeric',
-    year: 'numeric'
+    day: 'numeric'
   })
 
   return (
     <Suspense fallback={null}>
       <div
-        className="font-display min-h-screen h-screen relative overflow-hidden bg-background-light dark:bg-background-dark flex flex-col"
+        className="font-sans min-h-screen h-screen relative overflow-hidden bg-[var(--hs-bg)] flex flex-col"
         style={containerStyle}
       >
-        {/* Top App Bar */}
-        <header className="flex items-center bg-background-light dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-10 border-b border-gray-200/50 dark:border-gray-700/50">
-          <div className="flex size-12 shrink-0 items-center justify-start">
-            <Link
-              href="/"
-              className="text-text-primary-light dark:text-text-primary-dark"
-              aria-label="Go back"
-            >
-              <MaterialIcon name="arrow_back_ios_new" />
-            </Link>
+        {/* Top App Bar - Headspace style */}
+        <header className="flex items-center px-4 py-3 justify-between sticky top-0 z-10 bg-[var(--hs-bg)]/95 backdrop-blur-md border-b border-[var(--hs-border-subtle)]">
+          <Link
+            href="/"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--hs-text-secondary)] hover:bg-[var(--hs-surface)] transition-colors"
+            aria-label="Go back"
+          >
+            <MaterialIcon name="arrow_back" />
+          </Link>
+
+          <div className="flex-1 text-center">
+            <h2 className="text-base font-semibold text-[var(--hs-text-primary)]">
+              Journal
+            </h2>
+            <p className="text-xs text-[var(--hs-text-tertiary)]">
+              {currentDate}
+            </p>
           </div>
-          <h2 className="text-text-primary-light dark:text-text-primary-dark text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">
-            {currentDate}
-          </h2>
-          <div className="flex w-12 items-center justify-end">
-            <button className="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-12 bg-transparent text-text-primary-light dark:text-text-primary-dark gap-2 text-base font-bold leading-normal tracking-[0.015em] min-w-0 p-0">
-              <MaterialIcon name="more_vert" />
-            </button>
-          </div>
+
+          <button
+            className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--hs-text-secondary)] hover:bg-[var(--hs-surface)] transition-colors"
+            aria-label="More options"
+          >
+            <MaterialIcon name="more_vert" />
+          </button>
         </header>
 
+        {/* Chat component - kept as-is for AI SDK compatibility */}
         <EtherealChat />
       </div>
     </Suspense>
@@ -106,4 +113,3 @@ function useLockedViewportHeight() {
 
   return lockedHeight
 }
-

@@ -114,17 +114,7 @@ export function isInboxActionsEnabled(): boolean {
 }
 
 // New UI redesign feature flag
+// Headspace-inspired UI is now the default
 export function isNewUIEnabled(): boolean {
-  // Check localStorage first (for easy toggling during development)
-  if (typeof window !== 'undefined') {
-    try {
-      const v = window.localStorage.getItem('IFS_NEW_UI') || undefined
-      if (v !== null) return isTrue(v)
-    } catch {
-      // Ignore localStorage errors
-    }
-  }
-  // Then check environment variable
-  if (devMode) return isTrue(newUIFlag) ?? false
-  return newUIFlag === undefined ? false : isTrue(newUIFlag)
+  return true
 }

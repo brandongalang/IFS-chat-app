@@ -53,56 +53,63 @@ export function GardenPageNew() {
     : parts
 
   return (
-    <div className="min-h-screen bg-background-light dark:bg-background-dark flex flex-col">
-      {/* Top App Bar */}
-      <header className="flex items-center bg-background-light dark:bg-background-dark p-4 pb-2 justify-between sticky top-0 z-10">
-        <div className="flex size-12 shrink-0 items-center">
-          {/* Placeholder for potential menu icon */}
-        </div>
-        <h1 className="text-text-primary-light dark:text-text-primary-dark text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">
-          My Parts
-        </h1>
-        <div className="flex w-12 items-center justify-end">
-          <button className="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 w-10 bg-transparent text-text-primary-light dark:text-text-primary-dark">
-            <MaterialIcon name="more_vert" className="text-2xl" />
-          </button>
+    <div className="min-h-screen bg-[var(--hs-bg)] flex flex-col hs-animate-in">
+      {/* Header */}
+      <header className="pt-12 pb-4 px-5">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <h1 className="text-[28px] font-bold text-[var(--hs-text-primary)] leading-tight">
+              My Parts
+            </h1>
+            <p className="text-sm text-[var(--hs-text-secondary)] mt-1">
+              {parts.length} {parts.length === 1 ? 'part' : 'parts'} in your garden
+            </p>
+          </div>
         </div>
       </header>
 
-      {/* SearchBar */}
-      <div className="px-4 py-3 bg-background-light dark:bg-background-dark">
-        <label className="flex flex-col min-w-40 h-12 w-full">
-          <div className="flex w-full flex-1 items-stretch rounded-lg h-full">
-            <div className="text-text-secondary-light dark:text-text-secondary-dark flex border-none bg-search-light dark:bg-search-dark items-center justify-center pl-4 rounded-l-lg border-r-0">
-              <MaterialIcon name="search" className="text-2xl" />
-            </div>
-            <input
-              type="search"
-              className="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-r-lg text-text-primary-light dark:text-text-primary-dark focus:outline-0 focus:ring-0 border-none bg-search-light dark:bg-search-dark h-full placeholder:text-text-secondary-light dark:placeholder:text-text-secondary-dark px-4 pl-2 text-base font-normal leading-normal"
-              placeholder="Search parts..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+      {/* Search Bar */}
+      <div className="px-5 pb-4">
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+            <MaterialIcon
+              name="search"
+              className="text-xl text-[var(--hs-text-tertiary)]"
             />
           </div>
-        </label>
+          <input
+            type="search"
+            className="hs-input pl-12 pr-4"
+            placeholder="Search parts..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
       </div>
 
-      {/* ImageGrid (Parts Garden) */}
-      <main className="grid grid-cols-2 gap-4 p-4 flex-1 pb-24">
+      {/* Parts Grid */}
+      <main className="flex-1 px-5 pb-24">
         {error && (
-          <div className="col-span-2 text-red-500 text-center p-6 rounded-lg border border-red-500/20 bg-red-500/5">
-            <p>Could not load garden: {error}</p>
+          <div className="hs-card p-6 text-center border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10">
+            <MaterialIcon name="error" className="text-3xl text-red-500 mb-2" />
+            <p className="text-sm text-red-600 dark:text-red-400">
+              Could not load garden: {error}
+            </p>
           </div>
         )}
 
-        {!error && <PartsListNew parts={filteredParts} isLoading={isLoading} />}
+        {!error && (
+          <div className="grid grid-cols-2 gap-4">
+            <PartsListNew parts={filteredParts} isLoading={isLoading} />
+          </div>
+        )}
       </main>
 
-      {/* FAB */}
+      {/* Floating Action Button */}
       <div className="fixed bottom-24 right-5 z-20">
         <Link
           href="/garden/new"
-          className="flex size-14 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-text-primary-light dark:bg-primary text-background-light dark:text-background-dark shadow-lg hover:shadow-xl transition-shadow"
+          className="flex items-center justify-center w-14 h-14 rounded-full bg-[var(--hs-primary)] text-white shadow-glow hover:bg-[var(--hs-primary-dark)] transition-all duration-200 hover:scale-105"
           aria-label="Add new part"
         >
           <MaterialIcon name="add" className="text-3xl" />
@@ -111,4 +118,3 @@ export function GardenPageNew() {
     </div>
   )
 }
-
