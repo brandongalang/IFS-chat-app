@@ -77,8 +77,10 @@ export async function getRecentObservationHistory(
   since.setDate(since.getDate() - lookbackDays)
   const sinceIso = since.toISOString()
 
+  // Query from inbox_items (unified table) instead of the legacy inbox_observations table
+  // which was renamed to inbox_observations_legacy in migration 130
   const { data, error } = await supabase
-    .from('inbox_observations')
+    .from('inbox_items')
     .select(
       'id,status,semantic_hash,created_at,content,metadata,timeframe_start,timeframe_end,confidence',
     )
@@ -91,9 +93,10 @@ export async function getRecentObservationHistory(
     throw error
   }
 
-  return (data as InboxObservationRow[] | null)?.map((row) => ({
+  // Map the inbox_items rows to ObservationHistoryEntry format
+  return (data ?? []).map((row) => ({
     id: row.id,
-    status: row.status,
+    status: row.status as InboxObservationStatus,
     semanticHash: row.semantic_hash,
     createdAt: row.created_at,
     content: toRecord(row.content),
@@ -101,7 +104,7 @@ export async function getRecentObservationHistory(
     timeframeStart: row.timeframe_start,
     timeframeEnd: row.timeframe_end,
     confidence: row.confidence,
-  })) ?? []
+  }))
 }
 
 function toRecord(value: unknown): Record<string, unknown> {

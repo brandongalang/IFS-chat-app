@@ -461,9 +461,10 @@ async function insertUnifiedInboxItems(input: {
     source_session_ids: item.sourceSessionIds ?? [],
     confidence: item.confidence ?? null,
     semantic_hash: item.semanticHash,
-    source_type: 'unified_inbox_generated' as const,
+    // Use 'observation_generated' as it's a valid source_type per DB CHECK constraint
+    // The metadata already includes trigger/source info for distinguishing manual vs cron
+    source_type: 'observation_generated' as const,
     created_at: nowIso,
-    queued_at: nowIso,
   }))
 
   const { data, error } = await supabase
