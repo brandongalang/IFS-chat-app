@@ -12,7 +12,7 @@ export default async function CheckInPage() {
     return <ComingSoonPage featureKey={feature.key} />
   }
 
-  const supabase = getUserClient()
+  const supabase = await getUserClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()
