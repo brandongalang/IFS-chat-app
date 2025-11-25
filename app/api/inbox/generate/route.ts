@@ -7,6 +7,7 @@ import { createUnifiedInboxAgent } from '@/mastra/agents/unified-inbox'
 import { runUnifiedInboxEngine } from '@/lib/inbox/unified-inbox-engine'
 import { logInboxTelemetry } from '@/lib/inbox/telemetry'
 import { randomUUID } from 'node:crypto'
+import { dev, resolveUserId } from '@/config/dev'
 
 const requestSchema = z.object({
   userId: z.string().uuid().optional(),
@@ -15,37 +16,51 @@ const requestSchema = z.object({
 const COOLDOWN_HOURS = 24
 
 export async function POST(request: NextRequest) {
-  // 1) Use user client strictly for auth
-  const userSupabase = getUserClient()
-  const {
-    data: { user },
-  } = await userSupabase.auth.getUser()
-
-  if (!user) {
-    return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
-  }
-
+  // 1) Resolve user - support dev mode for local testing
+  const useDevMode = dev.enabled && !!process.env.SUPABASE_SERVICE_ROLE_KEY
   let userId: string
-  try {
-    const body = await request.json().catch(() => ({}))
-    const parsed = requestSchema.safeParse(body)
-    if (!parsed.success) {
-      return errorResponse('Invalid request body', HTTP_STATUS.BAD_REQUEST)
+
+  if (useDevMode) {
+    try {
+      userId = resolveUserId()
+    } catch {
+      return errorResponse(
+        'Dev user not configured. Set IFS_TEST_PERSONA or IFS_DEFAULT_USER_ID.',
+        HTTP_STATUS.UNAUTHORIZED,
+      )
     }
-    userId = parsed.data.userId ?? user.id
-  } catch {
-    return errorResponse('Failed to parse request body', HTTP_STATUS.BAD_REQUEST)
-  }
+  } else {
+    // Use user client strictly for auth
+    const userSupabase = await getUserClient()
+    const {
+      data: { user },
+    } = await userSupabase.auth.getUser()
 
-  // 2) Preserve cross-user service-role authorization logic
-  if (userId !== user.id) {
-    const isServiceRole =
-      user.app_metadata?.service_role === true ||
-      user.app_metadata?.roles?.includes('service_role') ||
-      user.role === 'service_role'
+    if (!user) {
+      return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
+    }
 
-    if (!isServiceRole) {
-      return errorResponse('Forbidden', HTTP_STATUS.FORBIDDEN)
+    try {
+      const body = await request.json().catch(() => ({}))
+      const parsed = requestSchema.safeParse(body)
+      if (!parsed.success) {
+        return errorResponse('Invalid request body', HTTP_STATUS.BAD_REQUEST)
+      }
+      userId = parsed.data.userId ?? user.id
+    } catch {
+      return errorResponse('Failed to parse request body', HTTP_STATUS.BAD_REQUEST)
+    }
+
+    // 2) Preserve cross-user service-role authorization logic
+    if (userId !== user.id) {
+      const isServiceRole =
+        user.app_metadata?.service_role === true ||
+        user.app_metadata?.roles?.includes('service_role') ||
+        user.role === 'service_role'
+
+      if (!isServiceRole) {
+        return errorResponse('Forbidden', HTTP_STATUS.FORBIDDEN)
+      }
     }
   }
 
@@ -144,7 +159,12 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     const durationMs = Date.now() - startedAt
-    console.error('Failed to generate observations manually:', error)
+    const errorDetails = error instanceof Error
+      ? { name: error.name, message: error.message, stack: error.stack?.split('\n').slice(0, 5).join('\n') }
+      : typeof error === 'object' && error !== null
+        ? JSON.stringify(error, null, 2)
+        : String(error)
+    console.error('Failed to generate observations manually:', errorDetails)
     await logInboxTelemetry(admin, {
       userId,
       tool: 'inbox_manual_generate.error',

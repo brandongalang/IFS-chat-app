@@ -45,7 +45,7 @@ const getRequiredQuestionIds = (stage: number): string[] => onboardingRequiremen
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getUserClient();
+    const supabase = await getUserClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {

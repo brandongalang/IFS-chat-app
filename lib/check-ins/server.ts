@@ -150,7 +150,7 @@ Keep it grounded, avoid clinical language, and never promise outcomes.`
 
 async function resolveContextClient(): Promise<{ supabase: SupabaseDatabaseClient; userId: string }> {
   const useAdmin = dev.enabled && !!process.env.SUPABASE_SERVICE_ROLE_KEY
-  const supabase = useAdmin ? getServiceClient() : getUserClient()
+  const supabase = useAdmin ? getServiceClient() : await getUserClient()
 
   if (useAdmin) {
     try {

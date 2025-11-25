@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
       return jsonResponse(sample.slice(0, limit))
     }
 
-    const supabase = getUserClient()
+    const supabase = await getUserClient()
 
     let userId: string | null = null
     try {

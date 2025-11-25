@@ -73,11 +73,46 @@ export function createInboxObservationAgent(
   const baseUserId = profile?.userId
   const tools = createObservationResearchTools(baseUserId)
 
-  const agent = new Agent({
+  const baseAgent = new Agent({
     name: 'inboxObservationAgent',
     instructions: SYSTEM_PROMPT,
     tools,
     model: openrouter(modelId, modelSettings),
+  })
+
+  // Wrap the Mastra agent to provide the expected .run() interface
+  // Mastra agents use .generate() but the observation engine expects .run()
+  // Use generateVNext for V2 models (like gemini-2.5-flash-lite)
+  const agent = Object.assign(baseAgent, {
+    run: async (options: { input: string; context?: Record<string, unknown> }): Promise<InboxObservationAgentRunResult> => {
+      try {
+        // Use generateVNext for V2 model compatibility
+        const response = await (baseAgent as any).generateVNext(options.input)
+        // Parse the JSON output from the agent's text response
+        let output: unknown = null
+        const text = response?.text ?? response?.output?.text ?? ''
+        if (text) {
+          try {
+            output = JSON.parse(text)
+          } catch {
+            // If not valid JSON, wrap in observations array structure
+            output = { observations: [] }
+          }
+        }
+        return {
+          status: 'success',
+          output: typeof output === 'object' && output !== null && 'observations' in output
+            ? output
+            : { observations: Array.isArray(output) ? output : [] },
+        }
+      } catch (error) {
+        console.error('[inbox-observation-agent] generate failed:', error)
+        return {
+          status: 'error',
+          output: null,
+        }
+      }
+    },
   }) as InboxObservationAgent
 
   return agent

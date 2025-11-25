@@ -23,7 +23,7 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const supabase = getUserClient() as SupabaseClient<Database>
+  const supabase = await getUserClient() as SupabaseClient<Database>
   const {
     data: { user },
   } = await supabase.auth.getUser()

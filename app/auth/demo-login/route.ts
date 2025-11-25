@@ -107,7 +107,7 @@ export async function POST() {
       }
     }
 
-    const userClient = getUserClient()
+    const userClient = await getUserClient()
 
     const signOutResult = await userClient.auth.signOut()
     if (signOutResult?.error) {

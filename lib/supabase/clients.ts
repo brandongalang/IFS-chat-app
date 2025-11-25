@@ -1,4 +1,4 @@
-import { cookies, type UnsafeUnwrappedCookies } from 'next/headers'
+import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -41,8 +41,8 @@ type CookieAdapter = {
 let userClientOverride: SupabaseDatabaseClient | null = null
 let serviceClientOverride: SupabaseDatabaseClient | null = null
 
-function resolveCookieAdapter(): CookieAdapter {
-  const cookieStore = cookies() as unknown as UnsafeUnwrappedCookies
+async function resolveCookieAdapter(): Promise<CookieAdapter> {
+  const cookieStore = await cookies()
 
   return {
     get(name) {
@@ -77,7 +77,7 @@ export function setServiceClientOverrideForTests(client: SupabaseDatabaseClient 
   }
 }
 
-export function getUserClient(adapter?: CookieAdapter): SupabaseDatabaseClient {
+export async function getUserClient(adapter?: CookieAdapter): Promise<SupabaseDatabaseClient> {
   if (process.env.NODE_ENV === 'test' && userClientOverride) {
     return userClientOverride
   }
@@ -91,7 +91,7 @@ export function getUserClient(adapter?: CookieAdapter): SupabaseDatabaseClient {
     return createNoopSupabaseClient()
   }
 
-  const cookieAdapter = adapter ?? resolveCookieAdapter()
+  const cookieAdapter = adapter ?? await resolveCookieAdapter()
   const { url, key } = config
 
   return createServerClient<Database>(url, key, {

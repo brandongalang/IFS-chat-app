@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     return errorResponse('subjectId is required', HTTP_STATUS.BAD_REQUEST)
   }
 
-  const supabase = getUserClient()
+  const supabase = await getUserClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

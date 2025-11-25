@@ -15,7 +15,7 @@ const PREFLIGHT_SUMMARY_LIMIT = (() => {
 
 export async function POST() {
   try {
-    const supabase = getUserClient()
+    const supabase = await getUserClient()
     const {
       data: { user },
       error: authError,
