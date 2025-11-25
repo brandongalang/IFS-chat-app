@@ -16,7 +16,7 @@ export async function getUserIdFromSupabase(): Promise<string | undefined> {
     return undefined
   }
   try {
-    const supabase = getUserClient()
+    const supabase = await getUserClient()
     const {
       data: { session },
     } = await supabase.auth.getSession()

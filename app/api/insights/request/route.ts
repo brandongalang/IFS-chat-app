@@ -5,7 +5,7 @@ import type { Json } from '@/lib/types/database';
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response';
 
 async function saveInsightsToDb(
-  supabase: ReturnType<typeof getUserClient>,
+  supabase: Awaited<ReturnType<typeof getUserClient>>,
   userId: string,
   insights: Array<{ type: string; title: string; body: string; sourceSessionIds?: string[] }>
 ): Promise<boolean> {
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const userId = resolveUserId(body.userId);
-    const supabase = getUserClient();
+    const supabase = await getUserClient();
 
     console.log(`Insight generation request received for user: ${userId}`);
 

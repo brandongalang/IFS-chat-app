@@ -3,7 +3,7 @@ import { getUserClient } from '@/lib/supabase/clients'
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 
 export async function GET(req: NextRequest) {
-  const userSupabase = getUserClient()
+  const userSupabase = await getUserClient()
   const { data: auth } = await userSupabase.auth.getUser()
   const user = auth.user
   if (!user) return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)

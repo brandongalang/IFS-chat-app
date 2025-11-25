@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return jsonResponse({ ok: true, stored: false })
     }
 
-    const supabase = getUserClient()
+    const supabase = await getUserClient()
 
     const { data: current, error: fetchErr } = await supabase
       .from('insights')

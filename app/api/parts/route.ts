@@ -3,7 +3,7 @@ import { listPartDisplayRecords } from '@/lib/data/schema/server'
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 
 export async function GET() {
-  const supabase = getUserClient()
+  const supabase = await getUserClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

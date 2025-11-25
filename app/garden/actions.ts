@@ -93,7 +93,7 @@ export async function addPartNote(formData: FormData) {
   const { partId, content } = validated.data
 
   try {
-    const supabase = getUserClient()
+    const supabase = await getUserClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()

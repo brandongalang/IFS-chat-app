@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server'
-import { getUserClient } from '@/lib/supabase/clients'
+import { getUserClient, getServiceClient, type SupabaseDatabaseClient } from '@/lib/supabase/clients'
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 import { rankInboxItems, type RankedInboxItem } from '@/lib/data/inbox-ranking'
 import { mapInboxRowToItem, mapInboxItemToEnvelope, type InboxItemRow } from '@/lib/data/inbox-items'
 import type { InboxEnvelope, InboxFeedResponse } from '@/types/inbox'
+import { dev, resolveUserId } from '@/config/dev'
 
 const DEFAULT_LIMIT = 10
 const MAX_LIMIT = 50
@@ -110,13 +111,49 @@ function paginateItems(
   return { page, nextCursor, cursorInvalid: false }
 }
 
-export async function GET(request: NextRequest) {
-  const supabase = getUserClient()
+async function resolveInboxContext(): Promise<{ supabase: SupabaseDatabaseClient; userId: string }> {
+  const useAdmin = dev.enabled && !!process.env.SUPABASE_SERVICE_ROLE_KEY
+  const supabase = useAdmin ? getServiceClient() : await getUserClient()
+
+  if (useAdmin) {
+    try {
+      const userId = resolveUserId()
+      return { supabase, userId }
+    } catch {
+      throw new Error('Dev user not configured. Set IFS_TEST_PERSONA or IFS_DEFAULT_USER_ID.')
+    }
+  }
+
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser()
 
+  if (error) {
+    console.error('Failed to resolve user for inbox context', error)
+    throw new Error('Unable to resolve user session')
+  }
+
   if (!user) {
+    throw new Error('Unauthorized')
+  }
+
+  return { supabase, userId: user.id }
+}
+
+export async function GET(request: NextRequest) {
+  let supabase: SupabaseDatabaseClient
+  let userId: string
+
+  try {
+    const context = await resolveInboxContext()
+    supabase = context.supabase
+    userId = context.userId
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
+    }
+    console.error('Failed to resolve inbox context', error)
     return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
   }
 
@@ -138,7 +175,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from('inbox_items_view')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .limit(Math.min(SUPABASE_FETCH_LIMIT, Math.max(limit * 3, limit + 20)))
 
     if (error) {
@@ -167,7 +204,7 @@ export async function GET(request: NextRequest) {
         const { data: existing, error: existingError } = await supabase
           .from('inbox_message_events')
           .select('subject_id')
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .eq('event_type', 'delivered')
           .in('subject_id', subjectIds)
 
@@ -179,7 +216,7 @@ export async function GET(request: NextRequest) {
             .filter((envelope) => !existingIds.has(envelope.id))
             .map((envelope) => ({
               subject_id: envelope.id,
-              user_id: user.id,
+              user_id: userId,
               envelope_type: envelope.type,
               source_type: envelope.source,
               event_type: 'delivered' as const,

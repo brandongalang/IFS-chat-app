@@ -22,7 +22,7 @@ export function createUnifiedInboxTools(
   const insightTools = createInsightResearchTools(baseUserId ?? undefined)
 
   // Get observation tools (9 tools)
-  const observationTools = createObservationResearchTools(baseUserId, ctx)
+  const observationTools = createObservationResearchTools(baseUserId)
 
   // Combine all 13 tools
   return {

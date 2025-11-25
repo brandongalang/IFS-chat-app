@@ -13,7 +13,7 @@ import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response';
  */
 export async function GET() {
   try {
-    const supabase = getUserClient();
+    const supabase = await getUserClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {

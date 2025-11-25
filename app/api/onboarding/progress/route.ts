@@ -22,7 +22,7 @@ import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response';
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getUserClient();
+    const supabase = await getUserClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {

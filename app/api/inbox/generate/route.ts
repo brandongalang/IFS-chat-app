@@ -5,8 +5,11 @@ import { getSupabaseServiceRoleKey } from '@/lib/supabase/config'
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 import { createUnifiedInboxAgent } from '@/mastra/agents/unified-inbox'
 import { runUnifiedInboxEngine } from '@/lib/inbox/unified-inbox-engine'
+import { createInboxObservationAgent } from '@/mastra/agents/inbox-observation'
+import { runObservationEngine } from '@/lib/inbox/observation-engine'
 import { logInboxTelemetry } from '@/lib/inbox/telemetry'
 import { randomUUID } from 'node:crypto'
+import { dev, resolveUserId } from '@/config/dev'
 
 const requestSchema = z.object({
   userId: z.string().uuid().optional(),
@@ -15,44 +18,51 @@ const requestSchema = z.object({
 const COOLDOWN_HOURS = 24
 
 export async function POST(request: NextRequest) {
-  // Verbose log: route triggered (safe, no secrets)
-  try {
-    console.log('[inbox:generate] TRIGGERED', {
-      ts: new Date().toISOString(),
-      runtime: 'nodejs',
-    })
-  } catch {}
-  // 1) Use user client strictly for auth
-  const userSupabase = getUserClient()
-  const {
-    data: { user },
-  } = await userSupabase.auth.getUser()
-
-  if (!user) {
-    return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
-  }
-
+  // 1) Resolve user - support dev mode for local testing
+  const useDevMode = dev.enabled && !!process.env.SUPABASE_SERVICE_ROLE_KEY
   let userId: string
-  try {
-    const body = await request.json().catch(() => ({}))
-    const parsed = requestSchema.safeParse(body)
-    if (!parsed.success) {
-      return errorResponse('Invalid request body', HTTP_STATUS.BAD_REQUEST)
+
+  if (useDevMode) {
+    try {
+      userId = resolveUserId()
+    } catch {
+      return errorResponse(
+        'Dev user not configured. Set IFS_TEST_PERSONA or IFS_DEFAULT_USER_ID.',
+        HTTP_STATUS.UNAUTHORIZED,
+      )
     }
-    userId = parsed.data.userId ?? user.id
-  } catch {
-    return errorResponse('Failed to parse request body', HTTP_STATUS.BAD_REQUEST)
-  }
+  } else {
+    // Use user client strictly for auth
+    const userSupabase = await getUserClient()
+    const {
+      data: { user },
+    } = await userSupabase.auth.getUser()
 
-  // 2) Preserve cross-user service-role authorization logic
-  if (userId !== user.id) {
-    const isServiceRole =
-      user.app_metadata?.service_role === true ||
-      user.app_metadata?.roles?.includes('service_role') ||
-      user.role === 'service_role'
+    if (!user) {
+      return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED)
+    }
 
-    if (!isServiceRole) {
-      return errorResponse('Forbidden', HTTP_STATUS.FORBIDDEN)
+    try {
+      const body = await request.json().catch(() => ({}))
+      const parsed = requestSchema.safeParse(body)
+      if (!parsed.success) {
+        return errorResponse('Invalid request body', HTTP_STATUS.BAD_REQUEST)
+      }
+      userId = parsed.data.userId ?? user.id
+    } catch {
+      return errorResponse('Failed to parse request body', HTTP_STATUS.BAD_REQUEST)
+    }
+
+    // 2) Preserve cross-user service-role authorization logic
+    if (userId !== user.id) {
+      const isServiceRole =
+        user.app_metadata?.service_role === true ||
+        user.app_metadata?.roles?.includes('service_role') ||
+        user.role === 'service_role'
+
+      if (!isServiceRole) {
+        return errorResponse('Forbidden', HTTP_STATUS.FORBIDDEN)
+      }
     }
   }
 
@@ -87,32 +97,20 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const headerRequestId = request.headers.get('x-request-id') || undefined
   const runId = randomUUID()
-  const requestId = headerRequestId ?? runId
   const startedAt = Date.now()
 
   // Log start of manual generation
   await logInboxTelemetry(admin, {
     userId,
     tool: 'inbox_manual_generate.start',
-    metadata: { runId, requestId, route: 'POST /api/inbox/generate' },
+    metadata: { runId, route: 'POST /api/inbox/generate' },
   })
-
-  // Console breadcrumb for Vercel logs
-  try {
-    console.log('[inbox:generate] AGENT_INIT', {
-      ts: new Date().toISOString(),
-      userId,
-      runId,
-      requestId,
-    })
-  } catch {}
 
   try {
     // 5) Use service-role client for all DB work inside the engine
-    const agent = createUnifiedInboxAgent({ userId }, { requestId, runId })
-    const result = await runUnifiedInboxEngine({
+    const agent = createInboxObservationAgent({ userId })
+    const result = await runObservationEngine({
       supabase: admin,
       agent,
       userId,
@@ -122,33 +120,11 @@ export async function POST(request: NextRequest) {
         trigger: 'manual',
         source: 'api',
         runId,
-        requestId,
       },
       telemetry: { enabled: true, runId },
     })
 
     const durationMs = Date.now() - startedAt
-
-    // Console breadcrumb for Vercel logs
-    try {
-      console.log('[inbox:generate] AGENT_DONE', {
-        ts: new Date().toISOString(),
-        runId,
-        requestId,
-        userId,
-        status: result.status,
-        reason: result.reason ?? null,
-        insertedCount: result.inserted.length,
-        historyCount: result.historyCount,
-        queue: result.queue ? {
-          total: result.queue.total,
-          available: result.queue.available,
-          limit: result.queue.limit,
-          hasCapacity: result.queue.hasCapacity,
-        } : null,
-        durationMs,
-      })
-    } catch {}
 
     // Log success/skip with summary
     await logInboxTelemetry(admin, {
@@ -185,22 +161,17 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     const durationMs = Date.now() - startedAt
-    console.error('Failed to generate observations manually:', error)
-    try {
-      console.error('[inbox:generate] AGENT_ERROR', {
-        ts: new Date().toISOString(),
-        runId,
-        requestId,
-        userId,
-        durationMs,
-        message: error instanceof Error ? error.message : String(error),
-      })
-    } catch {}
+    const errorDetails = error instanceof Error
+      ? { name: error.name, message: error.message, stack: error.stack?.split('\n').slice(0, 5).join('\n') }
+      : typeof error === 'object' && error !== null
+        ? JSON.stringify(error, null, 2)
+        : String(error)
+    console.error('Failed to generate observations manually:', errorDetails)
     await logInboxTelemetry(admin, {
       userId,
       tool: 'inbox_manual_generate.error',
       durationMs,
-      metadata: { runId, requestId },
+      metadata: { runId },
       error: error instanceof Error ? error.message : String(error),
     })
     return errorResponse(

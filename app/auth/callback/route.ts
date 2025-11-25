@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
   if (code) {
     try {
-      const supabase = getUserClient()
+      const supabase = await getUserClient()
       const { error, data } = await supabase.auth.exchangeCodeForSession(code)
       
       if (!error && data?.session) {
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     }
 
     const { event, session } = (await request.json()) as AuthCallbackPayload
-    const supabase = getUserClient()
+    const supabase = await getUserClient()
 
     if (!event || !allowedEvents.has(event)) {
       console.warn('Auth callback POST received unsupported event', { event })

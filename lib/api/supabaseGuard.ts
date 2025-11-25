@@ -21,7 +21,7 @@ export type SupabaseGuardContext =
   | { type: 'no-supabase' }
   | {
       type: 'authed'
-      supabase: ReturnType<typeof getUserClient>
+      supabase: Awaited<ReturnType<typeof getUserClient>>
       userId: string
     }
   | { type: 'admin'; admin: ReturnType<typeof getServiceClient> }
@@ -51,7 +51,7 @@ export async function withSupabaseOrDev(
     }
 
     try {
-      const supabase = getUserClient()
+      const supabase = await getUserClient()
       const [{
         data: { session },
         error: sessionError,

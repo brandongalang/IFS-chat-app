@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const next = _next?.startsWith('/') ? _next : '/'
 
   if (token_hash && type) {
-    const supabase = getUserClient()
+    const supabase = await getUserClient()
 
     const { error } = await supabase.auth.verifyOtp({
       type,

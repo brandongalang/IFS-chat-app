@@ -4,7 +4,7 @@ import { jsonResponse, errorResponse } from '@/lib/api/response'
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = getUserClient()
+    const supabase = await getUserClient()
 
     const {
       data: { user },
