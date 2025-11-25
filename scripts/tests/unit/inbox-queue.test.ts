@@ -21,7 +21,7 @@ function createSupabaseStub(options: { count?: number; historyRows?: any[] }) {
         }
       }
 
-      if (table === 'inbox_observations') {
+      if (table === 'inbox_observations' || table === 'inbox_items') {
         return {
           select() {
             return this
