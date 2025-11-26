@@ -208,6 +208,9 @@ export async function runUnifiedInboxEngine(
       if (process.env.IFS_VERBOSE === 'true') {
         console.log('[unified-inbox-engine] Extracted JSON string:', jsonStr?.substring(0, 200))
       }
+      if (!jsonStr) {
+        throw new Error('No JSON content found in response')
+      }
       parsedOutput = JSON.parse(jsonStr.trim())
     } catch (parseError) {
       if (process.env.IFS_VERBOSE === 'true') {
