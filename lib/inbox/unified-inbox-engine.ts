@@ -157,14 +157,87 @@ export async function runUnifiedInboxEngine(
       })
     }
 
-    agentRun = await agent.run({
-      input: prompt,
-      context: {
-        userId,
-        maxItems: remaining,
-        metadata: options.metadata ?? {},
-      },
-    })
+    // Use Mastra agent.generateVNext() for V2 model compatibility (Gemini 2.5, etc.)
+    // The standard .generate() method doesn't support V2 models
+    const generateResult = await (agent as any).generateVNext(prompt)
+
+    // Debug: Log the raw response structure
+    if (process.env.IFS_VERBOSE === 'true') {
+      console.log('[unified-inbox-engine] generateVNext raw response:', JSON.stringify({
+        keys: Object.keys(generateResult || {}),
+        text: generateResult?.text?.substring(0, 500),
+        output: generateResult?.output ? 'present' : 'missing',
+      }, null, 2))
+    }
+
+    // Parse the text response as JSON
+    let parsedOutput: unknown
+    try {
+      // The agent should return JSON in its text response
+      // Try multiple extraction strategies
+      const textResponse = generateResult?.text || generateResult?.output?.text || ''
+      if (process.env.IFS_VERBOSE === 'true') {
+        console.log('[unified-inbox-engine] Raw text response length:', textResponse.length)
+        console.log('[unified-inbox-engine] Raw text preview:', textResponse.substring(0, 300))
+      }
+      // Extract JSON from potential markdown code blocks first
+      let jsonStr: string | null = null
+      const jsonCodeBlockMatch = textResponse.match(/```json\s*([\s\S]*?)\s*```/)
+      const codeBlockMatch = textResponse.match(/```\s*([\s\S]*?)\s*```/)
+      if (jsonCodeBlockMatch) {
+        jsonStr = jsonCodeBlockMatch[1]
+      } else if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1]
+      } else {
+        // Try to find a JSON array in the text (agent may include explanation before JSON)
+        // Look for array pattern: [ ... ] (allowing nested objects/arrays)
+        const arrayMatch = textResponse.match(/(\[[\s\S]*\])/)
+        if (arrayMatch) {
+          jsonStr = arrayMatch[1]
+        } else {
+          // Try to find a JSON object
+          const objectMatch = textResponse.match(/(\{[\s\S]*\})/)
+          if (objectMatch) {
+            jsonStr = objectMatch[1]
+          } else {
+            // Fall back to the raw text
+            jsonStr = textResponse
+          }
+        }
+      }
+      if (process.env.IFS_VERBOSE === 'true') {
+        console.log('[unified-inbox-engine] Extracted JSON string:', jsonStr?.substring(0, 200))
+      }
+      parsedOutput = JSON.parse(jsonStr.trim())
+    } catch (parseError) {
+      if (process.env.IFS_VERBOSE === 'true') {
+        console.log('[unified-inbox-engine] JSON parse error:', parseError)
+      }
+      parsedOutput = null
+    }
+
+    // Normalize output: agent may return plain array or { items: [...] } format
+    let normalizedOutput: unknown
+    if (Array.isArray(parsedOutput)) {
+      // Wrap plain array in expected format
+      normalizedOutput = { items: parsedOutput }
+    } else if (parsedOutput && typeof parsedOutput === 'object' && 'items' in parsedOutput) {
+      normalizedOutput = parsedOutput
+    } else {
+      normalizedOutput = parsedOutput
+    }
+
+    // Check if we have actual items (empty array is valid but means "no items")
+    const hasItems = Array.isArray(parsedOutput)
+      ? parsedOutput.length > 0
+      : (normalizedOutput && typeof normalizedOutput === 'object' && 'items' in normalizedOutput
+          ? (normalizedOutput as { items: unknown[] }).items.length > 0
+          : Boolean(parsedOutput))
+
+    agentRun = {
+      status: hasItems ? 'success' : 'empty',
+      output: normalizedOutput,
+    }
 
     if (options.telemetry?.enabled) {
       await supabase.from('inbox_observation_telemetry').insert({
