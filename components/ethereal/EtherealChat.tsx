@@ -280,22 +280,19 @@ export function EtherealChat() {
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      {/* Background image (optional) with gradient fallback */}
-      <BackgroundImageLayer />
+      {/* Background gradient for light mode */}
       <GradientBackdrop />
-      
+
       {/* Dev Mode Indicator */}
       {devPersonaLabel && (
         <div className="absolute top-2 left-2 z-30">
-          <div className="bg-green-500/20 backdrop-blur-sm border border-green-500/30 rounded-full px-3 py-1.5">
-            <p className="text-xs text-green-300 font-medium">
+          <div className="bg-orange-500/20 backdrop-blur-sm border border-orange-500/30 rounded-full px-3 py-1.5">
+            <p className="text-xs text-orange-700 font-medium">
               Dev Mode: {devPersonaLabel}
             </p>
           </div>
         </div>
       )}
-      {/* Subtle vignette to improve contrast over bright areas */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.10)_0%,rgba(0,0,0,0.22)_55%,rgba(0,0,0,0.38)_100%)]" />
 
 
       {/* Messages area */}
@@ -311,19 +308,19 @@ export function EtherealChat() {
         </div>
       </div>
 
-      {/* Translucent input bar (always visible) */}
+      {/* Input bar for light mode */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pb-[calc(12px+env(safe-area-inset-bottom))]">
         <PageContainer className="pointer-events-auto">
-          <div className="rounded-[30px] border border-white/15 bg-white/10 p-3 backdrop-blur-2xl shadow-[0_12px_42px_rgba(0,0,0,0.28)]">
+          <div className="rounded-[30px] border border-gray-200 bg-white p-3 shadow-[0_4px_24px_rgba(0,0,0,0.08)]">
             <form onSubmit={onSubmit} className="space-y-3">
               {activeTool ? (
-                <Tool className="border-white/15 bg-white/10 text-white">
+                <Tool className="border-orange-200 bg-orange-50 text-orange-900">
               <ToolHeader
                 type={activeTool.type}
                 state={activeTool.state}
                 title={activeTool.title}
                 subtitle={activeTool.subtitle}
-                className="text-white"
+                className="text-orange-900"
               />
                 </Tool>
               ) : null}
@@ -333,14 +330,14 @@ export function EtherealChat() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={onKeyDown}
                 placeholder="type your thought…"
-                className="min-h-[48px] max-h-[132px] w-full resize-none border-0 bg-transparent px-3 py-2.5 text-[16px] text-white/90 placeholder:text-white/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 focus:border-0 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.18)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.12)] transition-shadow duration-200"
+                className="min-h-[48px] max-h-[132px] w-full resize-none border-0 bg-transparent px-3 py-2.5 text-[16px] text-gray-900 placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 focus:border-0 focus:shadow-[0_0_0_1px_rgba(249,115,22,0.3)] hover:shadow-[0_0_0_1px_rgba(249,115,22,0.15)] transition-shadow duration-200"
                 data-testid="ethereal-input"
                 aria-label="Message"
                 disabled={isLoading || sessionClosed}
               />
               {sessionClosed && sessionState !== 'ended' ? (
-                <div 
-                  className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-center text-[11px] uppercase tracking-[0.22em] text-white/60"
+                <div
+                  className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-center text-[11px] uppercase tracking-[0.22em] text-orange-600"
                   role="status"
                   aria-live="polite"
                   aria-atomic="true"
@@ -357,7 +354,7 @@ export function EtherealChat() {
                     size="sm"
                     onClick={handleEndSessionRequest}
                     disabled={sessionClosed || isLoading || !hasUserMessages}
-                    className="min-h-11 h-11 px-4 rounded-full bg-white/5 text-white hover:bg-white/10 active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="min-h-11 h-11 px-4 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
                     title={!hasUserMessages ? "Send a message to start your session" : "End session"}
                     aria-label={!hasUserMessages ? "End session disabled - send a message first" : "End session"}
                   >
@@ -367,7 +364,7 @@ export function EtherealChat() {
                     size="sm"
                     type="submit"
                     disabled={!input.trim() || isLoading || sessionClosed}
-                    className="min-h-11 h-11 min-w-11 px-6 rounded-full bg-white/18 text-white hover:bg-white/28 active:scale-95 transition-transform"
+                    className="min-h-11 h-11 min-w-11 px-6 rounded-full bg-orange-500 text-white hover:bg-orange-600 active:scale-95 transition-transform"
                   >
                     {isLoading ? (
                       <span className="flex items-center gap-2 text-[13px] uppercase tracking-[0.2em]">
@@ -401,12 +398,12 @@ export function EtherealChat() {
 const END_SESSION_PROMPT = "I want to end this session. Can you close out and take any notes from this conversation?"
 
 function GradientBackdrop() {
-  // animated blurred blobs using framer-motion; colors tuned to teal-gray ambiance
+  // Light mode gradient with subtle orange accents
   const blobs = useMemo(
     () => [
-      { x: -140, y: -80, size: 520, color: "#1f3a3f" }, // deep teal
-      { x: 140, y: 60, size: 460, color: "#2a4d52" },  // mid teal
-      { x: 20, y: 180, size: 620, color: "#d39a78" },  // warm peach accent
+      { x: -140, y: -80, size: 520, color: "#FFF7ED" },  // soft orange white
+      { x: 140, y: 60, size: 460, color: "#FFEDD5" },   // warm peach
+      { x: 20, y: 180, size: 620, color: "#FED7AA" },   // light orange
     ],
     []
   )
@@ -422,27 +419,27 @@ function GradientBackdrop() {
   }, [])
 
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 bg-white">
       {blobs.map((b, i) => (
         reduceMotion ? (
           <div
             key={i}
-          className="absolute -z-20 blur-3xl"
+            className="absolute -z-20 blur-3xl"
             style={{
-              opacity: 0.5,
+              opacity: 0.6,
               width: b.size,
               height: b.size,
               left: `calc(50% - ${b.size / 2}px)`,
               top: `calc(50% - ${b.size / 2}px)`,
               borderRadius: b.size,
-              background: `radial-gradient(closest-side, ${b.color} 0%, rgba(0,0,0,0) 70%)`,
+              background: `radial-gradient(closest-side, ${b.color} 0%, rgba(255,255,255,0) 70%)`,
               filter: "blur(60px)",
             }}
           />
         ) : (
           <motion.div
             key={i}
-          initial={{ x: b.x, y: b.y, opacity: 0.4 }}
+            initial={{ x: b.x, y: b.y, opacity: 0.5 }}
             animate={{
               x: [b.x, b.x + (i % 2 === 0 ? 30 : -20), b.x],
               y: [b.y, b.y + (i % 2 === 0 ? -20 : 30), b.y],
@@ -455,29 +452,12 @@ function GradientBackdrop() {
               left: `calc(50% - ${b.size / 2}px)`,
               top: `calc(50% - ${b.size / 2}px)`,
               borderRadius: b.size,
-              background: `radial-gradient(closest-side, ${b.color} 0%, rgba(0,0,0,0) 70%)`,
+              background: `radial-gradient(closest-side, ${b.color} 0%, rgba(255,255,255,0) 70%)`,
               filter: "blur(60px)",
             }}
           />
         )
       ))}
     </div>
-  )
-}
-
-function BackgroundImageLayer() {
-  // Attempts to show /ethereal-bg.jpg; remains silent if not found
-  return (
-    <>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/ethereal-bg.jpg"
-        alt="background"
-        className="absolute inset-0 h-full w-full object-cover z-0 blur-xl scale-105 opacity-90"
-        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-        loading="eager"
-        draggable={false}
-      />
-    </>
   )
 }

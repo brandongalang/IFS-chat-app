@@ -28,16 +28,16 @@ export type EtherealTheme = {
 export const defaultEtherealTheme: EtherealTheme = {
   enabled: true,
   imageUrl: '/ethereal-bg.jpg',
-  vignette: { inner: 0.10, mid: 0.22, outer: 0.38 },
+  vignette: { inner: 0.02, mid: 0.05, outer: 0.08 },
   blobs: [
-    { x: -140, y: -80, size: 520, color: '#1f3a3f' },
-    { x: 140, y: 60, size: 460, color: '#2a4d52' },
-    { x: 20, y: 180, size: 620, color: '#d39a78' },
+    { x: -140, y: -80, size: 520, color: '#FFF7ED' },
+    { x: 140, y: 60, size: 460, color: '#FFEDD5' },
+    { x: 20, y: 180, size: 620, color: '#FED7AA' },
   ],
   fontFamilyVar: '--font-ethereal',
   text: {
-    assistantOpacity: 0.85,
-    userOpacity: 0.80,
+    assistantOpacity: 1.0,
+    userOpacity: 1.0,
     letterSpacingAssistant: '0',
     letterSpacingUser: '0',
   },
@@ -49,7 +49,7 @@ export const defaultEtherealTheme: EtherealTheme = {
   },
   variants: {
     chat: {
-      gradient: 'linear-gradient(180deg, rgba(4,13,16,1) 0%, rgba(14,26,30,1) 50%, rgba(10,20,22,1) 100%)',
+      gradient: 'linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(255,247,237,1) 50%, rgba(255,237,213,1) 100%)',
     },
   },
 }

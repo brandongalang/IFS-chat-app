@@ -130,93 +130,81 @@ export function WeekSelector({ selectedDate, onDateChange, className }: WeekSele
           variant="ghost"
           size="sm"
           onClick={() => navigateWeek('prev')}
-          className="h-8 w-8 p-0 text-white/60 hover:text-white/90 hover:bg-white/10"
+          className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        
+
         <div className="flex items-center gap-2">
-          <span 
-            className="text-sm font-medium"
-            style={{ 
-              color: 'rgba(255,255,255,var(--eth-user-opacity))',
-              letterSpacing: 'var(--eth-letter-spacing-user)'
-            }}
-          >
-            {weekDays[0] ? new Date(weekDays[0].date + 'T00:00:00').toLocaleDateString('en-US', { 
-              month: 'short', 
-              day: 'numeric' 
-            }) : ''} - {weekDays[6] ? new Date(weekDays[6].date + 'T00:00:00').toLocaleDateString('en-US', { 
-              month: 'short', 
-              day: 'numeric' 
+          <span className="text-sm font-medium text-gray-700">
+            {weekDays[0] ? new Date(weekDays[0].date + 'T00:00:00').toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric'
+            }) : ''} - {weekDays[6] ? new Date(weekDays[6].date + 'T00:00:00').toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric'
             }) : ''}
           </span>
-          
+
           {!isCurrentWeekSelected && (
             <Button
               variant="ghost"
               size="sm"
               onClick={goToToday}
-              className="h-6 px-2 text-xs text-white/60 hover:text-white/90 hover:bg-white/10"
+              className="h-6 px-2 text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-50"
             >
               Today
             </Button>
           )}
         </div>
-        
+
         <Button
           variant="ghost"
           size="sm"
           onClick={() => navigateWeek('next')}
-          className="h-8 w-8 p-0 text-white/60 hover:text-white/90 hover:bg-white/10"
+          className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Week Calendar */}
-      <div 
-        className="grid grid-cols-7 gap-2 text-center text-xs"
-        style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.7))' }}
-      >
+      <div className="grid grid-cols-7 gap-2 text-center text-xs text-gray-500">
         {weekDays.map((day, index) => {
           const date = new Date(day.date + 'T00:00:00')
           const dayNumber = date.getDate()
           const hasActivity = day.hasCheckIn || day.hasChatActivity
-          
+
           return (
             <div key={day.date} className="flex flex-col gap-1">
               <span>{dayNames[index]}</span>
-              <div 
+              <div
                 className={`
                   relative rounded-md py-2 px-1 transition-all duration-200
-                  ${day.isToday 
-                    ? 'bg-white/20 border border-white/40 shadow-[0_0_0_1px_rgba(255,255,255,0.15)]' 
-                    : 'border border-border/40 bg-card/20 backdrop-blur'
+                  ${day.isToday
+                    ? 'bg-orange-100 border border-orange-300 shadow-[0_0_0_1px_rgba(249,115,22,0.2)]'
+                    : 'border border-gray-200 bg-white'
                   }
-                  ${hasActivity ? 'hover:bg-white/15' : 'hover:bg-white/10'}
+                  ${hasActivity ? 'hover:bg-orange-50' : 'hover:bg-gray-50'}
                 `}
-                style={{
-                  color: day.isToday 
-                    ? 'rgba(255,255,255,1)' 
-                    : 'rgba(255,255,255,var(--eth-user-opacity))'
-                }}
               >
                 <div className="relative">
-                  {dayNumber}
-                  
+                  <span className={day.isToday ? 'text-orange-700 font-semibold' : 'text-gray-700'}>
+                    {dayNumber}
+                  </span>
+
                   {/* Streak indicator */}
                   {hasActivity && (
                     <div className="absolute -top-1 -right-1">
-                      <div className="w-2 h-2 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm">
+                      <div className="w-2 h-2 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 shadow-sm">
                         <div className="w-full h-full rounded-full bg-white/30 animate-pulse" />
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Current day glow effect */}
                   {day.isToday && (
-                    <div className="absolute inset-0 rounded-md bg-white/5 animate-pulse" />
+                    <div className="absolute inset-0 rounded-md bg-orange-500/5 animate-pulse" />
                   )}
                 </div>
               </div>

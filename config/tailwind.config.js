@@ -50,90 +50,90 @@ module.exports = {
         shimmer: 'shimmer 2s linear infinite'
       },
       colors: {
-        // ===== HEADSPACE-INSPIRED DESIGN SYSTEM =====
+        // ===== LIGHT MODE WITH ORANGE ACCENTS =====
 
-        // Primary brand colors - calming teal/sage
+        // Primary brand colors - vibrant orange
         primary: {
-          DEFAULT: '#3D8B7A',       // Main teal - buttons, active states
-          light: '#5BA899',         // Lighter variant
-          dark: '#2D6B5E',          // Darker variant
-          muted: '#E8F4F1',         // Very light teal for backgrounds
+          DEFAULT: '#F97316',       // Main orange - buttons, active states
+          light: '#FB923C',         // Lighter variant
+          dark: '#EA580C',          // Darker variant
+          muted: '#FFF7ED',         // Very light orange for backgrounds
           foreground: '#FFFFFF'
         },
 
-        // Warm accent - coral/orange for highlights
+        // Warm accent - deeper orange for highlights
         warm: {
-          DEFAULT: '#F4A261',       // Warm coral
-          light: '#F7BC8A',         // Light coral
-          dark: '#E8854A',          // Darker coral
-          muted: '#FEF4EB',         // Very light coral bg
+          DEFAULT: '#F97316',       // Vibrant orange
+          light: '#FDBA74',         // Light orange
+          dark: '#C2410C',          // Deep orange
+          muted: '#FFF7ED',         // Very light orange bg
         },
 
-        // Morning gradient colors
+        // Morning gradient colors - warm orange tones
         morning: {
-          start: '#FFE5D4',         // Soft peach
-          mid: '#FFECD9',           // Warm cream
-          end: '#FFF8F0',           // Light warm white
-          accent: '#F4A261',        // Coral accent
+          start: '#FFF7ED',         // Soft orange white
+          mid: '#FFEDD5',           // Warm peach
+          end: '#FED7AA',           // Light orange
+          accent: '#F97316',        // Orange accent
         },
 
-        // Evening gradient colors
+        // Evening gradient colors - amber/gold tones
         evening: {
-          start: '#E8DFF5',         // Soft lavender
-          mid: '#DED6F0',           // Light purple
-          end: '#F5F3F8',           // Very light purple
-          accent: '#9B8AB8',        // Muted purple accent
+          start: '#FEF3C7',         // Soft amber
+          mid: '#FDE68A',           // Light gold
+          end: '#FCD34D',           // Golden yellow
+          accent: '#F59E0B',        // Amber accent
         },
 
         // Semantic backgrounds
         'hs-bg': {
-          light: '#FBF9F7',         // Warm cream (light mode)
-          dark: '#1A1A1A',          // Charcoal (dark mode)
+          light: '#FFFFFF',         // Pure white (light mode)
+          dark: '#0A0A0A',          // Near black (dark mode)
         },
         'hs-card': {
           light: '#FFFFFF',         // Pure white cards
-          dark: '#262626',          // Warm dark gray
+          dark: '#171717',          // Dark gray
         },
         'hs-surface': {
-          light: '#F5F3F0',         // Slightly darker surface
-          dark: '#2D2D2D',          // Lighter dark surface
+          light: '#F8F8F8',         // Very light gray surface
+          dark: '#262626',          // Dark surface
         },
 
         // Text colors
         'hs-text': {
-          primary: '#2D3436',       // Soft black (light mode)
-          secondary: '#6B7280',     // Medium gray
-          tertiary: '#9CA3AF',      // Light gray
-          'primary-dark': '#F0EDEB',  // Warm white (dark mode)
-          'secondary-dark': '#A8A29E', // Warm gray
-          'tertiary-dark': '#78716C',  // Darker warm gray
+          primary: '#1A1A1A',       // Near black (light mode)
+          secondary: '#525252',     // Medium gray
+          tertiary: '#737373',      // Light gray
+          'primary-dark': '#FAFAFA',  // Near white (dark mode)
+          'secondary-dark': '#A3A3A3', // Medium gray
+          'tertiary-dark': '#737373',  // Darker gray
         },
 
         // Legacy mockup colors (kept for compatibility)
-        'background-light': '#FBF9F7',
-        'background-dark': '#1A1A1A',
-        'text-primary-light': '#2D3436',
-        'text-primary-dark': '#F0EDEB',
-        'text-secondary-light': '#6B7280',
-        'text-secondary-dark': '#A8A29E',
+        'background-light': '#FFFFFF',
+        'background-dark': '#0A0A0A',
+        'text-primary-light': '#1A1A1A',
+        'text-primary-dark': '#FAFAFA',
+        'text-secondary-light': '#525252',
+        'text-secondary-dark': '#A3A3A3',
         'card-light': '#FFFFFF',
-        'card-dark': '#262626',
-        'search-light': '#F5F3F0',
-        'search-dark': '#2D2D2D',
-        'chip-light': '#E8F4F1',
-        'chip-dark': '#2D4A44',
+        'card-dark': '#171717',
+        'search-light': '#F8F8F8',
+        'search-dark': '#262626',
+        'chip-light': '#FFF7ED',
+        'chip-dark': '#431407',
         'composer-light': '#FFFFFF',
-        'composer-dark': '#2A2E2C',
-        'placeholder-light': '#9CA3AF',
-        'placeholder-dark': '#78716C',
+        'composer-dark': '#171717',
+        'placeholder-light': '#737373',
+        'placeholder-dark': '#737373',
 
-        // Accent colors for parts categories (updated warmer tones)
-        'accent-terracotta': '#E07A5F',
-        'accent-sage': '#81B29A',
-        'accent-dusty-blue': '#7BA3B8',
-        'accent-slate': '#6B7F8C',
-        'accent-ochre': '#D4A03D',
-        'accent-mauve': '#A07DA8',
+        // Accent colors for parts categories (orange-friendly palette)
+        'accent-terracotta': '#EA580C',
+        'accent-sage': '#65A30D',
+        'accent-dusty-blue': '#0284C7',
+        'accent-slate': '#64748B',
+        'accent-ochre': '#D97706',
+        'accent-mauve': '#A855F7',
 
         // Legacy shadcn colors (kept for compatibility)
         border: 'hsl(var(--border))',
@@ -169,10 +169,10 @@ module.exports = {
       boxShadow: {
         'subtle': '0 2px 8px 0 rgba(0, 0, 0, 0.04)',
         'soft': '0 4px 16px 0 rgba(0, 0, 0, 0.06)',
-        'warm': '0 4px 20px 0 rgba(244, 162, 97, 0.15)',
+        'warm': '0 4px 20px 0 rgba(249, 115, 22, 0.15)',
         'card': '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 4px 12px 0 rgba(0, 0, 0, 0.03)',
         'card-hover': '0 2px 8px 0 rgba(0, 0, 0, 0.06), 0 8px 24px 0 rgba(0, 0, 0, 0.06)',
-        'glow': '0 0 24px 0 rgba(61, 139, 122, 0.2)',
+        'glow': '0 0 24px 0 rgba(249, 115, 22, 0.25)',
       },
       spacing: {
         '18': '4.5rem',
