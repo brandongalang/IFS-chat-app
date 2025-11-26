@@ -152,7 +152,6 @@ test('creates a morning check-in via the API', async (t) => {
       type: 'morning',
       mood: 'steady',
       energy: 'steady',
-      intentionFocus: 'aimed',
       mindForToday: 'Team sync later',
       intention: 'Set a calm tone',
       parts: ['part-1'],
@@ -185,10 +184,13 @@ test('creates an evening check-in via the API', async (t) => {
   supabaseInsertImpl = async (_table, payload) => {
     assert.equal(payload.type, 'evening')
     assert.equal(payload.reflection, 'Day went well')
+    assert.equal(payload.wins, 'Had a productive meeting')
     assert.equal(payload.gratitude, 'Supportive friends')
     const daily = (payload.parts_data?.daily_responses ?? {}) as Record<string, any>
     assert.equal(daily.variant, 'evening')
     assert.equal(daily.reflection, 'Day went well')
+    assert.equal(daily.wins, 'Had a productive meeting')
+    assert.equal(daily.gratitude, 'Supportive friends')
     assert.equal(daily.reflectionPrompt.text, 'What stood out for you today?')
     return { data: [{ id: 'check-in-2', ...payload }], error: null }
   }
@@ -206,11 +208,10 @@ test('creates an evening check-in via the API', async (t) => {
       type: 'evening',
       mood: 'bright',
       energy: 'spark',
-      intentionFocus: 'committed',
       reflectionPrompt: 'What stood out for you today?',
       reflection: 'Day went well',
+      wins: 'Had a productive meeting',
       gratitude: 'Supportive friends',
-      moreNotes: 'Follow up with Caretaker part tomorrow.',
       parts: ['part-1'],
     }),
   )
@@ -248,7 +249,7 @@ test('surfaces duplicate submission errors from Supabase', async (t) => {
   })
 
   const res = await POST(
-    createRequest({ type: 'morning', mood: 'steady', energy: 'steady', intentionFocus: 'aimed', intention: 'Stay calm' }),
+    createRequest({ type: 'morning', mood: 'steady', energy: 'steady', intention: 'Stay calm' }),
   )
   assert.equal(res.status, 409)
   const json = await res.json()
