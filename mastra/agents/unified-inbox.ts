@@ -144,9 +144,7 @@ Produce 4-6 items (max) matching these types:
 - If research yields no compelling insights, return an empty list.
 - Output ONLY valid JSON array matching the unifiedInboxSchema.`
 
-export type UnifiedInboxAgent = Agent<'unifiedInboxAgent', UnifiedInboxTools> & {
-  run: (options: { input: string; context?: Record<string, unknown> }) => Promise<{ status: string; output?: unknown }>
-}
+export type UnifiedInboxAgent = Agent<'unifiedInboxAgent', UnifiedInboxTools>
 
 /**
  * Create a unified inbox agent combining insight generation and observation research
