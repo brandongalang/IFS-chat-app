@@ -5,7 +5,7 @@ import { getInboxItemById } from '@/lib/data/inbox-items'
 import { getPartById, updatePart } from '@/lib/data/parts-server'
 import type { UpdatePartInput } from '@/lib/data/parts.schema'
 import type { InboxItem, InboxQuickActionValue } from '@/types/inbox'
-import type { Database, InsightRow, InsightUpdate } from '@/lib/types/database'
+import type { Database, InsightRow, InsightUpdate, Json } from '@/lib/types/database'
 
 export type ConfirmInboxActionPayload = {
   note?: string
@@ -41,8 +41,8 @@ export async function confirmInboxItemAction({
     const note = payload.note?.trim() || undefined
 
     const { data: insightRow, error: insightError } = await supabase
-      .from('insights')
-      .select('id,status,meta,revealed_at')
+      .from('inbox_items')
+      .select('id,status,metadata,revealed_at')
       .eq('id', item.id)
       .eq('user_id', userId)
       .maybeSingle()
@@ -55,7 +55,7 @@ export async function confirmInboxItemAction({
       throw new Error('Insight not found for confirmation')
     }
 
-    const insight = insightRow as Pick<InsightRow, 'id' | 'status' | 'meta' | 'revealed_at'>
+    const insight = insightRow as Pick<InsightRow, 'id' | 'status' | 'revealed_at'> & { metadata: Json }
 
     const insightUpdate: Partial<InsightUpdate> = {}
     insightUpdate.status = 'actioned'
@@ -64,7 +64,7 @@ export async function confirmInboxItemAction({
       insightUpdate.revealed_at = now
     }
 
-    const metaRecord = toRecord(insight.meta)
+    const metaRecord = toRecord(insight.metadata)
     const confirmationMeta = toRecord(metaRecord.confirmation)
     confirmationMeta.last_confirmed_at = now
     confirmationMeta.last_value = payload.actionValue
@@ -88,7 +88,7 @@ export async function confirmInboxItemAction({
 
     insightUpdate.meta = updatedMeta as InsightUpdate['meta']
 
-    await actionLogger.loggedUpdate<InsightRow>('insights', insight.id, insightUpdate, userId, 'confirm_insight', {
+    await actionLogger.loggedUpdate<InsightRow>('inbox_items', insight.id, insightUpdate, userId, 'confirm_insight', {
       changeDescription: 'User confirmed inbox insight',
       ...(note ? { note } : {}),
       responseValue: payload.actionValue,
@@ -437,8 +437,8 @@ async function dismissInsightInboxItem({
   actionValue,
 }: DismissContext): Promise<InboxItem | null> {
   const { data: insightRow, error } = await supabase
-    .from('insights')
-    .select('id,status,meta')
+    .from('inbox_items')
+    .select('id,status,metadata')
     .eq('id', item.id)
     .eq('user_id', userId)
     .maybeSingle()
@@ -451,14 +451,14 @@ async function dismissInsightInboxItem({
     throw new Error('Insight not found for dismissal')
   }
 
-  const insight = insightRow as Pick<InsightRow, 'id' | 'status' | 'meta'>
+  const insight = insightRow as Pick<InsightRow, 'id' | 'status'> & { metadata: Json }
 
   const insightUpdate: Partial<InsightUpdate> = {
     status: 'actioned',
     actioned_at: timestamp,
   }
 
-  const metaRecord = toRecord(insight.meta)
+  const metaRecord = toRecord(insight.metadata)
   const dismissedMeta = toRecord(metaRecord.dismissed)
   dismissedMeta.dismissed_at = timestamp
   if (reason) {
@@ -478,7 +478,7 @@ async function dismissInsightInboxItem({
     inbox_response: responseMeta,
   } as InsightUpdate['meta']
 
-  await actionLogger.loggedUpdate<InsightRow>('insights', insight.id, insightUpdate, userId, 'dismiss_insight', {
+  await actionLogger.loggedUpdate<InsightRow>('inbox_items', insight.id, insightUpdate, userId, 'dismiss_insight', {
     changeDescription: 'User dismissed inbox insight',
     ...(reason ? { reason } : {}),
     responseValue: actionValue,

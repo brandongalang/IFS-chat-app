@@ -112,15 +112,19 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 async function main() {
-  const { error } = await supabase.from('insights').insert({
+  const { error } = await supabase.from('inbox_items').insert({
     user_id: userId,
     type,
     status: 'pending',
     content,
-    meta: {
+    metadata: {
       ...meta,
       generator: meta.generator ?? 'admin_cli',
     },
+    evidence: [],
+    related_part_ids: [],
+    source_session_ids: [],
+    source_type: 'insight_generated',
   })
 
   if (error) {

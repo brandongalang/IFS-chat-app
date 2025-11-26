@@ -16,7 +16,7 @@ const TEST_USER_ID = process.env.IFS_DEFAULT_USER_ID || '00000000-0000-0000-0000
 
 async function getInsightCount(userId: string): Promise<number> {
   const { count, error } = await supabase
-    .from('insights')
+    .from('inbox_items')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', userId);
   if (error) throw error;
