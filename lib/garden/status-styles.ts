@@ -16,34 +16,34 @@ export interface StatusStyle {
 
 export const statusStyles: Readonly<Record<PartStatus, StatusStyle>> = Object.freeze({
   emerging: {
-    background: 'bg-card/20',
-    border: 'border-border/30',
+    background: 'bg-orange-50',
+    border: 'border-orange-200',
     emojiOpacity: 'opacity-60',
-    accentColor: 'text-amber-300',
+    accentColor: 'text-amber-600',
     label: 'Newly discovered',
     description: 'Newly discovered — learning about this part',
   },
   acknowledged: {
-    background: 'bg-card/35',
-    border: 'border-border/40',
+    background: 'bg-blue-50',
+    border: 'border-blue-200',
     emojiOpacity: 'opacity-75',
-    accentColor: 'text-blue-300',
+    accentColor: 'text-blue-600',
     label: 'Learning about',
     description: 'Recognized presence — building understanding',
   },
   active: {
-    background: 'bg-card/50',
-    border: 'border-border/50',
+    background: 'bg-emerald-50',
+    border: 'border-emerald-200',
     emojiOpacity: 'opacity-100',
-    accentColor: 'text-emerald-300',
+    accentColor: 'text-emerald-600',
     label: 'Actively present',
     description: 'Actively present — part of your daily awareness',
   },
   integrated: {
-    background: 'bg-card/60',
-    border: 'border-border/60',
+    background: 'bg-purple-50',
+    border: 'border-purple-200',
     emojiOpacity: 'opacity-100',
-    accentColor: 'text-purple-300',
+    accentColor: 'text-purple-600',
     label: 'Well integrated',
     description: 'Well integrated — harmonious role in the system',
   },
@@ -54,10 +54,10 @@ export function getStatusStyle(status: PartStatus): StatusStyle {
 }
 
 export const categoryColors: Readonly<Record<PartCategory | 'unknown', string>> = Object.freeze({
-  manager: 'bg-violet-900/40 text-violet-300 border-violet-700/40',
-  firefighter: 'bg-red-900/40 text-red-300 border-red-700/40',
-  exile: 'bg-blue-900/40 text-blue-300 border-blue-700/40',
-  unknown: 'bg-gray-800/40 text-gray-400 border-gray-700/40',
+  manager: 'bg-violet-100 text-violet-700 border-violet-300',
+  firefighter: 'bg-red-100 text-red-700 border-red-300',
+  exile: 'bg-blue-100 text-blue-700 border-blue-300',
+  unknown: 'bg-gray-100 text-gray-600 border-gray-300',
 })
 
 export function getCategoryColor(category: PartCategory | 'unknown'): string {

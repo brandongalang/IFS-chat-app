@@ -17,11 +17,11 @@ interface EtherealMessageListProps {
 }
 
 const taskListCustomVariables = {
-  '--muted-foreground': '0 0% 80%',
-  '--foreground': '0 0% 100%',
-  '--secondary': '0 0% 100% / 0.08',
-  '--secondary-foreground': '0 0% 100%',
-  '--border': '0 0% 100% / 0.15',
+  '--muted-foreground': '0 0% 45%',
+  '--foreground': '0 0% 15%',
+  '--secondary': '25 100% 97%',
+  '--secondary-foreground': '25 95% 40%',
+  '--border': '0 0% 90%',
 } as const
 
 const taskListStyleVariables = taskListCustomVariables as unknown as CSSProperties
@@ -34,12 +34,12 @@ export function EtherealMessageList({ messages, tasksByMessage, currentStreaming
         const isStreaming = currentStreamingId === message.id
         const containerAlign = isAssistant ? "justify-start" : "justify-end"
         const bubbleClass = cn(
-          "max-w-full rounded-[28px] border px-6 py-5 backdrop-blur-xl transition-colors",
+          "max-w-full rounded-[28px] border px-6 py-5 transition-colors",
           isAssistant
-            ? "bg-white/12 border-white/18 text-white/95 shadow-[0_18px_50px_rgba(5,15,20,0.35)]"
-            : "bg-white/8 border-white/12 text-white/85 shadow-[0_12px_36px_rgba(5,5,10,0.25)]",
+            ? "bg-white border-gray-200 text-gray-900 shadow-[0_4px_24px_rgba(0,0,0,0.06)]"
+            : "bg-orange-50 border-orange-200 text-gray-800 shadow-[0_2px_16px_rgba(249,115,22,0.08)]",
           isStreaming && isAssistant
-            ? "border-white/35 shadow-[0_0_42px_rgba(180,220,255,0.35)] animate-softPulse"
+            ? "border-orange-300 shadow-[0_0_32px_rgba(249,115,22,0.15)] animate-softPulse"
             : undefined
         )
 
@@ -60,11 +60,11 @@ export function EtherealMessageList({ messages, tasksByMessage, currentStreaming
                 {isAssistant && tasks?.length ? (
                   <TaskList
                     tasks={tasks}
-                    className="mb-3 rounded-2xl border border-white/15 bg-white/6 p-3 text-white"
-                    itemClassName="border-white/20 bg-white/12"
-                    statusClassName="text-white/75"
-                    progressTrackClassName="bg-white/20"
-                    progressBarClassName="bg-white"
+                    className="mb-3 rounded-2xl border border-gray-200 bg-gray-50 p-3 text-gray-900"
+                    itemClassName="border-gray-200 bg-white"
+                    statusClassName="text-gray-500"
+                    progressTrackClassName="bg-gray-200"
+                    progressBarClassName="bg-orange-500"
                     style={taskListStyleVariables}
                   />
                 ) : null}
@@ -74,13 +74,13 @@ export function EtherealMessageList({ messages, tasksByMessage, currentStreaming
                     {isStreaming ? (
                       <div
                         aria-hidden
-                        className="pointer-events-none absolute inset-[-1.25rem] rounded-[32px] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.28),rgba(255,255,255,0)_65%)] opacity-70 transition-opacity duration-500"
+                        className="pointer-events-none absolute inset-[-1.25rem] rounded-[32px] bg-[radial-gradient(circle_at_top,rgba(249,115,22,0.12),rgba(249,115,22,0)_65%)] opacity-70 transition-opacity duration-500"
                       />
                     ) : null}
                     <StreamingMarkdown text={message.content} isStreaming={isStreaming} className="relative z-10" />
                   </div>
                 ) : (
-                  <p className="whitespace-pre-wrap text-[15px] sm:text-[16px] lowercase tracking-wide text-white/90">
+                  <p className="whitespace-pre-wrap text-[15px] sm:text-[16px] lowercase tracking-wide text-gray-700">
                     {message.content}
                   </p>
                 )}

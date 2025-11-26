@@ -240,20 +240,20 @@ export default function ProfileClient() {
   if (loading) {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <p>Loading...</p>
+        <p className="text-gray-600">Loading...</p>
       </div>
     )
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-white">
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Profile</h2>
+        <h2 className="text-3xl font-bold tracking-tight text-gray-900">Profile</h2>
       </div>
-      <div className="border-t border-border/40 my-4" />
+      <div className="border-t border-gray-200 my-4" />
       <div className="space-y-8 max-w-2xl mx-auto py-8">
         <div className="grid gap-4">
-          <Label>Profile Picture</Label>
+          <Label className="text-gray-700">Profile Picture</Label>
           <div className="flex items-center gap-6">
             <div className="relative">
               {avatarUrl ? (
@@ -262,11 +262,11 @@ export default function ProfileClient() {
                   alt="Avatar"
                   width={80}
                   height={80}
-                  className="rounded-full object-cover border-2 border-white/20"
+                  className="rounded-full object-cover border-2 border-gray-200"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center">
-                  <span className="text-white/60 text-sm">No Image</span>
+                <div className="w-20 h-20 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+                  <span className="text-gray-400 text-sm">No Image</span>
                 </div>
               )}
             </div>
@@ -276,7 +276,7 @@ export default function ProfileClient() {
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="border-white/20 bg-white/5 hover:bg-white/10 text-white"
+                className="border-gray-200 bg-white hover:bg-gray-50 text-gray-700"
               >
                 {uploading ? 'Uploading...' : 'Upload Photo'}
               </Button>
@@ -287,18 +287,18 @@ export default function ProfileClient() {
                 accept="image/*"
                 className="hidden"
               />
-              <p className="text-xs text-white/60">JPG, PNG up to 2MB</p>
+              <p className="text-xs text-gray-500">JPG, PNG up to 2MB</p>
             </div>
           </div>
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email" className="text-gray-700">Email</Label>
           <Input id="email" type="email" value={email} disabled />
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="name">Name</Label>
+          <Label htmlFor="name" className="text-gray-700">Name</Label>
           <Input
             id="name"
             type="text"

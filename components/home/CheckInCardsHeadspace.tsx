@@ -301,24 +301,24 @@ function CheckInCardsSkeleton() {
       {/* Morning skeleton */}
       <div className="hs-card p-5 hs-card-morning animate-pulse">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-white/30" />
+          <div className="w-12 h-12 rounded-2xl bg-orange-200/50" />
           <div className="flex-1 space-y-2">
-            <div className="h-5 bg-white/30 rounded w-1/2" />
-            <div className="h-4 bg-white/20 rounded w-3/4" />
+            <div className="h-5 bg-orange-200/50 rounded w-1/2" />
+            <div className="h-4 bg-orange-100/50 rounded w-3/4" />
           </div>
-          <div className="w-10 h-10 rounded-full bg-white/30" />
+          <div className="w-10 h-10 rounded-full bg-orange-200/50" />
         </div>
       </div>
 
       {/* Evening skeleton */}
       <div className="hs-card p-5 hs-card-evening animate-pulse">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-white/30" />
+          <div className="w-12 h-12 rounded-2xl bg-amber-200/50" />
           <div className="flex-1 space-y-2">
-            <div className="h-5 bg-white/30 rounded w-1/2" />
-            <div className="h-4 bg-white/20 rounded w-3/4" />
+            <div className="h-5 bg-amber-200/50 rounded w-1/2" />
+            <div className="h-4 bg-amber-100/50 rounded w-3/4" />
           </div>
-          <div className="w-10 h-10 rounded-full bg-white/30" />
+          <div className="w-10 h-10 rounded-full bg-amber-200/50" />
         </div>
       </div>
     </div>

@@ -54,46 +54,46 @@ export function StreamingMarkdown({ text, className, isStreaming = false }: Stre
     previousLengthRef.current = text.length
   }, [text, controls, shouldAnimate])
 
-  // Memoize components map for performance
+  // Memoize components map for performance - Light mode with orange accents
   const components = useMemo(() => ({
     // Headings
     h1: ({ children, ...props }: { children?: ReactNode }) => (
-      <h1 className="text-white text-3xl font-light mb-4 mt-6" {...props}>{children}</h1>
+      <h1 className="text-gray-900 text-3xl font-light mb-4 mt-6" {...props}>{children}</h1>
     ),
     h2: ({ children, ...props }: { children?: ReactNode }) => (
-      <h2 className="text-white text-2xl font-light mb-3 mt-5" {...props}>{children}</h2>
+      <h2 className="text-gray-900 text-2xl font-light mb-3 mt-5" {...props}>{children}</h2>
     ),
     h3: ({ children, ...props }: { children?: ReactNode }) => (
-      <h3 className="text-white/95 text-xl font-light mb-3 mt-4" {...props}>{children}</h3>
+      <h3 className="text-gray-800 text-xl font-light mb-3 mt-4" {...props}>{children}</h3>
     ),
     h4: ({ children, ...props }: { children?: ReactNode }) => (
-      <h4 className="text-white/95 text-lg font-light mb-2 mt-4" {...props}>{children}</h4>
+      <h4 className="text-gray-800 text-lg font-light mb-2 mt-4" {...props}>{children}</h4>
     ),
     h5: ({ children, ...props }: { children?: ReactNode }) => (
-      <h5 className="text-white/90 text-base font-light mb-2 mt-3" {...props}>{children}</h5>
+      <h5 className="text-gray-700 text-base font-light mb-2 mt-3" {...props}>{children}</h5>
     ),
     h6: ({ children, ...props }: { children?: ReactNode }) => (
-      <h6 className="text-white/90 text-sm font-light mb-2 mt-3" {...props}>{children}</h6>
+      <h6 className="text-gray-700 text-sm font-light mb-2 mt-3" {...props}>{children}</h6>
     ),
 
     // Paragraphs
     p: ({ children, ...props }: { children?: ReactNode }) => (
-      <p className="text-white/90 leading-relaxed my-3" {...props}>{children}</p>
+      <p className="text-gray-700 leading-relaxed my-3" {...props}>{children}</p>
     ),
 
     // Text formatting
     strong: ({ children, ...props }: { children?: ReactNode }) => (
-      <strong className="text-white font-medium" {...props}>{children}</strong>
+      <strong className="text-gray-900 font-medium" {...props}>{children}</strong>
     ),
     em: ({ children, ...props }: { children?: ReactNode }) => (
-      <em className="text-white/95 italic" {...props}>{children}</em>
+      <em className="text-gray-800 italic" {...props}>{children}</em>
     ),
 
     // Links
     a: ({ children, href, ...props }: { children?: ReactNode; href?: string }) => (
       <a
         href={href}
-        className="text-white underline decoration-white/30 hover:decoration-white/60 focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:outline-none rounded-sm transition-colors"
+        className="text-orange-600 underline decoration-orange-300 hover:decoration-orange-500 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:outline-none rounded-sm transition-colors"
         target="_blank"
         rel="noopener noreferrer"
         {...props}
@@ -107,11 +107,11 @@ export function StreamingMarkdown({ text, className, isStreaming = false }: Stre
       const isInline = !className
       const match = /language-(\w+)/.exec(className || '')
       const language = match ? match[1] : 'plaintext'
-      
+
       if (isInline) {
         return (
           <code
-            className="text-[13px] rounded bg-white/10 border border-white/15 px-1.5 py-0.5 text-white font-mono"
+            className="text-[13px] rounded bg-orange-50 border border-orange-200 px-1.5 py-0.5 text-orange-800 font-mono"
             {...props}
           >
             {children}
@@ -123,7 +123,7 @@ export function StreamingMarkdown({ text, className, isStreaming = false }: Stre
       const codeString = String(children).replace(/\n$/, '')
       return (
         <CodeBlock code={codeString} language={language} className="my-4">
-          <CodeBlockCopyButton className="text-white/70 hover:text-white hover:bg-white/10" />
+          <CodeBlockCopyButton className="text-gray-500 hover:text-gray-700 hover:bg-gray-100" />
         </CodeBlock>
       )
     },
@@ -133,23 +133,23 @@ export function StreamingMarkdown({ text, className, isStreaming = false }: Stre
 
     // Lists
     ul: ({ children, ...props }: { children?: ReactNode }) => (
-      <ul className="pl-6 list-disc marker:text-white/50 text-white/90 my-3 space-y-1" {...props}>
+      <ul className="pl-6 list-disc marker:text-orange-400 text-gray-700 my-3 space-y-1" {...props}>
         {children}
       </ul>
     ),
     ol: ({ children, ...props }: { children?: ReactNode }) => (
-      <ol className="pl-6 list-decimal marker:text-white/50 text-white/90 my-3 space-y-1" {...props}>
+      <ol className="pl-6 list-decimal marker:text-orange-400 text-gray-700 my-3 space-y-1" {...props}>
         {children}
       </ol>
     ),
     li: ({ children, ...props }: { children?: ReactNode }) => (
-      <li className="text-white/90" {...props}>{children}</li>
+      <li className="text-gray-700" {...props}>{children}</li>
     ),
 
     // Blockquote
     blockquote: ({ children, ...props }: { children?: ReactNode }) => (
       <blockquote
-        className="border-l-2 border-white/20 bg-white/5 text-white/80 italic rounded-r px-4 py-3 my-4"
+        className="border-l-2 border-orange-300 bg-orange-50 text-gray-600 italic rounded-r px-4 py-3 my-4"
         {...props}
       >
         {children}
@@ -158,13 +158,13 @@ export function StreamingMarkdown({ text, className, isStreaming = false }: Stre
 
     // Horizontal rule
     hr: (props: object) => (
-      <hr className="border-white/15 my-6" {...props} />
+      <hr className="border-gray-200 my-6" {...props} />
     ),
 
     // Tables
     table: ({ children, ...props }: { children?: ReactNode }) => (
       <div className="w-full overflow-x-auto my-4">
-        <table className="text-white/85 border-separate border-spacing-0 min-w-full" {...props}>
+        <table className="text-gray-700 border-separate border-spacing-0 min-w-full" {...props}>
           {children}
         </table>
       </div>
@@ -176,22 +176,22 @@ export function StreamingMarkdown({ text, className, isStreaming = false }: Stre
       <tbody {...props}>{children}</tbody>
     ),
     tr: ({ children, ...props }: { children?: ReactNode }) => (
-      <tr className="even:bg-white/5" {...props}>{children}</tr>
+      <tr className="even:bg-gray-50" {...props}>{children}</tr>
     ),
     th: ({ children, ...props }: { children?: ReactNode }) => (
-      <th className="bg-white/10 text-white font-medium px-3 py-2 border-b border-white/15 text-left" {...props}>
+      <th className="bg-orange-50 text-gray-900 font-medium px-3 py-2 border-b border-orange-200 text-left" {...props}>
         {children}
       </th>
     ),
     td: ({ children, ...props }: { children?: ReactNode }) => (
-      <td className="text-white/85 px-3 py-2 border-b border-white/10" {...props}>
+      <td className="text-gray-700 px-3 py-2 border-b border-gray-200" {...props}>
         {children}
       </td>
     ),
   }), [])
 
   return (
-    <div className={cn('text-white/90', className)} aria-live="polite">
+    <div className={cn('text-gray-700', className)} aria-live="polite">
       <motion.div
         initial={false}
         animate={shouldAnimate ? controls : { opacity: 1, y: 0 }}

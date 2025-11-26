@@ -7,121 +7,121 @@
 
 @layer base {
   :root {
-    /* ===== HEADSPACE-INSPIRED DESIGN SYSTEM ===== */
+    /* ===== LIGHT MODE WITH ORANGE ACCENTS ===== */
     --font-sans: 'Inter', system-ui, sans-serif;
 
-    /* Semantic color tokens */
-    --hs-bg: #FBF9F7;
+    /* Semantic color tokens - Clean white background */
+    --hs-bg: #FFFFFF;
     --hs-card: #FFFFFF;
-    --hs-surface: #F5F3F0;
-    --hs-text-primary: #2D3436;
-    --hs-text-secondary: #6B7280;
-    --hs-text-tertiary: #9CA3AF;
-    --hs-border: #E5E2DE;
-    --hs-border-subtle: #F0EDE9;
+    --hs-surface: #F8F8F8;
+    --hs-text-primary: #1A1A1A;
+    --hs-text-secondary: #525252;
+    --hs-text-tertiary: #737373;
+    --hs-border: #E5E5E5;
+    --hs-border-subtle: #F0F0F0;
 
-    /* Primary teal */
-    --hs-primary: #3D8B7A;
-    --hs-primary-light: #5BA899;
-    --hs-primary-dark: #2D6B5E;
-    --hs-primary-muted: #E8F4F1;
+    /* Primary orange */
+    --hs-primary: #F97316;
+    --hs-primary-light: #FB923C;
+    --hs-primary-dark: #EA580C;
+    --hs-primary-muted: #FFF7ED;
 
-    /* Warm coral accent */
-    --hs-warm: #F4A261;
-    --hs-warm-light: #F7BC8A;
-    --hs-warm-dark: #E8854A;
-    --hs-warm-muted: #FEF4EB;
+    /* Warm accent - deeper orange */
+    --hs-warm: #F97316;
+    --hs-warm-light: #FDBA74;
+    --hs-warm-dark: #C2410C;
+    --hs-warm-muted: #FFF7ED;
 
-    /* Morning theme */
-    --hs-morning-start: #FFE5D4;
-    --hs-morning-mid: #FFECD9;
-    --hs-morning-end: #FFF8F0;
-    --hs-morning-accent: #F4A261;
+    /* Morning theme - warm orange gradients */
+    --hs-morning-start: #FFF7ED;
+    --hs-morning-mid: #FFEDD5;
+    --hs-morning-end: #FED7AA;
+    --hs-morning-accent: #F97316;
 
-    /* Evening theme */
-    --hs-evening-start: #E8DFF5;
-    --hs-evening-mid: #DED6F0;
-    --hs-evening-end: #F5F3F8;
-    --hs-evening-accent: #9B8AB8;
+    /* Evening theme - soft warm tones */
+    --hs-evening-start: #FEF3C7;
+    --hs-evening-mid: #FDE68A;
+    --hs-evening-end: #FCD34D;
+    --hs-evening-accent: #F59E0B;
 
     /* Legacy shadcn variables (kept for compatibility) */
-    --background: 40 20% 98%;
-    --foreground: 192 15% 19%;
-    --muted: 35 15% 95%;
-    --muted-foreground: 220 9% 46%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+    --muted: 0 0% 97%;
+    --muted-foreground: 0 0% 45%;
     --popover: 0 0% 100%;
-    --popover-foreground: 192 15% 19%;
+    --popover-foreground: 0 0% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 192 15% 19%;
-    --border: 35 12% 89%;
-    --input: 35 12% 89%;
-    --primary: 163 39% 39%;
+    --card-foreground: 0 0% 10%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --primary: 25 95% 53%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 163 30% 94%;
-    --secondary-foreground: 163 39% 30%;
-    --accent: 30 69% 72%;
-    --accent-foreground: 30 69% 25%;
+    --secondary: 25 100% 97%;
+    --secondary-foreground: 25 95% 40%;
+    --accent: 25 100% 95%;
+    --accent-foreground: 25 95% 35%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --ring: 163 39% 39%;
+    --ring: 25 95% 53%;
     --radius: 0.75rem;
   }
 
   .dark {
-    /* ===== DARK MODE TOKENS ===== */
-    --hs-bg: #1A1A1A;
-    --hs-card: #262626;
-    --hs-surface: #2D2D2D;
-    --hs-text-primary: #F0EDEB;
-    --hs-text-secondary: #A8A29E;
-    --hs-text-tertiary: #78716C;
-    --hs-border: #3D3D3D;
-    --hs-border-subtle: #333333;
+    /* ===== DARK MODE WITH ORANGE ACCENTS ===== */
+    --hs-bg: #0A0A0A;
+    --hs-card: #171717;
+    --hs-surface: #262626;
+    --hs-text-primary: #FAFAFA;
+    --hs-text-secondary: #A3A3A3;
+    --hs-text-tertiary: #737373;
+    --hs-border: #404040;
+    --hs-border-subtle: #262626;
 
-    /* Primary teal (slightly lighter for dark mode) */
-    --hs-primary: #5BA899;
-    --hs-primary-light: #7CBFB1;
-    --hs-primary-dark: #3D8B7A;
-    --hs-primary-muted: #1D3D36;
+    /* Primary orange (brighter for dark mode) */
+    --hs-primary: #FB923C;
+    --hs-primary-light: #FDBA74;
+    --hs-primary-dark: #F97316;
+    --hs-primary-muted: #431407;
 
-    /* Warm coral (same as light) */
-    --hs-warm: #F4A261;
-    --hs-warm-light: #F7BC8A;
-    --hs-warm-dark: #E8854A;
-    --hs-warm-muted: #3D2D1F;
+    /* Warm accent */
+    --hs-warm: #FB923C;
+    --hs-warm-light: #FDBA74;
+    --hs-warm-dark: #EA580C;
+    --hs-warm-muted: #431407;
 
     /* Morning theme (dark variants) */
-    --hs-morning-start: #3D2D24;
-    --hs-morning-mid: #332821;
-    --hs-morning-end: #2A231F;
-    --hs-morning-accent: #F4A261;
+    --hs-morning-start: #431407;
+    --hs-morning-mid: #7C2D12;
+    --hs-morning-end: #9A3412;
+    --hs-morning-accent: #FB923C;
 
     /* Evening theme (dark variants) */
-    --hs-evening-start: #2D2636;
-    --hs-evening-mid: #272131;
-    --hs-evening-end: #221D2A;
-    --hs-evening-accent: #B8A4D4;
+    --hs-evening-start: #451A03;
+    --hs-evening-mid: #78350F;
+    --hs-evening-end: #92400E;
+    --hs-evening-accent: #FBBF24;
 
     /* Legacy shadcn variables */
-    --background: 0 0% 10%;
-    --foreground: 30 15% 94%;
-    --muted: 0 0% 17%;
-    --muted-foreground: 30 5% 65%;
-    --popover: 0 0% 15%;
-    --popover-foreground: 30 15% 94%;
-    --card: 0 0% 15%;
-    --card-foreground: 30 15% 94%;
-    --border: 0 0% 24%;
-    --input: 0 0% 24%;
-    --primary: 163 35% 50%;
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 64%;
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 98%;
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 98%;
+    --border: 0 0% 25%;
+    --input: 0 0% 25%;
+    --primary: 25 95% 62%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 163 15% 18%;
-    --secondary-foreground: 163 30% 80%;
-    --accent: 30 50% 50%;
-    --accent-foreground: 30 50% 95%;
+    --secondary: 25 30% 15%;
+    --secondary-foreground: 25 95% 80%;
+    --accent: 25 50% 20%;
+    --accent-foreground: 25 95% 90%;
     --destructive: 0 63% 31%;
     --destructive-foreground: 0 0% 98%;
-    --ring: 163 35% 50%;
+    --ring: 25 95% 62%;
   }
 
   * {
