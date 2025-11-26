@@ -11,7 +11,7 @@ import type { PrdServerDeps } from '@/lib/data/schema/server'
 import {
   DEFAULT_EVENING_PROMPT,
   ENERGY_OPTIONS,
-  INTENTION_FOCUS_OPTIONS,
+  INTENTION_FOCUS_OPTIONS, // Keep for backwards compat reading old check-ins
   MOOD_OPTIONS,
   findEmojiOption,
   type CheckInOverviewPayload,
@@ -38,7 +38,6 @@ export interface MorningSubmissionPayload extends SubmissionBase {
   type: 'morning'
   mood: string
   energy: string
-  intentionFocus: string
   mindForToday?: string
   intention: string
   parts?: string[]
@@ -48,11 +47,10 @@ export interface EveningSubmissionPayload extends SubmissionBase {
   type: 'evening'
   mood: string
   energy: string
-  intentionFocus: string
   reflectionPrompt: string
   reflection: string
-  gratitude?: string
-  moreNotes?: string
+  wins: string
+  gratitude: string
   parts?: string[]
 }
 
@@ -69,7 +67,6 @@ const morningSchema = z.object({
   type: z.literal('morning'),
   mood: z.string(),
   energy: z.string(),
-  intentionFocus: z.string(),
   mindForToday: z.string().optional(),
   intention: z.string().min(1, 'Intention is required'),
   parts: z.array(z.string()).optional(),
@@ -80,11 +77,10 @@ const eveningSchema = z.object({
   type: z.literal('evening'),
   mood: z.string(),
   energy: z.string(),
-  intentionFocus: z.string(),
   reflectionPrompt: z.string().min(1),
   reflection: z.string().min(1),
-  gratitude: z.string().optional(),
-  moreNotes: z.string().optional(),
+  wins: z.string().min(1, 'Wins are required'),
+  gratitude: z.string().min(1, 'Gratitude is required'),
   parts: z.array(z.string()).optional(),
   targetDateIso: isoDateSchema.optional(),
 })
@@ -92,12 +88,10 @@ const eveningSchema = z.object({
 function buildEmojiSnapshot(payload: {
   mood: EmojiOption
   energy: EmojiOption
-  intentionFocus: EmojiOption
 }) {
   return {
     mood: payload.mood,
     energy: payload.energy,
-    intentionFocus: payload.intentionFocus,
   }
 }
 
@@ -106,7 +100,6 @@ async function generateEveningPrompt(params: {
   mindForToday: string
   mood: EmojiOption
   energy: EmojiOption
-  intentionFocus: EmojiOption
 }): Promise<{ text: string; model?: string }> {
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) {
@@ -126,7 +119,6 @@ Keep it grounded, avoid clinical language, and never promise outcomes.`
       `Morning mindshare: ${params.mindForToday || 'Not specified.'}`,
       `Mood: ${params.mood.label}.`,
       `Energy: ${params.energy.label}.`,
-      `Intention focus: ${params.intentionFocus.label}.`,
     ]
 
     const { object } = await generateObject({
@@ -302,14 +294,12 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
     const targetDateIso = resolveTargetDate(data.targetDateIso)
     const mood = findEmojiOption('mood', data.mood)
     const energy = findEmojiOption('energy', data.energy)
-    const intentionFocus = findEmojiOption('intentionFocus', data.intentionFocus)
 
     const prompt = await generateEveningPrompt({
       intention: data.intention,
       mindForToday: data.mindForToday ?? '',
       mood,
       energy,
-      intentionFocus,
     })
 
     const createdAt = new Date().toISOString()
@@ -319,7 +309,7 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
       selected_part_ids: selectedParts,
       daily_responses: {
         variant: 'morning',
-        emoji: buildEmojiSnapshot({ mood, energy, intentionFocus }),
+        emoji: buildEmojiSnapshot({ mood, energy }),
         mindForToday: data.mindForToday ?? '',
         intention: data.intention,
         selectedPartIds: selectedParts,
@@ -390,11 +380,10 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
   const targetDateIso = resolveTargetDate(data.targetDateIso)
   const mood = findEmojiOption('mood', data.mood)
   const energy = findEmojiOption('energy', data.energy)
-  const intentionFocus = findEmojiOption('intentionFocus', data.intentionFocus)
   const reflectionPrompt = data.reflectionPrompt.trim() || DEFAULT_EVENING_PROMPT
   const selectedParts = data.parts ?? []
-  const gratitude = data.gratitude?.trim() ?? ''
-  const moreNotes = data.moreNotes?.trim() ?? ''
+  const wins = data.wins.trim()
+  const gratitude = data.gratitude.trim()
 
   const { data: morningRows } = await supabase
     .from('check_ins')
@@ -411,11 +400,11 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
     selected_part_ids: selectedParts,
     daily_responses: {
       variant: 'evening',
-      emoji: buildEmojiSnapshot({ mood, energy, intentionFocus }),
+      emoji: buildEmojiSnapshot({ mood, energy }),
       reflectionPrompt: { text: reflectionPrompt },
       reflection: data.reflection.trim(),
+      wins,
       gratitude,
-      moreNotes,
       selectedPartIds: selectedParts,
       ...(morningRecord?.id ? { links: { morning_check_in_id: morningRecord.id } } : {}),
     },
@@ -430,6 +419,7 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
       mood: mood.score,
       energy_level: energy.score,
       reflection: data.reflection.trim(),
+      wins: wins.length > 0 ? wins : null,
       gratitude: gratitude.length > 0 ? gratitude : null,
       intention: null,
       parts_data: partsData,

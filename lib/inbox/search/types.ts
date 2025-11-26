@@ -148,6 +148,8 @@ export interface CheckInListItem {
   date: string
   intention: string | null
   reflection: string | null
+  wins: string | null
+  gratitude: string | null
 }
 
 export interface CheckInListResult {
@@ -167,6 +169,7 @@ export interface CheckInDetail {
   date: string
   intention: string | null
   reflection: string | null
+  wins: string | null
   gratitude: string | null
   partsData: unknown
   createdAt: string
