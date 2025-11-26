@@ -36,13 +36,15 @@ function resolveClient(options: CheckInSearchOptions | undefined): SupabaseDatab
   return options?.client ?? getServiceClient()
 }
 
-function toListItem(row: Pick<CheckInRow, 'id' | 'type' | 'check_in_date' | 'intention' | 'reflection'>): CheckInListItem {
+function toListItem(row: Pick<CheckInRow, 'id' | 'type' | 'check_in_date' | 'intention' | 'reflection' | 'wins' | 'gratitude'>): CheckInListItem {
   return {
     checkInId: row.id,
     type: row.type,
     date: row.check_in_date,
     intention: row.intention ?? null,
     reflection: row.reflection ?? null,
+    wins: row.wins ?? null,
+    gratitude: row.gratitude ?? null,
   }
 }
 
@@ -63,7 +65,7 @@ export async function listCheckIns(
   try {
     const { data, error } = await client
       .from('check_ins')
-      .select('id,type,check_in_date,intention,reflection')
+      .select('id,type,check_in_date,intention,reflection,wins,gratitude')
       .eq('user_id', params.userId)
       .gte('check_in_date', since)
       .order('check_in_date', { ascending: false })
@@ -71,7 +73,7 @@ export async function listCheckIns(
 
     if (error) throw error
 
-    const rows = (data ?? []) as Array<Pick<CheckInRow, 'id' | 'type' | 'check_in_date' | 'intention' | 'reflection'>>
+    const rows = (data ?? []) as Array<Pick<CheckInRow, 'id' | 'type' | 'check_in_date' | 'intention' | 'reflection' | 'wins' | 'gratitude'>>
     const truncated = rows.length > limit
     const items = rows.slice(0, limit).map(toListItem)
 
@@ -135,7 +137,7 @@ export async function searchCheckIns(
   try {
     const { data, error } = await client
       .from('check_ins')
-      .select('id,type,check_in_date,intention,reflection,gratitude,parts_data,created_at')
+      .select('id,type,check_in_date,intention,reflection,wins,gratitude,parts_data,created_at')
       .eq('user_id', params.userId)
       .gte('check_in_date', since)
       .order('check_in_date', { ascending: false })
@@ -144,7 +146,7 @@ export async function searchCheckIns(
     if (error) throw error
 
     const checkIns = (data ?? []) as Array<
-      Pick<CheckInRow, 'id' | 'type' | 'check_in_date' | 'intention' | 'reflection' | 'gratitude' | 'parts_data' | 'created_at'>
+      Pick<CheckInRow, 'id' | 'type' | 'check_in_date' | 'intention' | 'reflection' | 'wins' | 'gratitude' | 'parts_data' | 'created_at'>
     >
     const matches: CheckInSearchMatch[] = []
     let truncated = false
@@ -155,7 +157,7 @@ export async function searchCheckIns(
         break
       }
 
-      const sources: Array<string | null | undefined> = [entry.intention, entry.reflection, entry.gratitude]
+      const sources: Array<string | null | undefined> = [entry.intention, entry.reflection, entry.wins, entry.gratitude]
       if (entry.parts_data != null) {
         try {
           sources.push(typeof entry.parts_data === 'string' ? entry.parts_data : JSON.stringify(entry.parts_data))
@@ -228,7 +230,7 @@ export async function getCheckInDetail(
   try {
     const { data, error } = await client
       .from('check_ins')
-      .select('id,type,check_in_date,intention,reflection,gratitude,parts_data,created_at,updated_at')
+      .select('id,type,check_in_date,intention,reflection,wins,gratitude,parts_data,created_at,updated_at')
       .eq('user_id', params.userId)
       .eq('id', params.checkInId)
       .maybeSingle()
@@ -256,6 +258,7 @@ export async function getCheckInDetail(
       date: row.check_in_date,
       intention: row.intention ?? null,
       reflection: row.reflection ?? null,
+      wins: row.wins ?? null,
       gratitude: row.gratitude ?? null,
       partsData: row.parts_data ?? null,
       createdAt: row.created_at,

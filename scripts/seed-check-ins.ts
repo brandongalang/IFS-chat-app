@@ -64,14 +64,6 @@ const ENERGY_OPTIONS: EmojiOption[] = [
   { id: 'soaring', emoji: '🚀', label: 'Soaring with energy', score: 5 },
 ]
 
-const INTENTION_FOCUS_OPTIONS: EmojiOption[] = [
-  { id: 'scattered', emoji: '😵‍💫', label: 'Still finding focus', score: 1 },
-  { id: 'curious', emoji: '🤔', label: 'Curious and exploring', score: 2 },
-  { id: 'aimed', emoji: '🎯', label: 'Clear on my aim', score: 3 },
-  { id: 'committed', emoji: '💪', label: 'Committed to follow-through', score: 4 },
-  { id: 'grounded', emoji: '🧘', label: 'Grounded and embodied', score: 5 },
-]
-
 const DEFAULT_PROMPT = 'What stood out for you today?'
 
 const AM_NOTES = [
@@ -95,11 +87,10 @@ function optionByScore(options: EmojiOption[], score: number): EmojiOption {
   return options[index]
 }
 
-function buildEmojiSnapshot(params: { mood: number; energy: number; intentionFocus: number }) {
+function buildEmojiSnapshot(params: { mood: number; energy: number }) {
   return {
     mood: optionByScore(MOOD_OPTIONS, params.mood),
     energy: optionByScore(ENERGY_OPTIONS, params.energy),
-    intentionFocus: optionByScore(INTENTION_FOCUS_OPTIONS, params.intentionFocus),
   }
 }
 
@@ -114,20 +105,17 @@ async function seedUser(supabase: ReturnType<typeof createClient>, userId: strin
         type: 'morning',
         mood: 3 + (i % 2),
         energy: 3 + ((i + 1) % 2),
-        intentionFocus: 3 + ((i + 2) % 2),
         intention: pick(AM_NOTES, i),
         mindForToday: pick(AM_CONTEXTS, i),
-        gratitude: 'A warm conversation',
         somatic: ['soft chest'],
       },
       {
         type: 'evening',
         mood: 2 + (i % 3),
         energy: 2 + ((i + 2) % 3),
-        intentionFocus: 3 + ((i + 1) % 2),
         reflection: pick(PM_NOTES, i),
+        wins: 'Completed a challenging task',
         gratitude: 'Learning about my system',
-        moreNotes: 'Seeded entry for development data.',
         somatic: ['loose shoulders'],
       }
     ] as const
@@ -136,7 +124,6 @@ async function seedUser(supabase: ReturnType<typeof createClient>, userId: strin
       const emojiSnapshot = buildEmojiSnapshot({
         mood: e.mood,
         energy: e.energy,
-        intentionFocus: e.intentionFocus,
       })
 
       const dailyResponses =
@@ -157,8 +144,8 @@ async function seedUser(supabase: ReturnType<typeof createClient>, userId: strin
               emoji: emojiSnapshot,
               reflectionPrompt: { text: DEFAULT_PROMPT },
               reflection: e.reflection,
+              wins: e.wins,
               gratitude: e.gratitude,
-              moreNotes: e.moreNotes,
               selectedPartIds: [],
             }
 
@@ -175,7 +162,8 @@ async function seedUser(supabase: ReturnType<typeof createClient>, userId: strin
         energy_level: e.energy,
         intention: e.type === 'morning' ? e.intention : null,
         reflection: e.type === 'evening' ? e.reflection : null,
-        gratitude: e.gratitude,
+        wins: e.type === 'evening' && 'wins' in e ? e.wins : null,
+        gratitude: e.type === 'evening' && 'gratitude' in e ? e.gratitude : null,
         parts_data: partsData,
         somatic_markers: e.somatic,
         created_at: new Date(dateOnly + (e.type === 'morning' ? 'T09:00:00Z' : 'T20:00:00Z')).toISOString(),

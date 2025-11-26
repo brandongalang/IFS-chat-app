@@ -513,6 +513,7 @@ export interface CheckInRow {
   intention: string | null
   reflection: string | null
   gratitude: string | null
+  wins: string | null
   parts_data: Json | null
   somatic_markers: string[]
   processed: boolean
@@ -531,6 +532,7 @@ export interface CheckInInsert {
   intention?: string | null
   reflection?: string | null
   gratitude?: string | null
+  wins?: string | null
   parts_data?: Json | null
   somatic_markers?: string[]
   processed?: boolean
@@ -549,6 +551,7 @@ export interface CheckInUpdate {
   intention?: string | null
   reflection?: string | null
   gratitude?: string | null
+  wins?: string | null
   parts_data?: Json | null
   somatic_markers?: string[]
   processed?: boolean
