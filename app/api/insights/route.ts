@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
 
     if (jit && process.env.IFS_INSIGHTS_JIT === 'true') {
       const { count } = await supabase
-        .from('insights')
+        .from('inbox_items')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
         .in('status', ['pending', 'revealed'])
@@ -78,8 +78,8 @@ export async function GET(req: NextRequest) {
     }
 
     const { data, error } = await supabase
-      .from('insights')
-      .select('id,type,status,content,rating,feedback,revealed_at,actioned_at,created_at,meta')
+      .from('inbox_items')
+      .select('id,type,status,content,rating,feedback,revealed_at,actioned_at,created_at,metadata')
       .eq('user_id', userId)
       .in('status', statuses.length ? statuses : ['pending', 'revealed'])
       .order('created_at', { ascending: true })

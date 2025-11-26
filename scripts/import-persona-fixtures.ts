@@ -86,10 +86,19 @@ async function importFixture(supabase: any, fixture: Fixture) {
     for (const i of fixture.insights) {
       const payload = {
         ...i,
+        // Map legacy 'meta' field to 'metadata' for inbox_items table
+        metadata: i.meta || i.metadata || {},
+        meta: undefined,
         processed: typeof i.processed === 'boolean' ? i.processed : false,
         processed_at: 'processed_at' in i ? (i.processed_at ?? null) : null,
+        evidence: i.evidence || [],
+        related_part_ids: i.related_part_ids || [],
+        source_session_ids: i.source_session_ids || [],
+        source_type: i.source_type || 'insight_generated',
       }
-      const { error } = await supabase.from('insights').insert(payload)
+      // Remove undefined 'meta' key
+      delete (payload as Record<string, unknown>).meta
+      const { error } = await supabase.from('inbox_items').insert(payload)
       if (error) throw new Error(`Insight insert failed: ${error.message}`)
     }
   }

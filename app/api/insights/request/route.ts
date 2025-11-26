@@ -24,17 +24,21 @@ async function saveInsightsToDb(
       highlights: [],
       sourceSessionIds: insight.sourceSessionIds || [],
     } as Json,
-    meta: {
+    metadata: {
       generator: 'insight-generator-agent-v1',
       trigger: 'on-demand-request',
     } as Json,
+    evidence: [] as Json,
+    related_part_ids: [] as string[],
+    source_session_ids: insight.sourceSessionIds || [],
+    source_type: 'insight_generated' as const,
     processed: false,
     processed_at: null,
     created_at: now,
     updated_at: now,
   }));
 
-  const { error } = await supabase.from('insights').insert(payloads);
+  const { error } = await supabase.from('inbox_items').insert(payloads);
 
   if (error) {
     console.error('Failed to save insights to DB:', error);

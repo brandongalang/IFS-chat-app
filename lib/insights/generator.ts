@@ -21,14 +21,18 @@ export async function jitTopUpInsights(opts: {
       highlights: [],
       sourceSessionIds: []
     } as Json,
-    meta: { generator: 'jit-v0', jit: true, slotHint: i, created_via: 'api_get_jit' } as Json,
+    metadata: { generator: 'jit-v0', jit: true, slotHint: i, created_via: 'api_get_jit' } as Json,
+    evidence: [] as Json,
+    related_part_ids: [] as string[],
+    source_session_ids: [] as string[],
+    source_type: 'insight_generated' as const,
     processed: false,
     processed_at: null,
     created_at: now,
     updated_at: now
   }))
 
-  const { data, error } = await opts.supabase.from('insights').insert(payloads).select('id')
+  const { data, error } = await opts.supabase.from('inbox_items').insert(payloads).select('id')
   if (error) {
     console.error('JIT top-up insert failed:', error)
     return 0

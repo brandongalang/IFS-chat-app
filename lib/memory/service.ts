@@ -236,9 +236,9 @@ export async function listActiveUsersSince(isoCutoff: string): Promise<string[]>
 
   if (sErr) throw sErr
 
-  // Insights (created or updated)
+  // Insights (created or updated) - now from inbox_items unified table
   const { data: insights, error: iErr } = await supabase
-    .from('insights')
+    .from('inbox_items')
     .select('user_id, created_at, updated_at')
     .or(`created_at.gte.${isoCutoff},updated_at.gte.${isoCutoff}`)
 
@@ -272,7 +272,7 @@ export async function loadTodayData(userId: string, isoCutoff: string): Promise<
   if (sErr) throw sErr
 
   const { data: insights, error: iErr } = await supabase
-    .from('insights')
+    .from('inbox_items')
     .select('*')
     .eq('user_id', userId)
     .or(`created_at.gte.${isoCutoff},updated_at.gte.${isoCutoff}`)

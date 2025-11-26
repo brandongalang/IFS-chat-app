@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const supabase = await getUserClient()
 
     const { data: current, error: fetchErr } = await supabase
-      .from('insights')
+      .from('inbox_items')
       .select('*')
       .eq('id', id)
       .single()
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     }
 
     const { data: updated, error } = await supabase
-      .from('insights')
+      .from('inbox_items')
       .update(updates)
       .eq('id', id)
       .select()
