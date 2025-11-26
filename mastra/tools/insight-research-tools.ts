@@ -106,9 +106,11 @@ export async function getRecentInsights(input: z.infer<typeof getRecentInsightsS
     const lookbackDate = new Date()
     lookbackDate.setDate(lookbackDate.getDate() - validated.lookbackDays)
 
-    const { data: insights, error } = await supabase
-      .from('insights')
-      .select('*')
+    // Query from inbox_items (unified table) instead of legacy 'insights' table
+    // which was renamed to 'insights_legacy' in migration 130
+    const { data: items, error } = await supabase
+      .from('inbox_items')
+      .select('id,user_id,type,status,content,metadata,rating,feedback,revealed_at,actioned_at,created_at,updated_at')
       .eq('user_id', userId)
       .gte('created_at', lookbackDate.toISOString())
       .order('created_at', { ascending: false })
@@ -118,7 +120,21 @@ export async function getRecentInsights(input: z.infer<typeof getRecentInsightsS
       throw new Error(`Failed to fetch recent insights: ${error.message}`)
     }
 
-    return insights || []
+    // Map inbox_items rows to InsightRow format for backward compatibility
+    return (items || []).map(item => ({
+      id: item.id,
+      user_id: item.user_id,
+      type: item.type as InsightRow['type'],
+      status: item.status as InsightRow['status'],
+      content: item.content as InsightRow['content'],
+      rating: item.rating,
+      feedback: item.feedback,
+      revealed_at: item.revealed_at,
+      actioned_at: item.actioned_at,
+      meta: item.metadata, // inbox_items uses 'metadata', InsightRow expects 'meta'
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    }))
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
     throw new Error(errMsg)

@@ -5,8 +5,6 @@ import { getSupabaseServiceRoleKey } from '@/lib/supabase/config'
 import { errorResponse, jsonResponse, HTTP_STATUS } from '@/lib/api/response'
 import { createUnifiedInboxAgent } from '@/mastra/agents/unified-inbox'
 import { runUnifiedInboxEngine } from '@/lib/inbox/unified-inbox-engine'
-import { createInboxObservationAgent } from '@/mastra/agents/inbox-observation'
-import { runObservationEngine } from '@/lib/inbox/observation-engine'
 import { logInboxTelemetry } from '@/lib/inbox/telemetry'
 import { randomUUID } from 'node:crypto'
 import { dev, resolveUserId } from '@/config/dev'
@@ -108,9 +106,9 @@ export async function POST(request: NextRequest) {
   })
 
   try {
-    // 5) Use service-role client for all DB work inside the engine
-    const agent = createInboxObservationAgent({ userId })
-    const result = await runObservationEngine({
+    // 5) Use unified inbox engine with service-role client for all DB work
+    const agent = createUnifiedInboxAgent({ userId }, { runId })
+    const result = await runUnifiedInboxEngine({
       supabase: admin,
       agent,
       userId,
