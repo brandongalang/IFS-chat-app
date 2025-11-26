@@ -143,8 +143,8 @@ export function TaskList({
   className,
   itemClassName,
   statusClassName,
-  progressTrackClassName = "bg-white/15",
-  progressBarClassName = "bg-white",
+  progressTrackClassName = "bg-gray-200",
+  progressBarClassName = "bg-orange-500",
   ...props
 }: TaskListProps) {
   if (!tasks || tasks.length === 0) return null
@@ -190,7 +190,7 @@ export function TaskList({
           <Tool
             key={type}
             className={cn(
-              "rounded-xl border border-white/15 bg-white/10 text-white",
+              "rounded-xl border border-gray-200 bg-gray-50 text-gray-900",
               itemClassName,
             )}
           >
@@ -200,11 +200,11 @@ export function TaskList({
                 state={toolState}
                 title={displayTitle ?? task.title ?? "Tool"}
                 subtitle={subtitle}
-                className="flex-1 p-0 text-white"
+                className="flex-1 p-0 text-gray-900"
               />
               <span
                 className={cn(
-                  "text-[11px] uppercase tracking-[0.18em] text-white/70",
+                  "text-[11px] uppercase tracking-[0.18em] text-gray-500",
                   statusClassName,
                 )}
               >
@@ -214,21 +214,21 @@ export function TaskList({
             {showContent ? (
               <div className="space-y-2 px-3 pb-3">
                 {showActivity ? (
-                  <div className="space-y-1 text-xs text-white/70">
+                  <div className="space-y-1 text-xs text-gray-500">
                     {activityLog.slice(0, 3).map((entry) => (
                       <div key={entry.id} className="flex items-center gap-2">
-                        <span className="inline-flex size-1.5 rounded-full bg-white/60" />
+                        <span className="inline-flex size-1.5 rounded-full bg-orange-400" />
                         <span className="leading-4">{entry.text}</span>
                       </div>
                     ))}
                   </div>
                 ) : null}
                 {showStatusCopy ? (
-                  <p className="text-xs leading-4 text-white/70">{statusCopy}</p>
+                  <p className="text-xs leading-4 text-gray-500">{statusCopy}</p>
                 ) : null}
                 {showProgress ? (
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-white/60">
+                    <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-gray-400">
                       <span>Progress</span>
                       <span>{progressLabel}</span>
                     </div>
@@ -251,8 +251,8 @@ export function TaskList({
                       <p
                         key={index}
                         className={cn(
-                          "text-sm leading-5 text-white/85",
-                          task.status === "failed" ? "text-red-200" : undefined,
+                          "text-sm leading-5 text-gray-700",
+                          task.status === "failed" ? "text-red-600" : undefined,
                         )}
                       >
                         {detail}
@@ -264,7 +264,7 @@ export function TaskList({
                     {files?.map((file, index) => (
                       <span
                         key={index}
-                        className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2 py-1 text-xs text-white/85"
+                        className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700"
                       >
                         {file?.name ?? "file"}
                       </span>
