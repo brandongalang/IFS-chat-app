@@ -7,5 +7,5 @@ export function resolveChatModel(): ModelId {
 }
 
 export function resolveAgentModel(): ModelId {
-  return ENV.IFS_AGENT_MODEL.trim() || 'google/gemini-2.5-flash-lite-preview-09-2025'
+  return ENV.IFS_AGENT_MODEL.trim() || 'x-ai/grok-4-fast'
 }
