@@ -25,12 +25,12 @@ export const partDisplayRowSchema = z
     confidence: z.number(),
     evidence_count: z.number().int().nonnegative(),
     needs_attention: z.boolean(),
-    last_active: z.string().datetime().nullable(),
-    created_at: z.string().datetime(),
+    last_active: z.string().nullable(),
+    created_at: z.string(),
     observation_count: z.number().int().nonnegative(),
-    last_observed_at: z.string().datetime().nullable(),
+    last_observed_at: z.string().nullable(),
     relationship_count: z.number().int().nonnegative(),
-    last_relationship_at: z.string().datetime().nullable(),
+    last_relationship_at: z.string().nullable(),
   })
   .strict()
 
