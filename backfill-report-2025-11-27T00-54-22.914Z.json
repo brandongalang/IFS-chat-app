@@ -1,0 +1,149 @@
+{
+  "mode": "execute",
+  "userCount": 11,
+  "stats": [
+    {
+      "userId": "21c525eb-5443-4445-a835-3b665d1580d1",
+      "legacyPartsCount": 0,
+      "legacySessionsCount": 83,
+      "legacyRelationshipsCount": 4,
+      "migratedPartsCount": 7,
+      "migratedSessionsCount": 103,
+      "migratedRelationshipsCount": 0,
+      "duplicatePartsSkipped": 0,
+      "invalidPartsSkipped": 0,
+      "timestamp": "2025-11-27T00:54:10.088Z"
+    },
+    {
+      "userId": "32d32802-baaa-4e30-8e7a-6f1f4205d82d",
+      "legacyPartsCount": 0,
+      "legacySessionsCount": 0,
+      "legacyRelationshipsCount": 0,
+      "migratedPartsCount": 0,
+      "migratedSessionsCount": 0,
+      "migratedRelationshipsCount": 0,
+      "duplicatePartsSkipped": 0,
+      "invalidPartsSkipped": 0,
+      "timestamp": "2025-11-27T00:54:11.221Z"
+    },
+    {
+      "userId": "b917e028-b8bc-4c69-9f0b-af7674e5c455",
+      "legacyPartsCount": 0,
+      "legacySessionsCount": 3,
+      "legacyRelationshipsCount": 0,
+      "migratedPartsCount": 15,
+      "migratedSessionsCount": 12,
+      "migratedRelationshipsCount": 0,
+      "duplicatePartsSkipped": 0,
+      "invalidPartsSkipped": 0,
+      "timestamp": "2025-11-27T00:54:12.391Z"
+    },
+    {
+      "userId": "33333333-3333-3333-3333-333333333333",
+      "legacyPartsCount": 0,
+      "legacySessionsCount": 0,
+      "legacyRelationshipsCount": 0,
+      "migratedPartsCount": 0,
+      "migratedSessionsCount": 0,
+      "migratedRelationshipsCount": 0,
+      "duplicatePartsSkipped": 0,
+      "invalidPartsSkipped": 0,
+      "timestamp": "2025-11-27T00:54:13.633Z"
+    },
+    {
+      "userId": "349fbf03-4495-4d54-b8c1-347c0926b1d8",
+      "legacyPartsCount": 1,
+      "legacySessionsCount": 1,
+      "legacyRelationshipsCount": 0,
+      "migratedPartsCount": 1,
+      "migratedSessionsCount": 1,
+      "migratedRelationshipsCount": 0,
+      "duplicatePartsSkipped": 0,
+      "invalidPartsSkipped": 0,
+      "timestamp": "2025-11-27T00:54:14.958Z"
+    },
+    {
+      "userId": "d703f87a-b63b-459e-9a53-b05ff7f8a78c",
+      "legacyPartsCount": 1,
+      "legacySessionsCount": 1,
+      "legacyRelationshipsCount": 0,
+      "migratedPartsCount": 1,
+      "migratedSessionsCount": 1,
+      "migratedRelationshipsCount": 0,
+      "duplicatePartsSkipped": 0,
+      "invalidPartsSkipped": 0,
+      "timestamp": "2025-11-27T00:54:16.425Z"
+    },
+    {
+      "userId": "40c96c62-90c7-458f-9255-3980e15cf410",
+      "legacyPartsCount": 1,
+      "legacySessionsCount": 1,
+      "legacyRelationshipsCount": 0,
+      "migratedPartsCount": 1,
+      "migratedSessionsCount": 1,
+      "migratedRelationshipsCount": 0,
+      "duplicatePartsSkipped": 0,
+      "invalidPartsSkipped": 0,
+      "timestamp": "2025-11-27T00:54:17.732Z"
+    },
+    {
+      "userId": "11111111-1111-1111-1111-111111111111",
+      "legacyPartsCount": 3,
+      "legacySessionsCount": 0,
+      "legacyRelationshipsCount": 0,
+      "migratedPartsCount": 3,
+      "migratedSessionsCount": 0,
+      "migratedRelationshipsCount": 0,
+      "duplicatePartsSkipped": 0,
+      "invalidPartsSkipped": 0,
+      "timestamp": "2025-11-27T00:54:19.063Z"
+    },
+    {
+      "userId": "22222222-2222-2222-2222-222222222222",
+      "legacyPartsCount": 0,
+      "legacySessionsCount": 0,
+      "legacyRelationshipsCount": 0,
+      "migratedPartsCount": 0,
+      "migratedSessionsCount": 0,
+      "migratedRelationshipsCount": 0,
+      "duplicatePartsSkipped": 0,
+      "invalidPartsSkipped": 0,
+      "timestamp": "2025-11-27T00:54:20.194Z"
+    },
+    {
+      "userId": "12345678-1234-5678-9012-123456789abc",
+      "legacyPartsCount": 4,
+      "legacySessionsCount": 2,
+      "legacyRelationshipsCount": 1,
+      "migratedPartsCount": 4,
+      "migratedSessionsCount": 2,
+      "migratedRelationshipsCount": 1,
+      "duplicatePartsSkipped": 0,
+      "invalidPartsSkipped": 0,
+      "timestamp": "2025-11-27T00:54:21.636Z"
+    },
+    {
+      "userId": "3f8fbfae-4831-4378-92d0-4f9a4ca05268",
+      "legacyPartsCount": 0,
+      "legacySessionsCount": 3,
+      "legacyRelationshipsCount": 0,
+      "migratedPartsCount": 0,
+      "migratedSessionsCount": 3,
+      "migratedRelationshipsCount": 0,
+      "duplicatePartsSkipped": 0,
+      "invalidPartsSkipped": 0,
+      "timestamp": "2025-11-27T00:54:22.914Z"
+    }
+  ],
+  "errors": [],
+  "summary": {
+    "totalLegacyParts": 10,
+    "totalLegacySessions": 94,
+    "totalLegacyRelationships": 5,
+    "totalMigratedParts": 32,
+    "totalMigratedSessions": 123,
+    "totalMigratedRelationships": 1,
+    "totalDuplicatesSkipped": 0,
+    "totalInvalidSkipped": 0
+  }
+}

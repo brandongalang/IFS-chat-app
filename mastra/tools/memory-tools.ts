@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { resolveUserId } from '@/config/dev'
 import type { ToolResult } from '@/lib/types/database'
 import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
+import { SearchResultSchema } from '../schemas'
 
 const searchConversationsSchema = z
   .object({
@@ -15,18 +16,19 @@ const searchConversationsSchema = z
   .strict()
 
 export type SearchConversationsInput = z.infer<typeof searchConversationsSchema>
+export type SearchResult = z.infer<typeof SearchResultSchema>
 
 export async function searchConversations(
   input: SearchConversationsInput,
   userId: string
-): Promise<ToolResult<any[]>> {
+): Promise<ToolResult<SearchResult[]>> {
   try {
     const validated = searchConversationsSchema.parse(input)
     const storage = await getStorageAdapter()
 
     const prefix = `users/${userId}/sessions`
     const paths = await storage.list(prefix)
-    const searchResults: any[] = []
+    const searchResults: SearchResult[] = []
     const lowerCaseQuery = validated.query.toLowerCase()
     const now = new Date()
 
@@ -43,11 +45,11 @@ export async function searchConversations(
         }
         for (const message of session.messages || []) {
           if (typeof message.content === 'string' && message.content.toLowerCase().includes(lowerCaseQuery)) {
-            searchResults.push({
+            searchResults.push(SearchResultSchema.parse({
               ...message,
               sessionId: session.id,
               sessionCreatedAt: session.created_at,
-            })
+            }))
           }
         }
       } catch {}

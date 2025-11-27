@@ -1,5 +1,7 @@
+import { z } from 'zod'
 import { Mastra } from '@mastra/core'
 import { PinoLogger } from '@mastra/loggers'
+
 import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
 import { resolveChatModel, resolveAgentModel } from '@/config/model'
 import { createIfsAgent } from './agents/ifs-agent'
@@ -8,24 +10,20 @@ import { createUpdateSummarizerAgent } from './agents/update-summarizer'
 import { createGenerateInsightWorkflow } from './workflows/generate-insight-workflow'
 import { createInboxObservationAgent } from './agents/inbox-observation'
 import { createUnifiedInboxAgent } from './agents/unified-inbox'
+import { AgentRuntimeConfigSchema, ProfileSchema } from './schemas'
 
-type Profile = Parameters<typeof createIfsAgent>[0]
+type Profile = z.infer<typeof ProfileSchema>
+type AgentRuntimeConfig = z.infer<typeof AgentRuntimeConfigSchema>
 
-type AgentRuntimeConfig = {
-  modelId: string
-  baseURL?: string
-  temperature: number
-}
-
-const chatConfig: AgentRuntimeConfig = {
+const chatConfig: AgentRuntimeConfig = AgentRuntimeConfigSchema.parse({
   modelId: resolveChatModel(),
   temperature: ENV.IFS_TEMPERATURE,
-}
+})
 
-const agentConfig: AgentRuntimeConfig = {
+const agentConfig: AgentRuntimeConfig = AgentRuntimeConfigSchema.parse({
   modelId: resolveAgentModel(),
   temperature: ENV.IFS_TEMPERATURE,
-}
+})
 
 if (process.env.NODE_ENV !== 'test') {
   console.info('[Mastra] Agent configuration', {
@@ -36,9 +34,9 @@ if (process.env.NODE_ENV !== 'test') {
   })
 }
 
-let mastraInstance: any = null
+let mastraInstance: Mastra | null = null
 
-export function createMastra(profile: Profile = null) {
+export function createMastra(profile: Profile = null): Mastra {
   const userId = profile?.userId
   const insightGeneratorAgent = createInsightGeneratorAgent(userId, agentConfig)
   const inboxObservationAgent = createInboxObservationAgent(profile, agentConfig)
@@ -58,14 +56,14 @@ export function createMastra(profile: Profile = null) {
       unifiedInboxAgent,
     },
     workflows: {
-      generateInsightWorkflow: createGenerateInsightWorkflow(insightGeneratorAgent as any),
+      generateInsightWorkflow: createGenerateInsightWorkflow(insightGeneratorAgent),
     },
     // Optional telemetry config can be added here when needed
     // telemetry: { /* configure telemetry here if desired */ },
-  }) as any
+  })
 }
 
-export function getMastra(profile: Profile = null) {
+export function getMastra(profile: Profile = null): Mastra {
   // For user-scoped calls, create a fresh instance to avoid cross-user state.
   if (profile) {
     return createMastra(profile)
@@ -74,7 +72,7 @@ export function getMastra(profile: Profile = null) {
   if (!mastraInstance) {
     mastraInstance = createMastra(null)
   }
-  return mastraInstance as any
+  return mastraInstance
 }
 
 // Export a default Mastra instance for the Mastra CLI dev entry

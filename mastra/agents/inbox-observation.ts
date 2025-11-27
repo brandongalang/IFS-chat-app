@@ -7,6 +7,7 @@
  * research → analysis → generation flow supporting 6 output types.
  */
 
+import { z } from 'zod'
 import { Agent } from '@mastra/core'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 
@@ -14,12 +15,9 @@ import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
 import { resolveAgentModel } from '@/config/model'
 import { createObservationResearchTools, type ObservationResearchTools } from '../tools/inbox-observation-tools'
 import type { ObservationBatch } from '@/lib/inbox/observation-schema'
+import { AgentModelConfigSchema, AgentRunOptionsSchema } from '../schemas'
 
-export interface InboxObservationAgentConfig {
-  modelId?: string
-  baseURL?: string
-  temperature?: number
-}
+export type InboxObservationAgentConfig = z.infer<typeof AgentModelConfigSchema>
 
 type Profile = { userId?: string } | null
 
@@ -42,13 +40,15 @@ Rules:
 - Ensure every observation has title, summary, inference, and evidence array.
 - If no insights found, output: []`
 
-export type InboxObservationAgentRunResult = {
-  status: string
-  output?: unknown
-}
+export const InboxObservationAgentRunResultSchema = z.object({
+  status: z.string(),
+  output: z.unknown().optional(),
+})
+
+export type InboxObservationAgentRunResult = z.infer<typeof InboxObservationAgentRunResultSchema>
 
 export type InboxObservationAgent = Agent<'inboxObservationAgent', ObservationResearchTools> & {
-  run: (options: { input: string; context?: Record<string, unknown> }) => Promise<InboxObservationAgentRunResult>
+  run: (options: z.infer<typeof AgentRunOptionsSchema>) => Promise<InboxObservationAgentRunResult>
 }
 
 export interface InboxObservationAgentResult extends ObservationBatch {}
@@ -57,9 +57,10 @@ export function createInboxObservationAgent(
   profile: Profile = null,
   config: InboxObservationAgentConfig = {},
 ): InboxObservationAgent {
-  const modelId = config.modelId ?? resolveAgentModel()
-  const temperature = typeof config.temperature === 'number' ? config.temperature : ENV.IFS_TEMPERATURE
-  const baseURL = config.baseURL ?? OPENROUTER_API_BASE_URL
+  const agentConfig = AgentModelConfigSchema.parse(config)
+  const modelId = agentConfig.modelId ?? resolveAgentModel()
+  const temperature = typeof agentConfig.temperature === 'number' ? agentConfig.temperature : ENV.IFS_TEMPERATURE
+  const baseURL = agentConfig.baseURL ?? OPENROUTER_API_BASE_URL
 
   const openrouter = createOpenRouter({
     apiKey: ENV.OPENROUTER_API_KEY,
@@ -80,22 +81,16 @@ export function createInboxObservationAgent(
     model: openrouter(modelId, modelSettings),
   })
 
-  // Wrap the Mastra agent to provide the expected .run() interface
-  // Mastra agents use .generate() but the observation engine expects .run()
-  // Use generateVNext for V2 models (like gemini-2.5-flash-lite)
   const agent = Object.assign(baseAgent, {
-    run: async (options: { input: string; context?: Record<string, unknown> }): Promise<InboxObservationAgentRunResult> => {
+    run: async (options: z.infer<typeof AgentRunOptionsSchema>): Promise<InboxObservationAgentRunResult> => {
       try {
-        // Use generateVNext for V2 model compatibility
         const response = await (baseAgent as any).generateVNext(options.input)
-        // Parse the JSON output from the agent's text response
         let output: unknown = null
         const text = response?.text ?? response?.output?.text ?? ''
         if (text) {
           try {
             output = JSON.parse(text)
           } catch {
-            // If not valid JSON, wrap in observations array structure
             output = { observations: [] }
           }
         }
