@@ -153,63 +153,182 @@ Rules:
 
         push('status', { type: 'starting_agent', prompt: prompt.substring(0, 200) + '...' })
 
-        // Step 4: Create agent and stream
+        // Step 4: Create agent and try different streaming methods
         const agent = createUnifiedInboxAgent({ userId }, { runId })
-
-        // Use streaming to see tool calls
-        const agentStream = await (agent as any).stream(prompt)
 
         let fullText = ''
         let toolCallCount = 0
+        let streamMethod = 'unknown'
 
-        // Process the stream
-        if (agentStream?.fullStream) {
-          push('status', { type: 'streaming' })
+        // Try streamVNext first (supports V2 models like Gemini/Grok)
+        const agentAny = agent as any
 
-          for await (const chunk of agentStream.fullStream) {
-            switch (chunk.type) {
-              case 'tool-call':
-                toolCallCount++
-                push('tool_call', {
-                  index: toolCallCount,
-                  toolName: chunk.payload?.toolName,
-                  args: chunk.payload?.args,
-                })
-                break
-              case 'tool-result':
-                push('tool_result', {
-                  toolName: chunk.payload?.toolName,
-                  result: typeof chunk.payload?.result === 'string'
-                    ? chunk.payload.result.substring(0, 500)
-                    : chunk.payload?.result,
-                })
-                break
-              case 'text-delta':
-                fullText += chunk.payload?.text || ''
-                push('text_delta', { text: chunk.payload?.text })
-                break
-              case 'finish':
-                push('status', { type: 'agent_finished', reason: chunk.payload?.stepResult?.reason })
-                break
-              default:
-                // Log other chunk types for debugging
-                if (chunk.type) {
-                  push('chunk', { type: chunk.type })
+        if (typeof agentAny.streamVNext === 'function') {
+          push('status', { type: 'trying_streamVNext' })
+          streamMethod = 'streamVNext'
+
+          try {
+            const streamResult = await agentAny.streamVNext(prompt)
+            push('status', { type: 'streamVNext_started', keys: Object.keys(streamResult || {}) })
+
+            // streamVNext returns an object with various async iterables
+            // Try to process the response based on available properties
+            if (streamResult?.fullStream && Symbol.asyncIterator in streamResult.fullStream) {
+              for await (const chunk of streamResult.fullStream) {
+                const chunkType = chunk?.type || chunk?.event || 'unknown'
+                switch (chunkType) {
+                  case 'tool-call':
+                  case 'tool_call':
+                    toolCallCount++
+                    push('tool_call', {
+                      index: toolCallCount,
+                      toolName: chunk.payload?.toolName || chunk.toolName,
+                      args: chunk.payload?.args || chunk.args,
+                    })
+                    break
+                  case 'tool-result':
+                  case 'tool_result':
+                    push('tool_result', {
+                      toolName: chunk.payload?.toolName || chunk.toolName,
+                      result: typeof (chunk.payload?.result || chunk.result) === 'string'
+                        ? (chunk.payload?.result || chunk.result).substring(0, 500)
+                        : chunk.payload?.result || chunk.result,
+                    })
+                    break
+                  case 'text-delta':
+                  case 'text_delta':
+                    const delta = chunk.payload?.text || chunk.textDelta || chunk.delta || ''
+                    fullText += delta
+                    if (delta) push('text_delta', { text: delta })
+                    break
+                  case 'finish':
+                  case 'step-finish':
+                    push('status', { type: 'step_finished', reason: chunk.payload?.stepResult?.reason || chunk.finishReason })
+                    break
+                  default:
+                    push('chunk', { type: chunkType, keys: Object.keys(chunk || {}) })
                 }
+              }
+            } else if (streamResult?.textStream && Symbol.asyncIterator in streamResult.textStream) {
+              push('status', { type: 'using_textStream' })
+              for await (const text of streamResult.textStream) {
+                fullText += text
+                push('text_delta', { text })
+              }
+            } else {
+              // Try to read from body if it's a Response-like object
+              if (streamResult?.body) {
+                push('status', { type: 'reading_response_body' })
+                const reader = streamResult.body.getReader()
+                const decoder = new TextDecoder()
+                while (true) {
+                  const { done, value } = await reader.read()
+                  if (done) break
+                  const text = decoder.decode(value, { stream: true })
+                  fullText += text
+                  push('text_delta', { text: text.substring(0, 100) })
+                }
+              } else {
+                // Get final text directly
+                fullText = await streamResult?.text || ''
+                push('status', { type: 'got_final_text', length: fullText.length })
+              }
+            }
+          } catch (streamVNextError) {
+            push('error', {
+              type: 'streamVNext_error',
+              message: streamVNextError instanceof Error ? streamVNextError.message : String(streamVNextError)
+            })
+            // Fall through to try other methods
+            streamMethod = 'streamVNext_failed'
+          }
+        }
+
+        // If streamVNext didn't work or isn't available, try generateVNext
+        if (!fullText && typeof agentAny.generateVNext === 'function') {
+          push('status', { type: 'trying_generateVNext' })
+          streamMethod = 'generateVNext'
+
+          const generateResult = await agentAny.generateVNext(prompt)
+          push('status', {
+            type: 'generateVNext_result',
+            keys: Object.keys(generateResult || {}),
+            hasText: !!generateResult?.text
+          })
+
+          fullText = generateResult?.text || ''
+
+          // Check for tool calls in the result
+          if (generateResult?.toolCalls?.length) {
+            toolCallCount = generateResult.toolCalls.length
+            for (const tc of generateResult.toolCalls) {
+              push('tool_call', { toolName: tc.toolName, args: tc.args })
             }
           }
-        } else if (agentStream?.textStream) {
-          // Fallback to textStream if fullStream not available
-          push('status', { type: 'streaming_text_only' })
-          for await (const text of agentStream.textStream) {
-            fullText += text
-            push('text_delta', { text })
+          if (generateResult?.toolResults?.length) {
+            for (const tr of generateResult.toolResults) {
+              push('tool_result', { toolName: tr.toolName, result: tr.result })
+            }
           }
-        } else {
-          // Try to get final text
-          fullText = await agentStream?.text || ''
-          push('status', { type: 'non_streaming_response' })
         }
+
+        // Last resort: try stream() even though it might fail for V2 models
+        if (!fullText && typeof agentAny.stream === 'function') {
+          push('status', { type: 'trying_stream' })
+          streamMethod = 'stream'
+
+          try {
+            const agentStream = await agentAny.stream(prompt)
+
+            if (agentStream?.fullStream) {
+              for await (const chunk of agentStream.fullStream) {
+                switch (chunk.type) {
+                  case 'tool-call':
+                    toolCallCount++
+                    push('tool_call', {
+                      index: toolCallCount,
+                      toolName: chunk.payload?.toolName,
+                      args: chunk.payload?.args,
+                    })
+                    break
+                  case 'tool-result':
+                    push('tool_result', {
+                      toolName: chunk.payload?.toolName,
+                      result: typeof chunk.payload?.result === 'string'
+                        ? chunk.payload.result.substring(0, 500)
+                        : chunk.payload?.result,
+                    })
+                    break
+                  case 'text-delta':
+                    fullText += chunk.payload?.text || ''
+                    push('text_delta', { text: chunk.payload?.text })
+                    break
+                  case 'finish':
+                    push('status', { type: 'agent_finished', reason: chunk.payload?.stepResult?.reason })
+                    break
+                  default:
+                    if (chunk.type) {
+                      push('chunk', { type: chunk.type })
+                    }
+                }
+              }
+            } else if (agentStream?.textStream) {
+              for await (const text of agentStream.textStream) {
+                fullText += text
+                push('text_delta', { text })
+              }
+            } else {
+              fullText = await agentStream?.text || ''
+            }
+          } catch (streamError) {
+            push('error', {
+              type: 'stream_error',
+              message: streamError instanceof Error ? streamError.message : String(streamError)
+            })
+          }
+        }
+
+        push('status', { type: 'stream_complete', method: streamMethod })
 
         push('status', { type: 'parsing_response' })
         push('full_text', { text: fullText, length: fullText.length })
