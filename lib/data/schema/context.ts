@@ -98,7 +98,7 @@ const timelineEventMetadataSchema = z.record(z.any())
 export const timelineDisplayRowSchema = z
   .object({
     user_id: z.string().uuid(),
-    created_at: z.string().datetime(),
+    created_at: z.string(),
     event_type: z.enum(['observation', 'part', 'relationship', 'timeline_event']),
     event_subtype: z.string(),
     description: z.string(),
@@ -144,7 +144,7 @@ const recentPartSchema = z
     status: partStatusEnum,
     charge: partChargeEnum,
     needs_attention: z.boolean(),
-    last_active: z.string().datetime().nullable(),
+    last_active: z.string().nullable(),
     emoji: z.string().nullable(),
   })
   .strict()
@@ -154,7 +154,7 @@ const incompletePartSchema = z
     id: z.string().uuid(),
     display_name: z.string(),
     next_step: z.enum(['needs_name', 'needs_role', 'needs_category', 'needs_details']),
-    updated_at: z.string().datetime().nullable(),
+    updated_at: z.string().nullable(),
   })
   .strict()
 
@@ -163,7 +163,7 @@ const followUpSchema = z
     id: z.string().uuid(),
     content: z.string(),
     type: observationTypeEnum,
-    created_at: z.string().datetime(),
+    created_at: z.string(),
   })
   .strict()
 
@@ -177,8 +177,8 @@ const lastSessionSchema = z
     key_insights: z.array(z.string()),
     homework: z.array(z.string()),
     next_session: z.array(z.string()),
-    started_at: z.string().datetime(),
-    ended_at: z.string().datetime().nullable(),
+    started_at: z.string(),
+    ended_at: z.string().nullable(),
   })
   .strict()
 
@@ -190,8 +190,8 @@ export const userContextCacheRowSchema = z
     follow_ups: z.array(followUpSchema),
     recent_events: z.array(timelineDisplayEventSchema),
     last_session: lastSessionSchema.nullable(),
-    cache_time: z.string().datetime(),
-    last_observation_at: z.string().datetime().nullable(),
+    cache_time: z.string(),
+    last_observation_at: z.string().nullable(),
     total_sessions: z.number().int().nonnegative(),
     total_parts: z.number().int().nonnegative(),
     attention_count: z.number().int().nonnegative(),
