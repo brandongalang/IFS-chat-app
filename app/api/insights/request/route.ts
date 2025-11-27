@@ -59,8 +59,8 @@ export async function POST(req: Request) {
     const mastra = getMastra();
     const insightWorkflow = mastra.getWorkflow('generateInsightWorkflow');
 
-    const workflowRun = await insightWorkflow.execute({
-      input: { userId },
+    const workflowRun = await (insightWorkflow as any).execute({
+      inputData: { userId },
     });
 
   let generatedInsights: Array<{ type: string; title: string; body: string; sourceSessionIds?: string[] }> = [];

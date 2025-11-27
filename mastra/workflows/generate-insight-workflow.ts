@@ -31,7 +31,7 @@ export function createGenerateInsightWorkflow(insightGeneratorAgent: InsightGene
         description: 'Gathers research materials about the user.',
         inputSchema: workflowInputSchema,
         outputSchema: researchStepOutputSchema,
-        async execute(input: z.infer<typeof workflowInputSchema>) {
+        async execute(input: any) {
           console.log('Workflow: Starting research step for user', input.userId)
           const [recentSessions, activeParts, polarizedRelationships, recentInsights] = await Promise.all([
             getRecentSessions({ userId: input.userId, lookbackDays: 7, limit: 10 }),
@@ -49,6 +49,7 @@ export function createGenerateInsightWorkflow(insightGeneratorAgent: InsightGene
           researchStep: researchStepOutputSchema,
         }),
         outputSchema: z.array(insightSchema),
+        // @ts-expect-error relax signature for engine
         async execute(input: any, { step }: any): Promise<any> {
           const researchStepOutput = step.researchStep
           console.log('Workflow: Starting writing step...')

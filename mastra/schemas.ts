@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 export const ProfileSchema = z.object({
-  userId: z.string().uuid(),
-}).nullable();
+  userId: z.string().uuid().optional(),
+}).passthrough().nullable();
 
 export const AgentRuntimeConfigSchema = z.object({
   modelId: z.string(),
