@@ -10,16 +10,18 @@ import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
 import { buildUserOverviewMarkdown, buildPartProfileMarkdown } from '@/lib/memory/snapshots/grammar'
 import { partProfilePath, userOverviewPath } from '@/lib/memory/snapshots/fs-helpers'
 
+import logger from '@/lib/logger';
+
 async function main() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !service) {
-    console.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+    logger.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
     process.exit(1)
   }
   const userId = process.argv[2] || process.env.IFS_DEFAULT_USER_ID
   if (!userId) {
-    console.error('Provide userId as arg or set IFS_DEFAULT_USER_ID')
+    logger.error('Provide userId as arg or set IFS_DEFAULT_USER_ID')
     process.exit(1)
   }
 
@@ -43,8 +45,8 @@ async function main() {
     await storage.putText(partProfilePath(userId, p.id), md, { contentType: 'text/markdown; charset=utf-8' })
   }
 
-  console.log(`Scaffolded overview and ${parts?.length || 0} part profiles for user ${userId}`)
+  logger.info({ userId, partCount: parts?.length || 0 }, 'Scaffolded overview and part profiles');
 }
 
-main().catch((e) => { console.error(e); process.exit(1) })
+main().catch((e) => { logger.error(e); process.exit(1) })
 

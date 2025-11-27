@@ -11,6 +11,7 @@ import { createHash } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type { Database } from '@/lib/types/database'
+import logger from '@/lib/logger';
 import {
   unifiedInboxBatchSchema,
   type UnifiedInboxItemCandidate,
@@ -163,11 +164,11 @@ export async function runUnifiedInboxEngine(
 
     // Debug: Log the raw response structure
     if (process.env.IFS_VERBOSE === 'true') {
-      console.log('[unified-inbox-engine] generateVNext raw response:', JSON.stringify({
+      logger.info({
         keys: Object.keys(generateResult || {}),
         text: generateResult?.text?.substring(0, 500),
         output: generateResult?.output ? 'present' : 'missing',
-      }, null, 2))
+      }, '[unified-inbox-engine] generateVNext raw response:');
     }
 
     // Parse the text response as JSON
@@ -177,8 +178,10 @@ export async function runUnifiedInboxEngine(
       // Try multiple extraction strategies
       const textResponse = generateResult?.text || generateResult?.output?.text || ''
       if (process.env.IFS_VERBOSE === 'true') {
-        console.log('[unified-inbox-engine] Raw text response length:', textResponse.length)
-        console.log('[unified-inbox-engine] Raw text preview:', textResponse.substring(0, 300))
+        logger.info({
+          length: textResponse.length,
+          preview: textResponse.substring(0, 300)
+        }, '[unified-inbox-engine] Raw text response');
       }
       // Extract JSON from potential markdown code blocks first
       let jsonStr: string | null = null
@@ -206,7 +209,7 @@ export async function runUnifiedInboxEngine(
         }
       }
       if (process.env.IFS_VERBOSE === 'true') {
-        console.log('[unified-inbox-engine] Extracted JSON string:', jsonStr?.substring(0, 200))
+        logger.info({ jsonStr: jsonStr?.substring(0, 200) }, '[unified-inbox-engine] Extracted JSON string');
       }
       if (!jsonStr) {
         throw new Error('No JSON content found in response')
@@ -214,7 +217,7 @@ export async function runUnifiedInboxEngine(
       parsedOutput = JSON.parse(jsonStr.trim())
     } catch (parseError) {
       if (process.env.IFS_VERBOSE === 'true') {
-        console.log('[unified-inbox-engine] JSON parse error:', parseError)
+        logger.error({ parseError }, '[unified-inbox-engine] JSON parse error');
       }
       parsedOutput = null
     }

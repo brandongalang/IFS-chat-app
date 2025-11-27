@@ -1,4 +1,5 @@
 import { isMemoryV2Enabled } from '@/lib/memory/config'
+import logger from '@/lib/logger';
 import { ensureOverviewExists } from '@/lib/memory/snapshots/scaffold'
 import { listUsersWithPendingUpdates } from '@/lib/memory/updates'
 import { summarizePendingUpdatesForUser } from '@/lib/memory/update-runner'
@@ -11,7 +12,7 @@ export async function scaffoldUserMemory(opts: { userId: string }): Promise<void
   try {
     await ensureOverviewExists(userId)
   } catch (error) {
-    console.warn('[MEMORY] scaffoldUserMemory failed', { userId, error })
+    logger.warn({ userId, error }, '[MEMORY] scaffoldUserMemory failed');
   }
 }
 
@@ -35,14 +36,14 @@ export async function summarizePendingUpdates(opts: SummarizePendingUpdatesOptio
       const outcome = await summarizePendingUpdatesForUser(userId, limit ? { limit } : undefined)
       if (!outcome.skipped && outcome.itemCount > 0) {
         processed += outcome.itemCount
-        console.log('[MEMORY] Summarized pending updates', {
+        logger.info({
           userId,
           processed: outcome.itemCount,
           digest: outcome.digest,
-        })
+        }, '[MEMORY] Summarized pending updates');
       }
     } catch (error) {
-      console.warn('[MEMORY] summarizePendingUpdates failed', { userId, error })
+      logger.warn({ userId, error }, '[MEMORY] summarizePendingUpdates failed');
     }
   }
 

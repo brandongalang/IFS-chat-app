@@ -36,6 +36,8 @@ const STAGE1_SCORES: Record<TestPersona, Record<string, number>> = {
   advanced: { independence: 0.6, self_criticism: 0.5, caretaking: 0.6, control: 0.5 }
 }
 
+import logger from '@/lib/logger';
+
 async function seedUser(
   supabase: ReturnType<typeof createClient>,
   userId: string,
@@ -121,7 +123,7 @@ async function seedUser(
 
   if (upErr) throw new Error(`user_onboarding upsert failed: ${upErr.message}`)
 
-  console.log(`✅ Seeded onboarding for ${persona} (${userId})`)
+  logger.info({ persona, userId }, 'Seeded onboarding');
 }
 
 async function main() {
@@ -135,11 +137,11 @@ async function main() {
     await seedUser(supabase, userId, p)
   }
 
-  console.log('🎉 Onboarding seeding complete')
+  logger.info('🎉 Onboarding seeding complete');
 }
 
 main().catch((e) => {
-  console.error('❌ Seeding failed:', e?.message || e)
+  logger.error({ error: e }, '❌ Seeding failed:');
   process.exit(1)
 })
 

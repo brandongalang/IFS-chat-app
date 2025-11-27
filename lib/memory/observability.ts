@@ -1,5 +1,6 @@
 // Lightweight observability helpers for Memory v2 snapshot usage.
 // This avoids adding dependencies; logs are structured JSON lines for easy grep or log shipping.
+import logger from '@/lib/logger';
 
 export type SnapshotKind = 'overview' | 'part_profile' | 'relationship_profile'
 export type SnapshotStatus = 'hit' | 'miss' | 'error'
@@ -33,7 +34,7 @@ export function recordSnapshotUsage(kind: SnapshotKind, status: SnapshotStatus, 
       rel_id: extra?.relId,
       error: extra?.error ? String((extra.error as { message?: unknown })?.message ?? extra.error) : undefined,
     }
-    console.log(JSON.stringify(line))
+    logger.info(line, 'snapshot usage');
   } catch {
     // best effort
   }
