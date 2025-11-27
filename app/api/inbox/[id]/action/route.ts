@@ -14,10 +14,27 @@ import {
   type DismissInboxActionPayload,
 } from '@/lib/data/inbox-actions'
 
+// Accept any string action value to support agent-generated button values
 const responseSchema = z.object({
-  action: z.enum(['agree_strong', 'agree', 'disagree', 'disagree_strong', 'ack']),
+  action: z.string().min(1).max(100),
   notes: z.string().trim().max(1000).optional(),
 })
+
+// Legacy negative action values for backwards compatibility
+const NEGATIVE_ACTIONS = new Set(['disagree', 'disagree_strong', 'no', 'strong_no', 'dismiss'])
+
+/**
+ * Determine if an action value represents a positive/confirming response.
+ * Treats all agent-generated button actions as positive (engagement).
+ */
+function isPositiveAction(action: string): boolean {
+  // Explicit negative actions
+  if (NEGATIVE_ACTIONS.has(action)) {
+    return false
+  }
+  // Everything else is treated as positive/engagement
+  return true
+}
 
 export async function POST(
   request: NextRequest,
@@ -68,21 +85,11 @@ export async function POST(
 
   try {
     let updatedItem: InboxItem
+    const isPositive = isPositiveAction(payload.action)
 
-    if (payload.action === 'agree_strong' || payload.action === 'agree' || payload.action === 'ack') {
-      if (inboxItem.sourceType === 'insight') {
-        const actionPayload: ConfirmInboxActionPayload = {
-          note: payload.notes,
-          actionValue: payload.action,
-        }
-
-        updatedItem = await confirmInboxItemAction({
-          supabase,
-          item: inboxItem,
-          userId: user.id,
-          payload: actionPayload,
-        })
-      } else if (inboxItem.sourceType === 'observation') {
+    if (isPositive) {
+      // Positive actions: confirm/engage with the item
+      if (inboxItem.sourceType === 'insight' || inboxItem.sourceType === 'observation' || inboxItem.sourceType === 'observation_generated') {
         const actionPayload: ConfirmInboxActionPayload = {
           note: payload.notes,
           actionValue: payload.action,
@@ -95,6 +102,7 @@ export async function POST(
           payload: actionPayload,
         })
       } else {
+        // For other source types, still treat as dismiss for backwards compatibility
         const actionPayload: DismissInboxActionPayload = {
           reason: payload.notes,
           actionValue: payload.action,
@@ -107,7 +115,8 @@ export async function POST(
           payload: actionPayload,
         })
       }
-    } else if (payload.action === 'disagree' || payload.action === 'disagree_strong') {
+    } else {
+      // Negative actions: dismiss the item
       const actionPayload: DismissInboxActionPayload = {
         reason: payload.notes,
         actionValue: payload.action,
@@ -119,8 +128,6 @@ export async function POST(
         userId: user.id,
         payload: actionPayload,
       })
-    } else {
-      return errorResponse('Unsupported action', HTTP_STATUS.BAD_REQUEST)
     }
 
     return jsonResponse({ item: updatedItem })

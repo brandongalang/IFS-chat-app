@@ -7,14 +7,15 @@ import type { UpdatePartInput } from '@/lib/data/parts.schema'
 import type { InboxItem, InboxQuickActionValue } from '@/types/inbox'
 import type { Database, InsightRow, InsightUpdate, Json } from '@/lib/types/database'
 
+// Action payload types support flexible string values for agent-generated buttons
 export type ConfirmInboxActionPayload = {
   note?: string
-  actionValue: 'agree_strong' | 'agree' | 'ack'
+  actionValue: string  // Now accepts any action value (agent-generated or legacy)
 }
 
 export type DismissInboxActionPayload = {
   reason?: string
-  actionValue: InboxQuickActionValue
+  actionValue: string  // Now accepts any action value
 }
 
 export type SnoozeInboxActionPayload = {
