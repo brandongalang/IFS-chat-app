@@ -1,5 +1,6 @@
 // Database Validation Utilities
 // Validates database schema, RLS policies, and data integrity
+import logger from '@/lib/logger';
 
 import { getServiceClient } from '../supabase/clients'
 
@@ -33,7 +34,7 @@ export class DatabaseValidator {
    * Run complete database validation suite
    */
   async validateDatabase(): Promise<ValidationSuite> {
-    console.log('🔍 Starting database validation...')
+    logger.info('🔍 Starting database validation...');
 
     const results: ValidationSuite = {
       schema: [],
@@ -64,10 +65,10 @@ export class DatabaseValidator {
         ...results.indexes
       ].every(r => r.success)
 
-      console.log(results.overall ? '✅ Database validation passed' : '❌ Database validation failed')
+      logger.info(results.overall ? '✅ Database validation passed' : '❌ Database validation failed');
       
     } catch (error) {
-      console.error('💥 Database validation error:', error)
+      logger.error({ error }, '💥 Database validation error:');
       results.overall = false
     }
 

@@ -1,4 +1,5 @@
 import 'server-only'
+import logger from '@/lib/logger';
 
 import { getServerSupabaseClient } from '@/lib/supabase/clients'
 import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
@@ -66,8 +67,7 @@ async function resolveDeps(deps: PrdServerDeps): Promise<{ client: SupabaseDatab
  * @param params - Optional structured parameters to include in the log entry
  */
 function logOperation(operation: string, params?: Record<string, any>) {
-  const timestamp = new Date().toISOString()
-  console.log(`[prd-schema] ${timestamp} ${operation}`, params ? JSON.stringify(params, null, 2) : '')
+  logger.info({ operation, params }, `[prd-schema] ${operation}`);
 }
 
 /**
@@ -86,11 +86,11 @@ export async function searchParts(input: SearchPartsInput, deps: PrdServerDeps):
   try {
     const result = await searchPartsV2(input, resolved)
     const duration = Date.now() - startTime
-    console.log(`[prd-schema] searchParts completed in ${duration}ms, found ${result.length} parts`)
+    logger.info({ duration, count: result.length }, `[prd-schema] searchParts completed`);
     return result
   } catch (error) {
     const duration = Date.now() - startTime
-    console.error(`[prd-schema] searchParts failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    logger.error({ duration, error }, `[prd-schema] searchParts failed`);
     throw error
   }
 }
@@ -119,11 +119,11 @@ export async function upsertPart(input: UpsertPartInput, deps: PrdServerDeps): P
   try {
     const result = await upsertPartV2(input, resolved)
     const duration = Date.now() - startTime
-    console.log(`[prd-schema] upsertPart completed in ${duration}ms: ${result.id}`)
+    logger.info({ duration, id: result.id }, `[prd-schema] upsertPart completed`);
     return result
   } catch (error) {
     const duration = Date.now() - startTime
-    console.error(`[prd-schema] upsertPart failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    logger.error({ duration, error }, `[prd-schema] upsertPart failed`);
     throw error
   }
 }
@@ -152,11 +152,11 @@ export async function recordObservation(input: CreateObservationInput, deps: Prd
   try {
     const result = await createObservation(input, resolved)
     const duration = Date.now() - startTime
-    console.log(`[prd-schema] recordObservation completed in ${duration}ms: ${result.id}`)
+    logger.info({ duration, id: result.id }, `[prd-schema] recordObservation completed`);
     return result
   } catch (error) {
     const duration = Date.now() - startTime
-    console.error(`[prd-schema] recordObservation failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    logger.error({ duration, error }, `[prd-schema] recordObservation failed`);
     throw error
   }
 }
@@ -332,11 +332,11 @@ export async function loadUserContextCache(
   try {
     const result = await getUserContextCache(resolved)
     const duration = Date.now() - startTime
-    console.log(`[prd-schema] loadUserContextCache completed in ${duration}ms, cache ${result ? 'found' : 'not found'}`)
+    logger.info({ duration, found: !!result }, `[prd-schema] loadUserContextCache completed`);
     return result
   } catch (error) {
     const duration = Date.now() - startTime
-    console.error(`[prd-schema] loadUserContextCache failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    logger.error({ duration, error }, `[prd-schema] loadUserContextCache failed`);
     throw error
   }
 }
@@ -356,10 +356,10 @@ export async function refreshContextCache(client?: SupabaseDatabaseClient): Prom
     const supabase = client ?? (await getServerSupabaseClient())
     await refreshUserContextCache(supabase)
     const duration = Date.now() - startTime
-    console.log(`[prd-schema] refreshContextCache completed in ${duration}ms`)
+    logger.info({ duration }, `[prd-schema] refreshContextCache completed`);
   } catch (error) {
     const duration = Date.now() - startTime
-    console.error(`[prd-schema] refreshContextCache failed in ${duration}ms:`, error instanceof Error ? error.message : String(error))
+    logger.error({ duration, error }, `[prd-schema] refreshContextCache failed`);
     throw error
   }
 }

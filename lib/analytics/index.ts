@@ -1,5 +1,7 @@
+import logger from '@/lib/logger';
+
 export function track(event: string, props?: Record<string, unknown>): void {
   if (process.env.NODE_ENV !== 'production') {
-    console.log('[analytics]', event, props || {})
+    logger.info({ event, props }, '[analytics]');
   }
 }
