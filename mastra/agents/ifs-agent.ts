@@ -1,6 +1,8 @@
+import { z } from 'zod'
 import { Agent } from '@mastra/core'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
-import { ENV, OPENROUTER_API_BASE_URL, env } from '@/config/env'
+
+import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
 import { resolveChatModel } from '@/config/model'
 import { getPartTools } from '../tools/part-tools.mastra'
 import { createAssessmentTools } from '../tools/assessment-tools'
@@ -10,20 +12,18 @@ import { createMemoryTools } from '../tools/memory-tools'
 import { createUpdateSyncTools } from '../tools/update-sync-tools'
 import { createTherapyTools } from '../tools/therapy-tools'
 import { generateSystemPrompt, type IFSAgentProfile } from './ifs_agent_prompt'
+import { AgentModelConfigSchema } from '../schemas'
 
-export type AgentModelConfig = {
-  modelId?: string
-  baseURL?: string
-  temperature?: number
-}
+export type AgentModelConfig = z.infer<typeof AgentModelConfigSchema>
 
 type Profile = IFSAgentProfile
 
 export function createIfsAgent(profile: Profile, overrides: AgentModelConfig = {}) {
+  const config = AgentModelConfigSchema.parse(overrides)
   const userId = profile?.userId
-  const modelId = overrides.modelId ?? resolveChatModel()
-  const temperature = overrides.temperature ?? ENV.IFS_TEMPERATURE
-  const baseURL = overrides.baseURL ?? OPENROUTER_API_BASE_URL
+  const modelId = config.modelId ?? resolveChatModel()
+  const temperature = config.temperature ?? ENV.IFS_TEMPERATURE
+  const baseURL = config.baseURL ?? OPENROUTER_API_BASE_URL
 
   const openrouter = createOpenRouter({
     apiKey: ENV.OPENROUTER_API_KEY,

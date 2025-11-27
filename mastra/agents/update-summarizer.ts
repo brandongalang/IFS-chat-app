@@ -3,8 +3,10 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { z } from 'zod'
 import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
 import { resolveAgentModel } from '@/config/model'
-import type { AgentModelConfig } from './ifs-agent'
+import { AgentModelConfigSchema } from '../schemas'
 import { updateSyncTools } from '../tools/update-sync'
+
+export type AgentModelConfig = z.infer<typeof AgentModelConfigSchema>
 
 export const updateDigestSchema = z.object({
   digest: z.string().min(3).max(400).describe('One or two sentences to append to the user change log.'),

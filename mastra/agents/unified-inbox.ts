@@ -24,7 +24,9 @@ import { z } from 'zod'
 import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
 import { resolveAgentModel } from '@/config/model'
 import { createUnifiedInboxTools, type UnifiedInboxTools } from '../tools/unified-inbox-tools'
-import type { AgentModelConfig } from './ifs-agent'
+import { UnifiedInboxAgentConfigSchema } from '../schemas'
+
+export type UnifiedInboxAgentConfig = z.infer<typeof UnifiedInboxAgentConfigSchema>
 
 /**
  * Output schema for unified inbox items
@@ -76,15 +78,6 @@ export type UnifiedInboxItem = z.infer<typeof unifiedInboxSchema>
 
 export interface UnifiedInboxAgentResponse {
   items: UnifiedInboxItem[]
-}
-
-export interface UnifiedInboxAgentConfig {
-  modelId?: string
-  baseURL?: string
-  temperature?: number
-  requestId?: string
-  runId?: string
-  maxOutputItems?: number
 }
 
 type Profile = { userId?: string } | null

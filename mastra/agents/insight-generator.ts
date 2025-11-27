@@ -12,8 +12,10 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { z } from 'zod'
 import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
 import { resolveAgentModel } from '@/config/model'
-import type { AgentModelConfig } from './ifs-agent'
+import { AgentModelConfigSchema } from '../schemas'
 import { createInsightResearchTools } from '../tools/insight-research-tools'
+
+export type AgentModelConfig = z.infer<typeof AgentModelConfigSchema>
 
 export const insightSchema = z.object({
   type: z.enum(['session_summary', 'nudge', 'follow_up', 'observation', 'question']),
