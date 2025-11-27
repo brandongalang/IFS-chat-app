@@ -286,8 +286,8 @@ export function EtherealChat() {
       {/* Dev Mode Indicator */}
       {devPersonaLabel && (
         <div className="absolute top-2 left-2 z-30">
-          <div className="bg-orange-500/20 backdrop-blur-sm border border-orange-500/30 rounded-full px-3 py-1.5">
-            <p className="text-xs text-orange-700 font-medium">
+          <div className="hs-chip-warm">
+            <p className="text-xs font-medium">
               Dev Mode: {devPersonaLabel}
             </p>
           </div>
@@ -308,10 +308,10 @@ export function EtherealChat() {
         </div>
       </div>
 
-      {/* Input bar for light mode */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pb-[calc(12px+env(safe-area-inset-bottom))]">
+      {/* Input bar */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pb-safe">
         <PageContainer className="pointer-events-auto">
-          <div className="rounded-[30px] border border-gray-200 bg-white p-3 shadow-[0_4px_24px_rgba(0,0,0,0.08)]">
+          <div className="hs-card p-3">
             <form onSubmit={onSubmit} className="space-y-3">
               {activeTool ? (
                 <Tool className="border-orange-200 bg-orange-50 text-orange-900">
@@ -330,7 +330,7 @@ export function EtherealChat() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={onKeyDown}
                 placeholder="type your thought…"
-                className="min-h-[48px] max-h-[132px] w-full resize-none border-0 bg-transparent px-3 py-2.5 text-[16px] text-gray-900 placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 focus:border-0 focus:shadow-[0_0_0_1px_rgba(249,115,22,0.3)] hover:shadow-[0_0_0_1px_rgba(249,115,22,0.15)] transition-shadow duration-200"
+                className="hs-input min-h-[48px] max-h-[132px] w-full resize-none text-[16px]"
                 data-testid="ethereal-input"
                 aria-label="Message"
                 disabled={isLoading || sessionClosed}
@@ -354,7 +354,7 @@ export function EtherealChat() {
                     size="sm"
                     onClick={handleEndSessionRequest}
                     disabled={sessionClosed || isLoading || !hasUserMessages}
-                    className="min-h-11 h-11 px-4 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="hs-btn-secondary min-h-11 h-11 px-4"
                     title={!hasUserMessages ? "Send a message to start your session" : "End session"}
                     aria-label={!hasUserMessages ? "End session disabled - send a message first" : "End session"}
                   >
@@ -364,7 +364,7 @@ export function EtherealChat() {
                     size="sm"
                     type="submit"
                     disabled={!input.trim() || isLoading || sessionClosed}
-                    className="min-h-11 h-11 min-w-11 px-6 rounded-full bg-orange-500 text-white hover:bg-orange-600 active:scale-95 transition-transform"
+                    className="hs-btn-primary min-h-11 h-11 min-w-11 px-6"
                   >
                     {isLoading ? (
                       <span className="flex items-center gap-2 text-[13px] uppercase tracking-[0.2em]">
@@ -401,9 +401,9 @@ function GradientBackdrop() {
   // Light mode gradient with subtle orange accents
   const blobs = useMemo(
     () => [
-      { x: -140, y: -80, size: 520, color: "#FFF7ED" },  // soft orange white
-      { x: 140, y: 60, size: 460, color: "#FFEDD5" },   // warm peach
-      { x: 20, y: 180, size: 620, color: "#FED7AA" },   // light orange
+      { x: -140, y: -80, size: 520, color: "var(--hs-morning-start)" },
+      { x: 140, y: 60, size: 460, color: "var(--hs-morning-mid)" },
+      { x: 20, y: 180, size: 620, color: "var(--hs-morning-end)" },
     ],
     []
   )
@@ -419,7 +419,7 @@ function GradientBackdrop() {
   }, [])
 
   return (
-    <div className="absolute inset-0 bg-white">
+    <div className="absolute inset-0 bg-hs-bg">
       {blobs.map((b, i) => (
         reduceMotion ? (
           <div
