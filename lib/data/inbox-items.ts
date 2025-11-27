@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import type {
   InboxActionSchema,
+  InboxActionButton,
+  InboxButtonActionSchema,
   InboxContent,
   InboxCTA,
   InboxEnvelope,
@@ -173,6 +175,70 @@ const buildAcknowledgeActions = (metadata: MetadataRecord): InboxActionSchema =>
     helperText: helperText ?? undefined,
     allowNotes: allowNotes ?? true,
   }
+}
+
+/**
+ * Build flexible button actions from agent-generated actions in metadata.
+ * Returns null if no valid button actions are found.
+ */
+const buildButtonActions = (metadata: MetadataRecord): InboxButtonActionSchema | null => {
+  const actionsData = toRecord(metadata.actions)
+  if (!actionsData || !Array.isArray(actionsData.buttons)) {
+    return null
+  }
+
+  const buttons: InboxActionButton[] = actionsData.buttons
+    .map((btn: unknown) => {
+      if (!btn || typeof btn !== 'object') return null
+      const record = btn as MetadataRecord
+      const value = toTrimmedString(record.value)
+      const label = toTrimmedString(record.label)
+      if (!value || !label) return null
+
+      const button: InboxActionButton = { value, label }
+      const shortLabel = toTrimmedString(record.shortLabel)
+      const emoji = toTrimmedString(record.emoji)
+      const variant = toTrimmedString(record.variant)
+
+      if (shortLabel) button.shortLabel = shortLabel
+      if (emoji) button.emoji = emoji
+      if (variant === 'primary' || variant === 'secondary' || variant === 'ghost') {
+        button.variant = variant
+      }
+
+      return button
+    })
+    .filter((btn): btn is InboxActionButton => btn !== null)
+
+  if (buttons.length === 0) {
+    return null
+  }
+
+  return {
+    kind: 'buttons',
+    buttons,
+    allowFreeText: toBoolean(actionsData.allowFreeText) ?? false,
+    freeTextPlaceholder: toTrimmedString(actionsData.freeTextPlaceholder),
+    helperText: toTrimmedString(actionsData.helperText),
+  }
+}
+
+/**
+ * Resolve the best action schema for an item.
+ * Prefers agent-generated button actions, falls back to legacy scale/acknowledge.
+ */
+const resolveActions = (metadata: MetadataRecord, fallbackKind: 'scale' | 'acknowledge'): InboxActionSchema => {
+  // First, check for agent-generated button actions
+  const buttonActions = buildButtonActions(metadata)
+  if (buttonActions) {
+    return buttonActions
+  }
+
+  // Fall back to legacy action schemas
+  if (fallbackKind === 'acknowledge') {
+    return buildAcknowledgeActions(metadata)
+  }
+  return buildScaleActions(metadata)
 }
 
 const resolveEnvelopeType = (item: InboxItem, metadata: MetadataRecord): InboxMessageType => {
@@ -433,7 +499,7 @@ export function mapInboxItemToEnvelope(item: InboxItem): InboxEnvelope | null {
 
   if (messageType === 'insight_spotlight') {
     const payload = toInsightPayload(item, content, metadata)
-    const actions: InboxActionSchema = buildScaleActions(metadata)
+    const actions = resolveActions(metadata, 'scale')
     return {
       ...base,
       type: 'insight_spotlight',
@@ -444,7 +510,7 @@ export function mapInboxItemToEnvelope(item: InboxItem): InboxEnvelope | null {
 
   if (messageType === 'nudge') {
     const payload: NudgeMessage = toNudgePayload(content, metadata)
-    const actions: InboxActionSchema = buildScaleActions(metadata)
+    const actions = resolveActions(metadata, 'scale')
     return {
       ...base,
       type: 'nudge',
@@ -455,7 +521,7 @@ export function mapInboxItemToEnvelope(item: InboxItem): InboxEnvelope | null {
 
   if (messageType === 'notification') {
     const payload: NotificationMessage = toNotificationPayload(content, metadata)
-    const actions: InboxActionSchema = buildAcknowledgeActions(metadata)
+    const actions = resolveActions(metadata, 'acknowledge')
     return {
       ...base,
       type: 'notification',
@@ -467,7 +533,7 @@ export function mapInboxItemToEnvelope(item: InboxItem): InboxEnvelope | null {
   // Unified inbox types
   if (messageType === 'observation') {
     const payload = toObservationPayload(content, metadata)
-    const actions: InboxActionSchema = buildScaleActions(metadata)
+    const actions = resolveActions(metadata, 'scale')
     return {
       ...base,
       type: 'observation',
@@ -478,7 +544,7 @@ export function mapInboxItemToEnvelope(item: InboxItem): InboxEnvelope | null {
 
   if (messageType === 'question') {
     const payload = toQuestionPayload(content, metadata)
-    const actions: InboxActionSchema = buildScaleActions(metadata)
+    const actions = resolveActions(metadata, 'scale')
     return {
       ...base,
       type: 'question',
@@ -489,7 +555,7 @@ export function mapInboxItemToEnvelope(item: InboxItem): InboxEnvelope | null {
 
   if (messageType === 'pattern') {
     const payload = toPatternPayload(content, metadata)
-    const actions: InboxActionSchema = buildScaleActions(metadata)
+    const actions = resolveActions(metadata, 'scale')
     return {
       ...base,
       type: 'pattern',
@@ -500,7 +566,7 @@ export function mapInboxItemToEnvelope(item: InboxItem): InboxEnvelope | null {
 
   if (messageType === 'session_summary') {
     const payload = toSessionSummaryPayload(content, metadata)
-    const actions: InboxActionSchema = buildAcknowledgeActions(metadata)
+    const actions = resolveActions(metadata, 'acknowledge')
     return {
       ...base,
       type: 'session_summary',
@@ -511,7 +577,7 @@ export function mapInboxItemToEnvelope(item: InboxItem): InboxEnvelope | null {
 
   if (messageType === 'follow_up') {
     const payload = toFollowUpPayload(content, metadata)
-    const actions: InboxActionSchema = buildScaleActions(metadata)
+    const actions = resolveActions(metadata, 'scale')
     return {
       ...base,
       type: 'follow_up',

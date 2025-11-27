@@ -28,13 +28,17 @@ export type InboxMessageType = 'insight_spotlight' | 'nudge' | 'cta' | 'notifica
 export type InboxEnvelopeSource = 'network' | 'fallback' | 'supabase' | 'edge'
 
 export type InboxEventType = 'delivered' | 'opened' | 'actioned'
-export type InboxQuickActionValue =
+// Legacy action values (for backwards compatibility with scale4)
+export type InboxLegacyActionValue =
   | 'agree_strong'
   | 'agree'
   | 'disagree'
   | 'disagree_strong'
   | 'ack'
   | 'cta_clicked'
+
+// Action values can now be any string (agent-generated button values)
+export type InboxQuickActionValue = InboxLegacyActionValue | string
 
 export interface InboxCTA {
   label: string
@@ -63,7 +67,24 @@ export interface InboxAcknowledgeActionSchema {
   allowNotes?: boolean
 }
 
-export type InboxActionSchema = InboxScaleActionSchema | InboxAcknowledgeActionSchema
+// Flexible button-based action schema (new unified system)
+export interface InboxActionButton {
+  value: string
+  label: string
+  shortLabel?: string  // Abbreviated version for tight spaces
+  emoji?: string
+  variant?: 'primary' | 'secondary' | 'ghost'
+}
+
+export interface InboxButtonActionSchema {
+  kind: 'buttons'
+  buttons: InboxActionButton[]
+  allowFreeText?: boolean
+  freeTextPlaceholder?: string
+  helperText?: string
+}
+
+export type InboxActionSchema = InboxScaleActionSchema | InboxAcknowledgeActionSchema | InboxButtonActionSchema
 
 export interface InboxEnvelopeBase {
   id: string

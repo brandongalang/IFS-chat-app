@@ -1,8 +1,9 @@
 'use client'
 
-import type { InboxEnvelope, InboxQuickActionValue } from '@/types/inbox'
+import type { InboxEnvelope, InboxQuickActionValue, InboxButtonActionSchema } from '@/types/inbox'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { UniversalActions } from '@/components/inbox/UniversalActions'
 
 export type NudgeEnvelope = Extract<InboxEnvelope, { type: 'nudge' }>
 
@@ -23,25 +24,38 @@ const DEFAULT_SCALE = {
 
 export function NudgeCard({ envelope, onOpen, onQuickAction, onExploreInChat, className }: NudgeCardProps) {
   const { payload } = envelope
-  const actions = envelope.actions?.kind === 'scale4' ? envelope.actions : null
-  const scaleOptions: { value: InboxQuickActionValue; label: string }[] = actions
+
+  // Check for new button actions first, fall back to scale4
+  const buttonActions = envelope.actions?.kind === 'buttons' ? envelope.actions as InboxButtonActionSchema : null
+  const scaleActions = envelope.actions?.kind === 'scale4' ? envelope.actions : null
+
+  const scaleOptions: { value: InboxQuickActionValue; label: string }[] = scaleActions
     ? [
-        { value: 'agree_strong', label: actions.agreeStrongLabel ?? DEFAULT_SCALE.agreeStrong },
-        { value: 'agree', label: actions.agreeLabel ?? DEFAULT_SCALE.agree },
-        { value: 'disagree', label: actions.disagreeLabel ?? DEFAULT_SCALE.disagree },
-        { value: 'disagree_strong', label: actions.disagreeStrongLabel ?? DEFAULT_SCALE.disagreeStrong },
+        { value: 'agree_strong', label: scaleActions.agreeStrongLabel ?? DEFAULT_SCALE.agreeStrong },
+        { value: 'agree', label: scaleActions.agreeLabel ?? DEFAULT_SCALE.agree },
+        { value: 'disagree', label: scaleActions.disagreeLabel ?? DEFAULT_SCALE.disagree },
+        { value: 'disagree_strong', label: scaleActions.disagreeStrongLabel ?? DEFAULT_SCALE.disagreeStrong },
       ]
     : []
 
   const lastAction = (envelope.metadata as Record<string, unknown> | undefined)?.lastAction as
     | InboxQuickActionValue
     | undefined
+
+  // Determine reaction type - for button actions, any selection is considered positive
   const reaction: 'confirmed' | 'denied' | undefined = lastAction
-    ? lastAction.startsWith('agree')
-      ? 'confirmed'
-      : 'denied'
+    ? buttonActions
+      ? 'confirmed'  // Button actions are always treated as engagement
+      : lastAction.startsWith('agree') || lastAction === 'yes' || lastAction === 'strong_yes'
+        ? 'confirmed'
+        : 'denied'
     : undefined
   const actioned = Boolean(reaction)
+
+  const handleButtonAction = (value: string, freeText?: string) => {
+    // Pass the action value to the parent handler
+    onQuickAction?.(envelope, value)
+  }
 
   return (
     <div className={cn('rounded-xl border border-border/40 bg-card/20 backdrop-blur p-4', actioned && 'opacity-80', className)}>
@@ -66,7 +80,7 @@ export function NudgeCard({ envelope, onOpen, onQuickAction, onExploreInChat, cl
       {actioned ? (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-border/60 px-2 py-1 text-[10px] uppercase tracking-wide text-foreground/70">
-            ✓ {reaction === 'confirmed' ? 'Agreed' : 'Disagreed'}
+            ✓ {reaction === 'confirmed' ? 'Responded' : 'Dismissed'}
           </span>
           <Button
             type="button"
@@ -86,7 +100,14 @@ export function NudgeCard({ envelope, onOpen, onQuickAction, onExploreInChat, cl
             → That&apos;s enough
           </Button>
         </div>
-      ) : actions ? (
+      ) : buttonActions ? (
+        <div className="mt-4">
+          <UniversalActions
+            actions={buttonActions}
+            onAction={handleButtonAction}
+          />
+        </div>
+      ) : scaleActions ? (
         <div className="mt-4">
           <div className="flex flex-wrap gap-2">
             {scaleOptions.map((option) => (
@@ -103,9 +124,9 @@ export function NudgeCard({ envelope, onOpen, onQuickAction, onExploreInChat, cl
             ))}
           </div>
           <p className="mt-2 text-[11px] text-foreground/60">
-            {actions.helperText ?? 'Tell us if this nudge fits for you.'}
+            {scaleActions.helperText ?? 'Tell us if this nudge fits for you.'}
           </p>
-          {actions.allowNotes ? (
+          {scaleActions.allowNotes ? (
             <span className="mt-1 block text-[11px] text-foreground/50">
               You can add an optional note after selecting.
             </span>

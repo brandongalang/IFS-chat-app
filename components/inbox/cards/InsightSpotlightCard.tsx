@@ -1,8 +1,9 @@
 'use client'
 
-import type { InboxEnvelope, InboxQuickActionValue } from '@/types/inbox'
+import type { InboxEnvelope, InboxQuickActionValue, InboxButtonActionSchema } from '@/types/inbox'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { UniversalActions } from '@/components/inbox/UniversalActions'
 
 export type InsightSpotlightEnvelope = Extract<InboxEnvelope, { type: 'insight_spotlight' }>
 
@@ -19,26 +20,38 @@ export function InsightSpotlightCard({ envelope, onOpen, onQuickAction, onExplor
   const readingTime = typeof payload.readingTimeMinutes === 'number' && payload.readingTimeMinutes > 0
     ? `${payload.readingTimeMinutes} min read`
     : undefined
-  const actions = envelope.actions?.kind === 'scale4' ? envelope.actions : null
-  const scaleOptions: { value: InboxQuickActionValue; label: string }[] = actions
+
+  // Check for new button actions first, fall back to scale4
+  const buttonActions = envelope.actions?.kind === 'buttons' ? envelope.actions as InboxButtonActionSchema : null
+  const scaleActions = envelope.actions?.kind === 'scale4' ? envelope.actions : null
+
+  const scaleOptions: { value: InboxQuickActionValue; label: string }[] = scaleActions
     ? [
-        { value: 'agree_strong', label: actions.agreeStrongLabel ?? 'Agree a lot' },
-        { value: 'agree', label: actions.agreeLabel ?? 'Agree a little' },
-        { value: 'disagree', label: actions.disagreeLabel ?? 'Disagree a little' },
-        { value: 'disagree_strong', label: actions.disagreeStrongLabel ?? 'Disagree a lot' },
+        { value: 'agree_strong', label: scaleActions.agreeStrongLabel ?? 'Agree a lot' },
+        { value: 'agree', label: scaleActions.agreeLabel ?? 'Agree a little' },
+        { value: 'disagree', label: scaleActions.disagreeLabel ?? 'Disagree a little' },
+        { value: 'disagree_strong', label: scaleActions.disagreeStrongLabel ?? 'Disagree a lot' },
       ]
     : []
 
   const lastAction = (envelope.metadata as Record<string, unknown> | undefined)?.lastAction as
     | InboxQuickActionValue
     | undefined
+
+  // Determine reaction type - for button actions, any selection is considered positive
   const reaction: 'confirmed' | 'denied' | undefined = lastAction
-    ? lastAction.startsWith('agree')
-      ? 'confirmed'
-      : 'denied'
+    ? buttonActions
+      ? 'confirmed'  // Button actions are always treated as engagement
+      : lastAction.startsWith('agree') || lastAction === 'yes' || lastAction === 'strong_yes'
+        ? 'confirmed'
+        : 'denied'
     : undefined
 
   const actioned = Boolean(reaction)
+
+  const handleButtonAction = (value: string, freeText?: string) => {
+    onQuickAction?.(envelope, value)
+  }
 
   return (
     <div
@@ -78,7 +91,7 @@ export function InsightSpotlightCard({ envelope, onOpen, onQuickAction, onExplor
       {actioned ? (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-border/60 px-2 py-1 text-[10px] uppercase tracking-wide text-foreground/70">
-            ✓ {reaction === 'confirmed' ? 'Agreed' : 'Disagreed'}
+            ✓ {reaction === 'confirmed' ? 'Responded' : 'Dismissed'}
           </span>
           <Button
             type="button"
@@ -98,7 +111,14 @@ export function InsightSpotlightCard({ envelope, onOpen, onQuickAction, onExplor
             → That&apos;s enough
           </Button>
         </div>
-      ) : actions ? (
+      ) : buttonActions ? (
+        <div className="mt-4">
+          <UniversalActions
+            actions={buttonActions}
+            onAction={handleButtonAction}
+          />
+        </div>
+      ) : scaleActions ? (
         <div className="mt-4">
           <div className="flex flex-wrap gap-2">
             {scaleOptions.map((option) => (
@@ -115,9 +135,9 @@ export function InsightSpotlightCard({ envelope, onOpen, onQuickAction, onExplor
             ))}
           </div>
           <p className="mt-2 text-[11px] text-foreground/60">
-            {actions.helperText ?? 'Let us know how much this resonates.'}
+            {scaleActions.helperText ?? 'Let us know how much this resonates.'}
           </p>
-          {actions.allowNotes ? (
+          {scaleActions.allowNotes ? (
             <span className="mt-1 block text-[11px] text-foreground/50">
               You can add an optional note after selecting.
             </span>

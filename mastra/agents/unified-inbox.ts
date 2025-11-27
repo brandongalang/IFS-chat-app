@@ -143,6 +143,76 @@ Based on your research, generate messages. Each must reference specific evidence
 - question: "What would [part name] say if it could speak right now?"
 - pattern: "Across your sessions and check-ins, [synthesis of multiple data points]"
 
+## STEP 5: Define Response Actions
+
+For EACH item, include an "actions" object that defines how the user can respond. The UI will automatically adapt the layout based on button count and label length.
+
+**Action Structure:**
+{
+  "buttons": [
+    { "value": "stored_id", "label": "Display text", "emoji": "optional", "variant": "primary|secondary|ghost" }
+  ],
+  "allowFreeText": true/false,
+  "freeTextPlaceholder": "Optional placeholder",
+  "helperText": "Optional guidance"
+}
+
+**Guidelines for Response Actions:**
+
+For YES/NO questions:
+{
+  "buttons": [
+    { "value": "yes", "label": "Yes, I've noticed that" },
+    { "value": "no", "label": "No, not really" }
+  ]
+}
+
+For SCALE responses (how much does this resonate):
+{
+  "buttons": [
+    { "value": "strong_yes", "label": "Exactly right" },
+    { "value": "yes", "label": "Somewhat true" },
+    { "value": "no", "label": "Not quite" },
+    { "value": "strong_no", "label": "Off base" }
+  ],
+  "helperText": "How well does this fit your experience?"
+}
+
+For MULTIPLE CHOICE (specific options):
+{
+  "buttons": [
+    { "value": "fear", "label": "Fear of being judged", "emoji": "😰" },
+    { "value": "protection", "label": "Protecting vulnerability", "emoji": "🛡️" },
+    { "value": "habit", "label": "It's become a habit", "emoji": "🔄" },
+    { "value": "unsure", "label": "I'm not sure yet", "emoji": "🤔", "variant": "ghost" }
+  ],
+  "allowFreeText": true,
+  "freeTextPlaceholder": "Or describe in your own words..."
+}
+
+For OPEN REFLECTION:
+{
+  "buttons": [
+    { "value": "sat_with_it", "label": "I've sat with this", "variant": "ghost" }
+  ],
+  "allowFreeText": true,
+  "freeTextPlaceholder": "What comes up for you?"
+}
+
+For ACKNOWLEDGMENT (session summaries, notifications):
+{
+  "buttons": [
+    { "value": "thanks", "label": "Thanks for the summary" }
+  ]
+}
+
+**Match actions to content:**
+- Questions → Use yes/no or multiple choice based on what you're asking
+- Observations/Nudges → Use scale to measure resonance
+- Follow-ups → Use yes/no or open reflection
+- Session summaries → Use simple acknowledgment
+- Patterns → Use scale or multiple choice for validation
+
 ## Output Format
 
 Return a JSON array of items:
@@ -155,7 +225,31 @@ Return a JSON array of items:
     "inference": "The pattern suggests this part activates around work deadlines",
     "evidence": [{ "type": "checkin", "id": "uuid-here", "context": "Mentioned feeling inadequate" }],
     "sourceSessionIds": ["session-uuid"],
-    "relatedPartIds": ["part-uuid"]
+    "relatedPartIds": ["part-uuid"],
+    "actions": {
+      "buttons": [
+        { "value": "resonates", "label": "That resonates" },
+        { "value": "partially", "label": "Somewhat true" },
+        { "value": "not_quite", "label": "Not quite right" }
+      ],
+      "helperText": "Does this observation fit?"
+    }
+  },
+  {
+    "type": "question",
+    "title": "What might your Protector be guarding?",
+    "summary": "If your Protector part could speak, what would it say it's trying to keep you safe from?",
+    "inference": "This part seems to activate when vulnerability arises",
+    "actions": {
+      "buttons": [
+        { "value": "rejection", "label": "Fear of rejection", "emoji": "💔" },
+        { "value": "failure", "label": "Fear of failure", "emoji": "📉" },
+        { "value": "seen", "label": "Being truly seen", "emoji": "👁️" },
+        { "value": "unsure", "label": "I'm not sure", "emoji": "🤔", "variant": "ghost" }
+      ],
+      "allowFreeText": true,
+      "freeTextPlaceholder": "Or share what comes up..."
+    }
   }
 ]
 
@@ -163,9 +257,11 @@ Return a JSON array of items:
 
 - MUST call at least 3 tools before generating
 - MUST generate at least 1 item (even if just a welcoming question)
+- MUST include "actions" for every item - match the response type to your content
 - Reference specific IDs in evidence
 - Be warm, curious, non-judgmental
 - Frame as hypotheses: "I'm wondering if...", "It seems like...", "I noticed..."
+- Write button labels naturally - the UI adapts to any length
 - Output ONLY the JSON array, no other text`
 
 export type UnifiedInboxAgent = Agent<'unifiedInboxAgent', UnifiedInboxTools>
