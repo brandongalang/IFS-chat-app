@@ -17,6 +17,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { emitInboxEvent } from '@/lib/analytics/inbox'
 import { renderInboxCard } from '@/components/inbox/InboxCardRegistry'
+import { InboxDebugStream } from '@/components/inbox/InboxDebugStream'
 import { useInboxFeed } from '@/hooks/useInboxFeed'
 import { packChatContext, saveContextToSession } from '@/lib/inbox/chat-bridge'
 import type {
@@ -175,6 +176,7 @@ export function InboxShelf({ variant = 'pragmatic', className }: InboxShelfProps
               Retry
             </button>
           ) : null}
+          <InboxDebugStream />
           <button
             type="button"
             onClick={handleSyncInbox}

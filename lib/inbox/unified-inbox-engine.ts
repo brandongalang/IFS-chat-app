@@ -450,7 +450,7 @@ Supported Types:
 
 Rules:
 - Use provided tools to research sessions, parts, therapy data, check-ins
-- Skip generation if no novel, compelling insight to offer
+- ALWAYS generate at least 1 item. If data is limited, generate a welcoming question or nudge to engage the user.
 - Output valid JSON matching the unified inbox schema
 - For observations/patterns, include evidence with {type, id, context}
 - For nudge/follow_up, use 'body' field
