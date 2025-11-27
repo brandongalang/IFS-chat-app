@@ -31,14 +31,14 @@ export const SearchResultSchema = z.object({
   content: z.string(),
   role: z.string(),
   sessionId: z.string().uuid(),
-  sessionCreatedAt: z.string().datetime(),
+  sessionCreatedAt: z.string(),
 });
 
 export const SessionSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
-  created_at: z.string().datetime(),
-  updated_at: z.string().datetime(),
+  created_at: z.string(),
+  updated_at: z.string(),
   metadata: z.record(z.unknown()).nullable(),
 });
 
@@ -67,8 +67,8 @@ export const InsightSchema = z.object({
   content: z.record(z.unknown()),
   rating: z.number().nullable(),
   feedback: z.string().nullable(),
-  revealed_at: z.string().datetime().nullable(),
-  actioned_at: z.string().datetime().nullable(),
-  created_at: z.string().datetime(),
-  updated_at: z.string().datetime(),
+  revealed_at: z.string().nullable(),
+  actioned_at: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
 });

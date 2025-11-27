@@ -30,10 +30,10 @@ export const partRowSchema = z
     needs_attention: z.boolean().default(false),
     confidence: z.number().min(0).max(1).default(0),
     evidence_count: z.number().int().nonnegative().default(0),
-    first_noticed: z.string().datetime(),
-    last_active: z.string().datetime().nullable(),
-    created_at: z.string().datetime(),
-    updated_at: z.string().datetime(),
+    first_noticed: z.string(),
+    last_active: z.string().nullable(),
+    created_at: z.string(),
+    updated_at: z.string(),
     // Generated column in DB; present in SELECT * but not used by app logic
     search_vector: z.any().optional(),
   })
@@ -103,11 +103,11 @@ export const sessionRowSchema = z
     homework: z.array(z.string()),
     next_session: z.array(z.string()),
     metadata: z.record(z.any()),
-    started_at: z.string().datetime(),
-    ended_at: z.string().datetime().nullable(),
-    last_message_at: z.string().datetime().nullable(),
-    created_at: z.string().datetime(),
-    updated_at: z.string().datetime(),
+    started_at: z.string(),
+    ended_at: z.string().nullable(),
+    last_message_at: z.string().nullable(),
+    created_at: z.string(),
+    updated_at: z.string(),
   })
   .strict()
 
@@ -122,8 +122,8 @@ export const observationRowSchema = z
     content: z.string(),
     metadata: z.record(z.any()),
     entities: z.array(z.string().uuid()),
-    created_at: z.string().datetime(),
-    updated_at: z.string().datetime(),
+    created_at: z.string(),
+    updated_at: z.string(),
     // Generated column present in SELECT *
     search_vector: z.any().optional(),
   })
@@ -141,8 +141,8 @@ export const partRelationshipRowSchema = z
     strength: z.number().min(0).max(1).default(0.5),
     context: z.string().nullable(),
     observations: z.array(z.string()),
-    created_at: z.string().datetime(),
-    updated_at: z.string().datetime(),
+    created_at: z.string(),
+    updated_at: z.string(),
   })
   .strict()
 
@@ -157,7 +157,7 @@ export const timelineEventRowSchema = z
     description: z.string().nullable(),
     entities: z.array(z.string().uuid()),
     metadata: z.record(z.any()),
-    created_at: z.string().datetime(),
+    created_at: z.string(),
   })
   .strict()
 
