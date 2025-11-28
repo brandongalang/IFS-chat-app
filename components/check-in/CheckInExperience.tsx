@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Textarea } from '@/components/ui/textarea'
@@ -76,6 +77,10 @@ export function CheckInExperience({
 }: CheckInExperienceProps) {
   const router = useRouter()
   const { toast } = useToast()
+
+  // Check if evening check-in is missing morning context
+  const missingMorningContext = variant === 'evening' && !morningContext
+
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [actionStatus, setActionStatus] = useState<'idle' | 'pending' | 'success'>('idle')
@@ -284,6 +289,33 @@ export function CheckInExperience({
       : eveningState.reflection.trim().length > 0 &&
         eveningState.wins.trim().length > 0 &&
         eveningState.gratitude.trim().length > 0
+
+  // Show a helpful message when evening check-in is missing morning context
+  if (missingMorningContext) {
+    return (
+      <CheckInLayout variant={variant} streakDays={streakDays}>
+        <div className="text-center py-8">
+          <p className="text-muted-foreground mb-4">
+            Complete your morning check-in first to unlock your evening reflection.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Link
+              href="/check-in/morning"
+              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Start morning check-in
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+            >
+              Go home
+            </Link>
+          </div>
+        </div>
+      </CheckInLayout>
+    )
+  }
 
   return (
     <CheckInLayout variant={variant} streakDays={streakDays} error={formError}>
