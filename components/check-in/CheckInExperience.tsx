@@ -178,11 +178,6 @@ export function CheckInExperience({
     }
 
     if (variant === 'evening') {
-      if (!morningContext) {
-        setFormError("We couldn't load your morning check-in. Try refreshing the page.")
-        setActionStatus('idle')
-        return
-      }
       if (!eveningState.reflection.trim()) {
         setFormError('A brief reflection helps close the loop. Please add one before saving.')
         setActionStatus('idle')
@@ -261,6 +256,15 @@ export function CheckInExperience({
       })
       clearDraft()
       router.push('/')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An unexpected error occurred'
+      setFormError(message)
+      toast({
+        title: 'Unable to save',
+        description: message,
+        variant: 'destructive',
+      })
+      setActionStatus('idle')
     } finally {
       setIsSubmitting(false)
       if (!completed) {
