@@ -68,9 +68,14 @@ export function CheckInWizard({
           )}
           <motion.button
             type="button"
-            onClick={onSave}
+            onClick={() => {
+              if (canSave && !isPending) {
+                onSave()
+              }
+            }}
             disabled={!canSave || isPending}
             aria-busy={isPending}
+            aria-disabled={!canSave || isPending}
             data-status={status}
             className={cn(
               'min-w-[10rem] px-6 py-2.5 rounded-full font-medium text-sm transition-all duration-200',
@@ -129,9 +134,14 @@ export function CheckInWizard({
         )}
         <MotionButton
           type="button"
-          onClick={onSave}
+          onClick={() => {
+            if (canSave && !isPending) {
+              onSave()
+            }
+          }}
           disabled={!canSave || isPending}
           aria-busy={isPending}
+          aria-disabled={!canSave || isPending}
           data-status={status}
           className={cn(
             'min-w-[10rem]',
