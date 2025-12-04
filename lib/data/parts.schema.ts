@@ -103,6 +103,21 @@ export const updatePartSchema = z.object({
         .max(1)
         .optional()
         .describe("Intensity of the part's last charge (0 to 1)"),
+      acknowledged_at: z
+        .string()
+        .datetime()
+        .optional()
+        .describe('When the part was acknowledged'),
+      last_interaction_at: z
+        .string()
+        .datetime()
+        .optional()
+        .describe('When the part was last interacted with'),
+      last_active: z
+        .string()
+        .datetime()
+        .optional()
+        .describe('When the part was last active'),
     })
     .describe('Fields to update'),
   evidence: evidenceSchema.optional().describe('New evidence to add for this update'),
@@ -148,6 +163,12 @@ export const logRelationshipSchema = z.object({
     .boolean()
     .default(true)
     .describe('Update existing relationship if it exists; otherwise create'),
+}).strict()
+
+export const supersedePartSchema = z.object({
+  partId: z.string().uuid().describe('The UUID of the part being superseded'),
+  supersededBy: z.array(z.string().uuid()).min(1).describe('List of part IDs that supersede this part'),
+  reason: z.string().optional().describe('Reason for superseding (e.g., "split", "merge")'),
 }).strict()
 
 export type SearchPartsInput = z.infer<typeof searchPartsSchema>
@@ -202,3 +223,6 @@ export type GetPartNotesResult = PartNoteRow[]
 
 export type LogRelationshipInput = z.infer<typeof logRelationshipSchema>
 export type LogRelationshipResult = PartRelationshipRow
+
+export type SupersedePartInput = z.infer<typeof supersedePartSchema>
+export type SupersedePartResult = PartRow

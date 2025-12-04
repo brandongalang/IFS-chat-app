@@ -21,6 +21,7 @@ import {
   getPartRelationshipsSchema,
   getPartNotesSchema,
   logRelationshipSchema,
+  supersedePartSchema,
   type SearchPartsInput,
   type SearchPartsResult,
   type GetPartByIdInput,
@@ -37,6 +38,8 @@ import {
   type GetPartNotesResult,
   type LogRelationshipInput,
   type LogRelationshipResult,
+  type SupersedePartInput,
+  type SupersedePartResult,
 } from '@/lib/data/parts.schema'
 import { searchPartsV2, getPartByIdV2 } from './parts'
 import { listRelationships as listRelationshipsV2 } from './relationships'
@@ -431,6 +434,18 @@ function combinePartUpdates(
     dataPatch.last_charged_at = updates.last_charged_at
   }
 
+  if (typeof updates.acknowledged_at === 'string') {
+    dataPatch.acknowledged_at = updates.acknowledged_at
+  }
+
+  if (typeof updates.last_interaction_at === 'string') {
+    dataPatch.last_interaction_at = updates.last_interaction_at
+  }
+
+  if (typeof updates.last_active === 'string') {
+    partPatch.last_active = updates.last_active
+  }
+
   let actionType: string = 'update_part_attributes'
   let changeDescription = 'Updated part attributes'
 
@@ -817,6 +832,156 @@ export async function logRelationship(
   )
 
   return mapRelationshipRowLegacy(created as PartRelationshipRowV2, insertContext, dynamics, polarization, sortedPartIds)
+}
+
+/**
+ * Update a part's lineage to indicate it has been superseded by one or more other parts.
+ * This is used during split and merge operations to maintain lineage history.
+ */
+export async function supersedePart(
+  input: SupersedePartInput,
+  deps: PartsAgentDependencies
+): Promise<SupersedePartResult> {
+  const validated = supersedePartSchema.parse(input)
+  const { client, userId } = assertAgentDeps(deps)
+
+  const { data: currentRow, error } = await client
+    .from('parts_v2')
+    .select('*')
+    .eq('id', validated.partId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(`Failed to fetch part_v2: ${error.message}`)
+  }
+
+  if (!currentRow) {
+    throw new Error('Part not found or access denied')
+  }
+
+  const current = mapPartRowFromV2(currentRow as PartRowV2)
+  const currentData = isPlainObject(currentRow.data) ? { ...(currentRow.data as Record<string, unknown>) } : {}
+  const relationships = isPlainObject(currentData.relationships) ? { ...(currentData.relationships as Record<string, unknown>) } : {}
+  const lineage = isPlainObject(relationships.lineage) ? { ...(relationships.lineage as Record<string, unknown>) } : {}
+
+  const existingSuperseded = Array.isArray(lineage.superseded_by) ? (lineage.superseded_by as string[]) : []
+  const newSupersededBy = [...new Set([...existingSuperseded, ...validated.supersededBy])]
+
+  const updatedLineage = {
+    ...lineage,
+    superseded_by: newSupersededBy,
+  }
+
+  const updatedRelationships = {
+    ...relationships,
+    lineage: updatedLineage,
+  }
+
+  const dataPatch = {
+    relationships: updatedRelationships,
+  }
+
+  const mergedData = buildPartDataPatch(currentRow as PartRowV2, dataPatch)
+  const nowIso = new Date().toISOString()
+
+  const actionLogger = await getActionLogger(client)
+  const updated = await actionLogger.loggedUpdate(
+    'parts_v2',
+    validated.partId,
+    {
+      data: mergedData,
+      updated_at: nowIso,
+    },
+    userId,
+    'update_part_attributes',
+    {
+      partName: current.name,
+      changeDescription: validated.reason ?? 'Updated lineage',
+      supersededBy: validated.supersededBy,
+    }
+  )
+
+  return mapPartRowFromV2(updated as PartRowV2)
+}
+
+export interface CreateSplitChildPartInput {
+  childProposal: {
+    name: string
+    role?: string | null
+    age?: number | null
+  }
+  parentPart: PartRow
+  parentRecord: PartRowV2
+}
+
+/**
+ * Create a new child part resulting from a split operation.
+ * Inherits attributes from the parent and sets up lineage.
+ */
+export async function createSplitChildPart(
+  input: CreateSplitChildPartInput,
+  deps: PartsAgentDependencies
+): Promise<PartRow> {
+  const { childProposal, parentPart, parentRecord } = input
+  const { client, userId } = assertAgentDeps(deps)
+  const now = new Date().toISOString()
+  const actionLogger = await getActionLogger(client)
+
+  // Payload shaping logic
+  const childStory = isPlainObject(parentPart.story) ? { ...parentPart.story } : {}
+  const childStoryEvolution = Array.isArray((parentPart.story as any)?.evolution)
+    ? [
+        ...((parentPart.story as any).evolution as Array<{ timestamp?: string; change?: string; trigger?: string }>),
+        { timestamp: now, change: `Split from ${parentPart.name}`, trigger: 'Split execution' },
+      ]
+    : [{ timestamp: now, change: `Split from ${parentPart.name}`, trigger: 'Split execution' }]
+
+  const childData = {
+    role: childProposal.role ?? parentPart.role ?? null,
+    age: childProposal.age ?? parentPart.age ?? null,
+    triggers: parentPart.triggers ?? [],
+    emotions: parentPart.emotions ?? [],
+    beliefs: parentPart.beliefs ?? [],
+    somatic_markers: parentPart.somatic_markers ?? [],
+    recent_evidence: [],
+    story: { ...childStory, evolution: childStoryEvolution },
+    relationships: parentPart.relationships ?? {},
+    visualization: parentPart.visualization ?? { ...DEFAULT_VISUALIZATION },
+    acknowledged_at: null,
+    last_interaction_at: now,
+    lineage_source: parentPart.id,
+  }
+
+  const insertPayload = {
+    user_id: userId,
+    name: childProposal.name,
+    status: 'emerging' as const,
+    category: parentPart.category,
+    charge: parentRecord.charge ?? 'neutral',
+    needs_attention: false,
+    confidence: Math.max(0, Math.min(1, (parentPart.confidence ?? 0) - 0.1)),
+    evidence_count: 0,
+    data: childData,
+    first_noticed: parentPart.first_noticed ?? now,
+    last_active: now,
+    created_at: now,
+    updated_at: now,
+  }
+
+  const inserted = await actionLogger.loggedInsert(
+    'parts_v2',
+    insertPayload,
+    userId,
+    'create_emerging_part',
+    {
+      partName: childProposal.name,
+      changeDescription: `Split child created from ${parentPart.name}`,
+      parentPartId: parentPart.id,
+    }
+  )
+
+  return mapPartRowFromV2(inserted as PartRowV2)
 }
 
 export const __test = {

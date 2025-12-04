@@ -7,8 +7,7 @@ import { getStorageAdapter } from './snapshots/fs-helpers';
 import logger from '@/lib/logger';
 import { readPartProfile } from './read';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getPart, upsertPart } from '@/lib/data/schema/server';
-import type { UpsertPartInput } from '@/lib/data/schema/parts';
+import { syncPartFromMarkdown } from '@/lib/data/schema/sync';
 import type { PartCategory, PartStatus } from '@/lib/types/database';
 
 interface MarkdownPartData {
@@ -99,29 +98,6 @@ function parsePartFromMarkdown(
     role,
     evidence,
   };
-}
-
-function toRecord(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {};
-  }
-  return value as Record<string, unknown>;
-}
-
-function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value
-    .map((entry) => (typeof entry === 'string' ? entry.trim() : String(entry ?? '')))
-    .filter((entry) => entry.length > 0);
-}
-
-function arraysEqual(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-  return a.every((value, index) => value === b[index]);
 }
 
 /**
@@ -222,77 +198,19 @@ export async function syncPartToDatabase(userId: string, partId: string): Promis
     const supabase = createAdminClient();
     const deps = { client: supabase, userId };
 
-    logger.info({ partId }, '[syncPartToDatabase] Checking PRD record');
-    const existing = await getPart(partId, deps);
-    logger.info({ exists: !!existing }, '[syncPartToDatabase] Existing PRD record');
-
-    const now = new Date().toISOString();
-    const existingData = toRecord(existing?.data);
-
-    const existingRole =
-      typeof existingData.role === 'string' && existingData.role.trim().length > 0
-        ? existingData.role
-        : null;
-
-    const existingEvidence = toStringArray(existingData.recent_evidence);
-    const finalEvidence = Array.isArray(partData.evidence) && partData.evidence.length > 0
-      ? partData.evidence
-      : existingEvidence;
-
-    const existingVisualization = toRecord(existingData.visualization);
-    const visualization = {
-      emoji: partData.emoji ?? (typeof existingVisualization.emoji === 'string' ? existingVisualization.emoji : '🧩'),
-      color: typeof existingVisualization.color === 'string' ? existingVisualization.color : '#6B7280',
-      energyLevel:
-        typeof existingVisualization.energyLevel === 'number' ? existingVisualization.energyLevel : 0.5,
-    };
-
-    const updatedData: Record<string, unknown> = {
-      ...existingData,
-      role: partData.role ?? existingRole ?? null,
-      recent_evidence: finalEvidence,
-      visualization,
-      markdown_sync: {
-        last_synced_at: now,
-        source: 'markdown_profile',
+    // Use the dedicated PRD markdown sync helper
+    await syncPartFromMarkdown(
+      {
+        partId: partData.partId,
+        name: partData.name,
+        status: partData.status,
+        category: partData.category,
+        role: partData.role,
+        evidence: partData.evidence,
+        emoji: partData.emoji,
       },
-    };
-
-    const payload: UpsertPartInput = {
-      id: partId,
-      name: partData.name,
-      status: partData.status,
-      category: partData.category,
-      charge: existing?.charge ?? 'neutral',
-      data: updatedData,
-      evidence_count: finalEvidence.length,
-      confidence: existing?.confidence ?? 0.5,
-      needs_attention: existing?.needs_attention ?? false,
-      last_active: now,
-    };
-
-    if (!existing?.first_noticed) {
-      payload.first_noticed = now;
-    }
-
-    const hasMeaningfulChanges =
-      !existing ||
-      existing.name !== payload.name ||
-      existing.status !== payload.status ||
-      existing.category !== payload.category ||
-      (partData.role !== undefined && (existingRole ?? null) !== (partData.role ?? null)) ||
-      (partData.emoji !== undefined &&
-        (typeof existingVisualization.emoji === 'string' ? existingVisualization.emoji : '🧩') !== visualization.emoji) ||
-      !arraysEqual(finalEvidence, existingEvidence);
-
-    if (!hasMeaningfulChanges && existing) {
-      logger.info({ partId }, '[syncPartToDatabase] Part unchanged');
-    }
-
-    // TODO(ifs-chat-app-5): Replace generic upsert with dedicated PRD markdown sync helper when available.
-    await upsertPart(payload, deps);
-
-    logger.info({ partId, name: partData.name, action: existing ? 'Updated' : 'Created' }, '[syncPartToDatabase] Part synced');
+      deps
+    );
 
     return true;
   } catch (error) {

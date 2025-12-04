@@ -1,4 +1,4 @@
-import type { PartRow, Database } from '@/lib/types/database'
+import type { Database } from '@/lib/types/database'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import {
@@ -24,11 +24,43 @@ import { normalizePartRowDates, partRowSchema, type PartRowV2, type PartRelation
 
 type SupabaseDatabaseClient = SupabaseClient<Database>
 
-// TODO(ifs-chat-app-5): Replace direct `parts`/`part_relationships` table access with PRD-backed views
-// once browser-safe endpoints are available. Keep usage scoped to client contexts only.
+// Replace direct `parts`/`part_relationships` table access with PRD-backed views
+// Usage scoped to client contexts only.
 
 type PartsLiteDependencies = {
   client?: SupabaseDatabaseClient
+}
+
+// Internal types for Views
+interface PartsDisplayRow {
+  user_id: string
+  id: string
+  display_name: string
+  name: string | null
+  placeholder: string | null
+  category: string
+  status: string
+  charge: string | null
+  emoji: string | null
+  age: string | null // View returns text from JSON
+  role: string | null
+  confidence: number | null
+  evidence_count: number | null
+  needs_attention: boolean | null
+  last_active: string | null
+  created_at: string
+}
+
+interface TimelineDisplayRow {
+  user_id: string
+  created_at: string
+  event_type: string
+  event_subtype: string
+  description: string | null
+  entities: string[]
+  metadata: Record<string, any>
+  source_id: string
+  source_table: string
 }
 
 function resolveClient(deps?: PartsLiteDependencies): SupabaseDatabaseClient {
@@ -58,19 +90,71 @@ async function requireUserId(client: SupabaseDatabaseClient): Promise<string> {
   return user.id;
 }
 
+function mapPartsDisplayRowToV2(row: PartsDisplayRow): PartRowV2 {
+  const age = row.age ? Number(row.age) : undefined
+  const data: Record<string, any> = {
+    emoji: row.emoji,
+    role: row.role,
+    age: Number.isNaN(age!) ? undefined : age,
+    visualization: {
+      emoji: row.emoji ?? '🤗',
+    }
+  }
+
+  return partRowSchema.parse({
+    id: row.id,
+    user_id: row.user_id,
+    name: row.name,
+    placeholder: row.placeholder,
+    category: row.category,
+    status: row.status,
+    charge: row.charge,
+    data,
+    needs_attention: row.needs_attention ?? false,
+    confidence: row.confidence ?? 0,
+    evidence_count: row.evidence_count ?? 0,
+    first_noticed: row.created_at,
+    last_active: row.last_active,
+    created_at: row.created_at,
+    updated_at: row.last_active ?? row.created_at,
+  })
+}
+
+function mapTimelineRowToRelationship(row: TimelineDisplayRow): PartRelationshipRowV2 {
+  const metadata = row.metadata || {}
+  const entities = row.entities || []
+  
+  // Cast event_subtype to relationship type directly as they share the same enum values in V2
+  const type = row.event_subtype as any 
+
+  return {
+    id: row.source_id,
+    user_id: row.user_id,
+    part_a_id: entities[0], // part_a is first element in array
+    part_b_id: entities[1], // part_b is second element
+    type, 
+    strength: metadata.strength ?? 0.5,
+    context: metadata.context,
+    observations: metadata.observations || [],
+    created_at: row.created_at,
+    updated_at: row.created_at, // timeline_display lacks updated_at, using created_at
+  }
+}
+
 export async function searchParts(input: SearchPartsInput, deps: PartsLiteDependencies = {}): Promise<SearchPartsResult> {
   return runWithClient(searchPartsSchema, input, deps, async (validated, supabase) => {
     const userId = await requireUserId(supabase)
 
     let query = supabase
-      .from('parts_v2')
+      .from('parts_display' as any)
       .select('*')
       .eq('user_id', userId)
       .order('last_active', { ascending: false, nullsFirst: false })
 
     if (validated.query) {
       const pattern = `%${validated.query.replace(/([%_])/g, '\\$1')}%`
-      query = query.or(`name.ilike.${pattern},placeholder.ilike.${pattern},data->>role.ilike.${pattern}`)
+      // parts_display has role column extracted from data
+      query = query.or(`name.ilike.${pattern},placeholder.ilike.${pattern},role.ilike.${pattern}`)
     }
 
     if (validated.category) {
@@ -88,8 +172,9 @@ export async function searchParts(input: SearchPartsInput, deps: PartsLiteDepend
       throw new Error(`Database error: ${error.message}`)
     }
 
-    const rows = Array.isArray(data) ? (data as PartRowV2[]) : []
-    return rows.map((row) => mapPartRowFromV2(partRowSchema.parse(normalizePartRowDates(row))))
+    const rows = Array.isArray(data) ? (data as PartsDisplayRow[]) : []
+    // mapPartsDisplayRowToV2 returns PartRowV2, mapPartRowFromV2 converts PartRowV2 to PartRow
+    return rows.map((row) => mapPartRowFromV2(mapPartsDisplayRowToV2(row)))
   })
 }
 
@@ -98,14 +183,14 @@ export async function searchPartsV2(input: SearchPartsInput, deps: PartsLiteDepe
     const userId = await requireUserId(supabase)
 
     let query = supabase
-      .from('parts_v2')
+      .from('parts_display' as any)
       .select('*')
       .eq('user_id', userId)
       .order('last_active', { ascending: false, nullsFirst: false })
 
     if (validated.query) {
       const pattern = `%${validated.query.replace(/([%_])/g, '\\$1')}%`
-      query = query.or(`name.ilike.${pattern},placeholder.ilike.${pattern},data->>role.ilike.${pattern}`)
+      query = query.or(`name.ilike.${pattern},placeholder.ilike.${pattern},role.ilike.${pattern}`)
     }
 
     if (validated.category) {
@@ -123,10 +208,10 @@ export async function searchPartsV2(input: SearchPartsInput, deps: PartsLiteDepe
       throw new Error(`Database error: ${error.message}`)
     }
 
-    const rows = Array.isArray(data) ? data : []
+    const rows = Array.isArray(data) ? (data as PartsDisplayRow[]) : []
     return rows.map((row) => {
       try {
-        return partRowSchema.parse(normalizePartRowDates(row))
+        return mapPartsDisplayRowToV2(row)
       } catch (err) {
         console.error('Failed to parse part row:', row, err)
         throw err
@@ -140,7 +225,7 @@ export async function getPartById(input: GetPartByIdInput, deps: PartsLiteDepend
     const userId = await requireUserId(supabase)
 
     const { data, error } = await supabase
-      .from('parts_v2')
+      .from('parts_display' as any)
       .select('*')
       .eq('id', validated.partId)
       .eq('user_id', userId)
@@ -154,7 +239,7 @@ export async function getPartById(input: GetPartByIdInput, deps: PartsLiteDepend
       return null
     }
 
-    return mapPartRowFromV2(partRowSchema.parse(normalizePartRowDates(data as PartRowV2)))
+    return mapPartRowFromV2(mapPartsDisplayRowToV2(data as PartsDisplayRow))
   })
 }
 
@@ -166,13 +251,15 @@ export async function getPartRelationships(
     const userId = await requireUserId(supabase)
 
     let query = supabase
-      .from('part_relationships_v2')
+      .from('timeline_display' as any)
       .select('*')
       .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
+      .eq('source_table', 'part_relationships_v2')
+      .order('created_at', { ascending: false }) // timeline_display sorts by created_at
 
     if (validated.relationshipType) {
-      query = query.eq('type', toV2RelationshipType(validated.relationshipType))
+      // event_subtype contains the V2 relationship type
+      query = query.eq('event_subtype', toV2RelationshipType(validated.relationshipType))
     }
 
     const { data, error } = await query
@@ -180,9 +267,12 @@ export async function getPartRelationships(
       throw new Error(`Database error: ${error.message}`)
     }
 
-    const rows = Array.isArray(data) ? (data as PartRelationshipRowV2[]) : []
+    const rows = Array.isArray(data) ? (data as TimelineDisplayRow[]) : []
+    
+    // Map to V2 rows
+    const relRows = rows.map(mapTimelineRowToRelationship)
 
-    const enriched = rows.map((rel) => ({
+    const enriched = relRows.map((rel) => ({
       rel,
       context: parseRelationshipContext(rel.context),
       dynamics: parseRelationshipObservations(rel.observations),
@@ -207,8 +297,8 @@ export async function getPartRelationships(
       }
       if (partIds.size > 0) {
         const { data: parts, error: partsError } = await supabase
-          .from('parts_v2')
-          .select('id, name, status')
+          .from('parts_display' as any)
+          .select('id, name, status') // parts_display has name and status
           .eq('user_id', userId)
           .in('id', Array.from(partIds))
 
@@ -216,7 +306,7 @@ export async function getPartRelationships(
           throw new Error(`Failed to fetch part details: ${partsError.message}`)
         }
 
-        partsDetails = (parts ?? []).reduce<Record<string, { name: string; status: string }>>((acc, part) => {
+        partsDetails = (parts ?? []).reduce<Record<string, { name: string; status: string }>>((acc, part: any) => {
           acc[part.id] = { name: part.name ?? 'Unnamed Part', status: part.status ?? 'active' }
           return acc
         }, {})

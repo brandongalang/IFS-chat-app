@@ -18,7 +18,7 @@ The parts platform now centers on the PRD schema (`parts_v2`, `part_relationship
 - `lib/data/schema/parts-agent.ts` – Server-safe adapters that shape PRD rows into legacy `PartRow` responses (search, read, create, update).
 - `lib/data/schema/parts.ts` – Low-level CRUD helpers for `parts_v2`.
 - `lib/data/schema/relationships.ts` – CRUD helpers for `part_relationships_v2`.
-- `lib/data/parts-lite.ts` – Browser-safe queries that now read directly from `parts_v2`.
+- `lib/data/parts-lite.ts` – Browser-safe queries that read from `parts_display` and `timeline_display` views.
 - `lib/data/parts-server.ts` – Server-only API that wraps `parts-agent` for server actions.
 - `mastra/tools/part-tools.mastra` – Mastra tool factory backed by the PRD schema helpers.
 
@@ -94,7 +94,7 @@ The parts platform now centers on the PRD schema (`parts_v2`, `part_relationship
 
 | Use Case                      | Entry Point                           | Notes |
 |-------------------------------|---------------------------------------|-------|
-| Garden list/search            | `lib/data/parts-lite.ts`              | Uses `parts_v2` directly with user-scoped filters. |
+| Garden list/search            | `lib/data/parts-lite.ts`              | Uses `parts_display` view with user-scoped filters. |
 | Garden detail / server actions| `lib/data/parts-server.ts`            | Wraps PRD mappers and action logging. |
 | Agent part management         | `mastra/tools/part-tools.mastra`      | Calls `parts-agent` helpers; writes PRD rows. |
 | Relationship management       | `mastra/tools/part-tools.mastra`      | Uses `lib/data/schema/relationships.ts`. |

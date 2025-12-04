@@ -76,16 +76,16 @@ export function WeekSelectorNew({ selectedDate, onDateChange, className }: WeekS
 
       // Fetch chat sessions for the week
       const { data: sessions } = await supabase
-        .from('sessions')
-        .select('start_time')
+        .from('sessions_v2')
+        .select('started_at')
         .eq('user_id', user.id)
-        .gte('start_time', startDate + 'T00:00:00.000Z')
-        .lte('start_time', endDate + 'T23:59:59.999Z')
+        .gte('started_at', startDate + 'T00:00:00.000Z')
+        .lte('started_at', endDate + 'T23:59:59.999Z')
 
       // Mark days with activity
       const checkInDates = new Set(checkIns?.map(ci => ci.check_in_date) || [])
       const chatDates = new Set(
-        sessions?.map(s => new Date(s.start_time).toISOString().split('T')[0]) || []
+        sessions?.map(s => new Date(s.started_at).toISOString().split('T')[0]) || []
       )
 
       const updatedDays = days.map(day => ({
