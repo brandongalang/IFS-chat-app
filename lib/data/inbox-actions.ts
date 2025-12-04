@@ -156,10 +156,11 @@ async function touchRelatedPart({
 
   if (part.status === 'emerging') {
     updates.status = 'acknowledged'
+    updates.acknowledged_at = new Date().toISOString()
   }
 
-  // TODO(ifs-chat-app-5): Feed acknowledged/interaction timestamps into PRD parts helpers once
-  // updatePart can accept those fields directly.
+  updates.last_interaction_at = new Date().toISOString()
+  updates.last_active = new Date().toISOString()
 
   await updatePart(
     {
@@ -509,12 +510,12 @@ async function dismissPartFollowUpInboxItem({
     throw new Error('Part not found for dismissal')
   }
 
-  const updates: UpdatePartInput['updates'] = {}
+  const updates: UpdatePartInput['updates'] = {
+    last_interaction_at: timestamp,
+    last_active: timestamp,
+  }
   const baseAudit = 'User dismissed part follow-up reminder'
   const auditNote = reason ? `${baseAudit}: ${reason}` : baseAudit
-
-  // TODO(ifs-chat-app-5): Push follow-up dismissal timestamps into PRD parts metadata once
-  // updatePart exposes a dedicated last_interaction field.
 
   await updatePart(
     {

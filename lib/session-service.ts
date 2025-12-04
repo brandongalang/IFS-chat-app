@@ -37,35 +37,6 @@ export class ChatSessionService {
   }
 
   /**
-   * Dual-write session to both PRD (sessions_v2) and legacy (sessions) tables
-   * during migration period. Legacy table is still read by cron jobs and memory service.
-   */
-  private async syncLegacySessionWrite(
-    sessionId: string,
-    prdSession: SessionRowV2,
-    transcript?: StoredTranscript
-  ): Promise<void> {
-    try {
-      const basePayload = this.mapPrdSessionToLegacy(prdSession)
-      const legacyPayload = {
-        ...basePayload,
-        id: sessionId,
-        start_time: transcript?.start_time ?? basePayload.start_time,
-        end_time: transcript?.end_time ?? basePayload.end_time,
-        duration: transcript?.duration ?? basePayload.duration,
-        messages: transcript?.messages ?? basePayload.messages ?? [],
-      }
-
-      await this.supabase.from('sessions').upsert(legacyPayload, { onConflict: 'id' })
-    } catch (error) {
-      console.warn('[sessions] failed to sync to legacy sessions table', {
-        sessionId,
-        error,
-      })
-    }
-  }
-
-  /**
    * Start a new chat session for the current user
    */
   async startSession(): Promise<string> {
@@ -103,11 +74,6 @@ export class ChatSessionService {
         error,
       })
     }
-
-    // TODO(ifs-chat-app-5): Remove dual-write once all readers migrated to PRD sessions_v2
-    await this.syncLegacySessionWrite(session.id, session)
-
-    // TODO(ifs-chat-app-5): Reintroduce action logging once PRD event hooks are defined.
 
     return session.id
   }
@@ -258,9 +224,6 @@ export class ChatSessionService {
         error,
       })
     }
-
-    // TODO(ifs-chat-app-5): Remove dual-write once all readers migrated to PRD sessions_v2
-    await this.syncLegacySessionWrite(sessionId, session, transcript)
   }
 
   /**
@@ -305,9 +268,6 @@ export class ChatSessionService {
         error,
       })
     }
-
-    // TODO(ifs-chat-app-5): Remove dual-write once all readers migrated to PRD sessions_v2
-    await this.syncLegacySessionWrite(sessionId, session, transcript)
 
     const enqueueResult = await enqueueMemoryUpdate({
       userId: session.user_id,

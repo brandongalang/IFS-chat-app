@@ -3,8 +3,9 @@ import 'server-only'
 import { proposePartSplitSchema, proposePartMergeSchema, approveRejectSchema, executeProposalSchema, type ProposePartSplitInput, type ProposePartMergeInput, type ApproveRejectInput, type ExecuteProposalInput } from './proposals.schema'
 import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
 import { createActionLogger } from '@/lib/database/action-logger'
-import { getPartById } from './parts-server'
+import { getPartById, supersedePart, createSplitChildPart } from './parts-server'
 import type { PartRow } from '@/lib/types/database'
+import type { PartRowV2 } from './schema/types'
 
 export type ProposalDependencies = {
   client: SupabaseDatabaseClient
@@ -194,95 +195,32 @@ export async function executeSplit(
   }
 
   const now = new Date().toISOString()
-  const actionLogger = await getActionLoggerWithClient(supabase)
 
   const childResults: PartRow[] = []
   const childIds: string[] = []
 
   for (const child of payload.children as Array<any>) {
-    const childStory = toRecord(parent.story)
-    const childStoryEvolution = Array.isArray((parent.story as any)?.evolution)
-      ? [
-          ...((parent.story as any).evolution as Array<{ timestamp?: string; change?: string; trigger?: string }>),
-          { timestamp: now, change: `Split from ${parent.name}`, trigger: 'Split execution' },
-        ]
-      : [{ timestamp: now, change: `Split from ${parent.name}`, trigger: 'Split execution' }]
-
-    const childData = {
-      role: child.role ?? parent.role ?? null,
-      age: child.age ?? parent.age ?? null,
-      triggers: parent.triggers ?? [],
-      emotions: parent.emotions ?? [],
-      beliefs: parent.beliefs ?? [],
-      somatic_markers: parent.somatic_markers ?? [],
-      recent_evidence: [],
-      story: { ...childStory, evolution: childStoryEvolution },
-      relationships: parent.relationships ?? {},
-      visualization: parent.visualization ?? { emoji: '🤗', color: '#6B7280', energyLevel: 0.5 },
-      acknowledged_at: null,
-      last_interaction_at: now,
-      lineage_source: parent.id,
-    }
-
-    // TODO(ifs-chat-app-5): Replace manual parts_v2 payload shaping with a dedicated split helper once
-    // the PRD schema exposes first-class split/merge operations.
-    const inserted = await actionLogger.loggedInsert(
-      'parts_v2',
+    const mappedChild = await createSplitChildPart(
       {
-        user_id: userId,
-        name: child.name,
-        status: 'emerging',
-        category: parent.category,
-        charge: parentRecord.charge ?? 'neutral',
-        needs_attention: false,
-        confidence: Math.max(0, Math.min(1, (parent.confidence ?? 0) - 0.1)),
-        evidence_count: 0,
-        data: childData,
-        first_noticed: parent.first_noticed ?? now,
-        last_active: now,
-        created_at: now,
-        updated_at: now,
+        childProposal: child,
+        parentPart: parent,
+        parentRecord: parentRecord as unknown as PartRowV2,
       },
-      userId,
-      'create_emerging_part',
-      {
-        partName: child.name,
-        changeDescription: `Split child created from ${parent.name}`,
-        parentPartId: parent.id,
-      }
+      deps
     )
 
-    childIds.push(inserted.id)
-    const mappedChild = await getPartById({ partId: inserted.id }, deps)
-    if (mappedChild) {
-      childResults.push(mappedChild)
-    }
+    childIds.push(mappedChild.id)
+    childResults.push(mappedChild)
   }
 
-  const parentData = toRecord(parentRecord.data)
-  const relationships = toRecord(parentData.relationships ?? parent.relationships)
-  const lineage = toRecord(relationships.lineage)
-  const superseded = Array.isArray(lineage.superseded_by) ? (lineage.superseded_by as string[]) : []
-  relationships.lineage = {
-    ...lineage,
-    superseded_by: [...new Set([...superseded, ...childIds])],
-  }
-  parentData.relationships = relationships
-
-  // TODO(ifs-chat-app-5): Swap to PRD merge helper when available to avoid hand-crafted lineage patches.
-  await actionLogger.loggedUpdate(
-    'parts_v2',
-    parent.id,
+  const updatedParent = await supersedePart(
     {
-      data: parentData,
-      updated_at: now,
+      partId: parent.id,
+      supersededBy: childIds,
+      reason: 'Updated lineage after split',
     },
-    userId,
-    'update_part_attributes',
-    { partName: parent.name, changeDescription: 'Updated lineage after split' }
+    deps
   )
-
-  const updatedParent = await getPartById({ partId: parent.id }, deps)
   if (!updatedParent) {
     throw new Error('Failed to reload parent part after split execution')
   }
@@ -351,30 +289,13 @@ export async function executeMerge(
       continue
     }
 
-    const data = toRecord(record.data)
-    const relationships = toRecord(data.relationships)
-    const lineage = toRecord(relationships.lineage)
-    const superseded = Array.isArray(lineage.superseded_by)
-      ? (lineage.superseded_by as string[])
-      : []
-
-    relationships.lineage = {
-      ...lineage,
-      superseded_by: [...new Set([...superseded, canonicalRecord.id])],
-    }
-
-    data.relationships = relationships
-
-    await actionLogger.loggedUpdate(
-      'parts_v2',
-      record.id,
-      { data, updated_at: now },
-      userId,
-      'update_part_attributes',
+    await supersedePart(
       {
-        partName: record.name ?? 'Unnamed Part',
-        changeDescription: `Superseded by ${payload.canonicalName}`,
-      }
+        partId: record.id,
+        supersededBy: [canonicalRecord.id],
+        reason: `Superseded by ${payload.canonicalName}`,
+      },
+      deps
     )
 
     mergedIds.push(record.id)

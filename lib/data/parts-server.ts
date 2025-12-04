@@ -13,7 +13,11 @@ import {
   getPartRelationships as getPartRelationshipsData,
   getPartNotes as getPartNotesData,
   logRelationship as logRelationshipData,
+  supersedePart as supersedePartData,
+  createSplitChildPart as createSplitChildPartData,
+  type CreateSplitChildPartInput,
 } from './schema/parts-agent'
+import type { PartRow } from '@/lib/types/database'
 import type {
   SearchPartsInput,
   SearchPartsResult,
@@ -31,6 +35,8 @@ import type {
   GetPartNotesResult,
   LogRelationshipInput,
   LogRelationshipResult,
+  SupersedePartInput,
+  SupersedePartResult,
 } from './parts.schema'
 
 export type PartsServerDependencies = {
@@ -88,4 +94,14 @@ export async function getPartNotes(input: GetPartNotesInput, deps: PartsServerDe
 export async function logRelationship(input: LogRelationshipInput, deps: PartsServerDependencies): Promise<LogRelationshipResult> {
   const resolved = await resolveDependencies(deps)
   return logRelationshipData(input, resolved)
+}
+
+export async function supersedePart(input: SupersedePartInput, deps: PartsServerDependencies): Promise<SupersedePartResult> {
+  const resolved = await resolveDependencies(deps)
+  return supersedePartData(input, resolved)
+}
+
+export async function createSplitChildPart(input: CreateSplitChildPartInput, deps: PartsServerDependencies): Promise<PartRow> {
+  const resolved = await resolveDependencies(deps)
+  return createSplitChildPartData(input, resolved)
 }

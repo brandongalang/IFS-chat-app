@@ -17,7 +17,7 @@ async function main() {
       },
     },
     from(table: string) {
-      assert(table === 'parts_v2', 'query target should be parts_v2')
+      assert(table === 'parts_display', 'query target should be parts_display')
       const query = {
         select(this: typeof query) {
           return this
@@ -32,22 +32,25 @@ async function main() {
           return this
         },
         async then(resolve: any) {
+          // Mock PartsDisplayRow
           const row = {
             id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
             user_id: userId,
+            display_name: 'Timestamp Test',
             name: 'Timestamp Test',
             placeholder: null,
             category: 'manager',
             status: 'active',
             charge: 'neutral',
-            data: {},
-            needs_attention: false,
+            emoji: null,
+            age: null,
+            role: null,
             confidence: 0.5,
             evidence_count: 0,
-            first_noticed: '2025-10-18 12:34:56.789+00',
+            needs_attention: false,
+            // These are the fields used for mapping
             last_active: '2025-10-18 12:34:56.789 +0000',
             created_at: '2025-10-18T12:34:56.789',
-            updated_at: '2025-10-18 12:34:56',
           }
 
           resolve({ data: [row], error: null })
@@ -61,10 +64,17 @@ async function main() {
   const results = await searchPartsV2({ limit: 1 }, { client: client as any, userId })
   assert(results.length === 1, 'should return parsed row')
   const part = results[0]
-  assert(part.first_noticed.endsWith('Z'), 'first_noticed normalized to ISO string')
-  assert(part.last_active?.endsWith('Z'), 'last_active normalized to ISO string')
+  
+  // Verify normalization logic
   assert(part.created_at.endsWith('Z'), 'created_at normalized to ISO string')
-  assert(part.updated_at.endsWith('Z'), 'updated_at normalized to ISO string')
+  assert(part.last_active?.endsWith('Z'), 'last_active normalized to ISO string')
+  
+  // In the new implementation:
+  // first_noticed maps to created_at
+  // updated_at maps to last_active (if present)
+  assert(part.first_noticed === part.created_at, 'first_noticed should map to created_at')
+  assert(part.updated_at === part.last_active, 'updated_at should map to last_active')
+
   const parsed = partRowSchema.parse(normalizePartRowDates(part))
   assert(parsed.first_noticed === part.first_noticed, 'schema parse retains normalized value')
 
