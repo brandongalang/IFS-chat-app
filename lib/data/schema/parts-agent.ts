@@ -281,6 +281,36 @@ export async function getPartDetail(
 }
 
 /**
+ * Helper to ensure part names are unique (case-insensitive) for a user.
+ */
+async function checkPartNameAvailability(
+  client: SupabaseDatabaseClient,
+  userId: string,
+  name: string,
+  excludePartId?: string
+): Promise<void> {
+  let query = client
+    .from('parts_v2')
+    .select('id')
+    .eq('user_id', userId)
+    .ilike('name', name)
+
+  if (excludePartId) {
+    query = query.neq('id', excludePartId)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    throw new Error(`Failed to check part name availability: ${error.message}`)
+  }
+
+  if (data && data.length > 0) {
+    throw new Error(`A part named "${name}" (or similar) already exists for this user`)
+  }
+}
+
+/**
  * Create a new emerging part in `parts_v2`, enforcing evidence count and user confirmation requirements.
  */
 export async function createEmergingPart(
@@ -300,16 +330,7 @@ export async function createEmergingPart(
 
   const nowIso = new Date().toISOString()
 
-  const { data: existing } = await client
-    .from('parts_v2')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('name', validated.name)
-    .maybeSingle()
-
-  if (existing) {
-    throw new Error(`A part named "${validated.name}" already exists for this user`)
-  }
+  await checkPartNameAvailability(client, userId, validated.name)
 
   const avgEvidenceConfidence =
     validated.evidence.reduce((sum, ev) => sum + ev.confidence, 0) / validated.evidence.length
@@ -493,6 +514,10 @@ export async function updatePart(
   const nowIso = new Date().toISOString()
 
   const { partPatch, dataPatch, actionType: baseActionType, changeDescription: baseChangeDescription } = combinePartUpdates(current, validated.updates, nowIso)
+
+  if (partPatch.name) {
+    await checkPartNameAvailability(client, userId, partPatch.name, validated.partId)
+  }
 
   let updatedConfidence = current.confidence
   if (typeof validated.updates.confidenceBoost === 'number') {
@@ -686,6 +711,11 @@ export async function logRelationship(
   const { client, userId } = assertAgentDeps(deps)
 
   const sortedPartIds = [...validated.partIds].sort()
+
+  if (sortedPartIds[0] === sortedPartIds[1]) {
+    throw new Error('Cannot create a relationship between a part and itself')
+  }
+
   const nowIso = new Date().toISOString()
   const v2Type = toV2RelationshipType(validated.type)
 
@@ -805,6 +835,7 @@ export async function logRelationship(
   }
 
   const insertPayload = {
+    user_id: userId,
     part_a_id: sortedPartIds[0],
     part_b_id: sortedPartIds[1],
     type: v2Type,
@@ -844,6 +875,10 @@ export async function supersedePart(
 ): Promise<SupersedePartResult> {
   const validated = supersedePartSchema.parse(input)
   const { client, userId } = assertAgentDeps(deps)
+
+  if (validated.supersededBy.includes(validated.partId)) {
+    throw new Error('A part cannot supersede itself')
+  }
 
   const { data: currentRow, error } = await client
     .from('parts_v2')
@@ -925,6 +960,9 @@ export async function createSplitChildPart(
 ): Promise<PartRow> {
   const { childProposal, parentPart, parentRecord } = input
   const { client, userId } = assertAgentDeps(deps)
+
+  await checkPartNameAvailability(client, userId, childProposal.name)
+
   const now = new Date().toISOString()
   const actionLogger = await getActionLogger(client)
 
