@@ -163,7 +163,12 @@ export const logRelationshipSchema = z.object({
     .boolean()
     .default(true)
     .describe('Update existing relationship if it exists; otherwise create'),
-}).strict()
+})
+  .strict()
+  .refine((data) => data.partIds[0].toLowerCase() !== data.partIds[1].toLowerCase(), {
+    message: 'Cannot create a relationship between a part and itself',
+    path: ['partIds'],
+  })
 
 export const supersedePartSchema = z.object({
   partId: z.string().uuid().describe('The UUID of the part being superseded'),
