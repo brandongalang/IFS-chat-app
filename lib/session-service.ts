@@ -219,10 +219,11 @@ export class ChatSessionService {
     try {
       await this.writeTranscript(sessionId, transcript, existingTranscript)
     } catch (error) {
-      console.warn('[sessions] writeTranscript failed at addMessage; message persisted in DB only', {
+      console.error('[sessions] writeTranscript failed at addMessage; message lost if not persisted', {
         sessionId,
         error,
       })
+      throw error
     }
   }
 

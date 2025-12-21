@@ -71,6 +71,28 @@ function assertAgentDeps(deps: PartsAgentDependencies): PartsAgentDependencies {
   return deps
 }
 
+async function checkPartNameAvailability(
+  client: SupabaseDatabaseClient,
+  userId: string,
+  name: string,
+  excludePartId?: string
+): Promise<void> {
+  let query = client
+    .from('parts_v2')
+    .select('id')
+    .eq('user_id', userId)
+    .ilike('name', name)
+
+  if (excludePartId) {
+    query = query.neq('id', excludePartId)
+  }
+
+  const { data } = await query.maybeSingle()
+  if (data) {
+    throw new Error(`A part named "${name}" already exists for this user`)
+  }
+}
+
 function encodeRelationshipContext(payload: RelationshipContextPayload): string | null {
   const pruned: RelationshipContextPayload = {
     description: payload.description ?? null,
@@ -300,16 +322,7 @@ export async function createEmergingPart(
 
   const nowIso = new Date().toISOString()
 
-  const { data: existing } = await client
-    .from('parts_v2')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('name', validated.name)
-    .maybeSingle()
-
-  if (existing) {
-    throw new Error(`A part named "${validated.name}" already exists for this user`)
-  }
+  await checkPartNameAvailability(client, userId, validated.name)
 
   const avgEvidenceConfidence =
     validated.evidence.reduce((sum, ev) => sum + ev.confidence, 0) / validated.evidence.length
@@ -491,6 +504,10 @@ export async function updatePart(
 
   const current = mapPartRowFromV2(currentRow as PartRowV2)
   const nowIso = new Date().toISOString()
+
+  if (typeof validated.updates.name === 'string' && validated.updates.name.trim().length > 0 && validated.updates.name !== current.name) {
+    await checkPartNameAvailability(client, userId, validated.updates.name.trim(), current.id)
+  }
 
   const { partPatch, dataPatch, actionType: baseActionType, changeDescription: baseChangeDescription } = combinePartUpdates(current, validated.updates, nowIso)
 
@@ -686,6 +703,10 @@ export async function logRelationship(
   const { client, userId } = assertAgentDeps(deps)
 
   const sortedPartIds = [...validated.partIds].sort()
+  if (sortedPartIds[0] === sortedPartIds[1]) {
+    throw new Error('Cannot create relationship with self')
+  }
+
   const nowIso = new Date().toISOString()
   const v2Type = toV2RelationshipType(validated.type)
 
@@ -710,22 +731,18 @@ export async function logRelationship(
       ]
     : []
 
-  const { data: candidates, error } = await client
+  const { data: matched, error } = await client
     .from('part_relationships_v2')
     .select('*')
     .eq('user_id', userId)
+    .eq('part_a_id', sortedPartIds[0])
+    .eq('part_b_id', sortedPartIds[1])
     .eq('type', v2Type)
-    .order('created_at', { ascending: false })
-    .limit(50)
+    .maybeSingle()
 
-  if (error) {
+  if (error && error.code !== 'PGRST116') {
     throw new Error(`Failed to query relationships: ${error.message}`)
   }
-
-  const matched = (candidates ?? []).find((row) => {
-    const pair = [row.part_a_id, row.part_b_id].sort()
-    return pair[0] === sortedPartIds[0] && pair[1] === sortedPartIds[1]
-  })
 
   const polarization =
     typeof contextPayload.polarizationLevel === 'number'
