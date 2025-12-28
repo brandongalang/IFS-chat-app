@@ -219,10 +219,13 @@ export class ChatSessionService {
     try {
       await this.writeTranscript(sessionId, transcript, existingTranscript)
     } catch (error) {
-      console.warn('[sessions] writeTranscript failed at addMessage; message persisted in DB only', {
+      // Critical: If storage fails, message content is lost because it's not in DB.
+      // Must throw to inform client of failure so they can retry.
+      console.error('[sessions] writeTranscript failed at addMessage; aborting to prevent data loss', {
         sessionId,
         error,
       })
+      throw new Error(`Failed to persist session transcript: ${error instanceof Error ? error.message : 'Storage unavailable'}`)
     }
   }
 
@@ -263,7 +266,11 @@ export class ChatSessionService {
     try {
       await this.writeTranscript(sessionId, transcript, existingTranscript)
     } catch (error) {
-      console.warn('[sessions] writeTranscript failed at endSession; continuing', {
+      // If endSession fails to write transcript, the DB record is already marked ended.
+      // However, the file will lack the `end_time` and `duration` fields.
+      // This is less critical than addMessage data loss, but still inconsistent.
+      // We log error but do not throw, as the "end" event is captured in DB.
+      console.error('[sessions] writeTranscript failed at endSession; session closed in DB but transcript metadata may be incomplete', {
         sessionId,
         error,
       })
