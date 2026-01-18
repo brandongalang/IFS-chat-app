@@ -184,11 +184,52 @@ export const getRecentInsightsTool = createTool({
 });
 
 export function createInsightResearchTools(userId?: string) {
+  if (!userId) {
+    return {
+      getRecentSessions: getRecentSessionsTool,
+      getActiveParts: getActivePartsTool,
+      getPolarizedRelationships: getPolarizedRelationshipsTool,
+      getRecentInsights: getRecentInsightsTool,
+    }
+  }
+
   return {
-    getRecentSessions: getRecentSessionsTool,
-    getActiveParts: getActivePartsTool,  
-    getPolarizedRelationships: getPolarizedRelationshipsTool,
-    getRecentInsights: getRecentInsightsTool,
+    getRecentSessions: createTool({
+      id: getRecentSessionsTool.id,
+      description: getRecentSessionsTool.description,
+      inputSchema: getRecentSessionsTool.inputSchema,
+      execute: async ({ context }) => {
+        const effectiveUserId = context.userId || userId
+        return await getRecentSessions({ ...context, userId: effectiveUserId })
+      },
+    }),
+    getActiveParts: createTool({
+      id: getActivePartsTool.id,
+      description: getActivePartsTool.description,
+      inputSchema: getActivePartsTool.inputSchema,
+      execute: async ({ context }) => {
+        const effectiveUserId = context.userId || userId
+        return await getActiveParts({ ...context, userId: effectiveUserId })
+      },
+    }),
+    getPolarizedRelationships: createTool({
+      id: getPolarizedRelationshipsTool.id,
+      description: getPolarizedRelationshipsTool.description,
+      inputSchema: getPolarizedRelationshipsTool.inputSchema,
+      execute: async ({ context }) => {
+        const effectiveUserId = context.userId || userId
+        return await getPolarizedRelationships({ ...context, userId: effectiveUserId })
+      },
+    }),
+    getRecentInsights: createTool({
+      id: getRecentInsightsTool.id,
+      description: getRecentInsightsTool.description,
+      inputSchema: getRecentInsightsTool.inputSchema,
+      execute: async ({ context }) => {
+        const effectiveUserId = context.userId || userId
+        return await getRecentInsights({ ...context, userId: effectiveUserId })
+      },
+    }),
   }
 }
 

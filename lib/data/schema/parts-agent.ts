@@ -304,7 +304,7 @@ export async function createEmergingPart(
     .from('parts_v2')
     .select('id')
     .eq('user_id', userId)
-    .eq('name', validated.name)
+    .ilike('name', validated.name.replace(/[%_]/g, '\\$&'))
     .maybeSingle()
 
   if (existing) {
@@ -685,6 +685,10 @@ export async function logRelationship(
   const validated = logRelationshipSchema.parse(input)
   const { client, userId } = assertAgentDeps(deps)
 
+  if (validated.partIds[0] === validated.partIds[1]) {
+    throw new Error('Self-referential relationships are not allowed')
+  }
+
   const sortedPartIds = [...validated.partIds].sort()
   const nowIso = new Date().toISOString()
   const v2Type = toV2RelationshipType(validated.type)
@@ -805,6 +809,7 @@ export async function logRelationship(
   }
 
   const insertPayload = {
+    user_id: userId,
     part_a_id: sortedPartIds[0],
     part_b_id: sortedPartIds[1],
     type: v2Type,
