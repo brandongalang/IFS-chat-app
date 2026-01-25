@@ -190,40 +190,95 @@ export class ChatSessionService {
     sessionId: string,
     message: Omit<SessionMessage, 'timestamp'>,
   ): Promise<void> {
-    const newMessage: SessionMessage = {
-      ...message,
-      timestamp: new Date().toISOString(),
-    }
-    const existingTranscript = await this.readTranscript(sessionId)
-    const updatedMessages = [...(existingTranscript?.messages ?? []), newMessage]
-
-    let session: SessionRowV2
-    try {
-      session = await touchSession(
-        sessionId,
-        { last_message_at: newMessage.timestamp },
-        { client: this.supabase, userId: this.userId },
-      )
-    } catch (error) {
-      const err = error as { message?: string }
-      throw new Error(`Failed to record session activity: ${err.message ?? 'unknown error'}`)
-    }
-
-    const transcript = {
-      user_id: session.user_id,
-      start_time: session.started_at,
-      end_time: session.ended_at,
-      messages: updatedMessages,
-    }
+    let lockToken: string | null = null
 
     try {
-      await this.writeTranscript(sessionId, transcript, existingTranscript)
-    } catch (error) {
-      console.warn('[sessions] writeTranscript failed at addMessage; message persisted in DB only', {
-        sessionId,
-        error,
+      try {
+        lockToken = await this.acquireLock(sessionId)
+      } catch (e) {
+        console.error('[sessions] Failed to acquire lock, aborting addMessage', {
+          sessionId,
+          error: e,
+        })
+        throw e
+      }
+
+      const newMessage: SessionMessage = {
+        ...message,
+        timestamp: new Date().toISOString(),
+      }
+      const existingTranscript = await this.readTranscript(sessionId)
+      const updatedMessages = [...(existingTranscript?.messages ?? []), newMessage]
+
+      let session: SessionRowV2
+      try {
+        session = await touchSession(
+          sessionId,
+          { last_message_at: newMessage.timestamp },
+          { client: this.supabase, userId: this.userId },
+        )
+      } catch (error) {
+        const err = error as { message?: string }
+        throw new Error(`Failed to record session activity: ${err.message ?? 'unknown error'}`)
+      }
+
+      const transcript = {
+        user_id: session.user_id,
+        start_time: session.started_at,
+        end_time: session.ended_at,
+        messages: updatedMessages,
+      }
+
+      try {
+        await this.writeTranscript(sessionId, transcript, existingTranscript)
+      } catch (error) {
+        console.warn(
+          '[sessions] writeTranscript failed at addMessage; message persisted in DB only',
+          {
+            sessionId,
+            error,
+          },
+        )
+      }
+    } finally {
+      if (lockToken) {
+        try {
+          await this.releaseLock(sessionId, lockToken)
+        } catch (e) {
+          console.warn('[sessions] Failed to release lock', { sessionId, error: e })
+        }
+      }
+    }
+  }
+
+  private async acquireLock(sessionId: string): Promise<string> {
+    const lockToken = globalThis.crypto.randomUUID()
+    const maxRetries = 20 // 5 seconds total
+    const delayMs = 250
+
+    for (let i = 0; i < maxRetries; i++) {
+      const expiresAt = new Date(Date.now() + 10000).toISOString() // 10s lock
+      const { data: acquired, error } = await this.supabase.rpc('acquire_session_lock' as any, {
+        p_session_id: sessionId,
+        p_lock_token: lockToken,
+        p_expires_at: expiresAt,
       })
+
+      if (!error && acquired) {
+        return lockToken
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
     }
+
+    throw new Error(`Failed to acquire session lock for ${sessionId} after ${maxRetries} attempts`)
+  }
+
+  private async releaseLock(sessionId: string, lockToken: string): Promise<void> {
+    await this.supabase.rpc('release_session_lock' as any, {
+      p_session_id: sessionId,
+      p_lock_token: lockToken,
+    })
   }
 
   /**

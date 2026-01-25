@@ -1,5 +1,6 @@
 import { createTool } from '@mastra/core'
 import { z } from 'zod'
+import logger from '@/lib/logger'
 import { resolveUserId } from '@/config/dev'
 import type { ToolResult } from '@/lib/types/database'
 import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
@@ -52,7 +53,9 @@ export async function searchConversations(
             }))
           }
         }
-      } catch {}
+      } catch (e) {
+        logger.warn({ path, error: e }, '[memory-tools] Failed to parse session file')
+      }
     }
 
     return {
