@@ -1,24 +1,26 @@
-import { getPartById, getPartRelationships, getPartNotes } from '@/lib/data/parts-server'
-import { createClient } from '@/lib/supabase/server'
-import { resolveUserId } from '@/config/dev'
-import type { PartRow, PartNoteRow } from '@/lib/types/database'
-import type { PartRelationshipWithDetails } from '@/lib/data/parts.schema'
-import { readPart as readMarkdownPart } from '@/lib/memory/parts-repository'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { PageContainer } from '@/components/common/PageContainer'
-import { ArrowLeft } from 'lucide-react'
-import { EditPartDetails } from '@/components/garden/EditPartDetails'
-import { PartSidebarActions } from '@/components/garden/PartSidebarActions'
-import { getStatusStyle } from '@/lib/garden/status-styles'
-import { cn } from '@/lib/utils'
+import {
+  getPartByIdServer as getPartById,
+  getPartRelationshipsServer as getPartRelationships,
+  getPartNotesServer as getPartNotes,
+} from '@/lib/data/parts';
+import { createClient } from '@/lib/supabase/server';
+import { resolveUserId } from '@/config/dev';
+import type { PartRowV2, PartNoteRowV2, PartRelationshipWithDetails } from '@/lib/data/parts';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { PageContainer } from '@/components/common/PageContainer';
+import { ArrowLeft } from 'lucide-react';
+import { EditPartDetails } from '@/components/garden/EditPartDetails';
+import { PartSidebarActions } from '@/components/garden/PartSidebarActions';
+import { getStatusStyle } from '@/lib/garden/status-styles';
+import { cn } from '@/lib/utils';
 
 interface PartDetailPageProps {
   params: Promise<{
-    partId: string
-  }>
+    partId: string;
+  }>;
 }
 
 function InfoList({ title, items }: { title: string; items?: string[] | null }) {
@@ -28,7 +30,7 @@ function InfoList({ title, items }: { title: string; items?: string[] | null }) 
         <h3 className="font-semibold text-foreground">{title}</h3>
         <p className="text-sm text-muted-foreground">None recorded yet.</p>
       </div>
-    )
+    );
   }
   return (
     <div>
@@ -41,44 +43,41 @@ function InfoList({ title, items }: { title: string; items?: string[] | null }) 
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 function StorySection({ title, content }: { title: string; content?: string | null }) {
-  if (!content) return null
+  if (!content) return null;
   return (
     <div>
       <h3 className="font-semibold text-lg text-foreground mb-2">{title}</h3>
       <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{content}</p>
     </div>
-  )
+  );
 }
 
 export default async function PartDetailPage({ params }: PartDetailPageProps) {
-  const { partId } = await params
+  const { partId } = await params;
 
-  const supabase = await createClient()
+  const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser()
-  const userId = resolveUserId(user?.id)
-  const deps = { userId, client: supabase }
+  } = await supabase.auth.getUser();
+  const userId = resolveUserId(user?.id);
+  const deps = { userId, client: supabase };
 
-  const [partResult, relationshipsResult, notesResult, markdownDoc] = await Promise.all([
+  const [partResult, relationshipsResult, notesResult] = await Promise.all([
     getPartById({ partId }, deps),
     getPartRelationships({ partId, includePartDetails: true, limit: 20 }, deps),
     getPartNotes({ partId }, deps),
-    readMarkdownPart(userId, partId).catch(() => null),
-  ])
+  ]);
 
   if (!partResult) {
     return (
       <PageContainer className="py-8">
         <div className="text-center space-y-4">
           <h1 className="text-2xl font-bold">Part Not Found</h1>
-          <p className="text-red-500">
-            The requested part could not be found.
-          </p>
+          <p className="text-red-500">The requested part could not be found.</p>
           <Button asChild variant="outline">
             <Link href="/garden">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -87,33 +86,21 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
           </Button>
         </div>
       </PageContainer>
-    )
+    );
   }
 
-  const part: PartRow = partResult
-  const visualization = part.visualization as { emoji?: string; color?: string }
-  const story = part.story as { origin?: string; currentState?: string; purpose?: string }
-  const statusStyle = getStatusStyle(part.status)
+  const part: PartRowV2 = partResult;
+  const partData = (part.data as any) || {};
+  const visualization = partData.visualization as { emoji?: string; color?: string };
+  const story = partData.story as { origin?: string; currentState?: string; purpose?: string };
+  const statusStyle = getStatusStyle(part.status);
+  const headerEmoji = visualization?.emoji ?? '🤗';
 
-  const mdSections = markdownDoc?.sections ?? {}
-  const headerEmoji = markdownDoc?.frontmatter?.emoji ?? visualization?.emoji ?? '🤗'
-
-  function pickSection(...keys: string[]): string | undefined {
-    for (const k of keys) {
-      const section = mdSections[k]
-      if (section?.text) return section.text
-    }
-    return undefined
-  }
-
-  const mdRolePurpose = pickSection('role-purpose', 'role', 'purpose', 'body')
-  const mdCurrentState = pickSection('current-state', 'state')
-  const mdOrigin = pickSection('origin', 'origin-story')
   const relationships: PartRelationshipWithDetails[] =
     relationshipsResult && Array.isArray(relationshipsResult)
       ? (relationshipsResult as PartRelationshipWithDetails[])
-      : []
-  const notes: PartNoteRow[] = notesResult ?? []
+      : [];
+  const notes: PartNoteRowV2[] = notesResult ?? [];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -162,9 +149,9 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
                 <CardDescription>The narrative and role of this part.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <StorySection title="Role / Purpose" content={mdRolePurpose ?? part.role ?? story?.purpose} />
-                <StorySection title="Current State" content={mdCurrentState ?? story?.currentState} />
-                <StorySection title="Origin Story" content={mdOrigin ?? story?.origin} />
+                <StorySection title="Role / Purpose" content={partData.role ?? story?.purpose} />
+                <StorySection title="Current State" content={story?.currentState} />
+                <StorySection title="Origin Story" content={story?.origin} />
               </CardContent>
             </Card>
 
@@ -175,9 +162,9 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
                 <CardDescription>The typical triggers, emotions, and beliefs.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <InfoList title="Triggers" items={part.triggers} />
-                <InfoList title="Emotions" items={part.emotions} />
-                <InfoList title="Beliefs" items={part.beliefs} />
+                <InfoList title="Triggers" items={partData.triggers} />
+                <InfoList title="Emotions" items={partData.emotions} />
+                <InfoList title="Beliefs" items={partData.beliefs} />
               </CardContent>
             </Card>
 
@@ -185,14 +172,21 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
             <Card className="border-border/40">
               <CardHeader>
                 <CardTitle className="text-xl">Clarification Notes</CardTitle>
-                <CardDescription>Short reflections and context you&apos;ve saved for this part.</CardDescription>
+                <CardDescription>
+                  Short reflections and context you&apos;ve saved for this part.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {notes.length > 0 ? (
                   <ul className="space-y-3">
                     {notes.map((note) => (
-                      <li key={note.id} className="rounded-lg border border-border/40 p-3 bg-card/20">
-                        <p className="text-sm whitespace-pre-wrap text-foreground">{note.content}</p>
+                      <li
+                        key={note.id}
+                        className="rounded-lg border border-border/40 p-3 bg-card/20"
+                      >
+                        <p className="text-sm whitespace-pre-wrap text-foreground">
+                          {note.content}
+                        </p>
                         <p className="mt-2 text-xs text-muted-foreground">
                           {new Date(note.created_at).toLocaleString()}
                         </p>
@@ -200,7 +194,9 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No clarification notes recorded yet.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No clarification notes recorded yet.
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -218,12 +214,20 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
                   <ul className="space-y-4">
                     {relationships.map((rel) => (
                       <li key={rel.id} className="text-sm space-y-1">
-                        <span className="font-semibold capitalize text-xs text-muted-foreground">{rel.type}</span>
+                        <span className="font-semibold capitalize text-xs text-muted-foreground">
+                          {rel.type}
+                        </span>
                         <div className="flex flex-wrap gap-1">
                           {rel.parts
                             .filter((p) => p.id !== part.id)
                             .map((p) => (
-                              <Button asChild variant="secondary" size="sm" className="text-xs" key={p.id}>
+                              <Button
+                                asChild
+                                variant="secondary"
+                                size="sm"
+                                className="text-xs"
+                                key={p.id}
+                              >
                                 <Link href={`/garden/${p.id}`}>{p.name ?? 'View part'}</Link>
                               </Button>
                             ))}
@@ -243,5 +247,5 @@ export default async function PartDetailPage({ params }: PartDetailPageProps) {
         </div>
       </PageContainer>
     </div>
-  )
+  );
 }

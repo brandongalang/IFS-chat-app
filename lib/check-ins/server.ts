@@ -1,13 +1,12 @@
-import { z } from 'zod'
-import { createOpenRouter } from '@openrouter/ai-sdk-provider'
-import { generateObject } from 'ai'
-import { dev, resolveUserId } from '@/config/dev'
-import { getServiceClient, getUserClient } from '@/lib/supabase/clients'
-import { enqueueMemoryUpdate } from '@/lib/memory/queue'
-import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
-import type { CheckInRow } from '@/lib/types/database'
-import { listPartDisplayRecords } from '@/lib/data/schema/server'
-import type { PrdServerDeps } from '@/lib/data/schema/server'
+import { z } from 'zod';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { generateObject } from 'ai';
+import { dev, resolveUserId } from '@/config/dev';
+import { getServiceClient, getUserClient } from '@/lib/supabase/clients';
+import type { SupabaseDatabaseClient } from '@/lib/supabase/clients';
+import type { CheckInRow } from '@/lib/types/database';
+import { listPartDisplayRecords } from '@/lib/data/schema/server';
+import type { PrdServerDeps } from '@/lib/data/schema/server';
 import {
   DEFAULT_EVENING_PROMPT,
   ENERGY_OPTIONS,
@@ -27,41 +26,41 @@ import {
   shiftIsoDate,
   getCurrentHourInTimezone,
   isValidTimezone,
-} from './shared'
-import type { UserSettings } from '@/lib/types/database'
+} from './shared';
+import type { UserSettings } from '@/lib/types/database';
 
 interface SubmissionBase {
-  targetDateIso?: string
+  targetDateIso?: string;
 }
 
 export interface MorningSubmissionPayload extends SubmissionBase {
-  type: 'morning'
-  mood: string
-  energy: string
-  mindForToday?: string
-  intention: string
-  parts?: string[]
+  type: 'morning';
+  mood: string;
+  energy: string;
+  mindForToday?: string;
+  intention: string;
+  parts?: string[];
 }
 
 export interface EveningSubmissionPayload extends SubmissionBase {
-  type: 'evening'
-  mood: string
-  energy: string
-  reflectionPrompt: string
-  reflection: string
-  wins: string
-  gratitude: string
-  parts?: string[]
+  type: 'evening';
+  mood: string;
+  energy: string;
+  reflectionPrompt: string;
+  reflection: string;
+  wins: string;
+  gratitude: string;
+  parts?: string[];
 }
 
-export type CheckInSubmissionPayload = MorningSubmissionPayload | EveningSubmissionPayload
+export type CheckInSubmissionPayload = MorningSubmissionPayload | EveningSubmissionPayload;
 
 export interface SubmissionResult {
-  data: CheckInRow[]
-  conflict: boolean
+  data: CheckInRow[];
+  conflict: boolean;
 }
 
-const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 const morningSchema = z.object({
   type: z.literal('morning'),
@@ -71,7 +70,7 @@ const morningSchema = z.object({
   intention: z.string().min(1, 'Intention is required'),
   parts: z.array(z.string()).optional(),
   targetDateIso: isoDateSchema.optional(),
-})
+});
 
 const eveningSchema = z.object({
   type: z.literal('evening'),
@@ -83,114 +82,116 @@ const eveningSchema = z.object({
   gratitude: z.string().min(1, 'Gratitude is required'),
   parts: z.array(z.string()).optional(),
   targetDateIso: isoDateSchema.optional(),
-})
+});
 
-function buildEmojiSnapshot(payload: {
-  mood: EmojiOption
-  energy: EmojiOption
-}) {
+function buildEmojiSnapshot(payload: { mood: EmojiOption; energy: EmojiOption }) {
   return {
     mood: payload.mood,
     energy: payload.energy,
-  }
+  };
 }
 
 async function generateEveningPrompt(params: {
-  intention: string
-  mindForToday: string
-  mood: EmojiOption
-  energy: EmojiOption
+  intention: string;
+  mindForToday: string;
+  mood: EmojiOption;
+  energy: EmojiOption;
 }): Promise<{ text: string; model?: string }> {
-  const apiKey = process.env.OPENROUTER_API_KEY
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    return { text: DEFAULT_EVENING_PROMPT }
+    return { text: DEFAULT_EVENING_PROMPT };
   }
 
   try {
-    const provider = createOpenRouter({ apiKey })
-    const schema = z.object({ prompt: z.string().min(1).max(180) })
+    const provider = createOpenRouter({ apiKey });
+    const schema = z.object({ prompt: z.string().min(1).max(180) });
 
     const system = `You are a gentle IFS-inspired companion helping the user reflect in the evening.
 Craft a short, supportive, curiosity-driven reflection prompt (1-2 sentences maximum) that references the user's morning check-in.
-Keep it grounded, avoid clinical language, and never promise outcomes.`
+Keep it grounded, avoid clinical language, and never promise outcomes.`;
 
     const promptLines = [
       `Morning intention: ${params.intention || 'Not specified.'}`,
       `Morning mindshare: ${params.mindForToday || 'Not specified.'}`,
       `Mood: ${params.mood.label}.`,
       `Energy: ${params.energy.label}.`,
-    ]
+    ];
 
     const { object } = await generateObject({
       model: provider('openai/gpt-4o-mini'),
       system,
       schema,
       prompt: promptLines.join('\n'),
-    })
+    });
 
-    const text = object.prompt.trim()
+    const text = object.prompt.trim();
     if (!text) {
-      return { text: DEFAULT_EVENING_PROMPT }
+      return { text: DEFAULT_EVENING_PROMPT };
     }
 
-    return { text, model: 'openai/gpt-4o-mini' }
+    return { text, model: 'openai/gpt-4o-mini' };
   } catch (error) {
-    console.error('Failed to generate evening prompt', error)
-    return { text: DEFAULT_EVENING_PROMPT }
+    console.error('Failed to generate evening prompt', error);
+    return { text: DEFAULT_EVENING_PROMPT };
   }
 }
 
-async function resolveContextClient(): Promise<{ supabase: SupabaseDatabaseClient; userId: string }> {
-  const useAdmin = dev.enabled && !!process.env.SUPABASE_SERVICE_ROLE_KEY
-  const supabase = useAdmin ? getServiceClient() : await getUserClient()
+async function resolveContextClient(): Promise<{
+  supabase: SupabaseDatabaseClient;
+  userId: string;
+}> {
+  const useAdmin = dev.enabled && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabase = useAdmin ? getServiceClient() : await getUserClient();
 
   if (useAdmin) {
     try {
-      const userId = resolveUserId()
-      return { supabase, userId }
+      const userId = resolveUserId();
+      return { supabase, userId };
     } catch {
-      throw new Error('Dev user not configured. Set IFS_TEST_PERSONA or IFS_DEFAULT_USER_ID.')
+      throw new Error('Dev user not configured. Set IFS_TEST_PERSONA or IFS_DEFAULT_USER_ID.');
     }
   }
 
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   if (error) {
-    console.error('Failed to resolve user for check-in context', error)
-    throw new Error('Unable to resolve user session')
+    console.error('Failed to resolve user for check-in context', error);
+    throw new Error('Unable to resolve user session');
   }
 
   if (!user) {
-    throw new Error('Unauthorized')
+    throw new Error('Unauthorized');
   }
 
-  return { supabase, userId: user.id }
+  return { supabase, userId: user.id };
 }
 
 export async function loadAvailableParts(): Promise<PartOption[]> {
-  const { supabase, userId } = await resolveContextClient()
+  const { supabase, userId } = await resolveContextClient();
 
   try {
     const partsDisplay = await listPartDisplayRecords(
       { client: supabase as PrdServerDeps['client'], userId },
-      null, // fetch all parts (no limit) for check-in picker
-    )
+      null // fetch all parts (no limit) for check-in picker
+    );
     return partsDisplay.map((row) => ({
       id: row.id,
       name: row.display_name || row.name || 'Unnamed Part',
       emoji: row.emoji,
-    }))
+    }));
   } catch (error) {
-    console.error('Failed to load parts for check-in using PRD schema', error)
-    return []
+    console.error('Failed to load parts for check-in using PRD schema', error);
+    return [];
   }
 }
 
-export async function loadMorningContext(targetDateIso: string): Promise<MorningContextSummary | null> {
-  const { supabase, userId } = await resolveContextClient()
+export async function loadMorningContext(
+  targetDateIso: string
+): Promise<MorningContextSummary | null> {
+  const { supabase, userId } = await resolveContextClient();
 
   const { data, error } = await supabase
     .from('check_ins')
@@ -199,73 +200,76 @@ export async function loadMorningContext(targetDateIso: string): Promise<Morning
     .eq('type', 'morning')
     .eq('check_in_date', targetDateIso)
     .order('created_at', { ascending: false })
-    .limit(1)
+    .limit(1);
 
   if (error) {
-    console.error('Failed to load morning check-in context', error)
-    return null
+    console.error('Failed to load morning check-in context', error);
+    return null;
   }
 
   if (!data || data.length === 0) {
-    return null
+    return null;
   }
 
-  const record = data[0]
-  const partsData = (record.parts_data as Record<string, unknown> | null) ?? null
+  const record = data[0];
+  const partsData = (record.parts_data as Record<string, unknown> | null) ?? null;
   const rawResponses =
     partsData && typeof partsData === 'object'
       ? (partsData as { daily_responses?: unknown }).daily_responses
-      : undefined
+      : undefined;
   const storedResponses =
     rawResponses && typeof rawResponses === 'object'
       ? (rawResponses as Record<string, unknown> & { variant?: 'morning' | 'evening' })
-      : undefined
+      : undefined;
   const responses =
     storedResponses && (!storedResponses.variant || storedResponses.variant === 'morning')
       ? storedResponses
-      : undefined
+      : undefined;
 
   const emojiRecord =
     responses && typeof responses.emoji === 'object' && responses.emoji !== null
       ? (responses.emoji as Record<string, unknown>)
-      : undefined
+      : undefined;
 
   const intention =
     typeof responses?.intention === 'string'
       ? responses.intention
       : typeof record.intention === 'string'
-      ? record.intention
-      : ''
-  const mindForToday = typeof responses?.mindForToday === 'string' ? responses.mindForToday : ''
-  const topLevelSelected = Array.isArray((partsData as { selected_part_ids?: unknown })?.selected_part_ids)
-    ? (((partsData as { selected_part_ids?: unknown }).selected_part_ids as unknown[]) || []).filter(
-        (id): id is string => typeof id === 'string',
-      )
-    : []
+        ? record.intention
+        : '';
+  const mindForToday = typeof responses?.mindForToday === 'string' ? responses.mindForToday : '';
+  const topLevelSelected = Array.isArray(
+    (partsData as { selected_part_ids?: unknown })?.selected_part_ids
+  )
+    ? (
+        ((partsData as { selected_part_ids?: unknown }).selected_part_ids as unknown[]) || []
+      ).filter((id): id is string => typeof id === 'string')
+    : [];
   const parts = Array.isArray(responses?.selectedPartIds)
     ? (responses?.selectedPartIds.filter((id) => typeof id === 'string') as string[])
-    : topLevelSelected
+    : topLevelSelected;
   const generatedPrompt =
     responses && typeof responses.generatedEveningPrompt === 'object'
       ? ((responses.generatedEveningPrompt as { text?: unknown }).text as string | undefined)
-      : undefined
+      : undefined;
 
   const moodSelection =
     emojiRecord && typeof (emojiRecord.mood as { id?: unknown } | undefined)?.id === 'string'
       ? (emojiRecord.mood as { id: string }).id
-      : MOOD_OPTIONS[Math.floor(MOOD_OPTIONS.length / 2)].id
+      : MOOD_OPTIONS[Math.floor(MOOD_OPTIONS.length / 2)].id;
   const energySelection =
     emojiRecord && typeof (emojiRecord.energy as { id?: unknown } | undefined)?.id === 'string'
       ? (emojiRecord.energy as { id: string }).id
-      : ENERGY_OPTIONS[Math.floor(ENERGY_OPTIONS.length / 2)].id
+      : ENERGY_OPTIONS[Math.floor(ENERGY_OPTIONS.length / 2)].id;
   const intentionFocusSelection =
-    emojiRecord && typeof (emojiRecord.intentionFocus as { id?: unknown } | undefined)?.id === 'string'
+    emojiRecord &&
+    typeof (emojiRecord.intentionFocus as { id?: unknown } | undefined)?.id === 'string'
       ? (emojiRecord.intentionFocus as { id: string }).id
-      : INTENTION_FOCUS_OPTIONS[Math.floor(INTENTION_FOCUS_OPTIONS.length / 2)].id
+      : INTENTION_FOCUS_OPTIONS[Math.floor(INTENTION_FOCUS_OPTIONS.length / 2)].id;
 
-  const moodOption = findEmojiOption('mood', moodSelection)
-  const energyOption = findEmojiOption('energy', energySelection)
-  const intentionFocusOption = findEmojiOption('intentionFocus', intentionFocusSelection)
+  const moodOption = findEmojiOption('mood', moodSelection);
+  const energyOption = findEmojiOption('energy', energySelection);
+  const intentionFocusOption = findEmojiOption('intentionFocus', intentionFocusSelection);
 
   return {
     id: record.id as string,
@@ -277,33 +281,34 @@ export async function loadMorningContext(targetDateIso: string): Promise<Morning
       energy: energyOption,
       intentionFocus: intentionFocusOption,
     },
-    generatedPrompt: generatedPrompt && generatedPrompt.length > 0 ? generatedPrompt : DEFAULT_EVENING_PROMPT,
-  }
+    generatedPrompt:
+      generatedPrompt && generatedPrompt.length > 0 ? generatedPrompt : DEFAULT_EVENING_PROMPT,
+  };
 }
 
 export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<SubmissionResult> {
-  const { supabase, userId } = await resolveContextClient()
+  const { supabase, userId } = await resolveContextClient();
 
   if (payload.type === 'morning') {
-    const parsed = morningSchema.safeParse(payload)
+    const parsed = morningSchema.safeParse(payload);
     if (!parsed.success) {
-      throw new Error('Invalid check-in payload')
+      throw new Error('Invalid check-in payload');
     }
 
-    const data = parsed.data
-    const targetDateIso = resolveTargetDate(data.targetDateIso)
-    const mood = findEmojiOption('mood', data.mood)
-    const energy = findEmojiOption('energy', data.energy)
+    const data = parsed.data;
+    const targetDateIso = resolveTargetDate(data.targetDateIso);
+    const mood = findEmojiOption('mood', data.mood);
+    const energy = findEmojiOption('energy', data.energy);
 
     const prompt = await generateEveningPrompt({
       intention: data.intention,
       mindForToday: data.mindForToday ?? '',
       mood,
       energy,
-    })
+    });
 
-    const createdAt = new Date().toISOString()
-    const selectedParts = data.parts ?? []
+    const createdAt = new Date().toISOString();
+    const selectedParts = data.parts ?? [];
 
     const partsData: Record<string, unknown> = {
       selected_part_ids: selectedParts,
@@ -319,7 +324,7 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
           ...(prompt.model ? { model: prompt.model } : {}),
         },
       },
-    }
+    };
 
     const { error, data: inserted } = await supabase
       .from('check_ins')
@@ -335,55 +340,33 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
         somatic_markers: [],
         parts_data: partsData,
       })
-      .select()
+      .select();
 
     if (error) {
-      const pgCode = (error as { code?: string } | null)?.code
+      const pgCode = (error as { code?: string } | null)?.code;
       if (pgCode === '23505') {
-        return { data: inserted ?? [], conflict: true }
+        return { data: inserted ?? [], conflict: true };
       }
-      console.error('Error inserting morning check-in:', error)
-      throw new Error('Failed to save check-in')
+      console.error('Error inserting morning check-in:', error);
+      throw new Error('Failed to save check-in');
     }
 
-    const record = Array.isArray(inserted) && inserted.length > 0 ? (inserted[0] as CheckInRow) : null
-    if (record?.id) {
-      const enqueueResult = await enqueueMemoryUpdate({
-        userId,
-        kind: 'check_in',
-        refId: record.id,
-        payload: {
-          checkInId: record.id,
-          variant: 'morning',
-          date: targetDateIso,
-        },
-        metadata: { source: 'check_in', variant: 'morning' },
-      })
-      if (!enqueueResult.inserted && enqueueResult.error) {
-        console.warn('[check-ins] failed to enqueue morning memory update', {
-          userId,
-          checkInId: record.id,
-          error: enqueueResult.error,
-        })
-      }
-    }
-
-    return { data: inserted ?? [], conflict: false }
+    return { data: inserted ?? [], conflict: false };
   }
 
-  const parsed = eveningSchema.safeParse(payload)
+  const parsed = eveningSchema.safeParse(payload);
   if (!parsed.success) {
-    throw new Error('Invalid check-in payload')
+    throw new Error('Invalid check-in payload');
   }
 
-  const data = parsed.data
-  const targetDateIso = resolveTargetDate(data.targetDateIso)
-  const mood = findEmojiOption('mood', data.mood)
-  const energy = findEmojiOption('energy', data.energy)
-  const reflectionPrompt = data.reflectionPrompt.trim() || DEFAULT_EVENING_PROMPT
-  const selectedParts = data.parts ?? []
-  const wins = data.wins.trim()
-  const gratitude = data.gratitude.trim()
+  const data = parsed.data;
+  const targetDateIso = resolveTargetDate(data.targetDateIso);
+  const mood = findEmojiOption('mood', data.mood);
+  const energy = findEmojiOption('energy', data.energy);
+  const reflectionPrompt = data.reflectionPrompt.trim() || DEFAULT_EVENING_PROMPT;
+  const selectedParts = data.parts ?? [];
+  const wins = data.wins.trim();
+  const gratitude = data.gratitude.trim();
 
   const { data: morningRows } = await supabase
     .from('check_ins')
@@ -392,9 +375,9 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
     .eq('type', 'morning')
     .eq('check_in_date', targetDateIso)
     .order('created_at', { ascending: false })
-    .limit(1)
+    .limit(1);
 
-  const morningRecord = morningRows && morningRows.length > 0 ? morningRows[0] : null
+  const morningRecord = morningRows && morningRows.length > 0 ? morningRows[0] : null;
 
   const partsData: Record<string, unknown> = {
     selected_part_ids: selectedParts,
@@ -408,7 +391,7 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
       selectedPartIds: selectedParts,
       ...(morningRecord?.id ? { links: { morning_check_in_id: morningRecord.id } } : {}),
     },
-  }
+  };
 
   const { error, data: inserted } = await supabase
     .from('check_ins')
@@ -425,54 +408,32 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
       parts_data: partsData,
       somatic_markers: [],
     })
-    .select()
+    .select();
 
   if (error) {
-    const pgCode = (error as { code?: string } | null)?.code
+    const pgCode = (error as { code?: string } | null)?.code;
     if (pgCode === '23505') {
-      return { data: inserted ?? [], conflict: true }
+      return { data: inserted ?? [], conflict: true };
     }
-    console.error('Error inserting evening check-in:', error)
-    throw new Error('Failed to save check-in')
-  }
-
-  const eveningRecord = Array.isArray(inserted) && inserted.length > 0 ? (inserted[0] as CheckInRow) : null
-  if (eveningRecord?.id) {
-    const enqueueResult = await enqueueMemoryUpdate({
-      userId,
-      kind: 'check_in',
-      refId: eveningRecord.id,
-      payload: {
-        checkInId: eveningRecord.id,
-        variant: 'evening',
-        date: targetDateIso,
-      },
-      metadata: { source: 'check_in', variant: 'evening' },
-    })
-    if (!enqueueResult.inserted && enqueueResult.error) {
-      console.warn('[check-ins] failed to enqueue evening memory update', {
-        userId,
-        checkInId: eveningRecord.id,
-        error: enqueueResult.error,
-      })
-    }
+    console.error('Error inserting evening check-in:', error);
+    throw new Error('Failed to save check-in');
   }
 
   if (morningRecord) {
-    const existingPartsData = (morningRecord.parts_data as Record<string, unknown> | null) ?? {}
+    const existingPartsData = (morningRecord.parts_data as Record<string, unknown> | null) ?? {};
     const existingDaily =
       existingPartsData && typeof existingPartsData === 'object'
         ? ((existingPartsData as { daily_responses?: unknown }).daily_responses as
             | Record<string, unknown>
             | undefined)
-        : undefined
+        : undefined;
 
     const existingPrompt =
       existingDaily && typeof existingDaily === 'object' && existingDaily !== null
         ? ((existingDaily as { generatedEveningPrompt?: unknown }).generatedEveningPrompt as
             | Record<string, unknown>
             | undefined)
-        : undefined
+        : undefined;
 
     const updatedMorningPartsData = {
       ...existingPartsData,
@@ -483,43 +444,43 @@ export async function submitCheckIn(payload: CheckInSubmissionPayload): Promise<
           responded_at: new Date().toISOString(),
         },
       },
-    }
+    };
 
     const { error: updateError } = await supabase
       .from('check_ins')
       .update({ parts_data: updatedMorningPartsData })
-      .eq('id', morningRecord.id as string)
+      .eq('id', morningRecord.id as string);
 
     if (updateError) {
-      console.error('Failed to update morning check-in with evening status', updateError)
+      console.error('Failed to update morning check-in with evening status', updateError);
     }
   }
 
-  return { data: inserted ?? [], conflict: false }
+  return { data: inserted ?? [], conflict: false };
 }
 
 export async function loadCheckInOverview(
   targetDateIso: string,
-  timezone?: string,
+  timezone?: string
 ): Promise<CheckInOverviewPayload> {
-  const { supabase, userId } = await resolveContextClient()
-  const normalizedTargetIso = resolveTargetDate(targetDateIso)
+  const { supabase, userId } = await resolveContextClient();
+  const normalizedTargetIso = resolveTargetDate(targetDateIso);
 
   // Fetch user timezone if not provided
-  let userTimezone = timezone
+  let userTimezone = timezone;
   if (!userTimezone) {
     const { data: user } = await supabase
       .from('users')
       .select('settings')
       .eq('id', userId)
-      .single()
-    userTimezone = (user?.settings as UserSettings | null)?.timezone ?? 'America/New_York'
+      .single();
+    userTimezone = (user?.settings as UserSettings | null)?.timezone ?? 'America/New_York';
   }
 
   // Validate timezone and fallback if invalid
   if (!isValidTimezone(userTimezone)) {
-    console.warn(`Invalid timezone: ${userTimezone}, falling back to America/New_York`)
-    userTimezone = 'America/New_York'
+    console.warn(`Invalid timezone: ${userTimezone}, falling back to America/New_York`);
+    userTimezone = 'America/New_York';
   }
 
   const { data, error } = await supabase
@@ -529,42 +490,46 @@ export async function loadCheckInOverview(
     .gte('check_in_date', shiftIsoDate(normalizedTargetIso, -60))
     .lte('check_in_date', normalizedTargetIso)
     .order('check_in_date', { ascending: false })
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Failed to load check-in overview', error)
+    console.error('Failed to load check-in overview', error);
     return {
       morning: { status: 'not_recorded', completed: false },
       evening: { status: 'not_recorded', completed: false },
       streak: 0,
-    }
+    };
   }
 
-  const targetDate = normalizedTargetIso
-  const todayIso = toLocalDateIso(new Date())
-  const isViewingToday = targetDate === todayIso
-  const hour = getCurrentHourInTimezone(userTimezone)
+  const targetDate = normalizedTargetIso;
+  const todayIso = toLocalDateIso(new Date());
+  const isViewingToday = targetDate === todayIso;
+  const hour = getCurrentHourInTimezone(userTimezone);
 
-  const entries = data ?? []
-  const hasMorning = entries.some((row) => row.check_in_date === targetDate && row.type === 'morning')
-  const hasEvening = entries.some((row) => row.check_in_date === targetDate && row.type === 'evening')
+  const entries = data ?? [];
+  const hasMorning = entries.some(
+    (row) => row.check_in_date === targetDate && row.type === 'morning'
+  );
+  const hasEvening = entries.some(
+    (row) => row.check_in_date === targetDate && row.type === 'evening'
+  );
 
   const morningStatus: CheckInOverviewSlot['status'] = (() => {
-    if (hasMorning) return 'completed'
-    if (!isViewingToday) return 'not_recorded'
-    if (hour < MORNING_START_HOUR) return 'upcoming'
-    if (hour >= EVENING_START_HOUR) return 'closed'
-    return 'available'
-  })()
+    if (hasMorning) return 'completed';
+    if (!isViewingToday) return 'not_recorded';
+    if (hour < MORNING_START_HOUR) return 'upcoming';
+    if (hour >= EVENING_START_HOUR) return 'closed';
+    return 'available';
+  })();
 
   const eveningStatus: CheckInOverviewSlot['status'] = (() => {
-    if (hasEvening) return 'completed'
-    if (!isViewingToday) return 'not_recorded'
-    if (hour < EVENING_START_HOUR) return 'locked'
-    return 'available'
-  })()
+    if (hasEvening) return 'completed';
+    if (!isViewingToday) return 'not_recorded';
+    if (hour < EVENING_START_HOUR) return 'locked';
+    return 'available';
+  })();
 
-  const streak = computeStreak(entries, normalizedTargetIso)
+  const streak = computeStreak(entries, normalizedTargetIso);
 
   return {
     morning: {
@@ -578,33 +543,33 @@ export async function loadCheckInOverview(
       availableAt: startHourLabel(EVENING_START_HOUR),
     },
     streak,
-  }
+  };
 }
 
 function computeStreak(entries: Array<{ check_in_date: string }>, targetDateIso: string): number {
-  if (!entries.length) return 0
+  if (!entries.length) return 0;
 
-  const dates = new Set(entries.map((entry) => entry.check_in_date))
-  let streak = 0
-  let cursor = targetDateIso
+  const dates = new Set(entries.map((entry) => entry.check_in_date));
+  let streak = 0;
+  let cursor = targetDateIso;
 
   while (dates.has(cursor)) {
-    streak += 1
-    cursor = shiftIsoDate(cursor, -1)
+    streak += 1;
+    cursor = shiftIsoDate(cursor, -1);
   }
 
-  return streak
+  return streak;
 }
 
 function resolveTargetDate(value?: string): string {
   if (!value) {
-    return toLocalDateIso(new Date())
+    return toLocalDateIso(new Date());
   }
 
   try {
-    return toLocalDateIso(parseIsoDate(value))
+    return toLocalDateIso(parseIsoDate(value));
   } catch {
-    return toLocalDateIso(new Date())
+    return toLocalDateIso(new Date());
   }
 }
 
@@ -613,4 +578,4 @@ export {
   eveningSchema as eveningSubmissionSchema,
   findEmojiOption,
   buildEmojiSnapshot,
-}
+};

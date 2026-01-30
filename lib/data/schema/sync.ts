@@ -1,10 +1,10 @@
-import 'server-only'
+import 'server-only';
 
-import { z } from 'zod'
-import logger from '@/lib/logger'
-import { partCategoryEnum, partStatusEnum, type PartRowV2 } from './types'
-import { assertPrdDeps, type PrdDataDependencies } from './utils'
-import { getPartByIdV2, upsertPartV2 } from './parts'
+import { z } from 'zod';
+import logger from '@/lib/logger';
+import { partCategoryEnum, partStatusEnum, type PartRowV2 } from './types';
+import { assertPrdDeps, type PrdDataDependencies } from './utils';
+import { getPartById as getPartByIdV2, upsertPart as upsertPartV2 } from '@/lib/data/parts/agent';
 
 /**
  * Input for syncing a part from markdown storage to the database
@@ -19,31 +19,31 @@ export const markdownPartSyncInputSchema = z
     evidence: z.array(z.string()).optional(),
     emoji: z.string().nullable().optional(),
   })
-  .strict()
+  .strict();
 
-export type MarkdownPartSyncInput = z.infer<typeof markdownPartSyncInputSchema>
+export type MarkdownPartSyncInput = z.infer<typeof markdownPartSyncInputSchema>;
 
 function toRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {}
+    return {};
   }
-  return value as Record<string, unknown>
+  return value as Record<string, unknown>;
 }
 
 function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
-    return []
+    return [];
   }
   return value
     .map((entry) => (typeof entry === 'string' ? entry.trim() : String(entry ?? '')))
-    .filter((entry) => entry.length > 0)
+    .filter((entry) => entry.length > 0);
 }
 
 function arraysEqual(a: string[], b: string[]): boolean {
   if (a.length !== b.length) {
-    return false
+    return false;
   }
-  return a.every((value, index) => value === b[index])
+  return a.every((value, index) => value === b[index]);
 }
 
 /**
@@ -58,32 +58,36 @@ export async function syncPartFromMarkdown(
   input: MarkdownPartSyncInput,
   deps: PrdDataDependencies
 ): Promise<PartRowV2> {
-  const { client, userId } = assertPrdDeps(deps)
-  const now = new Date().toISOString()
+  const { client, userId } = assertPrdDeps(deps);
+  const now = new Date().toISOString();
 
   // 1. Fetch existing part to compare and merge
-  const existing = await getPartByIdV2(input.partId, { client, userId })
+  const existing = await getPartByIdV2({ partId: input.partId }, { client, userId });
 
   // 2. Prepare merged data
-  const existingData = toRecord(existing?.data)
+  const existingData = toRecord(existing?.data);
 
   const existingRole =
     typeof existingData.role === 'string' && existingData.role.trim().length > 0
       ? existingData.role
-      : null
+      : null;
 
-  const existingEvidence = toStringArray(existingData.recent_evidence)
-  const finalEvidence = Array.isArray(input.evidence) && input.evidence.length > 0
-    ? input.evidence
-    : existingEvidence
+  const existingEvidence = toStringArray(existingData.recent_evidence);
+  const finalEvidence =
+    Array.isArray(input.evidence) && input.evidence.length > 0 ? input.evidence : existingEvidence;
 
-  const existingVisualization = toRecord(existingData.visualization)
+  const existingVisualization = toRecord(existingData.visualization);
   const visualization = {
-    emoji: input.emoji ?? (typeof existingVisualization.emoji === 'string' ? existingVisualization.emoji : '🧩'),
-    color: typeof existingVisualization.color === 'string' ? existingVisualization.color : '#6B7280',
+    emoji:
+      input.emoji ??
+      (typeof existingVisualization.emoji === 'string' ? existingVisualization.emoji : '🧩'),
+    color:
+      typeof existingVisualization.color === 'string' ? existingVisualization.color : '#6B7280',
     energyLevel:
-      typeof existingVisualization.energyLevel === 'number' ? existingVisualization.energyLevel : 0.5,
-  }
+      typeof existingVisualization.energyLevel === 'number'
+        ? existingVisualization.energyLevel
+        : 0.5,
+  };
 
   const updatedData: Record<string, unknown> = {
     ...existingData,
@@ -94,7 +98,7 @@ export async function syncPartFromMarkdown(
       last_synced_at: now,
       source: 'markdown_profile',
     },
-  }
+  };
 
   // 3. Detect meaningful changes for optimization logging
   const hasMeaningfulChanges =
@@ -104,11 +108,12 @@ export async function syncPartFromMarkdown(
     existing.category !== input.category ||
     (input.role !== undefined && (existingRole ?? null) !== (input.role ?? null)) ||
     (input.emoji !== undefined &&
-      (typeof existingVisualization.emoji === 'string' ? existingVisualization.emoji : '🧩') !== visualization.emoji) ||
-    !arraysEqual(finalEvidence, existingEvidence)
+      (typeof existingVisualization.emoji === 'string' ? existingVisualization.emoji : '🧩') !==
+        visualization.emoji) ||
+    !arraysEqual(finalEvidence, existingEvidence);
 
   if (!hasMeaningfulChanges && existing) {
-    logger.info({ partId: input.partId }, '[syncPartFromMarkdown] Part unchanged')
+    logger.info({ partId: input.partId }, '[syncPartFromMarkdown] Part unchanged');
   }
 
   // 4. Upsert
@@ -124,14 +129,14 @@ export async function syncPartFromMarkdown(
     needs_attention: existing?.needs_attention ?? false,
     last_active: now,
     first_noticed: existing?.first_noticed ?? now,
-  }
+  };
 
-  const result = await upsertPartV2(payload, { client, userId })
+  const result = await upsertPartV2(payload, { client, userId });
 
   logger.info(
     { partId: input.partId, name: input.name, action: existing ? 'Updated' : 'Created' },
     '[syncPartFromMarkdown] Part synced'
-  )
+  );
 
-  return result
+  return result;
 }

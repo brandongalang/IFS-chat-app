@@ -1,11 +1,14 @@
-import { createTool } from '@mastra/core'
-import { z } from 'zod'
-import { resolveUserId } from '@/config/dev'
-import { fetchPendingUpdates } from '@/lib/memory/updates'
+import { createTool } from '@mastra/core';
+import { z } from 'zod';
+import { resolveUserId } from '@/config/dev';
 
 const updateSyncInputSchema = z
   .object({
-    userId: z.string().uuid().optional().describe('User ID whose pending updates should be retrieved.'),
+    userId: z
+      .string()
+      .uuid()
+      .optional()
+      .describe('User ID whose pending updates should be retrieved.'),
     limit: z
       .number()
       .int()
@@ -14,44 +17,53 @@ const updateSyncInputSchema = z
       .default(20)
       .describe('Maximum number of updates to return.'),
   })
-  .strict()
+  .strict();
 
-export type UpdateSyncInput = z.infer<typeof updateSyncInputSchema>
+export type UpdateSyncInput = z.infer<typeof updateSyncInputSchema>;
 
 type UpdateSyncRuntime = {
-  userId?: string
-}
+  userId?: string;
+};
 
 function createUpdateSyncTool(defaultUserId?: string) {
   return createTool({
     id: 'updateSync',
-    description: 'Fetches outstanding memory updates that have not yet been summarized. Use before crafting a digest.',
+    description:
+      'Fetches outstanding memory updates that have not yet been summarized. Use before crafting a digest.',
     inputSchema: updateSyncInputSchema,
-    execute: async ({ context, runtime }: { context: UpdateSyncInput; runtime?: UpdateSyncRuntime }) => {
-      const input = updateSyncInputSchema.parse(context)
-      const resolvedUserId = resolveUserId(input.userId ?? runtime?.userId ?? defaultUserId)
-      const updates = await fetchPendingUpdates(resolvedUserId, input.limit)
+    execute: async ({
+      context,
+      runtime,
+    }: {
+      context: UpdateSyncInput;
+      runtime?: UpdateSyncRuntime;
+    }) => {
+      const input = updateSyncInputSchema.parse(context);
+      const resolvedUserId = resolveUserId(input.userId ?? runtime?.userId ?? defaultUserId);
+      // const updates = await fetchPendingUpdates(resolvedUserId, input.limit)
+      // TODO: Fetch pending updates from DB (memory v2 updates removed)
+      const updates: any[] = [];
 
-      return updates.map((update) => ({
+      return updates.map((update: any) => ({
         id: update.id,
         kind: update.kind,
         summary: update.summary,
         createdAt: update.createdAt,
         payload: update.payload,
         metadata: update.metadata,
-      }))
+      }));
     },
-  })
+  });
 }
 
 export function createPendingUpdateTools(userId?: string) {
-  const updateSync = createUpdateSyncTool(userId)
+  const updateSync = createUpdateSyncTool(userId);
 
   return {
     updateSync,
-  }
+  };
 }
 
-export const updateSyncTools = createPendingUpdateTools()
+export const updateSyncTools = createPendingUpdateTools();
 
-export type UpdateSyncTools = ReturnType<typeof createPendingUpdateTools>
+export type UpdateSyncTools = ReturnType<typeof createPendingUpdateTools>;

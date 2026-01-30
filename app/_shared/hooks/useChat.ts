@@ -1,16 +1,23 @@
-'use client'
+'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Dispatch, FormEvent, SetStateAction } from 'react'
-import { DefaultChatTransport, isToolOrDynamicToolUIPart, type UIMessage } from 'ai'
-import { useChat as useAiChat } from '@ai-sdk/react'
-import { useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Dispatch, FormEvent, SetStateAction } from 'react';
+import { DefaultChatTransport, isToolOrDynamicToolUIPart, type UIMessage } from 'ai';
+import { useChat as useAiChat } from '@ai-sdk/react';
+import { useSearchParams } from 'next/navigation';
 
-import { useChatSession } from './useChatSession'
-import { useToast } from './use-toast'
-import { useUser } from '@/context/UserContext'
-import { getPartById } from '@/lib/data/parts-lite'
-import type { Message, TaskEvent, TaskEventMeta, TaskEventUpdate, ToolActivityEntry } from '@/types/chat'
+import { useChatSession } from './useChatSession';
+import { useToast } from './use-toast';
+import { useUser } from '@/context/UserContext';
+import { updatePartServer as updatePart } from '@/lib/data/parts';
+import { getPartById } from '@/lib/data/parts/client';
+import type {
+  Message,
+  TaskEvent,
+  TaskEventMeta,
+  TaskEventUpdate,
+  ToolActivityEntry,
+} from '@/types/chat';
 
 import {
   buildToolTaskUpdate,
@@ -23,48 +30,55 @@ import {
   signatureForToolUpdate,
   toBasicMessage,
   type ToolUIPart,
-} from './useChat.helpers'
+} from './useChat.helpers';
 interface ChatHookReturn {
-  messages: Message[]
-  uiMessages: UIMessage[]
-  input: string
-  setInput: Dispatch<SetStateAction<string>>
-  handleSubmit: (event?: FormEvent<HTMLFormElement> | { preventDefault?: () => void }) => void
-  isLoading: boolean
-  currentStreamingId?: string
-  hasActiveSession: boolean
-  sessionEnded: boolean
-  tasksByMessage: Record<string, TaskEvent[]>
-  sendMessage: (content: string, systemContext?: string) => Promise<boolean>
-  addAssistantMessage: (content: string, opts?: { persist?: boolean; id?: string; persona?: 'claude' | 'default' }) => Promise<void>
-  clearChat: () => void
-  endSession: () => Promise<void>
-  sendFeedback: (messageId: string, rating: 'thumb_up' | 'thumb_down', explanation?: string) => Promise<void>
-  needsAuth: boolean
-  authLoading: boolean
-  error?: Error
+  messages: Message[];
+  uiMessages: UIMessage[];
+  input: string;
+  setInput: Dispatch<SetStateAction<string>>;
+  handleSubmit: (event?: FormEvent<HTMLFormElement> | { preventDefault?: () => void }) => void;
+  isLoading: boolean;
+  currentStreamingId?: string;
+  hasActiveSession: boolean;
+  sessionEnded: boolean;
+  tasksByMessage: Record<string, TaskEvent[]>;
+  sendMessage: (content: string, systemContext?: string) => Promise<boolean>;
+  addAssistantMessage: (
+    content: string,
+    opts?: { persist?: boolean; id?: string; persona?: 'claude' | 'default' }
+  ) => Promise<void>;
+  clearChat: () => void;
+  endSession: () => Promise<void>;
+  sendFeedback: (
+    messageId: string,
+    rating: 'thumb_up' | 'thumb_down',
+    explanation?: string
+  ) => Promise<void>;
+  needsAuth: boolean;
+  authLoading: boolean;
+  error?: Error;
 }
 
 export function useChat(): ChatHookReturn {
-  const searchParams = useSearchParams()
-  const { profile, loading: authLoading } = useUser()
-  const needsAuth = !authLoading && !profile
-  const { toast } = useToast()
+  const searchParams = useSearchParams();
+  const { profile, loading: authLoading } = useUser();
+  const needsAuth = !authLoading && !profile;
+  const { toast } = useToast();
   const {
     ensureSession: ensureSessionRaw,
     persistMessage,
     endSession: endSessionRaw,
     clearSession,
     getSessionId,
-  } = useChatSession()
+  } = useChatSession();
 
-  const [hasActiveSession, setHasActiveSession] = useState<boolean>(Boolean(getSessionId()))
-  const [sessionId, setSessionId] = useState<string | null>(getSessionId())
-  const [sessionEnded, setSessionEnded] = useState(false)
-  const warmupAttemptedRef = useRef(false)
-  const [tasksByMessage, setTasksByMessage] = useState<Record<string, TaskEvent[]>>({})
+  const [hasActiveSession, setHasActiveSession] = useState<boolean>(Boolean(getSessionId()));
+  const [sessionId, setSessionId] = useState<string | null>(getSessionId());
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const warmupAttemptedRef = useRef(false);
+  const [tasksByMessage, setTasksByMessage] = useState<Record<string, TaskEvent[]>>({});
 
-  const transport = useMemo(() => new DefaultChatTransport({ api: '/api/chat' }), [])
+  const transport = useMemo(() => new DefaultChatTransport({ api: '/api/chat' }), []);
 
   const {
     messages: uiMessages,
@@ -76,84 +90,88 @@ export function useChat(): ChatHookReturn {
   } = useAiChat({
     transport,
     onError(error) {
-      console.error('Chat stream error:', error)
+      console.error('Chat stream error:', error);
       toast({
         title: 'Stream failed',
         description: error instanceof Error ? error.message : 'Unknown error',
         variant: 'destructive',
-      })
+      });
     },
     async onFinish({ message }) {
-      const last = message
+      const last = message;
       if (last?.role === 'assistant' && sessionId) {
-        const text = extractText(last)
+        const text = extractText(last);
         if (text) {
-          persistMessage(sessionId, 'assistant', text).catch(() => {})
+          persistMessage(sessionId, 'assistant', text).catch(() => {});
         }
       }
     },
-  })
+  });
 
   const ensureSession = useCallback(async () => {
     if (needsAuth) {
-      const error = new Error('Authentication required')
-      toast({ title: 'Session failed', description: error.message, variant: 'destructive' })
-      throw error
+      const error = new Error('Authentication required');
+      toast({ title: 'Session failed', description: error.message, variant: 'destructive' });
+      throw error;
     }
     try {
-      const id = await ensureSessionRaw()
-      setSessionId(id)
-      setHasActiveSession(true)
-      setSessionEnded(false)
-      return id
+      const id = await ensureSessionRaw();
+      setSessionId(id);
+      setHasActiveSession(true);
+      setSessionEnded(false);
+      return id;
     } catch (error: unknown) {
-      throw error
+      throw error;
     }
-  }, [ensureSessionRaw, needsAuth, toast])
+  }, [ensureSessionRaw, needsAuth, toast]);
 
-  const derivedMessages = useMemo(() => uiMessages.map(toBasicMessage), [uiMessages])
+  const derivedMessages = useMemo(() => uiMessages.map(toBasicMessage), [uiMessages]);
 
-  const [input, setInput] = useState('')
+  const [input, setInput] = useState('');
 
-  const isLoading = status === 'submitted' || status === 'streaming'
+  const isLoading = status === 'submitted' || status === 'streaming';
 
   const currentStreamingId = useMemo(() => {
-    const lastAssistant = [...uiMessages].reverse().find((msg) => msg.role === 'assistant' && isAssistantStreaming(msg))
-    return lastAssistant?.id
-  }, [uiMessages])
+    const lastAssistant = [...uiMessages]
+      .reverse()
+      .find((msg) => msg.role === 'assistant' && isAssistantStreaming(msg));
+    return lastAssistant?.id;
+  }, [uiMessages]);
 
-  const seededRef = useRef(false)
-  const processedTaskParts = useRef<Record<string, { data: Record<string, string>; tool: Record<string, string> }>>({})
+  const seededRef = useRef(false);
+  const processedTaskParts = useRef<
+    Record<string, { data: Record<string, string>; tool: Record<string, string> }>
+  >({});
 
   useEffect(() => {
-    const partId = searchParams.get('partId')
-    if (!partId || seededRef.current || derivedMessages.length > 0 || needsAuth) return
+    const partId = searchParams.get('partId');
+    if (!partId || seededRef.current || derivedMessages.length > 0 || needsAuth) return;
 
     const fetchPartAndStart = async () => {
       try {
-        const part = await getPartById({ partId })
+        const part = await getPartById({ partId });
         if (part) {
-          const partName = part.name ?? 'part'
+          const partName = part.name ?? 'part';
           const message = createTextUiMessage(
             `seed-${partId}`,
             'assistant',
-            `Let's talk about your "${partName}" part. What's on your mind regarding it?`,
-          )
-          setMessages([message])
+            `Let's talk about your "${partName}" part. What's on your mind regarding it?`
+          );
+          setMessages([message]);
         }
       } catch {
         // ignore
       }
-    }
+    };
 
-    seededRef.current = true
-    void fetchPartAndStart()
-  }, [derivedMessages.length, needsAuth, searchParams, setMessages])
+    seededRef.current = true;
+    void fetchPartAndStart();
+  }, [derivedMessages.length, needsAuth, searchParams, setMessages]);
 
   const upsertTaskForMessage = useCallback((messageId: string, evt: TaskEventUpdate) => {
     setTasksByMessage((prev) => {
-      const list = prev[messageId] ?? []
-      const idx = list.findIndex((task) => task.id === evt.id)
+      const list = prev[messageId] ?? [];
+      const idx = list.findIndex((task) => task.id === evt.id);
 
       const mergeTask = (current: TaskEvent | undefined, update: TaskEventUpdate): TaskEvent => {
         const base: TaskEvent = current
@@ -162,91 +180,98 @@ export function useChat(): ChatHookReturn {
               id: update.id,
               title: update.title ?? 'Task',
               status: update.status ?? 'working',
-            }
+            };
 
-        if (update.title !== undefined) base.title = update.title
-        if (update.status !== undefined) base.status = update.status
-        if ('progress' in update) base.progress = update.progress
-        if ('details' in update) base.details = update.details
+        if (update.title !== undefined) base.title = update.title;
+        if (update.status !== undefined) base.status = update.status;
+        if ('progress' in update) base.progress = update.progress;
+        if ('details' in update) base.details = update.details;
 
-        const existingMeta = current?.meta ?? {}
-        const nextMeta = update.meta
+        const existingMeta = current?.meta ?? {};
+        const nextMeta = update.meta;
 
         if (nextMeta || Object.keys(existingMeta).length > 0) {
           const mergedMeta: TaskEventMeta = {
             ...existingMeta,
             ...(nextMeta ?? {}),
-          }
+          };
 
-          const existingLog = Array.isArray(existingMeta.activityLog) ? existingMeta.activityLog : []
-          const incomingLog = Array.isArray(nextMeta?.activityLog) ? nextMeta.activityLog : []
-          const combinedLog = [...incomingLog, ...existingLog]
+          const existingLog = Array.isArray(existingMeta.activityLog)
+            ? existingMeta.activityLog
+            : [];
+          const incomingLog = Array.isArray(nextMeta?.activityLog) ? nextMeta.activityLog : [];
+          const combinedLog = [...incomingLog, ...existingLog];
 
           if (combinedLog.length > 0) {
-            const keyOf = (entry: ToolActivityEntry) => `${entry.toolTitle ?? ''}|${entry.status}|${entry.text}`
+            const keyOf = (entry: ToolActivityEntry) =>
+              `${entry.toolTitle ?? ''}|${entry.status}|${entry.text}`;
             const uniqueLog = combinedLog
               .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
-              .filter((entry, index, arr) => arr.findIndex((candidate) => keyOf(candidate) === keyOf(entry)) === index)
-              .slice(0, 5)
-            mergedMeta.activityLog = uniqueLog
+              .filter(
+                (entry, index, arr) =>
+                  arr.findIndex((candidate) => keyOf(candidate) === keyOf(entry)) === index
+              )
+              .slice(0, 5);
+            mergedMeta.activityLog = uniqueLog;
           }
 
-          mergedMeta.lastUpdated = Date.now()
-          base.meta = mergedMeta
+          mergedMeta.lastUpdated = Date.now();
+          base.meta = mergedMeta;
         }
 
-        return base
-      }
+        return base;
+      };
 
-      const nextList = idx >= 0 ? list.map((task, i) => (i === idx ? mergeTask(task, evt) : task)) : [...list, mergeTask(undefined, evt)]
-      return { ...prev, [messageId]: nextList }
-    })
-  }, [])
+      const nextList =
+        idx >= 0
+          ? list.map((task, i) => (i === idx ? mergeTask(task, evt) : task))
+          : [...list, mergeTask(undefined, evt)];
+      return { ...prev, [messageId]: nextList };
+    });
+  }, []);
 
   const addAssistantMessage = useCallback<ChatHookReturn['addAssistantMessage']>(
     async (content, opts) => {
-      if (needsAuth || !content) return
-      const id = opts?.id ?? `assistant-${Math.random().toString(36).slice(2)}`
-      setMessages((prev) => [...prev, createTextUiMessage(id, 'assistant', content)])
+      if (needsAuth || !content) return;
+      const id = opts?.id ?? `assistant-${Math.random().toString(36).slice(2)}`;
+      setMessages((prev) => [...prev, createTextUiMessage(id, 'assistant', content)]);
 
       if (opts?.persist) {
         try {
-          const id = await ensureSession()
-          await persistMessage(id, 'assistant', content)
+          const id = await ensureSession();
+          await persistMessage(id, 'assistant', content);
         } catch {
           // persistence errors already surfaced via toast
         }
       }
     },
-    [ensureSession, needsAuth, persistMessage, setMessages],
-  )
+    [ensureSession, needsAuth, persistMessage, setMessages]
+  );
 
   const sendMessage = useCallback<ChatHookReturn['sendMessage']>(
     async (content, systemContext) => {
-      const trimmed = content.trim()
+      const trimmed = content.trim();
       // Allow empty content if systemContext is provided (inbox-to-chat bridge)
-      if (!trimmed && !systemContext) return false
-      if (authLoading || needsAuth) return false
+      if (!trimmed && !systemContext) return false;
+      if (authLoading || needsAuth) return false;
 
       if (status === 'streaming') {
-        await stop()
+        await stop();
       }
 
-      let id = sessionId
+      let id = sessionId;
       try {
-        id = await ensureSession()
+        id = await ensureSession();
       } catch (error) {
-        console.error('Failed to start session:', error)
-        return false
+        console.error('Failed to start session:', error);
+        return false;
       }
 
       if (id) {
-        persistMessage(id, 'user', trimmed).catch(() => {})
+        persistMessage(id, 'user', trimmed).catch(() => {});
       }
 
-      const profilePayload = profile
-        ? { ...profile, userId: profile.id }
-        : { name: '', bio: '' }
+      const profilePayload = profile ? { ...profile, userId: profile.id } : { name: '', bio: '' };
 
       await sdkSendMessage(
         { text: trimmed || ' ' }, // Send space if empty (required by AI SDK)
@@ -256,64 +281,74 @@ export function useChat(): ChatHookReturn {
             profile: profilePayload,
             ...(systemContext ? { systemContext } : {}),
           },
-        },
-      )
-      return true
+        }
+      );
+      return true;
     },
-    [authLoading, ensureSession, needsAuth, persistMessage, profile, sdkSendMessage, sessionId, status, stop],
-  )
+    [
+      authLoading,
+      ensureSession,
+      needsAuth,
+      persistMessage,
+      profile,
+      sdkSendMessage,
+      sessionId,
+      status,
+      stop,
+    ]
+  );
 
   useEffect(() => {
-    if (authLoading || needsAuth) return
-    if (warmupAttemptedRef.current) return
-    warmupAttemptedRef.current = true
+    if (authLoading || needsAuth) return;
+    if (warmupAttemptedRef.current) return;
+    warmupAttemptedRef.current = true;
     void ensureSession().catch((error) => {
-      warmupAttemptedRef.current = false
-      console.warn('[chat] warm session failed', error)
-    })
-  }, [authLoading, ensureSession, needsAuth])
+      warmupAttemptedRef.current = false;
+      console.warn('[chat] warm session failed', error);
+    });
+  }, [authLoading, ensureSession, needsAuth]);
 
   const clearChat = useCallback(() => {
-    void stop()
-    setMessages([])
-    setTasksByMessage({})
-    processedTaskParts.current = {}
-    resetMessageTimestamps()
-    setSessionEnded(false)
-  }, [setMessages, stop])
+    void stop();
+    setMessages([]);
+    setTasksByMessage({});
+    processedTaskParts.current = {};
+    resetMessageTimestamps();
+    setSessionEnded(false);
+  }, [setMessages, stop]);
 
   const endSession = useCallback(async () => {
     if (needsAuth) {
-      clearChat()
-      setSessionId(null)
-      setHasActiveSession(false)
-      clearSession()
-      setSessionEnded(true)
-      return
+      clearChat();
+      setSessionId(null);
+      setHasActiveSession(false);
+      clearSession();
+      setSessionEnded(true);
+      return;
     }
 
     try {
-      await endSessionRaw()
-      setSessionEnded(true)
+      await endSessionRaw();
+      setSessionEnded(true);
     } finally {
-      void stop()
-      setSessionId(null)
-      setHasActiveSession(false)
-      clearSession()
+      void stop();
+      setSessionId(null);
+      setHasActiveSession(false);
+      clearSession();
     }
-  }, [clearChat, clearSession, endSessionRaw, needsAuth, stop])
+  }, [clearChat, clearSession, endSessionRaw, needsAuth, stop]);
 
   const sendFeedback = useCallback<ChatHookReturn['sendFeedback']>(
     async (messageId, rating, explanation) => {
-      if (needsAuth) return
-      const id = sessionId ?? getSessionId()
+      if (needsAuth) return;
+      const id = sessionId ?? getSessionId();
       if (!id) {
         toast({
           title: 'Error',
           description: 'No active session to submit feedback for.',
           variant: 'destructive',
-        })
-        return
+        });
+        return;
       }
 
       try {
@@ -321,83 +356,85 @@ export function useChat(): ChatHookReturn {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId: id, messageId, rating, explanation }),
-        })
+        });
 
         if (!res.ok) {
-          throw new Error('Failed to submit feedback')
+          throw new Error('Failed to submit feedback');
         }
 
-        toast({ title: 'Feedback submitted', description: 'Thank you for your feedback!' })
+        toast({ title: 'Feedback submitted', description: 'Thank you for your feedback!' });
       } catch (error) {
-        console.error('Error submitting feedback:', error)
+        console.error('Error submitting feedback:', error);
         toast({
           title: 'Error',
           description: 'Could not submit feedback. Please try again later.',
           variant: 'destructive',
-        })
+        });
       }
     },
-    [getSessionId, needsAuth, sessionId, toast],
-  )
+    [getSessionId, needsAuth, sessionId, toast]
+  );
 
   useEffect(() => {
     uiMessages.forEach((message) => {
-      if (!Array.isArray(message.parts) || message.parts.length === 0) return
+      if (!Array.isArray(message.parts) || message.parts.length === 0) return;
 
-      const cache =
-        processedTaskParts.current[message.id] ??
-        { data: Object.create(null) as Record<string, string>, tool: Object.create(null) as Record<string, string> }
+      const cache = processedTaskParts.current[message.id] ?? {
+        data: Object.create(null) as Record<string, string>,
+        tool: Object.create(null) as Record<string, string>,
+      };
 
       if (!processedTaskParts.current[message.id]) {
-        processedTaskParts.current[message.id] = cache
+        processedTaskParts.current[message.id] = cache;
       }
 
       message.parts.forEach((part, index) => {
         if (isDataUIPart(part)) {
-          const payload = part.data
-          if (!payload || typeof payload !== 'object' || !('taskUpdate' in payload)) return
-          const rawUpdate = (payload as { taskUpdate?: TaskEventUpdate }).taskUpdate
-          if (!rawUpdate || typeof rawUpdate !== 'object' || typeof rawUpdate.id !== 'string') return
+          const payload = part.data;
+          if (!payload || typeof payload !== 'object' || !('taskUpdate' in payload)) return;
+          const rawUpdate = (payload as { taskUpdate?: TaskEventUpdate }).taskUpdate;
+          if (!rawUpdate || typeof rawUpdate !== 'object' || typeof rawUpdate.id !== 'string')
+            return;
 
-          const normalizedUpdate: TaskEventUpdate = { id: rawUpdate.id }
-          if ('title' in rawUpdate) normalizedUpdate.title = rawUpdate.title
-          if ('status' in rawUpdate) normalizedUpdate.status = rawUpdate.status
-          if ('progress' in rawUpdate) normalizedUpdate.progress = rawUpdate.progress
-          if ('details' in rawUpdate) normalizedUpdate.details = rawUpdate.details
-          if ('meta' in rawUpdate) normalizedUpdate.meta = rawUpdate.meta
+          const normalizedUpdate: TaskEventUpdate = { id: rawUpdate.id };
+          if ('title' in rawUpdate) normalizedUpdate.title = rawUpdate.title;
+          if ('status' in rawUpdate) normalizedUpdate.status = rawUpdate.status;
+          if ('progress' in rawUpdate) normalizedUpdate.progress = rawUpdate.progress;
+          if ('details' in rawUpdate) normalizedUpdate.details = rawUpdate.details;
+          if ('meta' in rawUpdate) normalizedUpdate.meta = rawUpdate.meta;
 
-          const signature = signatureForTaskUpdate(normalizedUpdate)
+          const signature = signatureForTaskUpdate(normalizedUpdate);
           if (cache.data[normalizedUpdate.id] !== signature) {
-            cache.data[normalizedUpdate.id] = signature
-            upsertTaskForMessage(message.id, normalizedUpdate)
+            cache.data[normalizedUpdate.id] = signature;
+            upsertTaskForMessage(message.id, normalizedUpdate);
           }
-          return
+          return;
         }
 
         if (isToolOrDynamicToolUIPart(part)) {
-          const toolPart = part as ToolUIPart
-          const update = buildToolTaskUpdate(message.id, toolPart, index)
-          const signature = signatureForToolUpdate(toolPart, update)
+          const toolPart = part as ToolUIPart;
+          const update = buildToolTaskUpdate(message.id, toolPart, index);
+          const signature = signatureForToolUpdate(toolPart, update);
           if (cache.tool[update.id] !== signature) {
-            cache.tool[update.id] = signature
-            upsertTaskForMessage(message.id, update)
+            cache.tool[update.id] = signature;
+            upsertTaskForMessage(message.id, update);
           }
         }
-      })
-    })
-  }, [uiMessages, upsertTaskForMessage])
+      });
+    });
+  }, [uiMessages, upsertTaskForMessage]);
 
   const handleSubmit = useCallback<ChatHookReturn['handleSubmit']>(
     (event) => {
-      event?.preventDefault?.()
-      const currentInput = input.trim()
-      if (!currentInput || isLoading) return
+      event?.preventDefault?.();
+      const currentInput = input.trim();
+      if (!currentInput || isLoading) return;
 
-      setInput('')
-      void sendMessage(currentInput)
+      setInput('');
+      void sendMessage(currentInput);
     },
-    [input, isLoading, sendMessage],
-  )
+    [input, isLoading, sendMessage]
+  );
 
   return {
     messages: derivedMessages,
@@ -418,5 +455,5 @@ export function useChat(): ChatHookReturn {
     needsAuth,
     authLoading,
     error,
-  }
+  };
 }
