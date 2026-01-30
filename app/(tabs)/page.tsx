@@ -2,30 +2,22 @@
 
 import { useState } from 'react'
 import { GuardedLink } from '@/components/common/GuardedLink'
-import { PageContainer } from '@/components/common/PageContainer'
 import PersonaSwitcher from '@/components/dev/PersonaSwitcher'
-import { showDevToggle, isInboxEnabled, isNewUIEnabled } from '@/config/features'
-import { CheckInSlots } from '@/components/home/CheckInSlots'
-import { WeekSelector } from '@/components/home/WeekSelector'
+import { showDevToggle, isInboxEnabled } from '@/config/features'
+import { CheckInCardsHeadspace } from '@/components/home/CheckInCardsHeadspace'
+import { WeekCalendarHeadspace } from '@/components/home/WeekCalendarHeadspace'
 import { useUser } from '@/context/UserContext'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Inbox } from '@/components/inbox/Inbox'
-import { User as UserIcon } from 'lucide-react'
-import { HomePageNew } from './page-new'
+import { useDailyCheckIns } from '@/hooks/useDailyCheckIns'
 
 export default function HomePage() {
-  const newUI = isNewUIEnabled()
-  
-  // Always call hooks - they must be called unconditionally
   const [selectedDate, setSelectedDate] = useState(new Date())
   const { profile } = useUser()
-
-  if (newUI) {
-    return <HomePageNew />
-  }
-
-  // Original UI
+  const { streak } = useDailyCheckIns(selectedDate)
+  
   const trimmedName = profile?.name?.trim()
+  const firstName = trimmedName?.split(' ')[0] || ''
   const avatarAlt = trimmedName ? `${trimmedName}'s avatar` : 'User avatar'
   const userInitial = trimmedName?.match(/\p{L}|\p{N}/u)?.[0]?.toUpperCase() ?? null
 
@@ -34,112 +26,107 @@ export default function HomePage() {
   // Get current time for greeting
   const now = new Date()
   const hour = now.getHours()
-  const greeting = hour < 12 ? 'good morning.' : hour < 17 ? 'good afternoon.' : 'good evening.'
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const dateString = now.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric'
+  })
 
   return (
-    <div
-      className="min-h-screen text-foreground flex flex-col"
-      style={{
-        color: 'rgba(255,255,255,var(--eth-user-opacity))',
-        letterSpacing: 'var(--eth-letter-spacing-user)',
-      }}
-    >
+    <div className="min-h-screen bg-[var(--hs-bg)] flex flex-col hs-animate-in">
       {/* Header */}
-      <header className="pt-6 pb-2">
-        <PageContainer>
-          <div
-            className="flex items-center justify-between text-sm"
-            style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.75))' }}
-          >
-            <span className="font-medium" style={{ color: 'rgba(255,255,255,var(--eth-user-opacity))' }}>{greeting}</span>
-            <GuardedLink
-              href="/profile"
-              aria-label="Open profile"
-              title={trimmedName || 'Profile'}
-              className="h-8 w-8 rounded-full border border-border/40 bg-card/20 backdrop-blur flex items-center justify-center overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-            >
-              <Avatar className="h-full w-full bg-card/40">
-                {profile?.avatarUrl ? (
-                  <AvatarImage src={profile.avatarUrl} alt={avatarAlt} decoding="async" />
-                ) : null}
-                <AvatarFallback
-                  aria-hidden="true"
-                  className="flex items-center justify-center bg-transparent text-[10px] font-medium uppercase text-foreground/70"
-                >
-                  {userInitial ?? <UserIcon aria-hidden="true" className="h-4 w-4" />}
-                </AvatarFallback>
-              </Avatar>
-            </GuardedLink>
-          </div>
-          <div className="mt-2 flex items-center gap-2">
-            {showDevToggle && (
-              <button
-                type="button"
-                className="text-xs underline"
-                style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.7))' }}
-                onClick={() => {
-                  try {
-                    localStorage.setItem('IFS_DEV_MODE', 'true')
-                  } catch {}
-                  location.reload()
-                }}
-              >
-                Enable Dev Mode
-              </button>
+      <header className="pt-12 pb-6 px-5">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            {/* Date */}
+            <p className="text-sm font-medium text-[var(--hs-text-secondary)] mb-1">
+              {dateString}
+            </p>
+
+            {/* Greeting */}
+            <h1 className="text-[28px] font-bold text-[var(--hs-text-primary)] leading-tight">
+              {greeting}{firstName ? `, ${firstName}` : ''}
+            </h1>
+
+            {/* Streak indicator */}
+            {streak > 0 && (
+              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--hs-warm-muted)]">
+                <span className="text-lg">🔥</span>
+                <span className="text-sm font-semibold text-[var(--hs-warm-dark)]">
+                  {streak} day streak
+                </span>
+              </div>
             )}
+          </div>
+
+          {/* Avatar */}
+          <GuardedLink
+            href="/profile"
+            aria-label="Open profile"
+            title={trimmedName || 'Profile'}
+            className="h-12 w-12 rounded-full overflow-hidden ring-2 ring-[var(--hs-border-subtle)] ring-offset-2 ring-offset-[var(--hs-bg)] focus-visible:outline-none focus-visible:ring-[var(--hs-primary)]"
+          >
+            <Avatar className="h-full w-full">
+              {profile?.avatarUrl ? (
+                <AvatarImage src={profile.avatarUrl} alt={avatarAlt} decoding="async" />
+              ) : null}
+              <AvatarFallback
+                aria-hidden="true"
+                className="flex items-center justify-center bg-[var(--hs-primary-muted)] text-base font-semibold text-[var(--hs-primary)]"
+              >
+                {userInitial ?? (
+                  <span className="material-symbols-outlined text-xl">person</span>
+                )}
+              </AvatarFallback>
+            </Avatar>
+          </GuardedLink>
+        </div>
+
+        {/* Dev toggle */}
+        {showDevToggle && (
+          <div className="mt-4 flex items-center gap-2">
+            <button
+              type="button"
+              className="text-xs underline text-[var(--hs-text-tertiary)] hover:text-[var(--hs-text-secondary)]"
+              onClick={() => {
+                try {
+                  localStorage.setItem('IFS_DEV_MODE', 'true')
+                } catch {}
+                location.reload()
+              }}
+            >
+              Enable Dev Mode
+            </button>
             <div className="ml-auto">
               <PersonaSwitcher />
             </div>
           </div>
-        </PageContainer>
+        )}
       </header>
 
-      {/* Week Selector with Streak System */}
-      <PageContainer className="mt-2">
-        <WeekSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
-      </PageContainer>
+      <main className="flex-1 px-5 pb-8 flex flex-col gap-6">
+        {/* Week Calendar */}
+        <section>
+          <WeekCalendarHeadspace
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
+          />
+        </section>
 
-      {/* Action cards */}
-      <main className="flex-1 py-6">
-        <PageContainer className="grid grid-cols-2 gap-3">
-          <CheckInSlots selectedDate={selectedDate} />
+        {/* Daily Journey Section */}
+        <section>
+          <h2 className="hs-section-title mb-4 px-1">Your daily journey</h2>
+          <CheckInCardsHeadspace selectedDate={selectedDate} />
+        </section>
 
-          {inboxEnabled ? <Inbox className="col-span-2" /> : <DailyMeditationsCard />}
-        </PageContainer>
+        {/* Inbox Section */}
+        {inboxEnabled && (
+          <section>
+            <Inbox />
+          </section>
+        )}
       </main>
-    </div>
-  )
-}
-
-function DailyMeditationsCard() {
-  return (
-    <div className="col-span-2 mt-2 rounded-xl border border-border/40 bg-card/20 p-4 backdrop-blur">
-      <div
-        className="text-xs font-semibold"
-        style={{
-          color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.75))',
-          letterSpacing: 'var(--eth-letter-spacing-user)',
-        }}
-      >
-        DAILY MEDITATIONS
-      </div>
-      <div className="mt-3 text-sm">
-        <blockquote className="italic">
-          &ldquo;So whatever you want to do, just do it… Making a damn fool of yourself is absolutely essential.&rdquo;
-        </blockquote>
-        <div
-          className="mt-2 text-xs"
-          style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.65))' }}
-        >
-          — Gloria Steinem
-        </div>
-      </div>
-      <div
-        className="mt-3 text-xs"
-        style={{ color: 'rgba(255,255,255,calc(var(--eth-user-opacity)*0.65))' }}
-      >
-        Tap to explore more insights
-      </div>
     </div>
   )
 }
