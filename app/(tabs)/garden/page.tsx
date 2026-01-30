@@ -1,56 +1,54 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { searchPartsV2 } from '@/lib/data/parts-lite'
-import type { PartRowV2 } from '@/lib/data/schema/types'
-import { PartsList } from '@/components/garden/PartsList'
-import { MaterialIcon } from '@/components/ui/MaterialIcon'
-import Link from 'next/link'
+import { useState, useEffect } from 'react';
+import { searchPartsV2 } from '@/lib/data/parts';
+import type { PartRowV2 } from '@/lib/data/schema/types';
+import { PartsList } from '@/components/garden/PartsList';
+import { MaterialIcon } from '@/components/ui/MaterialIcon';
+import Link from 'next/link';
 
 export default function GardenPage() {
-  const [parts, setParts] = useState<PartRowV2[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [parts, setParts] = useState<PartRowV2[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    let isActive = true
+    let isActive = true;
 
     async function fetchPartsData() {
       try {
-        const partsResult = await searchPartsV2({ limit: 50 })
-        if (!isActive) return
+        const partsResult = await searchPartsV2({ limit: 50 });
+        if (!isActive) return;
 
         if (partsResult && Array.isArray(partsResult)) {
-          setParts(partsResult)
-          setError(null)
+          setParts(partsResult);
+          setError(null);
         } else {
-          throw new Error('Failed to load parts.')
+          throw new Error('Failed to load parts.');
         }
       } catch (e) {
-        if (!isActive) return
-        const message = e instanceof Error ? e.message : 'Failed to load parts.'
-        setError(message)
+        if (!isActive) return;
+        const message = e instanceof Error ? e.message : 'Failed to load parts.';
+        setError(message);
       } finally {
         if (isActive) {
-          setIsLoading(false)
+          setIsLoading(false);
         }
       }
     }
 
-    setIsLoading(true)
-    fetchPartsData()
+    setIsLoading(true);
+    fetchPartsData();
 
     return () => {
-      isActive = false
-    }
-  }, [])
+      isActive = false;
+    };
+  }, []);
 
   const filteredParts = searchQuery
-    ? parts.filter((part) =>
-        part.name?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : parts
+    ? parts.filter((part) => part.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+    : parts;
 
   return (
     <div className="min-h-screen bg-[var(--hs-bg)] flex flex-col hs-animate-in">
@@ -72,10 +70,7 @@ export default function GardenPage() {
       <div className="px-5 pb-4">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <MaterialIcon
-              name="search"
-              className="text-xl text-[var(--hs-text-tertiary)]"
-            />
+            <MaterialIcon name="search" className="text-xl text-[var(--hs-text-tertiary)]" />
           </div>
           <input
             type="search"
@@ -92,9 +87,7 @@ export default function GardenPage() {
         {error && (
           <div className="hs-card p-6 text-center border border-red-200 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10">
             <MaterialIcon name="error" className="text-3xl text-red-500 mb-2" />
-            <p className="text-sm text-red-600 dark:text-red-400">
-              Could not load garden: {error}
-            </p>
+            <p className="text-sm text-red-600 dark:text-red-400">Could not load garden: {error}</p>
           </div>
         )}
 
@@ -116,5 +109,5 @@ export default function GardenPage() {
         </Link>
       </div>
     </div>
-  )
+  );
 }

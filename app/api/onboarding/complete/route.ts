@@ -7,7 +7,6 @@ import { completeOnboardingState } from '@/lib/onboarding/complete-state';
 // Removed markdown synthesis in favor of PRD observation write
 import { buildCompletionResponse } from '@/lib/onboarding/build-completion-response';
 import { buildOnboardingSummary } from '@/lib/onboarding/summary';
-import { enqueueMemoryUpdate } from '@/lib/memory/queue';
 import { track } from '@/lib/analytics';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/types/database';
@@ -27,10 +26,11 @@ const onboardingQuestions: OnboardingQuestion[] = OnboardingQuestionSchema.array
 );
 
 const onboardingQuestionsById = new Map<string, OnboardingQuestion>(
-  onboardingQuestions.map(question => [question.id, question])
+  onboardingQuestions.map((question) => [question.id, question])
 );
 
-const getRequiredQuestionIds = (stage: number): string[] => onboardingRequirements[String(stage)] ?? [];
+const getRequiredQuestionIds = (stage: number): string[] =>
+  onboardingRequirements[String(stage)] ?? [];
 
 /**
  * POST /api/onboarding/complete
@@ -46,8 +46,10 @@ const getRequiredQuestionIds = (stage: number): string[] => onboardingRequiremen
 export async function POST(request: NextRequest) {
   try {
     const supabase = await getUserClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) {
       return errorResponse('Unauthorized', HTTP_STATUS.UNAUTHORIZED);
     }
@@ -57,10 +59,13 @@ export async function POST(request: NextRequest) {
     const validationResult = validateCompletionRequest(body);
 
     if (!validationResult.success) {
-      return jsonResponse({
-        error: 'Invalid request',
-        details: validationResult.issues,
-      }, HTTP_STATUS.BAD_REQUEST);
+      return jsonResponse(
+        {
+          error: 'Invalid request',
+          details: validationResult.issues,
+        },
+        HTTP_STATUS.BAD_REQUEST
+      );
     }
 
     const { version } = validationResult.data;
@@ -86,19 +91,25 @@ export async function POST(request: NextRequest) {
 
     // Version conflict check
     if (userState.version !== version) {
-      return jsonResponse({
-        error: 'Version conflict - state has been updated',
-        current_version: userState.version
-      }, HTTP_STATUS.CONFLICT);
+      return jsonResponse(
+        {
+          error: 'Version conflict - state has been updated',
+          current_version: userState.version,
+        },
+        HTTP_STATUS.CONFLICT
+      );
     }
 
     // Validate completion requirements
     const completionValidation = await validateOnboardingCompletion(supabase, user.id);
     if (!completionValidation.valid) {
-      return jsonResponse({
-        error: 'Onboarding not complete',
-        missing: completionValidation.missing
-      }, HTTP_STATUS.BAD_REQUEST);
+      return jsonResponse(
+        {
+          error: 'Onboarding not complete',
+          missing: completionValidation.missing,
+        },
+        HTTP_STATUS.BAD_REQUEST
+      );
     }
 
     // Mark as completed
@@ -110,23 +121,7 @@ export async function POST(request: NextRequest) {
     }
 
     const onboardingRefId = typeof userState.id === 'string' ? userState.id : user.id;
-    const enqueueResult = await enqueueMemoryUpdate({
-      userId: user.id,
-      kind: 'onboarding',
-      refId: onboardingRefId,
-      payload: {
-        onboardingId: onboardingRefId,
-        completedAt: completionResult.completedAt,
-      },
-      metadata: { source: 'onboarding_complete' },
-    });
-    if (!enqueueResult.inserted && enqueueResult.error) {
-      console.warn('[onboarding] failed to enqueue memory update', {
-        userId: user.id,
-        onboardingId: onboardingRefId,
-        error: enqueueResult.error,
-      });
-    }
+    // TODO: Enqueue memory update (memory v2 queue removed)
 
     track('onboarding_completed', {
       userId: user.id,
@@ -146,12 +141,12 @@ export async function POST(request: NextRequest) {
         '',
         'Stage 1 themes:',
         ...(summary.themes.length
-          ? summary.themes.map(theme => `- ${theme.label} (${theme.score}%)`)
+          ? summary.themes.map((theme) => `- ${theme.label} (${theme.score}%)`)
           : ['- none recorded']),
         '',
         'Stage 2 protector hypotheses:',
         ...(summary.parts.length
-          ? summary.parts.map(part => `- ${part.name}: ${part.evidence} — ${part.intention}`)
+          ? summary.parts.map((part) => `- ${part.name}: ${part.evidence} — ${part.intention}`)
           : ['- none recorded']),
         '',
         'Stage 3 reflections:',
@@ -197,7 +192,6 @@ export async function POST(request: NextRequest) {
     }
 
     return buildCompletionResponse(completionResult.completedAt, { summary });
-
   } catch (error) {
     console.error('Unexpected error in completion route:', error);
     return errorResponse('Internal server error', HTTP_STATUS.INTERNAL_SERVER_ERROR);
@@ -228,7 +222,10 @@ async function loadQuestionAnswerEntries(
 
     if (error || !data) {
       if (error) {
-        console.warn('[onboarding] failed to fetch question responses for observation metadata', error);
+        console.warn(
+          '[onboarding] failed to fetch question responses for observation metadata',
+          error
+        );
       }
       return [];
     }
@@ -289,7 +286,9 @@ function formatAnswerForObservation(
       if (response.values.length === 0) {
         return { text: '', labels: [] };
       }
-      const labels = response.values.map(value => resolveOptionLabel(question, value)).filter(Boolean);
+      const labels = response.values
+        .map((value) => resolveOptionLabel(question, value))
+        .filter(Boolean);
       const text = labels.length ? labels.join(', ') : response.values.join(', ');
       return { text, labels };
     }
@@ -308,7 +307,7 @@ function formatAnswerForObservation(
 
 function resolveOptionLabel(question: OnboardingQuestion | undefined, value: string): string {
   if (!question?.options) return value;
-  const option = question.options.find(opt => opt.value === value);
+  const option = question.options.find((opt) => opt.value === value);
   return option?.label ?? value;
 }
 
@@ -316,7 +315,7 @@ function resolveOptionLabel(question: OnboardingQuestion | undefined, value: str
  * Validates that all required onboarding responses are present
  */
 async function validateOnboardingCompletion(
-  supabase: SupabaseClient<Database>, 
+  supabase: SupabaseClient<Database>,
   userId: string
 ): Promise<{ valid: boolean; missing: string[] }> {
   const missing: string[] = [];
@@ -335,7 +334,7 @@ async function validateOnboardingCompletion(
     } else {
       const requiredS1 = getRequiredQuestionIds(1);
       const existingS1 = (stage1Responses ?? []).map((r: { question_id: string }) => r.question_id);
-      const missingS1 = requiredS1.filter(qId => !existingS1.includes(qId));
+      const missingS1 = requiredS1.filter((qId) => !existingS1.includes(qId));
       missing.push(...missingS1);
     }
 
@@ -352,8 +351,10 @@ async function validateOnboardingCompletion(
     } else {
       const requiredS2 = getRequiredQuestionIds(2);
       if (requiredS2.length > 0) {
-        const existingS2 = (stage2Responses ?? []).map((r: { question_id: string }) => r.question_id);
-        const missingS2 = requiredS2.filter(qId => !existingS2.includes(qId));
+        const existingS2 = (stage2Responses ?? []).map(
+          (r: { question_id: string }) => r.question_id
+        );
+        const missingS2 = requiredS2.filter((qId) => !existingS2.includes(qId));
         missing.push(...missingS2);
       } else {
         const responseCount = stage2Responses?.length ?? 0;
@@ -376,10 +377,9 @@ async function validateOnboardingCompletion(
     } else {
       const requiredS3 = getRequiredQuestionIds(3);
       const existingS3 = (stage3Responses ?? []).map((r: { question_id: string }) => r.question_id);
-      const missingS3 = requiredS3.filter(qId => !existingS3.includes(qId));
+      const missingS3 = requiredS3.filter((qId) => !existingS3.includes(qId));
       missing.push(...missingS3);
     }
-
   } catch (error) {
     console.error('Error in completion validation:', error);
     missing.push('validation_failed');
@@ -387,6 +387,6 @@ async function validateOnboardingCompletion(
 
   return {
     valid: missing.length === 0,
-    missing
+    missing,
   };
 }

@@ -7,4 +7,4 @@ export {
   getPartRelationshipsSchema,
   getPartNotesSchema,
   logRelationshipSchema,
-} from '@/lib/data/parts.schema'
+} from '@/lib/data/parts';

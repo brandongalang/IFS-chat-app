@@ -4,70 +4,72 @@
  * All new code should use runUnifiedInboxEngine and related functions.
  */
 
-import { createHash } from 'node:crypto'
+import { createHash } from 'node:crypto';
 
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { Database, InboxObservationStatus } from '@/lib/types/database'
+import type { Database, InboxObservationStatus } from '@/lib/types/database';
 import {
   observationBatchSchema,
   type ObservationBatch,
   type ObservationCandidate,
   type ObservationEvidence,
-} from './observation-schema'
-import type { InboxObservationAgent, InboxObservationAgentRunResult } from '@/mastra/agents/inbox-observation'
+} from './observation-schema';
+import type {
+  InboxObservationAgent,
+  InboxObservationAgentRunResult,
+} from '@/mastra/agents/inbox-observation';
 import {
   getInboxQueueSnapshot,
   getRecentObservationHistory,
   type InboxQueueSnapshot,
   type ObservationHistoryEntry,
-} from '@/lib/data/inbox-queue'
+} from '@/lib/data/inbox-queue';
 import {
   getCheckInDetail,
   getSessionDetail,
-  readMarkdown,
   type CheckInDetail,
   type SessionDetail,
-} from '@/lib/inbox/search'
+} from '@/lib/inbox/search';
 
-type Supabase = SupabaseClient<Database>
+type Supabase = SupabaseClient<Database>;
 
 export interface ObservationEngineOptions {
-  supabase: Supabase
-  agent: InboxObservationAgent
-  userId: string
-  queueLimit?: number
-  dedupeWindowDays?: number
-  now?: Date
-  metadata?: Record<string, unknown>
-  traceResolvers?: Partial<ObservationTraceResolvers> | null
+  supabase: Supabase;
+  agent: InboxObservationAgent;
+  userId: string;
+  queueLimit?: number;
+  dedupeWindowDays?: number;
+  now?: Date;
+  metadata?: Record<string, unknown>;
+  traceResolvers?: Partial<ObservationTraceResolvers> | null;
   telemetry?: {
-    enabled?: boolean
-    runId?: string
-  }
+    enabled?: boolean;
+    runId?: string;
+  };
 }
 
 export interface InsertedObservationSummary {
-  id: string
-  title: string
-  semanticHash: string | null
-  status: InboxObservationStatus
-  createdAt: string
+  id: string;
+  title: string;
+  semanticHash: string | null;
+  status: InboxObservationStatus;
+  createdAt: string;
 }
 
-export type ObservationEngineStatus = 'success' | 'skipped' | 'error'
+export type ObservationEngineStatus = 'success' | 'skipped' | 'error';
 
 export interface ObservationEngineResult {
-  status: ObservationEngineStatus
-  queue: InboxQueueSnapshot
-  inserted: InsertedObservationSummary[]
-  reason?: string
-  historyCount: number
-  error?: Error
+  status: ObservationEngineStatus;
+  queue: InboxQueueSnapshot;
+  inserted: InsertedObservationSummary[];
+  reason?: string;
+  historyCount: number;
+  error?: Error;
 }
 
-const DEFAULT_QUEUE_LIMIT = 3
-const DEFAULT_LOOKBACK_DAYS = 14
+const DEFAULT_QUEUE_LIMIT = 3;
+const DEFAULT_LOOKBACK_DAYS = 14;
 
 const QUESTION_INTERROGATIVE_WORDS = new Set([
   'how',
@@ -77,7 +79,7 @@ const QUESTION_INTERROGATIVE_WORDS = new Set([
   'where',
   'which',
   'who',
-])
+]);
 
 const QUESTION_AUXILIARY_WORDS = new Set([
   'am',
@@ -99,7 +101,7 @@ const QUESTION_AUXILIARY_WORDS = new Set([
   'were',
   'will',
   'would',
-])
+]);
 
 const QUESTION_PRONOUNS = new Set([
   'i',
@@ -125,37 +127,52 @@ const QUESTION_PRONOUNS = new Set([
   'them',
   'us',
   'there',
-])
+]);
 
-type ObservationCandidateWithHash = ObservationCandidate & { semanticHash: string }
+type ObservationCandidateWithHash = ObservationCandidate & { semanticHash: string };
 
 interface ObservationTrace {
-  markdown?: Array<{ path: string; snippet?: string; hasMore?: boolean; error?: string }>
-  sessions?: Array<{ sessionId: string; summary: string | null; messageCount: number; hasMore: boolean; error?: string }>
-  checkIns?: Array<{ checkInId: string; type: string | null; date: string | null; intention: string | null; reflection: string | null; error?: string }>
+  markdown?: Array<{ path: string; snippet?: string; hasMore?: boolean; error?: string }>;
+  sessions?: Array<{
+    sessionId: string;
+    summary: string | null;
+    messageCount: number;
+    hasMore: boolean;
+    error?: string;
+  }>;
+  checkIns?: Array<{
+    checkInId: string;
+    type: string | null;
+    date: string | null;
+    intention: string | null;
+    reflection: string | null;
+    error?: string;
+  }>;
 }
 
 interface ObservationTraceResolvers {
-  readMarkdown: typeof readMarkdown
-  getSessionDetail: typeof getSessionDetail
-  getCheckInDetail: typeof getCheckInDetail
+  getSessionDetail: typeof getSessionDetail;
+  getCheckInDetail: typeof getCheckInDetail;
 }
 
 const defaultTraceResolvers: ObservationTraceResolvers = {
-  readMarkdown,
   getSessionDetail,
   getCheckInDetail,
-}
+};
 
-export async function runObservationEngine(options: ObservationEngineOptions): Promise<ObservationEngineResult> {
-  const { supabase, agent, userId } = options
-  const queueLimit = options.queueLimit && options.queueLimit > 0 ? options.queueLimit : DEFAULT_QUEUE_LIMIT
-  const lookbackDays = options.dedupeWindowDays && options.dedupeWindowDays > 0
-    ? options.dedupeWindowDays
-    : DEFAULT_LOOKBACK_DAYS
-  const now = options.now ?? new Date()
+export async function runObservationEngine(
+  options: ObservationEngineOptions
+): Promise<ObservationEngineResult> {
+  const { supabase, agent, userId } = options;
+  const queueLimit =
+    options.queueLimit && options.queueLimit > 0 ? options.queueLimit : DEFAULT_QUEUE_LIMIT;
+  const lookbackDays =
+    options.dedupeWindowDays && options.dedupeWindowDays > 0
+      ? options.dedupeWindowDays
+      : DEFAULT_LOOKBACK_DAYS;
+  const now = options.now ?? new Date();
 
-  const queue = await getInboxQueueSnapshot(supabase, userId, { limit: queueLimit })
+  const queue = await getInboxQueueSnapshot(supabase, userId, { limit: queueLimit });
   if (options.telemetry?.enabled) {
     await supabase.from('inbox_observation_telemetry').insert({
       user_id: userId,
@@ -168,7 +185,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         limit: queue.limit,
         hasCapacity: queue.hasCapacity,
       },
-    })
+    });
   }
   if (!queue.hasCapacity) {
     return {
@@ -177,10 +194,10 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
       inserted: [],
       reason: 'queue_full',
       historyCount: 0,
-    }
+    };
   }
 
-  const history = await getRecentObservationHistory(supabase, userId, { lookbackDays })
+  const history = await getRecentObservationHistory(supabase, userId, { lookbackDays });
   if (options.telemetry?.enabled) {
     await supabase.from('inbox_observation_telemetry').insert({
       user_id: userId,
@@ -190,10 +207,12 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         runId: options.telemetry?.runId ?? null,
         historyCount: history.length,
       },
-    })
+    });
   }
-  const historyHashes = new Set(history.map((entry) => entry.semanticHash).filter(Boolean) as string[])
-  const remaining = Math.min(queue.available, queueLimit)
+  const historyHashes = new Set(
+    history.map((entry) => entry.semanticHash).filter(Boolean) as string[]
+  );
+  const remaining = Math.min(queue.available, queueLimit);
 
   if (remaining <= 0) {
     return {
@@ -202,21 +221,21 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
       inserted: [],
       reason: 'queue_full',
       historyCount: history.length,
-    }
+    };
   }
 
-  const prompt = buildAgentPrompt({ userId, history, remaining, now })
+  const prompt = buildAgentPrompt({ userId, history, remaining, now });
 
-  let agentRun: InboxObservationAgentRunResult
+  let agentRun: InboxObservationAgentRunResult;
   try {
-    const agentStartedAt = Date.now()
+    const agentStartedAt = Date.now();
     if (options.telemetry?.enabled) {
       await supabase.from('inbox_observation_telemetry').insert({
         user_id: userId,
         tool: 'inbox_agent.invoke',
         duration_ms: 0,
         metadata: { runId: options.telemetry?.runId ?? null },
-      })
+      });
     }
     agentRun = await agent.run({
       input: prompt,
@@ -225,7 +244,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         maxObservations: remaining,
         metadata: options.metadata ?? {},
       },
-    })
+    });
     if (options.telemetry?.enabled) {
       await supabase.from('inbox_observation_telemetry').insert({
         user_id: userId,
@@ -236,7 +255,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
           status: agentRun?.status ?? 'unknown',
           hasOutput: Boolean(agentRun?.output),
         },
-      })
+      });
     }
   } catch (error) {
     if (options.telemetry?.enabled) {
@@ -246,7 +265,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         duration_ms: 0,
         metadata: { runId: options.telemetry?.runId ?? null },
         error: error instanceof Error ? error.message : 'unknown agent failure',
-      })
+      });
     }
     return {
       status: 'error',
@@ -255,7 +274,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
       reason: 'agent_failure',
       historyCount: history.length,
       error: error instanceof Error ? error : new Error('Unknown agent failure'),
-    }
+    };
   }
 
   if (!agentRun || agentRun.status !== 'success' || !agentRun.output) {
@@ -265,12 +284,12 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
       inserted: [],
       reason: 'agent_empty',
       historyCount: history.length,
-    }
+    };
   }
 
-  const parsed = observationBatchSchema.safeParse(agentRun.output)
+  const parsed = observationBatchSchema.safeParse(agentRun.output);
   if (!parsed.success) {
-    const error = new Error('Failed to parse observation agent output')
+    const error = new Error('Failed to parse observation agent output');
     if (options.telemetry?.enabled) {
       await supabase.from('inbox_observation_telemetry').insert({
         user_id: userId,
@@ -278,7 +297,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         duration_ms: 0,
         metadata: { runId: options.telemetry?.runId ?? null },
         error: error.message,
-      })
+      });
     }
     return {
       status: 'error',
@@ -287,11 +306,11 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
       reason: 'invalid_agent_payload',
       historyCount: history.length,
       error,
-    }
+    };
   }
 
-  const candidates = parsed.data.observations
-  const filtered = filterObservationCandidates(candidates, historyHashes, remaining)
+  const candidates = parsed.data.observations;
+  const filtered = filterObservationCandidates(candidates, historyHashes, remaining);
   if (options.telemetry?.enabled) {
     await supabase.from('inbox_observation_telemetry').insert({
       user_id: userId,
@@ -303,25 +322,24 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         filteredCount: filtered.length,
         remaining,
       },
-    })
+    });
   }
 
-  const traceResolvers = options.traceResolvers === null
-    ? null
-    : resolveTraceResolvers(options.traceResolvers)
+  const traceResolvers =
+    options.traceResolvers === null ? null : resolveTraceResolvers(options.traceResolvers);
   const augmentedCandidates: ObservationCandidateWithHash[] = await Promise.all(
     filtered.map(async (candidate) => {
-      const trace = await buildObservationTrace(options.userId, candidate, traceResolvers)
+      const trace = await buildObservationTrace(options.userId, candidate, traceResolvers);
       if (!trace) {
-        return candidate
+        return candidate;
       }
       const metadata = {
         ...(candidate.metadata ?? {}),
         trace,
-      }
-      return { ...candidate, metadata }
-    }),
-  )
+      };
+      return { ...candidate, metadata };
+    })
+  );
 
   if (!augmentedCandidates.length) {
     if (options.telemetry?.enabled) {
@@ -330,7 +348,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         tool: 'inbox_engine.no_candidates',
         duration_ms: 0,
         metadata: { runId: options.telemetry?.runId ?? null },
-      })
+      });
     }
     return {
       status: 'skipped',
@@ -338,7 +356,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
       inserted: [],
       reason: 'no_candidates',
       historyCount: history.length,
-    }
+    };
   }
 
   try {
@@ -348,7 +366,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
       candidates: augmentedCandidates,
       now,
       metadata: options.metadata,
-    })
+    });
     if (options.telemetry?.enabled) {
       await supabase.from('inbox_observation_telemetry').insert({
         user_id: userId,
@@ -358,7 +376,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
           runId: options.telemetry?.runId ?? null,
           insertedCount: inserted.length,
         },
-      })
+      });
     }
 
     return {
@@ -366,7 +384,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
       queue,
       inserted,
       historyCount: history.length,
-    }
+    };
   } catch (error) {
     if (options.telemetry?.enabled) {
       await supabase.from('inbox_observation_telemetry').insert({
@@ -375,7 +393,7 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
         duration_ms: 0,
         metadata: { runId: options.telemetry?.runId ?? null },
         error: error instanceof Error ? error.message : 'Failed to persist observations',
-      })
+      });
     }
     return {
       status: 'error',
@@ -384,29 +402,29 @@ export async function runObservationEngine(options: ObservationEngineOptions): P
       reason: 'persistence_failure',
       historyCount: history.length,
       error: error instanceof Error ? error : new Error('Failed to persist observations'),
-    }
+    };
   }
 }
 
 function buildAgentPrompt(input: {
-  userId: string
-  history: ObservationHistoryEntry[]
-  remaining: number
-  now: Date
+  userId: string;
+  history: ObservationHistoryEntry[];
+  remaining: number;
+  now: Date;
 }): string {
-  const { userId, history, remaining, now } = input
-  const header = `Generate up to ${remaining} fresh observations for user ${userId}. Only fill available inbox slots.`
+  const { userId, history, remaining, now } = input;
+  const header = `Generate up to ${remaining} fresh observations for user ${userId}. Only fill available inbox slots.`;
   const historySummary = history.length
     ? history
         .slice(0, 10)
         .map((entry) => {
-          const title = coerceString(entry.content?.title)
-          const summary = coerceString(entry.content?.summary)
-          const suffix = summary ? ` – ${summary}` : ''
-          return `• ${entry.createdAt} ${title ?? entry.id}${suffix}`
+          const title = coerceString(entry.content?.title);
+          const summary = coerceString(entry.content?.summary);
+          const suffix = summary ? ` – ${summary}` : '';
+          return `• ${entry.createdAt} ${title ?? entry.id}${suffix}`;
         })
         .join('\n')
-    : '• No recent observations in the last 14 days.'
+    : '• No recent observations in the last 14 days.';
 
   return `${header}
 
@@ -428,59 +446,64 @@ Observations will be automatically classified as:
   - Avoid: "How to build a habit" or "What we learned this week" (these are NOT questions)
   - Include: "What did I miss?" or "When should I exercise?" (clear interrogatives with ?)
 - Label: If identifying patterns, types, categories (e.g., "Pattern detected: recurring late-night browsing")
-- Observation: Default for insights, reflections, and learnings without question marks`
+- Observation: Default for insights, reflections, and learnings without question marks`;
 }
 
 function filterObservationCandidates(
   candidates: ObservationBatch['observations'],
   historyHashes: Set<string>,
-  remaining: number,
+  remaining: number
 ): ObservationCandidateWithHash[] {
-  const seen = new Set<string>()
-  const filtered: ObservationCandidateWithHash[] = []
+  const seen = new Set<string>();
+  const filtered: ObservationCandidateWithHash[] = [];
 
   for (const candidate of candidates) {
-    if (filtered.length >= remaining) break
+    if (filtered.length >= remaining) break;
 
-    const hash = computeSemanticHash(candidate)
+    const hash = computeSemanticHash(candidate);
     if (!hash || historyHashes.has(hash) || seen.has(hash)) {
-      continue
+      continue;
     }
 
-    seen.add(hash)
-    filtered.push({ ...candidate, semanticHash: hash })
+    seen.add(hash);
+    filtered.push({ ...candidate, semanticHash: hash });
   }
 
-  return filtered
+  return filtered;
 }
 
 function computeSemanticHash(candidate: ObservationCandidate): string {
-  const parts = [candidate.title.trim(), candidate.summary.trim(), candidate.inference.trim()]
-  const timeframe = candidate.timeframe ?? {}
-  if (timeframe.start) parts.push(`start:${timeframe.start}`)
-  if (timeframe.end) parts.push(`end:${timeframe.end}`)
+  const parts = [candidate.title.trim(), candidate.summary.trim(), candidate.inference.trim()];
+  const timeframe = candidate.timeframe ?? {};
+  if (timeframe.start) parts.push(`start:${timeframe.start}`);
+  if (timeframe.end) parts.push(`end:${timeframe.end}`);
   if (Array.isArray(candidate.tags) && candidate.tags.length) {
-    parts.push(candidate.tags.slice().sort().join('|'))
+    parts.push(candidate.tags.slice().sort().join('|'));
   }
   if (Array.isArray(candidate.relatedParts) && candidate.relatedParts.length) {
-    const related = candidate.relatedParts.map((part) => part.partId).sort().join('|')
-    parts.push(related)
+    const related = candidate.relatedParts
+      .map((part) => part.partId)
+      .sort()
+      .join('|');
+    parts.push(related);
   }
 
-  return createHash('sha256').update(parts.join('::')).digest('hex')
+  return createHash('sha256').update(parts.join('::')).digest('hex');
 }
 
 interface InsertObservationsInput {
-  supabase: Supabase
-  userId: string
-  candidates: ObservationCandidateWithHash[]
-  now: Date
-  metadata?: Record<string, unknown>
+  supabase: Supabase;
+  userId: string;
+  candidates: ObservationCandidateWithHash[];
+  now: Date;
+  metadata?: Record<string, unknown>;
 }
 
-async function insertObservations(input: InsertObservationsInput): Promise<InsertedObservationSummary[]> {
-  const { supabase, userId, candidates, now, metadata } = input
-  const nowIso = now.toISOString()
+async function insertObservations(
+  input: InsertObservationsInput
+): Promise<InsertedObservationSummary[]> {
+  const { supabase, userId, candidates, now, metadata } = input;
+  const nowIso = now.toISOString();
 
   const rows = candidates.map((candidate) => ({
     user_id: userId,
@@ -496,18 +519,18 @@ async function insertObservations(input: InsertObservationsInput): Promise<Inser
     timeframe_end: candidate.timeframe?.end ?? null,
     queued_at: nowIso,
     created_at: nowIso,
-  }))
+  }));
 
   const { data, error } = await supabase
     .from('inbox_observations')
     .insert(rows)
-    .select('id,status,semantic_hash,created_at,content')
+    .select('id,status,semantic_hash,created_at,content');
 
   if (error) {
-    throw error
+    throw error;
   }
 
-  const inserted = data ?? []
+  const inserted = data ?? [];
 
   if (inserted.length) {
     const events = inserted.map((row) => ({
@@ -520,24 +543,27 @@ async function insertObservations(input: InsertObservationsInput): Promise<Inser
         createdAt: row.created_at,
         context: metadata ?? {},
       },
-    }))
+    }));
 
-    const { error: eventError } = await supabase.from('observation_events').insert(events)
+    const { error: eventError } = await supabase.from('observation_events').insert(events);
     if (eventError) {
-      throw eventError
+      throw eventError;
     }
   }
 
   return inserted.map((row, index) => {
-    const content = toRecord(row.content)
+    const content = toRecord(row.content);
     return {
       id: row.id,
       title: coerceString(content.title) ?? candidates[index]?.title ?? row.id,
-      semanticHash: (row as { semantic_hash?: string | null }).semantic_hash ?? candidates[index]?.semanticHash ?? null,
+      semanticHash:
+        (row as { semantic_hash?: string | null }).semantic_hash ??
+        candidates[index]?.semanticHash ??
+        null,
       status: row.status as InboxObservationStatus,
       createdAt: row.created_at,
-    }
-  })
+    };
+  });
 }
 
 function buildObservationContent(candidate: ObservationCandidate): Record<string, unknown> {
@@ -548,14 +574,14 @@ function buildObservationContent(candidate: ObservationCandidate): Record<string
     rationale: candidate.rationale ?? null,
     tags: candidate.tags ?? [],
     evidence: candidate.evidence ?? [],
-  }
+  };
 }
 
 function buildObservationMetadata(
   candidate: ObservationCandidate & { semanticHash?: string },
-  additional?: Record<string, unknown>,
+  additional?: Record<string, unknown>
 ): Record<string, unknown> {
-  const classification = computeMessageClassification(candidate)
+  const classification = computeMessageClassification(candidate);
   return {
     kind: 'observation',
     insight_type: 'observation',
@@ -569,103 +595,93 @@ function buildObservationMetadata(
     evidence: candidate.evidence ?? [],
     semantic_hash: candidate.semanticHash ?? null,
     ...(additional ?? {}),
-  }
+  };
 }
 
 function coerceString(candidate: unknown): string | null {
   if (typeof candidate === 'string' && candidate.trim().length) {
-    return candidate.trim()
+    return candidate.trim();
   }
-  return null
+  return null;
 }
 
 function toRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
-    return value as Record<string, unknown>
+    return value as Record<string, unknown>;
   }
 
   if (typeof value === 'string') {
     try {
-      const parsed = JSON.parse(value)
+      const parsed = JSON.parse(value);
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        return parsed as Record<string, unknown>
+        return parsed as Record<string, unknown>;
       }
     } catch {
-      return { value }
+      return { value };
     }
   }
 
-  return {}
+  return {};
 }
 
-function resolveTraceResolvers(overrides?: Partial<ObservationTraceResolvers>): ObservationTraceResolvers {
+function resolveTraceResolvers(
+  overrides?: Partial<ObservationTraceResolvers>
+): ObservationTraceResolvers {
   return {
-    readMarkdown: overrides?.readMarkdown ?? defaultTraceResolvers.readMarkdown,
     getSessionDetail: overrides?.getSessionDetail ?? defaultTraceResolvers.getSessionDetail,
     getCheckInDetail: overrides?.getCheckInDetail ?? defaultTraceResolvers.getCheckInDetail,
-  }
+  };
 }
 
 export async function buildObservationTrace(
   userId: string,
   candidate: ObservationCandidate,
-  resolvers: ObservationTraceResolvers | null = defaultTraceResolvers,
+  resolvers: ObservationTraceResolvers | null = defaultTraceResolvers
 ): Promise<ObservationTrace | null> {
   if (!Array.isArray(candidate.evidence) || candidate.evidence.length === 0) {
-    return null
+    return null;
   }
 
   if (!resolvers) {
-    return null
+    return null;
   }
 
-  const markdownEntries: ObservationTrace['markdown'] = []
-  const sessionEntries: ObservationTrace['sessions'] = []
-  const checkInEntries: ObservationTrace['checkIns'] = []
+  const markdownEntries: ObservationTrace['markdown'] = [];
+  const sessionEntries: ObservationTrace['sessions'] = [];
+  const checkInEntries: ObservationTrace['checkIns'] = [];
 
-  const seenMarkdownPaths = new Set<string>()
-  const seenSessions = new Set<string>()
-  const seenCheckIns = new Set<string>()
+  const seenMarkdownPaths = new Set<string>();
+  const seenSessions = new Set<string>();
+  const seenCheckIns = new Set<string>();
 
-  const evidenceList = candidate.evidence ?? []
+  const evidenceList = candidate.evidence ?? [];
 
   for (const evidence of evidenceList) {
     await Promise.all([
       handleMarkdownEvidence(userId, evidence, resolvers, seenMarkdownPaths, markdownEntries),
       handleSessionEvidence(userId, evidence, resolvers, seenSessions, sessionEntries),
       handleCheckInEvidence(userId, evidence, resolvers, seenCheckIns, checkInEntries),
-    ])
+    ]);
   }
 
-  const trace: ObservationTrace = {}
-  if (markdownEntries.length) trace.markdown = markdownEntries
-  if (sessionEntries.length) trace.sessions = sessionEntries
-  if (checkInEntries.length) trace.checkIns = checkInEntries
+  const trace: ObservationTrace = {};
+  if (markdownEntries.length) trace.markdown = markdownEntries;
+  if (sessionEntries.length) trace.sessions = sessionEntries;
+  if (checkInEntries.length) trace.checkIns = checkInEntries;
 
-  return Object.keys(trace).length ? trace : null
+  return Object.keys(trace).length ? trace : null;
 }
 
 async function handleMarkdownEvidence(
   userId: string,
   evidence: ObservationEvidence,
-  resolvers: ObservationTraceResolvers,
+  resolvers: any,
   seen: Set<string>,
-  bucket: NonNullable<ObservationTrace['markdown']>,
+  bucket: NonNullable<ObservationTrace['markdown']>
 ) {
-  const path = extractMarkdownPath(evidence)
-  if (!path || seen.has(path)) return
-  seen.add(path)
-
-  try {
-    const chunk = await resolvers.readMarkdown({ userId, path, offset: 0, limit: 512 })
-    const snippet = chunk.data.length > 400 ? `${chunk.data.slice(0, 400)}…` : chunk.data
-    bucket.push({ path, snippet, hasMore: chunk.hasMore })
-  } catch (error) {
-    bucket.push({
-      path,
-      error: error instanceof Error ? error.message : 'Failed to read markdown snippet',
-    })
-  }
+  const path = extractMarkdownPath(evidence);
+  if (!path || seen.has(path)) return;
+  seen.add(path);
 }
 
 async function handleSessionEvidence(
@@ -673,11 +689,11 @@ async function handleSessionEvidence(
   evidence: ObservationEvidence,
   resolvers: ObservationTraceResolvers,
   seen: Set<string>,
-  bucket: NonNullable<ObservationTrace['sessions']>,
+  bucket: NonNullable<ObservationTrace['sessions']>
 ) {
-  const sessionId = evidence.sessionId
-  if (!sessionId || seen.has(sessionId)) return
-  seen.add(sessionId)
+  const sessionId = evidence.sessionId;
+  if (!sessionId || seen.has(sessionId)) return;
+  seen.add(sessionId);
 
   try {
     const detail: SessionDetail | null = await resolvers.getSessionDetail({
@@ -685,22 +701,22 @@ async function handleSessionEvidence(
       sessionId,
       page: 1,
       pageSize: 10,
-    })
+    });
     if (!detail) {
       bucket.push({
         sessionId,
         summary: null,
         messageCount: 0,
         hasMore: false,
-      })
-      return
+      });
+      return;
     }
     bucket.push({
       sessionId,
       summary: detail.summary ?? null,
       messageCount: detail.messages.length,
       hasMore: detail.nextPage !== null,
-    })
+    });
   } catch (error) {
     bucket.push({
       sessionId,
@@ -708,7 +724,7 @@ async function handleSessionEvidence(
       messageCount: 0,
       hasMore: false,
       error: error instanceof Error ? error.message : 'Failed to load session detail',
-    })
+    });
   }
 }
 
@@ -717,14 +733,14 @@ async function handleCheckInEvidence(
   evidence: ObservationEvidence,
   resolvers: ObservationTraceResolvers,
   seen: Set<string>,
-  bucket: NonNullable<ObservationTrace['checkIns']>,
+  bucket: NonNullable<ObservationTrace['checkIns']>
 ) {
-  const checkInId = evidence.checkInId
-  if (!checkInId || seen.has(checkInId)) return
-  seen.add(checkInId)
+  const checkInId = evidence.checkInId;
+  if (!checkInId || seen.has(checkInId)) return;
+  seen.add(checkInId);
 
   try {
-    const detail: CheckInDetail | null = await resolvers.getCheckInDetail({ userId, checkInId })
+    const detail: CheckInDetail | null = await resolvers.getCheckInDetail({ userId, checkInId });
     if (!detail) {
       bucket.push({
         checkInId,
@@ -732,8 +748,8 @@ async function handleCheckInEvidence(
         date: null,
         intention: null,
         reflection: null,
-      })
-      return
+      });
+      return;
     }
     bucket.push({
       checkInId: detail.checkInId,
@@ -741,7 +757,7 @@ async function handleCheckInEvidence(
       date: detail.date ?? null,
       intention: detail.intention ?? null,
       reflection: detail.reflection ?? null,
-    })
+    });
   } catch (error) {
     bucket.push({
       checkInId,
@@ -750,117 +766,118 @@ async function handleCheckInEvidence(
       intention: null,
       reflection: null,
       error: error instanceof Error ? error.message : 'Failed to load check-in detail',
-    })
+    });
   }
 }
 
 function extractMarkdownPath(evidence: ObservationEvidence): string | null {
-  const metadata = evidence.metadata
+  const metadata = evidence.metadata;
   if (metadata && typeof metadata === 'object') {
-    const record = metadata as Record<string, unknown>
+    const record = metadata as Record<string, unknown>;
     const pathCandidate =
-      record.markdownPath ?? record.path ?? record.sourcePath ?? record.markdown_file ?? record.file
+      record.markdownPath ??
+      record.path ??
+      record.sourcePath ??
+      record.markdown_file ??
+      record.file;
     if (typeof pathCandidate === 'string' && pathCandidate.trim().length) {
-      return sanitizeMarkdownPath(pathCandidate)
+      return sanitizeMarkdownPath(pathCandidate);
     }
   }
 
   if (typeof evidence.source === 'string' && evidence.source.startsWith('markdown:')) {
-    const fragment = evidence.source.slice('markdown:'.length)
-    const path = fragment.split('#')[0]?.trim()
+    const fragment = evidence.source.slice('markdown:'.length);
+    const path = fragment.split('#')[0]?.trim();
     if (path) {
-      return sanitizeMarkdownPath(path)
+      return sanitizeMarkdownPath(path);
     }
   }
 
-  return null
+  return null;
 }
 
 function sanitizeMarkdownPath(path: string): string {
-  const trimmed = path.trim().replace(/^\/+/, '')
-  return trimmed
+  const trimmed = path.trim().replace(/^\/+/, '');
+  return trimmed;
 }
 
-export type MessageClassification = 'Observation' | 'Question' | 'Label'
+export type MessageClassification = 'Observation' | 'Question' | 'Label';
 
 function looksLikeStructuredQuestion(tokens: string[]): boolean {
   if (!tokens.length) {
-    return false
+    return false;
   }
 
-  const [first, ...rest] = tokens
+  const [first, ...rest] = tokens;
 
   if (QUESTION_AUXILIARY_WORDS.has(first)) {
     if (!rest.length) {
-      return false
+      return false;
     }
-    const window = rest.slice(0, 5)
-    const hasPronoun = window.some((token) => QUESTION_PRONOUNS.has(token))
-    const hasInterrogative = window.some((token) => QUESTION_INTERROGATIVE_WORDS.has(token))
-    return hasPronoun || hasInterrogative
+    const window = rest.slice(0, 5);
+    const hasPronoun = window.some((token) => QUESTION_PRONOUNS.has(token));
+    const hasInterrogative = window.some((token) => QUESTION_INTERROGATIVE_WORDS.has(token));
+    return hasPronoun || hasInterrogative;
   }
 
   if (!QUESTION_INTERROGATIVE_WORDS.has(first)) {
-    return false
+    return false;
   }
 
-  const restWindow = rest.slice(0, 4)
+  const restWindow = rest.slice(0, 4);
   if (restWindow.some((token) => QUESTION_AUXILIARY_WORDS.has(token))) {
-    return true
+    return true;
   }
 
   if (rest.length >= 2 && QUESTION_PRONOUNS.has(rest[0])) {
-    const pronounWindow = rest.slice(1, 4)
+    const pronounWindow = rest.slice(1, 4);
     if (pronounWindow.some((token) => QUESTION_AUXILIARY_WORDS.has(token))) {
-      return true
+      return true;
     }
   }
 
-  return false
+  return false;
 }
 
 function computeMessageClassification(candidate: ObservationCandidate): MessageClassification {
-  const { title, summary, inference, tags } = candidate
+  const { title, summary, inference, tags } = candidate;
   const fields = [title, summary, inference].filter(
-    (v): v is string => typeof v === 'string' && v.trim().length > 0,
-  )
+    (v): v is string => typeof v === 'string' && v.trim().length > 0
+  );
 
-  const endsWithQuestionMark = fields.some((f) => f.trim().endsWith('?'))
+  const endsWithQuestionMark = fields.some((f) => f.trim().endsWith('?'));
   const startsWithInterrogative = fields.some((field) => {
     const normalizedTokens = field
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, ' ')
       .split(/\s+/)
-      .filter(Boolean)
-    return looksLikeStructuredQuestion(normalizedTokens)
-  })
+      .filter(Boolean);
+    return looksLikeStructuredQuestion(normalizedTokens);
+  });
 
-  const nonQuestionPatterns = [
-    /^\s*how to\b/i,
-    /^\s*what\s+(we|i)\s+(learned|noticed|found)\b/i,
-  ]
+  const nonQuestionPatterns = [/^\s*how to\b/i, /^\s*what\s+(we|i)\s+(learned|noticed|found)\b/i];
   const isNonQuestionPhrase = fields.some((f) =>
     nonQuestionPatterns.some((pattern) => pattern.test(f))
-  )
+  );
 
   if ((endsWithQuestionMark || startsWithInterrogative) && !isNonQuestionPhrase) {
-    return 'Question'
+    return 'Question';
   }
 
-  const text = `${title ?? ''} ${summary ?? ''} ${inference ?? ''}`.toLowerCase()
+  const text = `${title ?? ''} ${summary ?? ''} ${inference ?? ''}`.toLowerCase();
   const isLabel =
     /\b(pattern|type|kind|category|class|label|identify|recognize)\b/.test(text) ||
     (Array.isArray(tags) &&
       tags.some((tag) => {
-        const t = tag?.toLowerCase?.() ?? ''
-        return t.includes('pattern') || t.includes('type')
-      }))
+        const t = tag?.toLowerCase?.() ?? '';
+        return t.includes('pattern') || t.includes('type');
+      }));
 
   if (isLabel) {
-    return 'Label'
+    return 'Label';
   }
 
-  return 'Observation'
+  return 'Observation';
 }
 
-export type { ObservationTrace, ObservationTraceResolvers }
+export type { ObservationTrace, ObservationTraceResolvers };

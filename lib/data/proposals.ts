@@ -1,23 +1,32 @@
-import 'server-only'
+import 'server-only';
 
-import { proposePartSplitSchema, proposePartMergeSchema, approveRejectSchema, executeProposalSchema, type ProposePartSplitInput, type ProposePartMergeInput, type ApproveRejectInput, type ExecuteProposalInput } from './proposals.schema'
-import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
-import { createActionLogger } from '@/lib/database/action-logger'
-import { getPartById, supersedePart, createSplitChildPart } from './parts-server'
-import type { PartRow } from '@/lib/types/database'
-import type { PartRowV2 } from './schema/types'
+import {
+  proposePartSplitSchema,
+  proposePartMergeSchema,
+  approveRejectSchema,
+  executeProposalSchema,
+  type ProposePartSplitInput,
+  type ProposePartMergeInput,
+  type ApproveRejectInput,
+  type ExecuteProposalInput,
+} from './proposals.schema';
+import type { SupabaseDatabaseClient } from '@/lib/supabase/clients';
+import { createActionLogger } from '@/lib/database/action-logger';
+import {
+  getPartByIdServer as getPartById,
+  supersedePartServer as supersedePart,
+  createSplitChildPartServer as createSplitChildPart,
+} from './parts';
+import { type PartRowV2 } from './schema/types';
 
 export type ProposalDependencies = {
-  client: SupabaseDatabaseClient
-  userId: string
-}
+  client: SupabaseDatabaseClient;
+  userId: string;
+};
 
-export async function proposePartSplit(
-  input: ProposePartSplitInput,
-  deps: ProposalDependencies
-) {
-  const validated = proposePartSplitSchema.parse(input)
-  const { client: supabase, userId } = deps
+export async function proposePartSplit(input: ProposePartSplitInput, deps: ProposalDependencies) {
+  const validated = proposePartSplitSchema.parse(input);
+  const { client: supabase, userId } = deps;
 
   const { error, data } = await supabase
     .from('part_change_proposals')
@@ -32,24 +41,21 @@ export async function proposePartSplit(
       idempotency_key: validated.idempotencyKey,
     })
     .select('*')
-    .single()
+    .single();
 
   if (error) {
-    const isIdem = (error as any)?.message?.includes('uq_part_change_proposals_idem')
+    const isIdem = (error as any)?.message?.includes('uq_part_change_proposals_idem');
     if (!isIdem) {
-      throw new Error(`Failed to propose split: ${error.message}`)
+      throw new Error(`Failed to propose split: ${error.message}`);
     }
   }
 
-  return data
+  return data;
 }
 
-export async function proposePartMerge(
-  input: ProposePartMergeInput,
-  deps: ProposalDependencies
-) {
-  const validated = proposePartMergeSchema.parse(input)
-  const { client: supabase, userId } = deps
+export async function proposePartMerge(input: ProposePartMergeInput, deps: ProposalDependencies) {
+  const validated = proposePartMergeSchema.parse(input);
+  const { client: supabase, userId } = deps;
 
   const { error, data } = await supabase
     .from('part_change_proposals')
@@ -64,153 +70,153 @@ export async function proposePartMerge(
       idempotency_key: validated.idempotencyKey,
     })
     .select('*')
-    .single()
+    .single();
 
   if (error) {
-    const isIdem = (error as any)?.message?.includes('uq_part_change_proposals_idem')
+    const isIdem = (error as any)?.message?.includes('uq_part_change_proposals_idem');
     if (!isIdem) {
-      throw new Error(`Failed to propose merge: ${error.message}`)
+      throw new Error(`Failed to propose merge: ${error.message}`);
     }
   }
 
-  return data
+  return data;
 }
 
-export async function approveProposal(
-  input: ApproveRejectInput,
-  deps: ProposalDependencies
-) {
-  const validated = approveRejectSchema.parse(input)
-  const { client: supabase, userId } = deps
+export async function approveProposal(input: ApproveRejectInput, deps: ProposalDependencies) {
+  const validated = approveRejectSchema.parse(input);
+  const { client: supabase, userId } = deps;
 
   const { data: proposal, error } = await supabase
     .from('part_change_proposals')
     .select('*')
     .eq('id', validated.proposalId)
     .eq('user_id', userId)
-    .single()
+    .single();
 
   if (error || !proposal) {
-    throw new Error('Proposal not found')
+    throw new Error('Proposal not found');
   }
 
   if (proposal.status !== 'pending') {
-    throw new Error(`Proposal is not pending (status: ${proposal.status})`)
+    throw new Error(`Proposal is not pending (status: ${proposal.status})`);
   }
 
   const { error: updErr, data: updated } = await supabase
     .from('part_change_proposals')
-    .update({ status: 'approved', approved_at: new Date().toISOString(), approved_by: validated.approvedBy })
+    .update({
+      status: 'approved',
+      approved_at: new Date().toISOString(),
+      approved_by: validated.approvedBy,
+    })
     .eq('id', validated.proposalId)
     .select('*')
-    .single()
+    .single();
 
   if (updErr) {
-    throw new Error(`Failed to approve: ${updErr.message}`)
+    throw new Error(`Failed to approve: ${updErr.message}`);
   }
 
-  return updated
+  return updated;
 }
 
-export async function rejectProposal(
-  input: ApproveRejectInput,
-  deps: ProposalDependencies
-) {
-  const validated = approveRejectSchema.parse(input)
-  const { client: supabase, userId } = deps
+export async function rejectProposal(input: ApproveRejectInput, deps: ProposalDependencies) {
+  const validated = approveRejectSchema.parse(input);
+  const { client: supabase, userId } = deps;
 
   const { data: proposal, error } = await supabase
     .from('part_change_proposals')
     .select('*')
     .eq('id', validated.proposalId)
     .eq('user_id', userId)
-    .single()
+    .single();
 
   if (error || !proposal) {
-    throw new Error('Proposal not found')
+    throw new Error('Proposal not found');
   }
 
   if (proposal.status !== 'pending') {
-    throw new Error(`Proposal is not pending (status: ${proposal.status})`)
+    throw new Error(`Proposal is not pending (status: ${proposal.status})`);
   }
 
   const { error: updErr, data: updated } = await supabase
     .from('part_change_proposals')
-    .update({ status: 'rejected', approved_at: new Date().toISOString(), approved_by: validated.approvedBy })
+    .update({
+      status: 'rejected',
+      approved_at: new Date().toISOString(),
+      approved_by: validated.approvedBy,
+    })
     .eq('id', validated.proposalId)
     .select('*')
-    .single()
+    .single();
 
   if (updErr) {
-    throw new Error(`Failed to reject: ${updErr.message}`)
+    throw new Error(`Failed to reject: ${updErr.message}`);
   }
 
-  return updated
+  return updated;
 }
 
 async function getActionLoggerWithClient(client: SupabaseDatabaseClient) {
-  return createActionLogger(client)
+  return createActionLogger(client);
 }
 
 function toRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {}
+    return {};
   }
-  return value as Record<string, unknown>
+  return value as Record<string, unknown>;
 }
 
-export async function executeSplit(
-  input: ExecuteProposalInput,
-  deps: ProposalDependencies
-) {
-  const validated = executeProposalSchema.parse(input)
-  const { client: supabase, userId } = deps
+export async function executeSplit(input: ExecuteProposalInput, deps: ProposalDependencies) {
+  const validated = executeProposalSchema.parse(input);
+  const { client: supabase, userId } = deps;
 
   const { data: proposal } = await supabase
     .from('part_change_proposals')
     .select('*')
     .eq('id', validated.proposalId)
     .eq('user_id', userId)
-    .single()
+    .single();
 
   if (!proposal || proposal.type !== 'split') {
-    throw new Error('Invalid split proposal')
+    throw new Error('Invalid split proposal');
   }
 
-  const payload = proposal.payload as any
-  const parent = await getPartById({ partId: payload.parentPartId }, deps)
+  const payload = proposal.payload as any;
+  const parent = await getPartById({ partId: payload.parentPartId }, deps);
   if (!parent) {
-    throw new Error('Parent part not found')
+    throw new Error('Parent part not found');
   }
 
   const { data: parentRecord, error: parentRecordError } = await supabase
     .from('parts_v2')
-    .select('id, data, confidence, category, status, evidence_count, first_noticed, last_active, charge, needs_attention')
+    .select(
+      'id, data, confidence, category, status, evidence_count, first_noticed, last_active, charge, needs_attention'
+    )
     .eq('id', parent.id)
     .eq('user_id', userId)
-    .maybeSingle()
+    .maybeSingle();
 
   if (parentRecordError || !parentRecord) {
-    throw new Error('Parent part record missing in PRD schema')
+    throw new Error('Parent part record missing in PRD schema');
   }
 
-  const now = new Date().toISOString()
+  const now = new Date().toISOString();
 
-  const childResults: PartRow[] = []
-  const childIds: string[] = []
+  const childResults: PartRowV2[] = [];
+  const childIds: string[] = [];
 
   for (const child of payload.children as Array<any>) {
     const mappedChild = await createSplitChildPart(
       {
         childProposal: child,
-        parentPart: parent,
         parentRecord: parentRecord as unknown as PartRowV2,
       },
       deps
-    )
+    );
 
-    childIds.push(mappedChild.id)
-    childResults.push(mappedChild)
+    childIds.push(mappedChild.id);
+    childResults.push(mappedChild);
   }
 
   const updatedParent = await supersedePart(
@@ -220,55 +226,52 @@ export async function executeSplit(
       reason: 'Updated lineage after split',
     },
     deps
-  )
+  );
   if (!updatedParent) {
-    throw new Error('Failed to reload parent part after split execution')
+    throw new Error('Failed to reload parent part after split execution');
   }
 
   const { error: execErr } = await supabase
     .from('part_change_proposals')
     .update({ status: 'executed', executed_at: now, executed_by: 'agent' })
-    .eq('id', validated.proposalId)
-  if (execErr) throw new Error(`Failed to mark proposal executed: ${execErr.message}`)
+    .eq('id', validated.proposalId);
+  if (execErr) throw new Error(`Failed to mark proposal executed: ${execErr.message}`);
 
-  return { parent: updatedParent, children: childResults }
+  return { parent: updatedParent, children: childResults };
 }
 
-export async function executeMerge(
-  input: ExecuteProposalInput,
-  deps: ProposalDependencies
-) {
-  const validated = executeProposalSchema.parse(input)
-  const { client: supabase, userId } = deps
+export async function executeMerge(input: ExecuteProposalInput, deps: ProposalDependencies) {
+  const validated = executeProposalSchema.parse(input);
+  const { client: supabase, userId } = deps;
 
   const { data: proposal } = await supabase
     .from('part_change_proposals')
     .select('*')
     .eq('id', validated.proposalId)
     .eq('user_id', userId)
-    .single()
-  if (!proposal || proposal.type !== 'merge') throw new Error('Invalid merge proposal')
+    .single();
+  if (!proposal || proposal.type !== 'merge') throw new Error('Invalid merge proposal');
 
-  const payload = proposal.payload as any
+  const payload = proposal.payload as any;
   const { data: partRecords, error: partsErr } = await supabase
     .from('parts_v2')
     .select('id, name, data')
     .eq('user_id', userId)
-    .in('id', payload.partIds)
+    .in('id', payload.partIds);
 
   if (partsErr) {
-    throw new Error(`Failed to load parts for merge: ${partsErr.message}`)
+    throw new Error(`Failed to load parts for merge: ${partsErr.message}`);
   }
 
   if (!partRecords || partRecords.length < 2) {
-    throw new Error('Parts not found for merge')
+    throw new Error('Parts not found for merge');
   }
 
-  const now = new Date().toISOString()
-  const actionLogger = await getActionLoggerWithClient(supabase)
+  const now = new Date().toISOString();
+  const actionLogger = await getActionLoggerWithClient(supabase);
 
-  const canonicalId: string = payload.partIds[0] ?? partRecords[0].id
-  const canonicalRecord = partRecords.find((row: any) => row.id === canonicalId) ?? partRecords[0]
+  const canonicalId: string = payload.partIds[0] ?? partRecords[0].id;
+  const canonicalRecord = partRecords.find((row: any) => row.id === canonicalId) ?? partRecords[0];
 
   await actionLogger.loggedUpdate(
     'parts_v2',
@@ -280,13 +283,13 @@ export async function executeMerge(
       partName: canonicalRecord.name ?? 'Unnamed Part',
       changeDescription: `Renamed to ${payload.canonicalName} during merge`,
     }
-  )
+  );
 
-  const mergedIds: string[] = []
+  const mergedIds: string[] = [];
 
   for (const record of partRecords) {
     if (record.id === canonicalRecord.id) {
-      continue
+      continue;
     }
 
     await supersedePart(
@@ -296,29 +299,29 @@ export async function executeMerge(
         reason: `Superseded by ${payload.canonicalName}`,
       },
       deps
-    )
+    );
 
-    mergedIds.push(record.id)
+    mergedIds.push(record.id);
   }
 
-  const updatedCanonical = await getPartById({ partId: canonicalRecord.id }, deps)
+  const updatedCanonical = await getPartById({ partId: canonicalRecord.id }, deps);
   if (!updatedCanonical) {
-    throw new Error('Failed to reload canonical part after merge execution')
+    throw new Error('Failed to reload canonical part after merge execution');
   }
 
-  const mergedParts: PartRow[] = []
+  const mergedParts: PartRowV2[] = [];
   for (const id of mergedIds) {
-    const merged = await getPartById({ partId: id }, deps)
+    const merged = await getPartById({ partId: id }, deps);
     if (merged) {
-      mergedParts.push(merged)
+      mergedParts.push(merged);
     }
   }
 
   const { error: execErr } = await supabase
     .from('part_change_proposals')
     .update({ status: 'executed', executed_at: now, executed_by: 'agent' })
-    .eq('id', validated.proposalId)
-  if (execErr) throw new Error(`Failed to mark proposal executed: ${execErr.message}`)
+    .eq('id', validated.proposalId);
+  if (execErr) throw new Error(`Failed to mark proposal executed: ${execErr.message}`);
 
-  return { canonical: updatedCanonical, merged: mergedParts }
+  return { canonical: updatedCanonical, merged: mergedParts };
 }

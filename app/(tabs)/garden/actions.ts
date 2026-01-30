@@ -1,8 +1,7 @@
-'use server'
+'use server';
 
-import { syncAllUserParts } from '@/lib/memory/parts-sync'
-import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
 
 /**
  * Manually sync all markdown part profiles to database for the current user
@@ -16,7 +15,10 @@ export async function syncPartsAction() {
     console.log('[syncPartsAction] Creating Supabase client');
     const supabase = await createClient();
     console.log('[syncPartsAction] Getting authenticated user');
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError) {
       console.error('[syncPartsAction] Auth error:', authError);
@@ -36,7 +38,8 @@ export async function syncPartsAction() {
     console.log(`[syncPartsAction] User email: ${user.email}`);
     console.log(`[syncPartsAction] Starting manual sync for user ${user.id}`);
 
-    const result = await syncAllUserParts(user.id);
+    // TODO: Sync parts (memory v2 parts-sync removed)
+    const result = { synced: 0, failed: 0 };
 
     console.log('[syncPartsAction] Revalidating /garden path');
     // Revalidate the garden page to show newly synced parts

@@ -1,33 +1,42 @@
-export type InboxItemSourceType = 'insight' | 'follow_up' | string
+export type InboxItemSourceType = 'insight' | 'follow_up' | string;
 
-export type InboxItemStatus = 'pending' | 'revealed' | 'dismissed' | 'snoozed' | string
+export type InboxItemStatus = 'pending' | 'revealed' | 'dismissed' | 'snoozed' | string;
 
 export interface InboxContent {
-  title?: string
-  body?: string
-  evidence?: unknown
-  [key: string]: unknown
+  title?: string;
+  body?: string;
+  evidence?: unknown;
+  [key: string]: unknown;
 }
 
 export interface InboxItem {
-  id: string
-  sourceId: string
-  userId: string
-  sourceType: InboxItemSourceType
-  status: InboxItemStatus
-  partId: string | null
-  content: InboxContent | null
-  metadata: Record<string, unknown> | null
-  createdAt: string
+  id: string;
+  sourceId: string;
+  userId: string;
+  sourceType: InboxItemSourceType;
+  status: InboxItemStatus;
+  partId: string | null;
+  content: InboxContent | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
 }
 
 // Inbox feed envelope types used by client-side normalization helpers
 // Extended to support unified inbox 6 types: session_summary, nudge, follow_up, observation, question, pattern
 
-export type InboxMessageType = 'insight_spotlight' | 'nudge' | 'cta' | 'notification' | 'observation' | 'question' | 'pattern' | 'session_summary' | 'follow_up'
-export type InboxEnvelopeSource = 'network' | 'fallback' | 'supabase' | 'edge'
+export type InboxMessageType =
+  | 'insight_spotlight'
+  | 'nudge'
+  | 'cta'
+  | 'notification'
+  | 'observation'
+  | 'question'
+  | 'pattern'
+  | 'session_summary'
+  | 'follow_up';
+export type InboxEnvelopeSource = 'network' | 'fallback' | 'supabase' | 'edge';
 
-export type InboxEventType = 'delivered' | 'opened' | 'actioned'
+export type InboxEventType = 'delivered' | 'opened' | 'actioned';
 // Legacy action values (for backwards compatibility with scale4)
 export type InboxLegacyActionValue =
   | 'agree_strong'
@@ -35,227 +44,231 @@ export type InboxLegacyActionValue =
   | 'disagree'
   | 'disagree_strong'
   | 'ack'
-  | 'cta_clicked'
+  | 'cta_clicked';
 
 // Action values can now be any string (agent-generated button values)
-export type InboxQuickActionValue = InboxLegacyActionValue | string
+export type InboxQuickActionValue = InboxLegacyActionValue | string;
 
 export interface InboxCTA {
-  label: string
-  href?: string
-  actionId?: string
-  intent?: 'primary' | 'secondary'
-  helperText?: string
-  target?: '_self' | '_blank'
-  analyticsTag?: string
+  label: string;
+  href?: string;
+  actionId?: string;
+  intent?: 'primary' | 'secondary';
+  helperText?: string;
+  target?: '_self' | '_blank';
+  analyticsTag?: string;
 }
 
 export interface InboxScaleActionSchema {
-  kind: 'scale4'
-  agreeStrongLabel?: string
-  agreeLabel?: string
-  disagreeLabel?: string
-  disagreeStrongLabel?: string
-  helperText?: string
-  allowNotes?: boolean
+  kind: 'scale4';
+  agreeStrongLabel?: string;
+  agreeLabel?: string;
+  disagreeLabel?: string;
+  disagreeStrongLabel?: string;
+  helperText?: string;
+  allowNotes?: boolean;
 }
 
 export interface InboxAcknowledgeActionSchema {
-  kind: 'acknowledge'
-  label?: string
-  helperText?: string
-  allowNotes?: boolean
+  kind: 'acknowledge';
+  label?: string;
+  helperText?: string;
+  allowNotes?: boolean;
 }
 
 // Flexible button-based action schema (new unified system)
 export interface InboxActionButton {
-  value: string
-  label: string
-  shortLabel?: string  // Abbreviated version for tight spaces
-  emoji?: string
-  variant?: 'primary' | 'secondary' | 'ghost'
+  value: string;
+  label: string;
+  shortLabel?: string; // Abbreviated version for tight spaces
+  emoji?: string;
+  variant?: 'primary' | 'secondary' | 'ghost';
 }
 
 export interface InboxButtonActionSchema {
-  kind: 'buttons'
-  buttons: InboxActionButton[]
-  allowFreeText?: boolean
-  freeTextPlaceholder?: string
-  helperText?: string
+  kind: 'buttons';
+  buttons: InboxActionButton[];
+  allowFreeText?: boolean;
+  freeTextPlaceholder?: string;
+  helperText?: string;
 }
 
-export type InboxActionSchema = InboxScaleActionSchema | InboxAcknowledgeActionSchema | InboxButtonActionSchema
+export type InboxActionSchema =
+  | InboxScaleActionSchema
+  | InboxAcknowledgeActionSchema
+  | InboxButtonActionSchema;
 
 export interface InboxEnvelopeBase {
-  id: string
-  sourceId: string
-  type: InboxMessageType
-  createdAt: string
-  updatedAt: string | null
-  expiresAt: string | null
-  readAt: string | null
-  source: InboxEnvelopeSource
-  priority?: number
-  tags?: string[]
-  actions?: InboxActionSchema
-  metadata?: Record<string, unknown>
+  id: string;
+  sourceId: string;
+  type: InboxMessageType;
+  createdAt: string;
+  updatedAt: string | null;
+  expiresAt: string | null;
+  readAt: string | null;
+  source: InboxEnvelopeSource;
+  priority?: number;
+  tags?: string[];
+  actions?: InboxActionSchema;
+  metadata?: Record<string, unknown>;
   actionTaken?: {
-    value: InboxQuickActionValue
-    timestamp: string
-  }
+    value: InboxQuickActionValue;
+    timestamp: string;
+  };
 }
 
 export interface InsightSpotlightDetailSource {
-  label: string
-  url: string
+  label: string;
+  url: string;
 }
 
 export interface InsightSpotlightEvidenceReference {
-  type: string
-  sessionId?: string
-  sessionLabel?: string
-  sessionUrl?: string
-  metadata?: Record<string, unknown>
+  type: string;
+  sessionId?: string;
+  sessionLabel?: string;
+  sessionUrl?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface InsightSpotlightDetail {
-  body?: string
-  sources?: InsightSpotlightDetailSource[]
-  evidence?: InsightSpotlightEvidenceReference[]
+  body?: string;
+  sources?: InsightSpotlightDetailSource[];
+  evidence?: InsightSpotlightEvidenceReference[];
 }
 
 export interface InsightSpotlightEvidenceItem {
-  id: string
-  type: string
-  summary?: string
-  quote?: string
-  sessionId?: string
-  sessionLabel?: string
-  occurredAt?: string
-  confidence?: number
-  metadata?: Record<string, unknown>
+  id: string;
+  type: string;
+  summary?: string;
+  quote?: string;
+  sessionId?: string;
+  sessionLabel?: string;
+  occurredAt?: string;
+  confidence?: number;
+  metadata?: Record<string, unknown>;
 }
 
 export interface InsightSpotlightMessage {
-  insightId: string
-  title: string
-  summary: string
-  prompt?: string
-  readingTimeMinutes?: number
-  detail?: InsightSpotlightDetail
-  evidence?: InsightSpotlightEvidenceItem[]
-  cta?: InboxCTA
+  insightId: string;
+  title: string;
+  summary: string;
+  prompt?: string;
+  readingTimeMinutes?: number;
+  detail?: InsightSpotlightDetail;
+  evidence?: InsightSpotlightEvidenceItem[];
+  cta?: InboxCTA;
 }
 
 export interface NudgeMessage {
-  headline: string
-  body: string
-  cta?: InboxCTA
+  headline: string;
+  body: string;
+  cta?: InboxCTA;
 }
 
 export interface CallToActionMessage {
-  title: string
-  description: string
-  action: InboxCTA
+  title: string;
+  description: string;
+  action: InboxCTA;
 }
 
 export interface NotificationLink {
-  label: string
-  href: string
-  target?: '_self' | '_blank'
-  analyticsTag?: string
+  label: string;
+  href: string;
+  target?: '_self' | '_blank';
+  analyticsTag?: string;
 }
 
 export interface NotificationMessage {
-  title: string
-  body: string
-  unread?: boolean
-  link?: NotificationLink
+  title: string;
+  body: string;
+  unread?: boolean;
+  link?: NotificationLink;
 }
 
 export type InsightSpotlightEnvelope = InboxEnvelopeBase & {
-  type: 'insight_spotlight'
-  payload: InsightSpotlightMessage
-}
+  type: 'insight_spotlight';
+  payload: InsightSpotlightMessage;
+};
 
 export type NudgeEnvelope = InboxEnvelopeBase & {
-  type: 'nudge'
-  payload: NudgeMessage
-}
+  type: 'nudge';
+  payload: NudgeMessage;
+};
 
 export type CallToActionEnvelope = InboxEnvelopeBase & {
-  type: 'cta'
-  payload: CallToActionMessage
-}
+  type: 'cta';
+  payload: CallToActionMessage;
+};
 
 export type NotificationEnvelope = InboxEnvelopeBase & {
-  type: 'notification'
-  payload: NotificationMessage
-}
+  type: 'notification';
+  payload: NotificationMessage;
+};
 
 // Unified inbox envelope types (supporting 6 types)
 
 export interface EvidenceItem {
-  type: 'session' | 'part' | 'observation' | 'checkin' | 'relationship'
-  id: string
-  context?: string
+  type: 'session' | 'part' | 'observation' | 'checkin' | 'relationship';
+  id: string;
+  context?: string;
 }
 
 export interface ObservationMessage {
-  title: string
-  summary: string
-  inference: string
-  evidence?: EvidenceItem[]
+  title: string;
+  summary: string;
+  inference: string;
+  evidence?: EvidenceItem[];
 }
 
 export interface QuestionMessage {
-  title: string
-  summary: string
-  inference: string
+  title: string;
+  summary: string;
+  inference: string;
 }
 
 export interface PatternMessage {
-  title: string
-  summary: string
-  inference: string
-  evidence?: EvidenceItem[]
+  title: string;
+  summary: string;
+  inference: string;
+  evidence?: EvidenceItem[];
 }
 
 export interface SessionSummaryMessage {
-  title: string
-  summary: string
+  title: string;
+  summary: string;
 }
 
 export interface FollowUpMessage {
-  title: string
-  summary: string
-  body: string
+  title: string;
+  summary: string;
+  body: string;
+  inference?: string;
 }
 
 export type ObservationEnvelope = InboxEnvelopeBase & {
-  type: 'observation'
-  payload: ObservationMessage
-}
+  type: 'observation';
+  payload: ObservationMessage;
+};
 
 export type QuestionEnvelope = InboxEnvelopeBase & {
-  type: 'question'
-  payload: QuestionMessage
-}
+  type: 'question';
+  payload: QuestionMessage;
+};
 
 export type PatternEnvelope = InboxEnvelopeBase & {
-  type: 'pattern'
-  payload: PatternMessage
-}
+  type: 'pattern';
+  payload: PatternMessage;
+};
 
 export type SessionSummaryEnvelope = InboxEnvelopeBase & {
-  type: 'session_summary'
-  payload: SessionSummaryMessage
-}
+  type: 'session_summary';
+  payload: SessionSummaryMessage;
+};
 
 export type FollowUpEnvelope = InboxEnvelopeBase & {
-  type: 'follow_up'
-  payload: FollowUpMessage
-}
+  type: 'follow_up';
+  payload: FollowUpMessage;
+};
 
 export type InboxEnvelope =
   | InsightSpotlightEnvelope
@@ -266,9 +279,9 @@ export type InboxEnvelope =
   | QuestionEnvelope
   | PatternEnvelope
   | SessionSummaryEnvelope
-  | FollowUpEnvelope
+  | FollowUpEnvelope;
 
-export type InboxFeedVariant = 'pragmatic' | 'clean'
+export type InboxFeedVariant = 'pragmatic' | 'clean';
 
 export type InboxAnalyticsEvent =
   | 'inbox_feed_loaded'
@@ -277,40 +290,40 @@ export type InboxAnalyticsEvent =
   | 'inbox_quick_action'
   | 'inbox_notes_submitted'
   | 'inbox_cta_clicked'
-  | 'chat_started_from_inbox'
+  | 'chat_started_from_inbox';
 
 export interface InboxAnalyticsPayload {
-  envelopeId: string
-  sourceId?: string
-  messageType: InboxMessageType
-  source: InboxEnvelopeSource
-  metadata?: Record<string, unknown>
+  envelopeId: string;
+  sourceId?: string;
+  messageType: InboxMessageType;
+  source: InboxEnvelopeSource;
+  metadata?: Record<string, unknown>;
 }
 
 export interface InboxFeedResponse {
-  data: InboxEnvelope[]
-  generatedAt?: string
-  source?: InboxEnvelopeSource | 'fallback'
-  variant?: InboxFeedVariant
-  reason?: string
-  nextCursor?: string | null
+  data: InboxEnvelope[];
+  generatedAt?: string;
+  source?: InboxEnvelopeSource | 'fallback';
+  variant?: InboxFeedVariant;
+  reason?: string;
+  nextCursor?: string | null;
 }
 
 export interface InboxFeedResult {
-  envelopes: InboxEnvelope[]
-  variant: InboxFeedVariant
-  source: InboxEnvelopeSource | 'fallback'
-  generatedAt?: string
-  reason?: string
-  nextCursor?: string | null
+  envelopes: InboxEnvelope[];
+  variant: InboxFeedVariant;
+  source: InboxEnvelopeSource | 'fallback';
+  generatedAt?: string;
+  reason?: string;
+  nextCursor?: string | null;
 }
 
 export interface InboxActionRequest {
-  subjectId: string
-  eventType?: InboxEventType
-  action?: InboxQuickActionValue
-  notes?: string
-  messageType?: InboxMessageType
-  source?: InboxEnvelopeSource | 'fallback'
-  attributes?: Record<string, unknown>
+  subjectId: string;
+  eventType?: InboxEventType;
+  action?: InboxQuickActionValue;
+  notes?: string;
+  messageType?: InboxMessageType;
+  source?: InboxEnvelopeSource | 'fallback';
+  attributes?: Record<string, unknown>;
 }

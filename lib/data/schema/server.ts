@@ -1,8 +1,8 @@
-import 'server-only'
+import 'server-only';
 import logger from '@/lib/logger';
 
-import { getServerSupabaseClient } from '@/lib/supabase/clients'
-import type { SupabaseDatabaseClient } from '@/lib/supabase/clients'
+import { getServerSupabaseClient } from '@/lib/supabase/clients';
+import type { SupabaseDatabaseClient } from '@/lib/supabase/clients';
 import {
   type SearchPartsInput,
   type UpsertPartInput,
@@ -20,10 +20,10 @@ import {
   type PartDisplayRow,
   type TimelineDisplayRow,
   type UserContextCacheRow,
-  searchPartsV2,
-  getPartByIdV2,
-  upsertPartV2,
-  deletePartV2,
+  searchPartsServer as searchPartsV2,
+  getPartByIdServer as getPartByIdV2,
+  upsertPartServer as upsertPartV2,
+  deletePartServer as deletePartV2,
   createObservation,
   listObservations,
   updateObservationFollowUp,
@@ -40,22 +40,24 @@ import {
   listTimelineDisplay,
   getUserContextCache,
   refreshUserContextCache,
-} from './index'
+} from './index';
 
 export type PrdServerDeps = {
-  userId: string
-  client?: SupabaseDatabaseClient
-}
+  userId: string;
+  client?: SupabaseDatabaseClient;
+};
 
 /**
  * Resolve Supabase dependencies for server-side data access, injecting defaults when omitted.
  */
-async function resolveDeps(deps: PrdServerDeps): Promise<{ client: SupabaseDatabaseClient; userId: string }> {
+async function resolveDeps(
+  deps: PrdServerDeps
+): Promise<{ client: SupabaseDatabaseClient; userId: string }> {
   if (!deps?.userId) {
-    throw new Error('userId is required for PRD data operations')
+    throw new Error('userId is required for PRD data operations');
   }
-  const client = deps.client ?? (await getServerSupabaseClient())
-  return { client, userId: deps.userId }
+  const client = deps.client ?? (await getServerSupabaseClient());
+  return { client, userId: deps.userId };
 }
 
 /**
@@ -79,19 +81,22 @@ function logOperation(operation: string, params?: Record<string, any>) {
  * @param deps - Dependencies containing userId and optional Supabase client
  * @returns Array of matching part records
  */
-export async function searchParts(input: SearchPartsInput, deps: PrdServerDeps): Promise<PartRowV2[]> {
-  const startTime = Date.now()
-  const resolved = await resolveDeps(deps)
-  logOperation('searchParts', { query: input.query, limit: input.limit, userId: deps.userId })
+export async function searchParts(
+  input: SearchPartsInput,
+  deps: PrdServerDeps
+): Promise<PartRowV2[]> {
+  const startTime = Date.now();
+  const resolved = await resolveDeps(deps);
+  logOperation('searchParts', { query: input.query, limit: input.limit, userId: deps.userId });
   try {
-    const result = await searchPartsV2(input, resolved)
-    const duration = Date.now() - startTime
+    const result = await searchPartsV2(input, resolved);
+    const duration = Date.now() - startTime;
     logger.info({ duration, count: result.length }, `[prd-schema] searchParts completed`);
-    return result
+    return result;
   } catch (error) {
-    const duration = Date.now() - startTime
+    const duration = Date.now() - startTime;
     logger.error({ duration, error }, `[prd-schema] searchParts failed`);
-    throw error
+    throw error;
   }
 }
 
@@ -99,8 +104,8 @@ export async function searchParts(input: SearchPartsInput, deps: PrdServerDeps):
  * Server helper to fetch a single part by ID.
  */
 export async function getPart(partId: string, deps: PrdServerDeps): Promise<PartRowV2 | null> {
-  const resolved = await resolveDeps(deps)
-  return getPartByIdV2(partId, resolved)
+  const resolved = await resolveDeps(deps);
+  return getPartByIdV2({ partId }, resolved);
 }
 
 /**
@@ -113,18 +118,23 @@ export async function getPart(partId: string, deps: PrdServerDeps): Promise<Part
  * @returns The created or updated part record
  */
 export async function upsertPart(input: UpsertPartInput, deps: PrdServerDeps): Promise<PartRowV2> {
-  const startTime = Date.now()
-  const resolved = await resolveDeps(deps)
-  logOperation('upsertPart', { id: input.id, name: input.name, category: input.category, userId: deps.userId })
+  const startTime = Date.now();
+  const resolved = await resolveDeps(deps);
+  logOperation('upsertPart', {
+    id: input.id,
+    name: input.name,
+    category: input.category,
+    userId: deps.userId,
+  });
   try {
-    const result = await upsertPartV2(input, resolved)
-    const duration = Date.now() - startTime
+    const result = await upsertPartV2(input, resolved);
+    const duration = Date.now() - startTime;
     logger.info({ duration, id: result.id }, `[prd-schema] upsertPart completed`);
-    return result
+    return result;
   } catch (error) {
-    const duration = Date.now() - startTime
+    const duration = Date.now() - startTime;
     logger.error({ duration, error }, `[prd-schema] upsertPart failed`);
-    throw error
+    throw error;
   }
 }
 
@@ -132,8 +142,8 @@ export async function upsertPart(input: UpsertPartInput, deps: PrdServerDeps): P
  * Server helper to delete a part record.
  */
 export async function removePart(partId: string, deps: PrdServerDeps): Promise<void> {
-  const resolved = await resolveDeps(deps)
-  return deletePartV2(partId, resolved)
+  const resolved = await resolveDeps(deps);
+  return deletePartV2(partId, resolved);
 }
 
 /**
@@ -145,28 +155,38 @@ export async function removePart(partId: string, deps: PrdServerDeps): Promise<v
  * @param deps - Dependencies containing userId and optional Supabase client
  * @returns The created observation record with ID and timestamp
  */
-export async function recordObservation(input: CreateObservationInput, deps: PrdServerDeps): Promise<ObservationRow> {
-  const startTime = Date.now()
-  const resolved = await resolveDeps(deps)
-  logOperation('recordObservation', { type: input.type, content_length: input.content?.length, userId: deps.userId })
+export async function recordObservation(
+  input: CreateObservationInput,
+  deps: PrdServerDeps
+): Promise<ObservationRow> {
+  const startTime = Date.now();
+  const resolved = await resolveDeps(deps);
+  logOperation('recordObservation', {
+    type: input.type,
+    content_length: input.content?.length,
+    userId: deps.userId,
+  });
   try {
-    const result = await createObservation(input, resolved)
-    const duration = Date.now() - startTime
+    const result = await createObservation(input, resolved);
+    const duration = Date.now() - startTime;
     logger.info({ duration, id: result.id }, `[prd-schema] recordObservation completed`);
-    return result
+    return result;
   } catch (error) {
-    const duration = Date.now() - startTime
+    const duration = Date.now() - startTime;
     logger.error({ duration, error }, `[prd-schema] recordObservation failed`);
-    throw error
+    throw error;
   }
 }
 
 /**
  * Server helper to list recent observations with optional filters.
  */
-export async function recentObservations(input: ListObservationsInput, deps: PrdServerDeps): Promise<ObservationRow[]> {
-  const resolved = await resolveDeps(deps)
-  return listObservations(input, resolved)
+export async function recentObservations(
+  input: ListObservationsInput,
+  deps: PrdServerDeps
+): Promise<ObservationRow[]> {
+  const resolved = await resolveDeps(deps);
+  return listObservations(input, resolved);
 }
 
 /**
@@ -177,16 +197,19 @@ export async function updateObservation(
   updates: { completed?: boolean; metadata?: Record<string, any> },
   deps: PrdServerDeps
 ): Promise<ObservationRow> {
-  const resolved = await resolveDeps(deps)
-  return updateObservationFollowUp(observationId, updates, resolved)
+  const resolved = await resolveDeps(deps);
+  return updateObservationFollowUp(observationId, updates, resolved);
 }
 
 /**
  * Server helper to create a session record.
  */
-export async function createSessionRecord(input: CreateSessionInput, deps: PrdServerDeps): Promise<SessionRowV2> {
-  const resolved = await resolveDeps(deps)
-  return createSession(input, resolved)
+export async function createSessionRecord(
+  input: CreateSessionInput,
+  deps: PrdServerDeps
+): Promise<SessionRowV2> {
+  const resolved = await resolveDeps(deps);
+  return createSession(input, resolved);
 }
 
 /**
@@ -197,8 +220,8 @@ export async function touchSession(
   updates: { last_message_at?: string; observations?: string[] },
   deps: PrdServerDeps
 ): Promise<SessionRowV2> {
-  const resolved = await resolveDeps(deps)
-  return appendSessionActivity(sessionId, updates, resolved)
+  const resolved = await resolveDeps(deps);
+  return appendSessionActivity(sessionId, updates, resolved);
 }
 
 /**
@@ -209,34 +232,40 @@ export async function completeSessionRecord(
   input: CompleteSessionInput,
   deps: PrdServerDeps
 ): Promise<SessionRowV2> {
-  const resolved = await resolveDeps(deps)
-  return completeSession(sessionId, input, resolved)
+  const resolved = await resolveDeps(deps);
+  return completeSession(sessionId, input, resolved);
 }
 
 /**
  * Server helper to fetch the current active session.
  */
 export async function getActiveSessionRecord(deps: PrdServerDeps): Promise<SessionRowV2 | null> {
-  const resolved = await resolveDeps(deps)
-  return getActiveSession(resolved)
+  const resolved = await resolveDeps(deps);
+  return getActiveSession(resolved);
 }
 
 /**
  * Server helper to fetch a specific session by ID.
  */
-export async function getSessionRecord(sessionId: string, deps: PrdServerDeps): Promise<SessionRowV2 | null> {
-  const resolved = await resolveDeps(deps)
-  const { getSession } = await import('./index')
-  return getSession(sessionId, resolved)
+export async function getSessionRecord(
+  sessionId: string,
+  deps: PrdServerDeps
+): Promise<SessionRowV2 | null> {
+  const resolved = await resolveDeps(deps);
+  const { getSession } = await import('./index');
+  return getSession(sessionId, resolved);
 }
 
 /**
  * Server helper to list recent sessions for the user.
  */
-export async function listSessionRecords(deps: PrdServerDeps, limit?: number): Promise<SessionRowV2[]> {
-  const resolved = await resolveDeps(deps)
-  const { listSessions } = await import('./index')
-  return listSessions(resolved, limit ?? 10)
+export async function listSessionRecords(
+  deps: PrdServerDeps,
+  limit?: number
+): Promise<SessionRowV2[]> {
+  const resolved = await resolveDeps(deps);
+  const { listSessions } = await import('./index');
+  return listSessions(resolved, limit ?? 10);
 }
 
 /**
@@ -246,8 +275,8 @@ export async function upsertRelationshipRecord(
   input: UpsertRelationshipInput,
   deps: PrdServerDeps
 ): Promise<PartRelationshipRowV2> {
-  const resolved = await resolveDeps(deps)
-  return upsertRelationship(input, resolved)
+  const resolved = await resolveDeps(deps);
+  return upsertRelationship(input, resolved);
 }
 
 /**
@@ -257,8 +286,8 @@ export async function listRelationshipRecords(
   deps: PrdServerDeps,
   filters?: { partId?: string; type?: UpsertRelationshipInput['type'] }
 ): Promise<PartRelationshipRowV2[]> {
-  const resolved = await resolveDeps(deps)
-  return listRelationships(resolved, filters)
+  const resolved = await resolveDeps(deps);
+  return listRelationships(resolved, filters);
 }
 
 /**
@@ -268,16 +297,19 @@ export async function createTimelineEventRecord(
   input: CreateTimelineEventInput,
   deps: PrdServerDeps
 ): Promise<TimelineEventRow> {
-  const resolved = await resolveDeps(deps)
-  return createTimelineEvent(input, resolved)
+  const resolved = await resolveDeps(deps);
+  return createTimelineEvent(input, resolved);
 }
 
 /**
  * Server helper to list timeline events for a user.
  */
-export async function listTimelineEventRecords(deps: PrdServerDeps, limit?: number): Promise<TimelineEventRow[]> {
-  const resolved = await resolveDeps(deps)
-  return listTimelineEvents(resolved, limit)
+export async function listTimelineEventRecords(
+  deps: PrdServerDeps,
+  limit?: number
+): Promise<TimelineEventRow[]> {
+  const resolved = await resolveDeps(deps);
+  return listTimelineEvents(resolved, limit);
 }
 
 /**
@@ -289,8 +321,8 @@ export async function listPartDisplayRecords(
   deps: PrdServerDeps,
   limit: number | null = 50
 ): Promise<PartDisplayRow[]> {
-  const resolved = await resolveDeps(deps)
-  return listPartsDisplay(resolved, limit)
+  const resolved = await resolveDeps(deps);
+  return listPartsDisplay(resolved, limit);
 }
 
 /**
@@ -300,8 +332,8 @@ export async function getPartDisplayRecord(
   partId: string,
   deps: PrdServerDeps
 ): Promise<PartDisplayRow | null> {
-  const resolved = await resolveDeps(deps)
-  return getPartDisplay(partId, resolved)
+  const resolved = await resolveDeps(deps);
+  return getPartDisplay(partId, resolved);
 }
 
 /**
@@ -311,8 +343,8 @@ export async function listTimelineDisplayRecords(
   deps: PrdServerDeps,
   limit?: number
 ): Promise<TimelineDisplayRow[]> {
-  const resolved = await resolveDeps(deps)
-  return listTimelineDisplay(resolved, limit ?? 100)
+  const resolved = await resolveDeps(deps);
+  return listTimelineDisplay(resolved, limit ?? 100);
 }
 
 /**
@@ -326,18 +358,18 @@ export async function listTimelineDisplayRecords(
 export async function loadUserContextCache(
   deps: PrdServerDeps
 ): Promise<UserContextCacheRow | null> {
-  const startTime = Date.now()
-  const resolved = await resolveDeps(deps)
-  logOperation('loadUserContextCache', { userId: deps.userId })
+  const startTime = Date.now();
+  const resolved = await resolveDeps(deps);
+  logOperation('loadUserContextCache', { userId: deps.userId });
   try {
-    const result = await getUserContextCache(resolved)
-    const duration = Date.now() - startTime
+    const result = await getUserContextCache(resolved);
+    const duration = Date.now() - startTime;
     logger.info({ duration, found: !!result }, `[prd-schema] loadUserContextCache completed`);
-    return result
+    return result;
   } catch (error) {
-    const duration = Date.now() - startTime
+    const duration = Date.now() - startTime;
     logger.error({ duration, error }, `[prd-schema] loadUserContextCache failed`);
-    throw error
+    throw error;
   }
 }
 
@@ -350,16 +382,16 @@ export async function loadUserContextCache(
  * @param client - Optional pre-configured Supabase client; defaults to server client if omitted
  */
 export async function refreshContextCache(client?: SupabaseDatabaseClient): Promise<void> {
-  const startTime = Date.now()
-  logOperation('refreshContextCache', {})
+  const startTime = Date.now();
+  logOperation('refreshContextCache', {});
   try {
-    const supabase = client ?? (await getServerSupabaseClient())
-    await refreshUserContextCache(supabase)
-    const duration = Date.now() - startTime
+    const supabase = client ?? (await getServerSupabaseClient());
+    await refreshUserContextCache(supabase);
+    const duration = Date.now() - startTime;
     logger.info({ duration }, `[prd-schema] refreshContextCache completed`);
   } catch (error) {
-    const duration = Date.now() - startTime
+    const duration = Date.now() - startTime;
     logger.error({ duration, error }, `[prd-schema] refreshContextCache failed`);
-    throw error
+    throw error;
   }
 }

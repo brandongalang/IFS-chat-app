@@ -1,12 +1,7 @@
-import { randomUUID } from 'crypto'
-import { createTool } from '@mastra/core'
-import { z } from 'zod'
-import { getStorageAdapter } from '@/lib/memory/snapshots/fs-helpers'
-import type {
-  PartRow,
-  PartRelationshipRow,
-  ToolResult,
-} from '@/lib/types/database'
+import { randomUUID } from 'crypto';
+import { createTool } from '@mastra/core';
+import { z } from 'zod';
+import type { PartRow, PartRelationshipRow, ToolResult } from '@/lib/types/database';
 import {
   searchPartsSchema,
   getPartByIdSchema,
@@ -15,12 +10,12 @@ import {
   updatePartSchema,
   getPartRelationshipsSchema,
   logRelationshipSchema,
-} from './part-schemas'
+} from './part-schemas';
 
-const STUB_USER_ID = "00000000-0000-0000-0000-000000000000"
+const STUB_USER_ID = '00000000-0000-0000-0000-000000000000';
 
 function makeStubPart(userId: string, overrides: Partial<PartRow> = {}): PartRow {
-  const now = new Date().toISOString()
+  const now = new Date().toISOString();
   return {
     id: overrides.id ?? randomUUID(),
     user_id: overrides.user_id ?? userId,
@@ -39,7 +34,8 @@ function makeStubPart(userId: string, overrides: Partial<PartRow> = {}): PartRow
     story: overrides.story ?? { origin: null, currentState: null, purpose: null, evolution: [] },
     relationships: overrides.relationships ?? {},
     visualization:
-      overrides.visualization ?? ({ emoji: '❔', color: '#7f7f7f', energyLevel: 0.1 } as PartRow['visualization']),
+      overrides.visualization ??
+      ({ emoji: '❔', color: '#7f7f7f', energyLevel: 0.1 } as PartRow['visualization']),
     first_noticed: overrides.first_noticed ?? now,
     acknowledged_at: overrides.acknowledged_at ?? null,
     last_active: overrides.last_active ?? now,
@@ -48,12 +44,12 @@ function makeStubPart(userId: string, overrides: Partial<PartRow> = {}): PartRow
     last_charge_intensity: overrides.last_charge_intensity ?? null,
     created_at: overrides.created_at ?? now,
     updated_at: overrides.updated_at ?? now,
-  }
+  };
 }
 
 function makeStubRelationship(userId: string, partIds: string[]): PartRelationshipRow {
-  const now = new Date().toISOString()
-  const ids = partIds.length > 0 ? partIds : [randomUUID(), randomUUID()]
+  const now = new Date().toISOString();
+  const ids = partIds.length > 0 ? partIds : [randomUUID(), randomUUID()];
   return {
     id: randomUUID(),
     user_id: userId,
@@ -68,44 +64,48 @@ function makeStubRelationship(userId: string, partIds: string[]): PartRelationsh
     last_addressed: null,
     created_at: now,
     updated_at: now,
-  }
+  };
 }
 
-export async function searchParts(input: z.infer<typeof searchPartsSchema>): Promise<ToolResult<PartRow[]>> {
+export async function searchParts(
+  input: z.infer<typeof searchPartsSchema>
+): Promise<ToolResult<PartRow[]>> {
   try {
-    const validated = searchPartsSchema.parse(input)
-    await getStorageAdapter()
-    return { success: true, data: [], confidence: 1.0 }
+    // const validated = searchPartsSchema.parse(input)
+    return { success: true, data: [], confidence: 1.0 };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) }
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
-export async function getPartById(input: z.infer<typeof getPartByIdSchema>): Promise<ToolResult<PartRow | null>> {
+export async function getPartById(
+  input: z.infer<typeof getPartByIdSchema>
+): Promise<ToolResult<PartRow | null>> {
   try {
-    const validated = getPartByIdSchema.parse(input)
-    await getStorageAdapter()
-    return { success: true, data: null, confidence: 1.0 }
+    // const validated = getPartByIdSchema.parse(input)
+    return { success: true, data: null, confidence: 1.0 };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) }
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
-export async function getPartDetail(input: z.infer<typeof getPartDetailSchema>): Promise<ToolResult<any>> {
+export async function getPartDetail(
+  input: z.infer<typeof getPartDetailSchema>
+): Promise<ToolResult<any>> {
   try {
-    const validated = getPartDetailSchema.parse(input)
-    await getStorageAdapter()
-    return { success: true, data: null, confidence: 1.0 }
+    // const validated = getPartDetailSchema.parse(input)
+    return { success: true, data: null, confidence: 1.0 };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) }
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
-export async function createEmergingPart(input: z.infer<typeof createEmergingPartSchema>): Promise<ToolResult<PartRow>> {
+export async function createEmergingPart(
+  input: z.infer<typeof createEmergingPartSchema>
+): Promise<ToolResult<PartRow>> {
   try {
-    const validated = createEmergingPartSchema.parse(input)
-    const userId = STUB_USER_ID
-    await getStorageAdapter()
+    const validated = createEmergingPartSchema.parse(input);
+    const userId = STUB_USER_ID;
     const part = makeStubPart(userId, {
       name: validated.name,
       category: validated.category,
@@ -118,25 +118,26 @@ export async function createEmergingPart(input: z.infer<typeof createEmergingPar
       recent_evidence: validated.evidence,
       evidence_count: validated.evidence.length,
       confidence: 0.1,
-    })
-    return { success: true, data: part, confidence: 0.1 }
+    });
+    return { success: true, data: part, confidence: 0.1 };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) }
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
-export async function updatePart(input: z.infer<typeof updatePartSchema>): Promise<ToolResult<PartRow>> {
+export async function updatePart(
+  input: z.infer<typeof updatePartSchema>
+): Promise<ToolResult<PartRow>> {
   try {
-    const validated = updatePartSchema.parse(input)
-    const userId = STUB_USER_ID
-    await getStorageAdapter()
-    const base = makeStubPart(userId, { id: validated.partId })
-    const updates = validated.updates
-    const now = new Date().toISOString()
+    const validated = updatePartSchema.parse(input);
+    const userId = STUB_USER_ID;
+    const base = makeStubPart(userId, { id: validated.partId });
+    const updates = validated.updates;
+    const now = new Date().toISOString();
 
     const updatedVisualization = updates.visualization
       ? { ...base.visualization, ...updates.visualization }
-      : base.visualization
+      : base.visualization;
 
     const updatedPart = makeStubPart(userId, {
       ...base,
@@ -153,42 +154,44 @@ export async function updatePart(input: z.infer<typeof updatePartSchema>): Promi
       last_charged_at: updates.last_charged_at ?? base.last_charged_at,
       last_charge_intensity: updates.last_charge_intensity ?? base.last_charge_intensity,
       updated_at: now,
-    })
+    });
 
     if (typeof updates.confidenceBoost === 'number') {
-      updatedPart.confidence = Math.max(0, Math.min(1, base.confidence + updates.confidenceBoost))
+      updatedPart.confidence = Math.max(0, Math.min(1, base.confidence + updates.confidenceBoost));
     }
 
     if (validated.evidence) {
-      updatedPart.recent_evidence = [validated.evidence]
-      updatedPart.evidence_count = 1
+      updatedPart.recent_evidence = [validated.evidence];
+      updatedPart.evidence_count = 1;
     }
 
-    return { success: true, data: updatedPart, confidence: 0.9 }
+    return { success: true, data: updatedPart, confidence: 0.9 };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) }
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
-export async function getPartRelationships(input: z.infer<typeof getPartRelationshipsSchema>): Promise<ToolResult<PartRelationshipRow[]>> {
+export async function getPartRelationships(
+  input: z.infer<typeof getPartRelationshipsSchema>
+): Promise<ToolResult<PartRelationshipRow[]>> {
   try {
-    const validated = getPartRelationshipsSchema.parse(input)
-    await getStorageAdapter()
-    return { success: true, data: [], confidence: 1.0 }
+    // const validated = getPartRelationshipsSchema.parse(input)
+    return { success: true, data: [], confidence: 1.0 };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) }
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
-export async function logRelationship(input: z.infer<typeof logRelationshipSchema>): Promise<ToolResult<PartRelationshipRow>> {
+export async function logRelationship(
+  input: z.infer<typeof logRelationshipSchema>
+): Promise<ToolResult<PartRelationshipRow>> {
   try {
-    const validated = logRelationshipSchema.parse(input)
-    const userId = STUB_USER_ID
-    await getStorageAdapter()
-    const relationship = makeStubRelationship(userId, validated.partIds)
-    return { success: true, data: relationship, confidence: 0.5 }
+    const validated = logRelationshipSchema.parse(input);
+    const userId = STUB_USER_ID;
+    const relationship = makeStubRelationship(userId, validated.partIds);
+    return { success: true, data: relationship, confidence: 0.5 };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) }
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -197,77 +200,77 @@ export const searchPartsTool = createTool({
   description: 'Search for parts',
   inputSchema: searchPartsSchema,
   execute: async ({ context }) => {
-    const result = await searchParts(context)
-    if (!result.success) throw new Error(result.error)
-    return result.data
+    const result = await searchParts(context);
+    if (!result.success) throw new Error(result.error);
+    return result.data;
   },
-})
+});
 
 export const getPartByIdTool = createTool({
   id: 'getPartById',
   description: 'Get a specific part by ID',
   inputSchema: getPartByIdSchema,
   execute: async ({ context }) => {
-    const result = await getPartById(context)
-    if (!result.success) throw new Error(result.error)
-    return result.data
+    const result = await getPartById(context);
+    if (!result.success) throw new Error(result.error);
+    return result.data;
   },
-})
+});
 
 export const getPartDetailTool = createTool({
   id: 'getPartDetail',
   description: 'Get part details including relationships',
   inputSchema: getPartDetailSchema,
   execute: async ({ context }) => {
-    const result = await getPartDetail(context)
-    if (!result.success) throw new Error(result.error)
-    return result.data
+    const result = await getPartDetail(context);
+    if (!result.success) throw new Error(result.error);
+    return result.data;
   },
-})
+});
 
 export const createEmergingPartTool = createTool({
   id: 'createEmergingPart',
   description: 'Create a new emerging part',
   inputSchema: createEmergingPartSchema,
   execute: async ({ context }) => {
-    const result = await createEmergingPart(context)
-    if (!result.success) throw new Error(result.error)
-    return result.data
+    const result = await createEmergingPart(context);
+    if (!result.success) throw new Error(result.error);
+    return result.data;
   },
-})
+});
 
 export const updatePartTool = createTool({
   id: 'updatePart',
   description: 'Update an existing part',
   inputSchema: updatePartSchema,
   execute: async ({ context }) => {
-    const result = await updatePart(context)
-    if (!result.success) throw new Error(result.error)
-    return result.data
+    const result = await updatePart(context);
+    if (!result.success) throw new Error(result.error);
+    return result.data;
   },
-})
+});
 
 export const getPartRelationshipsTool = createTool({
   id: 'getPartRelationships',
   description: 'Get relationships for a part',
   inputSchema: getPartRelationshipsSchema,
   execute: async ({ context }) => {
-    const result = await getPartRelationships(context)
-    if (!result.success) throw new Error(result.error)
-    return result.data
+    const result = await getPartRelationships(context);
+    if (!result.success) throw new Error(result.error);
+    return result.data;
   },
-})
+});
 
 export const logRelationshipTool = createTool({
   id: 'logRelationship',
   description: 'Log a relationship between parts',
   inputSchema: logRelationshipSchema,
   execute: async ({ context }) => {
-    const result = await logRelationship(context)
-    if (!result.success) throw new Error(result.error)
-    return result.data
+    const result = await logRelationship(context);
+    if (!result.success) throw new Error(result.error);
+    return result.data;
   },
-})
+});
 
 export const partTools = {
   searchParts: searchPartsTool,
@@ -277,4 +280,4 @@ export const partTools = {
   updatePart: updatePartTool,
   getPartRelationships: getPartRelationshipsTool,
   logRelationship: logRelationshipTool,
-}
+};
