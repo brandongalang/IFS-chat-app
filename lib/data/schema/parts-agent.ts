@@ -290,10 +290,6 @@ export async function createEmergingPart(
   const validated = createEmergingPartSchema.parse(input)
   const { client, userId } = assertAgentDeps(deps)
 
-  if (validated.evidence.length < 3) {
-    throw new Error('Cannot create emerging part: At least 3 pieces of evidence are required')
-  }
-
   if (requiresUserConfirmation(validated.userConfirmed)) {
     throw new Error('Cannot create emerging part: User confirmation is required through chat interaction')
   }

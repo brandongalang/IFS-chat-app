@@ -33,7 +33,7 @@ export function resolveUserId(providedUserId?: string): string {
     throw new Error('User ID is required. Set IFS_TEST_PERSONA or IFS_DEFAULT_USER_ID for development mode.')
   }
   if (providedUserId) return providedUserId
-  throw new Error('User ID is required. Set IFS_TEST_PERSONA or IFS_DEFAULT_USER_ID for development mode.')
+  throw new Error('User ID is required.')
 }
 
 export function requiresUserConfirmation(providedConfirmation?: boolean): boolean {
