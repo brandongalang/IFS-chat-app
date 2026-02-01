@@ -4,7 +4,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 
 import { ENV, OPENROUTER_API_BASE_URL } from '@/config/env'
 import { resolveChatModel } from '@/config/model'
-import { getPartTools } from '../tools/part-tools.mastra'
+import { getPartTools } from '../tools/part-tools'
 import { createAssessmentTools } from '../tools/assessment-tools'
 import { createProposalTools } from '../tools/proposal-tools'
 import { createEvidenceTools } from '../tools/evidence-tools'
