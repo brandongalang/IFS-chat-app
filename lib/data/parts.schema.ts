@@ -53,7 +53,7 @@ export const getPartDetailSchema = z.object({
 }).strict()
 
 export const createEmergingPartSchema = z.object({
-  name: z.string().min(1).max(100).describe('Name of the emerging part'),
+  name: z.string().trim().min(1).max(100).describe('Name of the emerging part'),
   evidence: z.array(evidenceSchema).min(3).describe('Evidence supporting the part (minimum 3 required)'),
   category: partCategoryEnum.optional().default('unknown'),
   age: z.number().min(0).max(100).optional().describe('Perceived age of the part'),
@@ -71,7 +71,7 @@ export const updatePartSchema = z.object({
   partId: z.string().uuid().describe('The UUID of the part to update'),
   updates: z
     .object({
-      name: z.string().min(1).max(100).optional(),
+      name: z.string().trim().min(1).max(100).optional(),
       status: partStatusEnum.optional(),
       category: partCategoryEnum.optional(),
       age: z.number().min(0).max(100).optional(),

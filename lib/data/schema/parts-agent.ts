@@ -304,7 +304,7 @@ export async function createEmergingPart(
     .from('parts_v2')
     .select('id')
     .eq('user_id', userId)
-    .eq('name', validated.name)
+    .ilike('name', validated.name.replace(/([%_])/g, '\\$1'))
     .maybeSingle()
 
   if (existing) {
@@ -491,6 +491,20 @@ export async function updatePart(
 
   const current = mapPartRowFromV2(currentRow as PartRowV2)
   const nowIso = new Date().toISOString()
+
+  if (validated.updates.name && validated.updates.name !== current.name) {
+    const { data: existing } = await client
+      .from('parts_v2')
+      .select('id')
+      .eq('user_id', userId)
+      .neq('id', validated.partId)
+      .ilike('name', validated.updates.name.replace(/([%_])/g, '\\$1'))
+      .maybeSingle()
+
+    if (existing) {
+      throw new Error(`A part named "${validated.updates.name}" already exists for this user`)
+    }
+  }
 
   const { partPatch, dataPatch, actionType: baseActionType, changeDescription: baseChangeDescription } = combinePartUpdates(current, validated.updates, nowIso)
 
