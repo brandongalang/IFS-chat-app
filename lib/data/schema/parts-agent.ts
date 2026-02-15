@@ -71,6 +71,10 @@ function assertAgentDeps(deps: PartsAgentDependencies): PartsAgentDependencies {
   return deps
 }
 
+function escapeLike(str: string): string {
+  return str.replace(/[%_]/g, '\\$&')
+}
+
 function encodeRelationshipContext(payload: RelationshipContextPayload): string | null {
   const pruned: RelationshipContextPayload = {
     description: payload.description ?? null,
@@ -304,7 +308,7 @@ export async function createEmergingPart(
     .from('parts_v2')
     .select('id')
     .eq('user_id', userId)
-    .eq('name', validated.name)
+    .ilike('name', escapeLike(validated.name))
     .maybeSingle()
 
   if (existing) {
@@ -491,6 +495,25 @@ export async function updatePart(
 
   const current = mapPartRowFromV2(currentRow as PartRowV2)
   const nowIso = new Date().toISOString()
+
+  if (
+    typeof validated.updates.name === 'string' &&
+    validated.updates.name.trim().length > 0 &&
+    validated.updates.name.trim().toLowerCase() !== current.name.toLowerCase()
+  ) {
+    const newName = validated.updates.name.trim()
+    const { data: existingName } = await client
+      .from('parts_v2')
+      .select('id')
+      .eq('user_id', userId)
+      .ilike('name', escapeLike(newName))
+      .neq('id', validated.partId)
+      .maybeSingle()
+
+    if (existingName) {
+      throw new Error(`A part named "${newName}" already exists for this user`)
+    }
+  }
 
   const { partPatch, dataPatch, actionType: baseActionType, changeDescription: baseChangeDescription } = combinePartUpdates(current, validated.updates, nowIso)
 
@@ -686,6 +709,11 @@ export async function logRelationship(
   const { client, userId } = assertAgentDeps(deps)
 
   const sortedPartIds = [...validated.partIds].sort()
+
+  if (sortedPartIds[0] === sortedPartIds[1]) {
+    throw new Error('Cannot create self-referential relationship')
+  }
+
   const nowIso = new Date().toISOString()
   const v2Type = toV2RelationshipType(validated.type)
 
@@ -715,17 +743,16 @@ export async function logRelationship(
     .select('*')
     .eq('user_id', userId)
     .eq('type', v2Type)
+    .or(
+      `and(part_a_id.eq.${sortedPartIds[0]},part_b_id.eq.${sortedPartIds[1]}),and(part_a_id.eq.${sortedPartIds[1]},part_b_id.eq.${sortedPartIds[0]})`
+    )
     .order('created_at', { ascending: false })
-    .limit(50)
 
   if (error) {
     throw new Error(`Failed to query relationships: ${error.message}`)
   }
 
-  const matched = (candidates ?? []).find((row) => {
-    const pair = [row.part_a_id, row.part_b_id].sort()
-    return pair[0] === sortedPartIds[0] && pair[1] === sortedPartIds[1]
-  })
+  const matched = candidates?.[0]
 
   const polarization =
     typeof contextPayload.polarizationLevel === 'number'
