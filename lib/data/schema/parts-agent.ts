@@ -56,6 +56,10 @@ import {
   toV2RelationshipType,
 } from './legacy-mappers'
 
+function escapeLike(str: string): string {
+  return str.replace(/[%_]/g, '\\$&')
+}
+
 type PartsAgentDependencies = {
   client: SupabaseDatabaseClient
   userId: string
@@ -304,7 +308,7 @@ export async function createEmergingPart(
     .from('parts_v2')
     .select('id')
     .eq('user_id', userId)
-    .eq('name', validated.name)
+    .ilike('name', escapeLike(validated.name))
     .maybeSingle()
 
   if (existing) {
@@ -493,6 +497,24 @@ export async function updatePart(
   const nowIso = new Date().toISOString()
 
   const { partPatch, dataPatch, actionType: baseActionType, changeDescription: baseChangeDescription } = combinePartUpdates(current, validated.updates, nowIso)
+
+  if (
+    typeof validated.updates.name === 'string' &&
+    validated.updates.name.trim().length > 0 &&
+    validated.updates.name !== current.name
+  ) {
+    const { data: existing } = await client
+      .from('parts_v2')
+      .select('id')
+      .eq('user_id', userId)
+      .ilike('name', escapeLike(validated.updates.name.trim()))
+      .neq('id', validated.partId)
+      .maybeSingle()
+
+    if (existing) {
+      throw new Error(`A part named "${validated.updates.name.trim()}" already exists for this user`)
+    }
+  }
 
   let updatedConfidence = current.confidence
   if (typeof validated.updates.confidenceBoost === 'number') {
